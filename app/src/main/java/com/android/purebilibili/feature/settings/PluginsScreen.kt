@@ -126,15 +126,6 @@ fun PluginsScreen(
                 .fillMaxSize(),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // 🎬 精美互动 Lottie 动画头部 (本地资源)
-            item {
-                com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                    rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.PLUGINS,
-                    title = "插件中心",
-                    subtitle = "探索更多功能，无限扩展",
-                    interactionLevel = pluginInteractionLevel
-                )
-            }
             
             // 标题说明
             item {
@@ -534,6 +525,21 @@ private fun PluginItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // 🔥 暂不可用标签
+                    if (plugin.unavailable) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                        ) {
+                            Text(
+                                text = "暂不可用",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(

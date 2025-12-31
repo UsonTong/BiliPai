@@ -114,6 +114,12 @@ fun FrostedBottomBar(
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()  // 🍎 触觉反馈
+    
+    // 🔥🔥 读取当前模糊强度以确定背景透明度
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val blurIntensity by com.android.purebilibili.core.store.SettingsManager.getBlurIntensity(context)
+        .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
+    val backgroundAlpha = com.android.purebilibili.core.ui.blur.BlurStyles.getBackgroundAlpha(blurIntensity)
 
     // 🔥 根据 labelMode 动态计算高度
     val floatingHeight = when (labelMode) {
@@ -164,14 +170,13 @@ fun FrostedBottomBar(
                         Modifier
                     }
                 ),
-            // 🔥 背景色：模糊开启时添加半透明背景增强可读性，关闭时使用实心背景
+            // 🔥🔥 [修复] 根据模糊强度动态调整背景透明度
             color = if (hazeState != null) {
-                // 🔥🔥 [优化] 添加半透明背景增强复杂背景下的文字可读性
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
             } else {
                 // 无模糊时使用实心背景
                 MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-            }, 
+            },
             shape = barShape,
             shadowElevation = 0.dp,
             border = if (hazeState != null) {
@@ -187,13 +192,13 @@ fun FrostedBottomBar(
                         )
                     )
                 } else {
-                    // 有模糊时显示边框增加质感
+                    // 🍎 [优化] 悬浮模式边框 0.5dp - 更精致的玻璃拟态风格
                     androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
+                        width = 0.5.dp,  // 🔥 从 1dp 改为 0.5dp
                         brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), 
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                Color.White.copy(alpha = 0.35f),  // 🔥 顶部高光增强
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                             )
                         )
                     )
@@ -253,11 +258,18 @@ fun FrostedBottomBar(
                     // 🔥🔥 [新增] 追踪是否正在点击此项（动画播放中）
                     var isPending by remember { mutableStateOf(false) }
                     
-                    // 🍎 跟随主题色：选中时使用主题色，未选中时使用灰色
+                    // 🍎 跟随主题色：选中时使用主题色，未选中时根据模糊状态调整颜色
                     val primaryColor = MaterialTheme.colorScheme.primary
+                    // 🔥🔥 [优化] 模糊模式下使用 onSurface 自适应深浅模式
+                    // 深色模式 -> onSurface 为浅色（白色系）；浅色模式 -> onSurface 为深色（黑色系）
+                    val unselectedColor = if (hazeState != null) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    } else {
+                        BottomBarColors.UNSELECTED
+                    }
                     
                     val iconColor by animateColorAsState(
-                        targetValue = if (isSelected || isPending) primaryColor else BottomBarColors.UNSELECTED,
+                        targetValue = if (isSelected || isPending) primaryColor else unselectedColor,
                         animationSpec = spring(),
                         label = "iconColor"
                     )

@@ -24,11 +24,11 @@ private val Context.settingsDataStore by preferencesDataStore(name = "settings_p
 data class HomeSettings(
     val displayMode: Int = 0,              // 展示模式 (0=网格, 1=故事卡片, 2=玻璃拟态)
     val isBottomBarFloating: Boolean = true,
-    val bottomBarLabelMode: Int = 1,       // (0=图标+文字, 1=仅图标, 2=仅文字)
+    val bottomBarLabelMode: Int = 0,       // (0=图标+文字, 1=仅图标, 2=仅文字)
     val isHeaderBlurEnabled: Boolean = true,
     val isBottomBarBlurEnabled: Boolean = true,
     val cardAnimationEnabled: Boolean = false,    // 🔥 卡片进场动画（默认关闭）
-    val cardTransitionEnabled: Boolean = false,   // 🔥 卡片过渡动画（默认关闭）
+    val cardTransitionEnabled: Boolean = true,   // 🔥 卡片过渡动画（默认开启）
     // 🔥🔥 [修复] 默认值改为 true，避免在 Flow 加载实际值之前错误触发弹窗
     // 当 Flow 加载完成后，如果实际值是 false，LaunchedEffect 会再次触发并显示弹窗
     val crashTrackingConsentShown: Boolean = true
@@ -75,12 +75,12 @@ object SettingsManager {
     fun getHomeSettings(context: Context): Flow<HomeSettings> {
         val displayModeFlow = context.settingsDataStore.data.map { it[KEY_DISPLAY_MODE] ?: 0 }
         val bottomBarFloatingFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_FLOATING] ?: true }
-        val bottomBarLabelModeFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_LABEL_MODE] ?: 1 }
+        val bottomBarLabelModeFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_LABEL_MODE] ?: 0 }  // 默认图标+文字
         val headerBlurFlow = context.settingsDataStore.data.map { it[KEY_HEADER_BLUR_ENABLED] ?: true }
         val bottomBarBlurFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true }
         val crashConsentFlow = context.settingsDataStore.data.map { it[KEY_CRASH_TRACKING_CONSENT_SHOWN] ?: false }
         val cardAnimationFlow = context.settingsDataStore.data.map { it[KEY_CARD_ANIMATION_ENABLED] ?: false }
-        val cardTransitionFlow = context.settingsDataStore.data.map { it[KEY_CARD_TRANSITION_ENABLED] ?: false }
+        val cardTransitionFlow = context.settingsDataStore.data.map { it[KEY_CARD_TRANSITION_ENABLED] ?: true }  // 默认开启
         
         // 🔧 Kotlin combine() 最多支持 5 个参数，使用嵌套 combine
         val firstFiveFlow = combine(
@@ -216,7 +216,7 @@ object SettingsManager {
     
     // 🔥 [新增] --- 卡片过渡动画开关 ---
     fun getCardTransitionEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_CARD_TRANSITION_ENABLED] ?: false }  // 默认关闭
+        .map { preferences -> preferences[KEY_CARD_TRANSITION_ENABLED] ?: true }  // 默认开启
 
     suspend fun setCardTransitionEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_CARD_TRANSITION_ENABLED] = value }
@@ -251,7 +251,7 @@ object SettingsManager {
     
     // 🔥🔥 [新增] --- 底栏显示模式 (0=图标+文字, 1=仅图标, 2=仅文字) ---
     fun getBottomBarLabelMode(context: Context): Flow<Int> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_BOTTOM_BAR_LABEL_MODE] ?: 1 }  // 默认仅图标
+        .map { preferences -> preferences[KEY_BOTTOM_BAR_LABEL_MODE] ?: 0 }  // 默认图标+文字
 
     suspend fun setBottomBarLabelMode(context: Context, value: Int) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_BOTTOM_BAR_LABEL_MODE] = value }
@@ -273,12 +273,12 @@ object SettingsManager {
         context.settingsDataStore.edit { preferences -> preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] = value }
     }
     
-    // 🔥🔥 [新增] --- 模糊强度 (ULTRA_THIN, THIN, THICK) ---
+    // 🔥🔥 [修复] --- 模糊强度 (THIN, THICK, APPLE_DOCK) ---
     fun getBlurIntensity(context: Context): Flow<BlurIntensity> = context.settingsDataStore.data
         .map { preferences ->
             when (preferences[KEY_BLUR_INTENSITY]) {
-                "ULTRA_THIN" -> BlurIntensity.ULTRA_THIN
                 "THICK" -> BlurIntensity.THICK
+                "APPLE_DOCK" -> BlurIntensity.APPLE_DOCK  // 🔥 修复：添加 APPLE_DOCK 支持
                 else -> BlurIntensity.THIN  // 默认标准
             }
         }

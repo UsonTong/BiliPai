@@ -429,6 +429,45 @@ interface DynamicApi {
         @Query("offset") offset: String = "",
         @Query("page") page: Int = 1
     ): DynamicFeedResponse
+    
+    // 🔥🔥 [新增] 获取动态评论列表 (type=17 表示动态)
+    @GET("x/v2/reply")
+    suspend fun getDynamicReplies(
+        @Query("oid") oid: Long,       // 动态 id_str (转为 Long)
+        @Query("type") type: Int = 17, // 17 = 动态评论区
+        @Query("pn") pn: Int = 1,
+        @Query("ps") ps: Int = 20,
+        @Query("sort") sort: Int = 0   // 0=按时间, 1=按点赞
+    ): ReplyResponse
+    
+    // 🔥🔥 [新增] 发表动态评论
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v2/reply/add")
+    suspend fun addDynamicReply(
+        @retrofit2.http.Field("oid") oid: Long,
+        @retrofit2.http.Field("type") type: Int = 17,
+        @retrofit2.http.Field("message") message: String,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+    
+    // 🔥🔥 [新增] 点赞动态
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/dynamic/like")
+    suspend fun likeDynamic(
+        @retrofit2.http.Field("dynamic_id") dynamicId: String,
+        @retrofit2.http.Field("up") up: Int,  // 1=点赞, 2=取消
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+    
+    // 🔥🔥 [新增] 转发动态
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/dynamic/feed/create/dyn")
+    suspend fun repostDynamic(
+        @retrofit2.http.Field("dyn_id_str") dynIdStr: String,
+        @retrofit2.http.Field("dyn_type") dynType: Int = 1,
+        @retrofit2.http.Field("content") content: String = "",
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
 }
 
 // 🔥🔥 [新增] UP主空间 API

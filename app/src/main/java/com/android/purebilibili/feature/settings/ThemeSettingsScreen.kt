@@ -116,16 +116,6 @@ fun ThemeSettingsScreen(
                 .fillMaxSize(),
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            // 🎬 精美互动 Lottie 动画头部 (本地资源)
-            item {
-                com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                    rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.THEME,
-                    title = "主题设置",
-                    subtitle = "打造专属于你的视觉风格",
-                    interactionLevel = themeInteractionLevel,
-                    animationSpeed = themeAnimationSpeed
-                )
-            }
             
             // 🌙 外观模式
             item { SettingsSectionTitle("外观模式") }

@@ -280,6 +280,7 @@ fun ImagePreviewDialog(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(imageUrl)
+                                .size(coil.size.Size.ORIGINAL)  // 🔥 强制加载原图，避免模糊
                                 .addHeader("Referer", "https://www.bilibili.com/")
                                 .crossfade(300)
                                 .build(),
@@ -432,16 +433,25 @@ data class Quad(val left: androidx.compose.ui.unit.Dp, val top: androidx.compose
 
 /**
  * 🔥 规范化图片 URL
+ * 1. 修复协议头（http -> https, // -> https://）
+ * 2. 移除分辨率限制参数（@...）以获取原图
  */
 private fun normalizeImageUrl(rawSrc: String): String {
     val trimmed = rawSrc.trim()
-    return when {
+    var result = when {
         trimmed.startsWith("https://") -> trimmed
         trimmed.startsWith("http://") -> trimmed.replace("http://", "https://")
         trimmed.startsWith("//") -> "https:$trimmed"
         trimmed.isNotEmpty() -> "https://$trimmed"
         else -> ""
     }
+    
+    // 🔥 移除 Bilibili 图片尺寸参数（例如 @640w_400h.webp）以获取最高质量
+    if (result.contains("@")) {
+        result = result.substringBefore("@")
+    }
+    
+    return result
 }
 
 /**

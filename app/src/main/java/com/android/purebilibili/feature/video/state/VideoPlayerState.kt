@@ -300,6 +300,7 @@ fun rememberVideoPlayerState(
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            val miniPlayerManager = MiniPlayerManager.getInstance(context)
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
                     // 🔥🔥 [修复] 保存进度到 ViewModel 缓存（用于跨导航恢复）
@@ -308,15 +309,31 @@ fun rememberVideoPlayerState(
                     // 🔥 保存播放状态（用于本地恢复）
                     savedPosition = player.currentPosition
                     wasPlaying = player.isPlaying
-                    if (!MiniPlayerManager.getInstance(context).isMiniMode) {
-                        // 非小窗模式下暂停
+                    
+                    // 🔥🔥 [新增] 判断是否应该继续播放
+                    // 1. 应用内小窗模式 - 继续播放
+                    // 2. 系统 PiP 模式 - 用户按 Home 键返回桌面时继续播放
+                    // 3. 后台音频模式 - 继续播放音频
+                    val shouldContinuePlayback = miniPlayerManager.isMiniMode 
+                        || miniPlayerManager.shouldEnterPip()
+                        || miniPlayerManager.shouldContinueBackgroundAudio()
+                    
+                    if (!shouldContinuePlayback) {
+                        // 非小窗/PiP/后台模式下暂停
                         player.pause()
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "⏸️ ON_PAUSE: 暂停播放")
+                    } else {
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_PAUSE: 保持播放 (miniMode=${miniPlayerManager.isMiniMode}, pip=${miniPlayerManager.shouldEnterPip()}, bg=${miniPlayerManager.shouldContinueBackgroundAudio()})")
                     }
                     com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "💾 ON_PAUSE: pos=$savedPosition, wasPlaying=$wasPlaying")
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    // 🔥 恢复播放状态
-                    if (savedPosition >= 0 && !MiniPlayerManager.getInstance(context).isMiniMode) {
+                    // 🔥 恢复播放状态（仅在非小窗/PiP模式下恢复）
+                    val shouldRestorePlayback = savedPosition >= 0 
+                        && !miniPlayerManager.isMiniMode 
+                        && !miniPlayerManager.shouldEnterPip()
+                    
+                    if (shouldRestorePlayback) {
                         player.seekTo(savedPosition)
                         if (wasPlaying) {
                             player.play()

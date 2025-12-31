@@ -80,14 +80,6 @@ fun IconSettingsScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            // 🎬 动画头部
-            com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.ICON,
-                title = "应用图标",
-                subtitle = "选择你喜欢的风格组合",
-                animationSize = 120.dp
-            )
-
             // 当前选择提示
             Surface(
                 modifier = Modifier

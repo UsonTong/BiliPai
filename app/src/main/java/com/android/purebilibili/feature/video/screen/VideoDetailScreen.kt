@@ -262,31 +262,9 @@ fun VideoDetailScreen(
     )
     
     // 🔥🔥 [性能优化] 生命周期感知：进入后台时暂停播放，返回前台时继续
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
-                    // 🔥🔥 [修改] 如果进入音频模式，不暂停播放
-                    if (!viewModel.isInAudioMode.value) {
-                        playerState.player.pause()
-                    }
-                }
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    // 🔥🔥 [修改] 如果从音频模式返回，重置状态
-                    if (viewModel.isInAudioMode.value) {
-                        viewModel.setAudioMode(false)
-                    }
-                    playerState.player.play()
-                }
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
+    // 🔥🔥 [修复] 此处逻辑已移至 VideoPlayerState.kt 统一处理
+    // 删除冗余的暂停逻辑，避免与 VideoPlayerState 中的生命周期处理冲突
+    // VideoPlayerState 会检查 PiP/小窗模式来决定是否暂停
 
     // 🔥🔥🔥 核心修改：初始化评论 & 媒体中心信息
     LaunchedEffect(uiState) {

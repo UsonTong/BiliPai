@@ -91,26 +91,11 @@ fun DynamicSidebar(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             
-            // 🔥 "全部" 选项 - 带入场动画
-            item {
-                CascadeSidebarItem(
-                    index = 0,
-                    content = {
-                        SidebarItem(
-                            icon = "全部",
-                            label = if (isExpanded) "全部" else null,
-                            isSelected = selectedUserId == null,
-                            isLive = false,
-                            onClick = { onUserClick(null) }
-                        )
-                    }
-                )
-            }
-            
-            // 🔥 关注的UP主列表 - 带瀑布入场动画
+            // 🔥 [简化] 移除「全部」按钮，直接显示 UP 主列表
+            // 关注的UP主列表 - 带瀑布入场动画
             itemsIndexed(users, key = { _, u -> "sidebar_${u.uid}" }) { index, user ->
                 CascadeSidebarItem(
-                    index = index + 1,  // +1 因为"全部"项占用了 index 0
+                    index = index,  // 从 0 开始
                     content = {
                         SidebarUserItem(
                             user = user,

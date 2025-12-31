@@ -126,8 +126,8 @@ object SettingsHeaderAnimations {
     val THEME = R.raw.auto_night_off
     // ✨ 动画与效果 - 火箭/加速
     val ANIMATION = R.raw.boosts
-    // 🎬 播放设置 - 相机/录像
-    val PLAYBACK = R.raw.camera
+    // 🎬 播放设置 - 静音/取消静音
+    val PLAYBACK = R.raw.media_mute_unmute
     // 🛡️ 权限管理 - 安全锁
     val PRIVACY = R.raw.large_message_lock
     // 📱 应用图标 - 星星/高级
@@ -265,9 +265,9 @@ fun SettingsAnimatedHeaderLocal(
                 androidx.compose.ui.graphics.Color(0xFFF7971E),  // 橙黄
                 androidx.compose.ui.graphics.Color(0xFFFFD200)   // 明黄
             )
-            R.raw.camera -> listOf(
-                androidx.compose.ui.graphics.Color(0xFF434343),  // 黑灰
-                androidx.compose.ui.graphics.Color(0xFF000000)   // 纯黑
+            R.raw.media_mute_unmute -> listOf(
+                androidx.compose.ui.graphics.Color(0xFF667EEA),  // 蓝紫
+                androidx.compose.ui.graphics.Color(0xFFF093FB)   // 粉紫
             )
             R.raw.large_message_lock -> listOf(
                 androidx.compose.ui.graphics.Color(0xFFF093FB),  // 粉紫

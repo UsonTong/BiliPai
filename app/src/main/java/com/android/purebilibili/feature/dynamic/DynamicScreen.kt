@@ -45,6 +45,8 @@ import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
 import com.android.purebilibili.feature.dynamic.components.DynamicSidebar
 import com.android.purebilibili.feature.dynamic.components.DynamicTopBarWithTabs
 import com.android.purebilibili.feature.dynamic.components.DynamicDisplayMode
+import com.android.purebilibili.feature.dynamic.components.DynamicCommentSheet
+import com.android.purebilibili.feature.dynamic.components.RepostDialog
 
 /**
  * 🔥 动态页面 - 支持两种布局模式
@@ -71,6 +73,13 @@ fun DynamicScreen(
     val followedUsers by viewModel.followedUsers.collectAsState()
     val selectedUserId by viewModel.selectedUserId.collectAsState()
     val isSidebarExpanded by viewModel.isSidebarExpanded.collectAsState()
+    
+    // 🔥🔥 [新增] 评论/点赞/转发状态
+    val selectedDynamicId by viewModel.selectedDynamicId.collectAsState()
+    val comments by viewModel.comments.collectAsState()
+    val commentsLoading by viewModel.commentsLoading.collectAsState()
+    val likedDynamics by viewModel.likedDynamics.collectAsState()
+    var showRepostDialog by remember { mutableStateOf<String?>(null) }  // 存储要转发的动态ID
     
     // Tab 选择
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -179,7 +188,15 @@ fun DynamicScreen(
                                 onUserClick = onUserClick,
                                 onLiveClick = onLiveClick,
                                 onLoginClick = onLoginClick,
-                                gifImageLoader = gifImageLoader
+                                gifImageLoader = gifImageLoader,
+                                onCommentClick = { viewModel.openCommentSheet(it) },
+                                onRepostClick = { showRepostDialog = it },
+                                onLikeClick = { dynamicId ->
+                                    viewModel.likeDynamic(dynamicId) { _, msg ->
+                                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                likedDynamics = likedDynamics
                             )
                             
                             // 顶栏
@@ -217,7 +234,15 @@ fun DynamicScreen(
                             onUserClick = onUserClick,
                             onLiveClick = onLiveClick,
                             onLoginClick = onLoginClick,
-                            gifImageLoader = gifImageLoader
+                            gifImageLoader = gifImageLoader,
+                            onCommentClick = { viewModel.openCommentSheet(it) },
+                            onRepostClick = { showRepostDialog = it },
+                            onLikeClick = { dynamicId ->
+                                viewModel.likeDynamic(dynamicId) { _, msg ->
+                                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            likedDynamics = likedDynamics
                         )
                         
                         // 顶部区域：顶栏 + 横向用户列表
@@ -245,6 +270,33 @@ fun DynamicScreen(
             }
         }
     }
+    
+    // 🔥🔥 [新增] 评论弹窗
+    selectedDynamicId?.let { dynamicId ->
+        DynamicCommentSheet(
+            comments = comments,
+            isLoading = commentsLoading,
+            onDismiss = { viewModel.closeCommentSheet() },
+            onPostComment = { message ->
+                viewModel.postComment(dynamicId, message) { success, msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+    
+    // 🔥🔥 [新增] 转发弹窗
+    showRepostDialog?.let { dynamicId ->
+        RepostDialog(
+            onDismiss = { showRepostDialog = null },
+            onRepost = { content ->
+                viewModel.repostDynamic(dynamicId, content) { success, msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    if (success) showRepostDialog = null
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -261,7 +313,12 @@ private fun DynamicList(
     onUserClick: (Long) -> Unit,
     onLiveClick: (Long, String, String) -> Unit,
     onLoginClick: () -> Unit,
-    gifImageLoader: ImageLoader
+    gifImageLoader: ImageLoader,
+    // 🔥🔥 [新增] 动态操作回调
+    onCommentClick: (String) -> Unit = {},
+    onRepostClick: (String) -> Unit = {},
+    onLikeClick: (String) -> Unit = {},
+    likedDynamics: Set<String> = emptySet()
 ) {
     LazyColumn(
         state = listState,
@@ -289,7 +346,11 @@ private fun DynamicList(
                 onVideoClick = onVideoClick,
                 onUserClick = onUserClick,
                 onLiveClick = onLiveClick,
-                gifImageLoader = gifImageLoader
+                gifImageLoader = gifImageLoader,
+                onCommentClick = onCommentClick,
+                onRepostClick = onRepostClick,
+                onLikeClick = onLikeClick,
+                isLiked = likedDynamics.contains(item.id_str)
             )
             // 分隔线 - 增加间距
             HorizontalDivider(
@@ -343,49 +404,7 @@ private fun HorizontalUserList(
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 全部按钮
-            item {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable { onUserClick(null) }
-                        .padding(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (selectedUserId == null) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "全",
-                            color = if (selectedUserId == null) 
-                                MaterialTheme.colorScheme.onPrimary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "全部",
-                        fontSize = 11.sp,
-                        color = if (selectedUserId == null) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
-            }
-            
+            // 🔥 [简化] 移除「全部」按钮，直接显示 UP 主头像列表
             // UP 主头像列表
             items(users, key = { it.uid }) { user ->
                 val isSelected = selectedUserId == user.uid

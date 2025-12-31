@@ -30,6 +30,14 @@ interface Plugin {
     val icon: ImageVector?
         get() = null
     
+    /** 🔥 是否暂不可用 (用于标识功能尚未完成) */
+    val unavailable: Boolean
+        get() = false
+    
+    /** 🔥 不可用原因描述 */
+    val unavailableReason: String
+        get() = "功能开发中"
+    
     /**
      * 插件启用时调用
      */

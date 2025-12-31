@@ -175,15 +175,6 @@ fun PermissionSettingsScreen(
             // 🔥🔥 [修复] 添加底部导航栏内边距，确保沉浸式效果
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            // 🎬 精美互动 Lottie 动画头部 (本地资源)
-            item {
-                com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                    rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.PRIVACY,
-                    title = "权限管理",
-                    subtitle = "全透明的权限使用，守护你的隐私",
-                    interactionLevel = permissionInteractionLevel
-                )
-            }
             
             // 说明文字
             item {

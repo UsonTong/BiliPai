@@ -277,6 +277,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
             // alias 映射 - 🔥🔥 统一与 SettingsViewModel 中的列表
             val allAliases = listOf(
                 "3D" to "${packageName}.MainActivityAlias3D",
+                "NewYear" to "${packageName}.MainActivityAliasNewYear",
                 "Blue" to "${packageName}.MainActivityAliasBlue",
                 "Retro" to "${packageName}.MainActivityAliasRetro",
                 "Flat" to "${packageName}.MainActivityAliasFlat",

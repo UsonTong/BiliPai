@@ -34,9 +34,9 @@ fun AnimationSettingsScreen(
     val state by viewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
     val blurLevel = when (state.blurIntensity) {
-        BlurIntensity.ULTRA_THIN -> 0.2f
         BlurIntensity.THIN -> 0.5f
         BlurIntensity.THICK -> 0.8f
+        BlurIntensity.APPLE_DOCK -> 1.0f  // 🔥 玻璃拟态风格
     }
     val animationInteractionLevel = (
         0.2f +
@@ -70,15 +70,6 @@ fun AnimationSettingsScreen(
                 .fillMaxSize(),
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            // 🎬 精美互动 Lottie 动画头部 (本地资源)
-            item {
-                com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                    rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.ANIMATION,
-                    title = "动画与效果",
-                    subtitle = "让界面更加灵动有趣",
-                    interactionLevel = animationInteractionLevel
-                )
-            }
             
             // 🎬 卡片动画
             item { SettingsSectionTitle("卡片动画") }

@@ -39,7 +39,12 @@ fun DynamicCardV2(
     onVideoClick: (String) -> Unit,
     onUserClick: (Long) -> Unit,
     onLiveClick: (roomId: Long, title: String, uname: String) -> Unit = { _, _, _ -> },
-    gifImageLoader: ImageLoader
+    gifImageLoader: ImageLoader,
+    // 🔥🔥 [新增] 评论/转发/点赞回调
+    onCommentClick: (dynamicId: String) -> Unit = {},
+    onRepostClick: (dynamicId: String) -> Unit = {},
+    onLikeClick: (dynamicId: String) -> Unit = {},
+    isLiked: Boolean = false
 ) {
     val author = item.modules.module_author
     val content = item.modules.module_dynamic
@@ -52,6 +57,10 @@ fun DynamicCardV2(
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
+        // 🔥🔥 [新增] 更多菜单状态
+        var showMoreMenu by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+        
         // 🔥 用户头部（头像 + 名称 + 时间 + 更多）
         if (author != null) {
             Row(
@@ -88,13 +97,60 @@ fun DynamicCardV2(
                     )
                 }
                 
-                // 更多按钮
-                IconButton(onClick = { /* TODO: 更多菜单 */ }) {
-                    Icon(
-                        CupertinoIcons.Default.Ellipsis,
-                        contentDescription = "更多",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
-                    )
+                // 🔥🔥 [修复] 更多按钮 + 下拉菜单
+                Box {
+                    IconButton(onClick = { showMoreMenu = true }) {
+                        Icon(
+                            CupertinoIcons.Default.Ellipsis,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
+                        )
+                    }
+                    
+                    // 下拉菜单 - 使用白色背景
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                        modifier = Modifier.background(androidx.compose.ui.graphics.Color.White)
+                    ) {
+                        // 复制链接
+                        DropdownMenuItem(
+                            text = { Text("复制链接", color = androidx.compose.ui.graphics.Color.Black) },
+                            leadingIcon = { 
+                                Icon(
+                                    CupertinoIcons.Default.Link,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = androidx.compose.ui.graphics.Color.Black
+                                ) 
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                // 复制动态链接到剪贴板
+                                val dynamicUrl = "https://t.bilibili.com/${item.id_str}"
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("动态链接", dynamicUrl))
+                                android.widget.Toast.makeText(context, "已复制链接", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        
+                        // 不感兴趣
+                        DropdownMenuItem(
+                            text = { Text("不感兴趣", color = androidx.compose.ui.graphics.Color.Black) },
+                            leadingIcon = { 
+                                Icon(
+                                    CupertinoIcons.Default.EyeSlash,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = androidx.compose.ui.graphics.Color.Black
+                                ) 
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                android.widget.Toast.makeText(context, "已标记为不感兴趣", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -161,27 +217,38 @@ fun DynamicCardV2(
             Spacer(modifier = Modifier.height(12.dp))
         }
         
-        // 🔥 交互按钮（转发 评论 点赞）
-        if (stat != null) {
+        // 🔥🔥 [新增] 底部操作栏：转发、评论、点赞
+        stat?.let { statModule ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // 转发按钮
                 ActionButton(
-                    icon = CupertinoIcons.Default.ArrowTurnUpRight,
-                    count = stat.forward.count,
-                    label = "转发"
+                    icon = io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Default.ArrowTurnUpRight,
+                    count = statModule.forward.count,
+                    label = "转发",
+                    onClick = { onRepostClick(item.id_str) }
                 )
+                
+                // 评论按钮
                 ActionButton(
-                    icon = CupertinoIcons.Default.Message,
-                    count = stat.comment.count,
-                    label = "评论"
+                    icon = io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Default.Message,
+                    count = statModule.comment.count,
+                    label = "评论",
+                    onClick = { onCommentClick(item.id_str) }
                 )
+                
+                // 点赞按钮
                 ActionButton(
-                    icon = CupertinoIcons.Default.Heart,
-                    count = stat.like.count,
+                    icon = if (isLiked) io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Filled.Heart 
+                           else io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Default.Heart,
+                    count = statModule.like.count,
                     label = "点赞",
-                    activeColor = MaterialTheme.colorScheme.primary
+                    isActive = isLiked,
+                    onClick = { onLikeClick(item.id_str) }
                 )
             }
         }
@@ -320,27 +387,6 @@ fun DynamicCardCompact(
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Crop
             )
-        }
-        
-        // 点赞数
-        stat?.like?.let { like ->
-            if (like.count > 0) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        CupertinoIcons.Default.Heart,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        if (like.count > 9999) "${like.count / 10000}万" else like.count.toString(),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
-                    )
-                }
-            }
         }
     }
 }

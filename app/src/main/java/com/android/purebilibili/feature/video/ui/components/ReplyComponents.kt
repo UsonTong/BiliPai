@@ -506,7 +506,23 @@ fun CommentPictures(
     pictures: List<ReplyPicture>,
     onImageClick: (List<String>, Int, Rect?) -> Unit
 ) {
-    val imageUrls = pictures.map { FormatUtils.fixImageUrl(it.imgSrc) }
+    // 🔥 获取高质量图片URL（移除分辨率限制参数）
+    val imageUrls = remember(pictures) {
+        pictures.map { pic ->
+            var url = pic.imgSrc
+            // 修复协议
+            if (url.startsWith("//")) {
+                url = "https:$url"
+            } else if (url.startsWith("http://")) {
+                url = url.replace("http://", "https://")
+            }
+            // 🔥 移除尺寸参数以获取原图（避免模糊）
+            if (url.contains("@")) {
+                url = url.substringBefore("@")
+            }
+            url
+        }
+    }
     val context = LocalContext.current
     
     // 🔥 GIF 图片加载器
@@ -536,6 +552,7 @@ fun CommentPictures(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(imageUrls[0])
+                    .size(coil.size.Size.ORIGINAL)  // 🔥 强制加载原图，避免模糊
                     .addHeader("Referer", "https://www.bilibili.com/")  // 🔥 必需
                     .crossfade(true)
                     .build(),
@@ -569,6 +586,7 @@ fun CommentPictures(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(imageUrls[index])
+                                        .size(coil.size.Size.ORIGINAL)  // 🔥 强制加载原图，避免模糊
                                         .addHeader("Referer", "https://www.bilibili.com/")  // 🔥 必需
                                         .crossfade(true)
                                         .build(),

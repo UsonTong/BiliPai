@@ -32,12 +32,20 @@ import com.android.purebilibili.core.theme.iOSBlue
 
 /**
  * 🍎 iOS 风格操作按钮 - 现代化胶囊设计
+ * 
+ * @param icon 图标
+ * @param count 数量
+ * @param label 标签（点赞/评论/转发）
+ * @param isActive 是否激活状态（如已点赞）
+ * @param onClick 点击回调
  */
 @Composable
 fun ActionButton(
     icon: ImageVector,
     count: Int,
     label: String,
+    isActive: Boolean = false,
+    onClick: () -> Unit = {},
     activeColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f)
 ) {
     val isLike = label == "点赞"
@@ -56,16 +64,18 @@ fun ActionButton(
         label = "actionButtonScale"
     )
     
-    // 🍎 iOS 风格颜色
+    // 🍎 iOS 风格颜色 - 根据激活状态调整
     val buttonColor = when {
-        isLike -> MaterialTheme.colorScheme.primary
+        isLike && isActive -> Color(0xFFFF6B81)  // 已点赞：粉红色
+        isLike -> MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f)
         isForward -> iOSBlue
         isComment -> MaterialTheme.colorScheme.primary
         else -> activeColor
     }
     
-    // 🍎 优雅的图标
+    // 🍎 优雅的图标 - 根据状态切换填充/描边
     val buttonIcon = when {
+        isLike && isActive -> CupertinoIcons.Filled.Heart
         isLike -> CupertinoIcons.Default.Heart
         isForward -> CupertinoIcons.Default.ArrowTurnUpRight
         isComment -> CupertinoIcons.Default.Message
@@ -79,12 +89,12 @@ fun ActionButton(
             .scale(scale)
             .clip(RoundedCornerShape(24.dp))
             .background(
-                color = buttonColor.copy(alpha = 0.08f)
+                color = buttonColor.copy(alpha = if (isActive && isLike) 0.15f else 0.08f)
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
-            ) { /* TODO: 添加点击事件 */ }
+            ) { onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         // 🍎 使用 SF Symbols 风格图标
@@ -111,3 +121,4 @@ fun ActionButton(
         }
     }
 }
+

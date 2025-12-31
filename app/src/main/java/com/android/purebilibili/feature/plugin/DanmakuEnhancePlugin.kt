@@ -46,6 +46,8 @@ class DanmakuEnhancePlugin : DanmakuPlugin {
     override val version = "1.0.0"
     override val author = "YangY"
     override val icon: ImageVector = CupertinoIcons.Default.TextBubble
+    override val unavailable = true
+    override val unavailableReason = "弹幕功能开发中"
     
     private var config: DanmakuEnhanceConfig = DanmakuEnhanceConfig()
     private var filteredCount = 0

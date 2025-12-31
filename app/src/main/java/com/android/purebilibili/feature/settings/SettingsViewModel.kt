@@ -301,6 +301,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             // alias 映射
             val allAliases = listOf(
                 "3D" to "${packageName}.MainActivityAlias3D",
+                "NewYear" to "${packageName}.MainActivityAliasNewYear",
                 "Blue" to "${packageName}.MainActivityAliasBlue",
                 "Retro" to "${packageName}.MainActivityAliasRetro",
                 "Flat" to "${packageName}.MainActivityAliasFlat",

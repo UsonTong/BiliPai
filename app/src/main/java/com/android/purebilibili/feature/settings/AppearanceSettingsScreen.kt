@@ -152,16 +152,6 @@ fun AppearanceSettingsScreen(
             // 🔥🔥 [修复] 添加底部导航栏内边距，确保沉浸式效果
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            // 🎬 精美互动 Lottie 动画头部 (本地资源)
-            item {
-                com.android.purebilibili.core.ui.SettingsAnimatedHeaderLocal(
-                    rawResId = com.android.purebilibili.core.ui.SettingsHeaderAnimations.APPEARANCE,
-                    title = "外观设置",
-                    subtitle = "打造专属于你的个性界面",
-                    interactionLevel = appearanceInteractionLevel,
-                    animationSpeed = appearanceAnimationSpeed
-                )
-            }
             
             // 🔥🔥 [新增] 快速入口
             item { SettingsSectionTitle("快速入口") }
@@ -614,9 +604,9 @@ fun BlurIntensitySelector(
     
     // 获取当前选中项的显示文本
     val currentTitle = when (selectedIntensity) {
-        BlurIntensity.ULTRA_THIN -> "轻盈"
         BlurIntensity.THIN -> "标准"
         BlurIntensity.THICK -> "浓郁"
+        BlurIntensity.APPLE_DOCK -> "玻璃拟态"
     }
     
     Column(modifier = modifier.padding(horizontal = 16.dp)) {
@@ -664,18 +654,7 @@ fun BlurIntensitySelector(
             exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
         ) {
             Column(modifier = Modifier.padding(start = 40.dp, top = 4.dp, bottom = 8.dp)) {
-                BlurIntensityOption(
-                    icon = CupertinoIcons.Default.Drop,
-                    iconTint = iOSTeal,
-                    title = "轻盈",
-                    description = "通透感强，性能最佳",
-                    isSelected = selectedIntensity == BlurIntensity.ULTRA_THIN,
-                    onClick = { 
-                        onIntensityChange(BlurIntensity.ULTRA_THIN)
-                        isExpanded = false
-                    }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                // 🔥 [调整] 顺序：标准 → 玻璃拟态 → 浓郁
                 BlurIntensityOption(
                     icon = CupertinoIcons.Default.CheckmarkCircle,
                     iconTint = iOSBlue,
@@ -688,11 +667,25 @@ fun BlurIntensitySelector(
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                // 🔥 玻璃拟态风格 - 移到中间
+                BlurIntensityOption(
+                    icon = CupertinoIcons.Default.Desktopcomputer,
+                    iconTint = com.android.purebilibili.core.theme.iOSSystemGray,
+                    title = "玻璃拟态",
+                    description = "强烈模糊，完全遮盖背景",
+                    isSelected = selectedIntensity == BlurIntensity.APPLE_DOCK,
+                    onClick = { 
+                        onIntensityChange(BlurIntensity.APPLE_DOCK)
+                        isExpanded = false
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                // 🔥 浓郁 - 移到最后，有背景透色
                 BlurIntensityOption(
                     icon = CupertinoIcons.Default.Sparkle,
                     iconTint = iOSPurple,
                     title = "浓郁",
-                    description = "强烈磨砂质感",
+                    description = "背景颜色透出 + 磨砂质感",
                     isSelected = selectedIntensity == BlurIntensity.THICK,
                     onClick = { 
                         onIntensityChange(BlurIntensity.THICK)
