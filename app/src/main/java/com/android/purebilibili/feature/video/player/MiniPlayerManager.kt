@@ -57,7 +57,8 @@ private const val THEME_COLOR = 0xFFFB7299.toInt()
  * 2. 小窗模式下的播放控制
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-class MiniPlayerManager private constructor(private val context: Context) {
+class MiniPlayerManager private constructor(private val context: Context) : 
+    com.android.purebilibili.core.lifecycle.BackgroundManager.BackgroundStateListener {
 
     companion object {
         @Volatile
@@ -81,6 +82,10 @@ class MiniPlayerManager private constructor(private val context: Context) {
 
     // --- 协程作用域 ---
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    
+    // 🔋 [后台优化] 低内存模式状态
+    private var isLowMemoryMode = false
+    private var savedTrackParams: androidx.media3.common.TrackSelectionParameters? = null
     
     //  [新增] 媒体控制广播接收器
     private val mediaControlReceiver = object : android.content.BroadcastReceiver() {
@@ -114,7 +119,49 @@ class MiniPlayerManager private constructor(private val context: Context) {
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
         )
         Logger.d(TAG, " 媒体控制广播接收器已注册")
+        
+        // 🔋 注册后台状态监听
+        com.android.purebilibili.core.lifecycle.BackgroundManager.addListener(this)
+        Logger.d(TAG, "🔋 后台状态监听器已注册")
     }
+    
+    // ========== 🔋 后台状态回调 ==========
+    
+    override fun onEnterBackground() {
+        if (!isActive) return
+        
+        isLowMemoryMode = true
+        val currentPlayer = player ?: return
+        
+        // 判断是否需要后台音频
+        if (shouldContinueBackgroundAudio()) {
+            // 保存原始轨道参数
+            savedTrackParams = currentPlayer.trackSelectionParameters
+            
+            // 禁用视频轨道，只播放音频
+            currentPlayer.trackSelectionParameters = currentPlayer.trackSelectionParameters
+                .buildUpon()
+                .setMaxVideoSize(0, 0)
+                .build()
+            
+            Logger.d(TAG, "🔋 后台模式：禁用视频轨道，仅保留音频")
+        }
+    }
+    
+    override fun onEnterForeground() {
+        if (!isLowMemoryMode) return
+        
+        isLowMemoryMode = false
+        val currentPlayer = player ?: return
+        
+        // 恢复视频轨道
+        savedTrackParams?.let { originalParams ->
+            currentPlayer.trackSelectionParameters = originalParams
+            savedTrackParams = null
+            Logger.d(TAG, "🌅 前台模式：恢复视频轨道")
+        }
+    }
+
 
     // --- 播放器状态 (可观察) ---
     var isActive by mutableStateOf(false)

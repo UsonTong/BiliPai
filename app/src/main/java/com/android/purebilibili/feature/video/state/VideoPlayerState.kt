@@ -296,6 +296,8 @@ fun rememberVideoPlayerState(
     //  [后台恢复优化] 监听生命周期，保存/恢复播放状态
     var savedPosition by remember { mutableStateOf(-1L) }
     var wasPlaying by remember { mutableStateOf(false) }
+    //  [新增] 保存原始视频轨道参数（用于前台恢复）
+    var savedTrackParams by remember { mutableStateOf<androidx.media3.common.TrackSelectionParameters?>(null) }
     
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
@@ -326,6 +328,30 @@ fun rememberVideoPlayerState(
                         com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_PAUSE: 保持播放 (miniMode=${miniPlayerManager.isMiniMode}, pip=${miniPlayerManager.shouldEnterPip()}, bg=${miniPlayerManager.shouldContinueBackgroundAudio()})")
                     }
                     com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_PAUSE: pos=$savedPosition, wasPlaying=$wasPlaying")
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    //  [后台优化] 进入后台时释放视频 Surface，只保留音频
+                    val shouldPlayBackgroundAudio = miniPlayerManager.shouldContinueBackgroundAudio()
+                    if (shouldPlayBackgroundAudio) {
+                        // 保存原始轨道参数
+                        savedTrackParams = player.trackSelectionParameters
+                        
+                        // 禁用视频轨道，只播放音频（节省 GPU 内存和 CPU）
+                        player.trackSelectionParameters = player.trackSelectionParameters
+                            .buildUpon()
+                            .setMaxVideoSize(0, 0)  // 禁用视频轨道
+                            .build()
+                        
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🔋 ON_STOP: 后台音频模式，禁用视频轨道")
+                    }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_START -> {
+                    //  [前台恢复] 恢复视频轨道
+                    savedTrackParams?.let { originalParams ->
+                        player.trackSelectionParameters = originalParams
+                        savedTrackParams = null
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🌅 ON_START: 恢复视频轨道")
+                    }
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
                     //  恢复播放状态（仅在非小窗/PiP模式下恢复）

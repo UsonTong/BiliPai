@@ -388,7 +388,7 @@ private fun WelcomePage(hazeState: HazeState) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             FeatureBadge(
-                emoji = "", 
+                emoji = "🎨", 
                 label = "个性外观",
                 animationProgress = animatedItems[3].value
             )
@@ -398,7 +398,7 @@ private fun WelcomePage(hazeState: HazeState) {
                 animationProgress = animatedItems[4].value
             )
             FeatureBadge(
-                emoji = "", 
+                emoji = "🔒", 
                 label = "隐私优先",
                 animationProgress = animatedItems[5].value
             )
@@ -526,7 +526,7 @@ private fun AppearanceSettingsPage(hazeState: HazeState) {
         
         // 功能列表 - 动画项 3, 4, 5, 6
         FeatureListItem(
-            icon = "",
+            icon = "🎨",
             title = "多种主题色",
             description = "粉色、蓝色、紫色...随心切换",
             animationProgress = animatedItems[3].value,
@@ -536,7 +536,7 @@ private fun AppearanceSettingsPage(hazeState: HazeState) {
         Spacer(modifier = Modifier.height(12.dp))
         
         FeatureListItem(
-            icon = "",
+            icon = "🌙",
             title = "深色模式",
             description = "护眼夜间模式，跟随系统或手动切换",
             animationProgress = animatedItems[4].value,
@@ -556,7 +556,7 @@ private fun AppearanceSettingsPage(hazeState: HazeState) {
         Spacer(modifier = Modifier.height(12.dp))
         
         FeatureListItem(
-            icon = "",
+            icon = "👁️",
             title = "护眼模式",
             description = "柔和屏幕色调，保护视力",
             animationProgress = animatedItems[6].value,
@@ -664,7 +664,7 @@ private fun PlaybackSettingsPage(hazeState: HazeState) {
         
         // 功能列表 - 动画项 3, 4, 5, 6
         FeatureListItem(
-            icon = "",
+            icon = "📺",
             title = "智能画质",
             description = "WiFi/流量自动切换画质，省流量模式可用",
             animationProgress = animatedItems[3].value,
@@ -684,7 +684,7 @@ private fun PlaybackSettingsPage(hazeState: HazeState) {
         Spacer(modifier = Modifier.height(12.dp))
         
         FeatureListItem(
-            icon = "",
+            icon = "👆",
             title = "手势控制",
             description = "左右滑动快进，上下调节音量亮度",
             animationProgress = animatedItems[5].value,

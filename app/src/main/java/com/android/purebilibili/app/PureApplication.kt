@@ -14,6 +14,7 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.android.purebilibili.core.lifecycle.BackgroundManager
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.network.WbiKeyManager
 import com.android.purebilibili.core.plugin.PluginManager
@@ -77,6 +78,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         //  关键初始化（同步，必须在启动时完成）
         NetworkModule.init(this)
         TokenManager.init(this)
+        BackgroundManager.init(this)  // 📱 后台状态管理
         com.android.purebilibili.feature.download.DownloadManager.init(this)  //  下载管理器
         
         //  插件系统初始化
