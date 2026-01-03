@@ -436,6 +436,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 // Move DisplayMode enum here to be accessible
 enum class DisplayMode(val title: String, val description: String, val value: Int) {
     Grid("双列网格", "经典双列布局，信息密度高", 0),
-    StoryCards("故事卡片", "电影海报风格，沉浸式体验", 1),
-    GlassCards("玻璃拟态", "毛玻璃质感，现代设计", 2)
+    StoryCards("故事卡片", "电影海报风格，沉浸式体验", 1)
 }

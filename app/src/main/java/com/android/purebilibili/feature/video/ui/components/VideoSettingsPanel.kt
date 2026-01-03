@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -374,6 +375,139 @@ fun VideoSettingsPanel(
                     onSelect = onSpeedChange
                 )
             }
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            
+            //  [新增] 双击跳转秒数设置
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val scope = rememberCoroutineScope()
+            val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                .getSeekForwardSeconds(context)
+                .collectAsState(initial = 10)
+            val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                .getSeekBackwardSeconds(context)
+                .collectAsState(initial = 10)
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = CupertinoIcons.Default.Forward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "双击跳转",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "快进 ${seekForwardSeconds}s / 后退 ${seekBackwardSeconds}s",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 快进秒数选择
+                Text(
+                    text = "快进秒数（双击右侧）",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                SeekSecondsOptions(
+                    currentSeconds = seekForwardSeconds,
+                    onSelect = { seconds ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager.setSeekForwardSeconds(context, seconds)
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 后退秒数选择
+                Text(
+                    text = "后退秒数（双击左侧）",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                SeekSecondsOptions(
+                    currentSeconds = seekBackwardSeconds,
+                    onSelect = { seconds ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager.setSeekBackwardSeconds(context, seconds)
+                        }
+                    }
+                )
+            }
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+            
+            //  [新增] 长按倍速设置
+            val longPressSpeed by com.android.purebilibili.core.store.SettingsManager
+                .getLongPressSpeed(context)
+                .collectAsState(initial = 2.0f)
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = CupertinoIcons.Default.HandTap,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "长按倍速",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "当前 ${longPressSpeed}x",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 长按倍速选项
+                LongPressSpeedOptions(
+                    currentSpeed = longPressSpeed,
+                    onSelect = { speed ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager.setLongPressSpeed(context, speed)
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -583,6 +717,92 @@ private fun FlipButton(
                 else 
                     MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+/**
+ * 双击跳转秒数选项
+ */
+@Composable
+private fun SeekSecondsOptions(
+    currentSeconds: Int,
+    onSelect: (Int) -> Unit
+) {
+    val options = listOf(5, 10, 15, 20, 30)
+    
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { seconds ->
+            val isSelected = currentSeconds == seconds
+            Surface(
+                onClick = { onSelect(seconds) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.height(32.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Text(
+                        text = "${seconds}s",
+                        fontSize = 13.sp,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 长按倍速选项
+ */
+@Composable
+private fun LongPressSpeedOptions(
+    currentSpeed: Float,
+    onSelect: (Float) -> Unit
+) {
+    val options = listOf(1.5f, 2.0f, 2.5f, 3.0f)
+    
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { speed ->
+            val isSelected = currentSpeed == speed
+            Surface(
+                onClick = { onSelect(speed) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.height(32.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Text(
+                        text = "${speed}x",
+                        fontSize = 13.sp,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

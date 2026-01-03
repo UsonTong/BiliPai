@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.*
 //  Cupertino Icons - iOS SF Symbols 风格图标
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
@@ -111,6 +112,26 @@ fun VideoPlayerSection(
     val doubleTapLikeEnabled by com.android.purebilibili.core.store.SettingsManager
         .getDoubleTapLike(context)
         .collectAsState(initial = true)
+    
+    //  [新增] 读取双击跳转秒数设置
+    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getSeekForwardSeconds(context)
+        .collectAsState(initial = 10)
+    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getSeekBackwardSeconds(context)
+        .collectAsState(initial = 10)
+    
+    //  [新增] 双击跳转视觉反馈状态
+    var seekFeedbackText by remember { mutableStateOf<String?>(null) }
+    var seekFeedbackVisible by remember { mutableStateOf(false) }
+    
+    //  [新增] 长按倍速设置和状态
+    val longPressSpeed by com.android.purebilibili.core.store.SettingsManager
+        .getLongPressSpeed(context)
+        .collectAsState(initial = 2.0f)
+    var isLongPressing by remember { mutableStateOf(false) }
+    var originalSpeed by remember { mutableFloatStateOf(1.0f) }
+    var longPressSpeedFeedbackVisible by remember { mutableStateOf(false) }
 
     // --- 新增：监听 ExoPlayer 分辨率变化 ---
     DisposableEffect(playerState.player) {
@@ -277,14 +298,59 @@ fun VideoPlayerSection(
                     )
                 }
             }
-            //  点击/双击手势在拖拽之后处理
-            .pointerInput(Unit) {
+            //  点击/双击/长按手势在拖拽之后处理
+            .pointerInput(seekForwardSeconds, seekBackwardSeconds, longPressSpeed) {
                 detectTapGestures(
                     onTap = { showControls = !showControls },
+                    onLongPress = {
+                        //  长按开始：保存原速度并应用长按倍速
+                        val player = playerState.player
+                        originalSpeed = player.playbackParameters.speed
+                        player.setPlaybackSpeed(longPressSpeed)
+                        isLongPressing = true
+                        longPressSpeedFeedbackVisible = true
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏩ LongPress: speed ${longPressSpeed}x")
+                    },
                     onDoubleTap = { offset ->
-                        //  双击暂停/播放（用户体验改进）
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", " DoubleTap: toggle play/pause")
-                        playerState.player.playWhenReady = !playerState.player.playWhenReady
+                        val screenWidth = size.width
+                        val player = playerState.player
+                        
+                        when {
+                            // 右侧 1/3：快进
+                            offset.x > screenWidth * 2 / 3 -> {
+                                val seekMs = seekForwardSeconds * 1000L
+                                val newPos = (player.currentPosition + seekMs).coerceAtMost(player.duration.coerceAtLeast(0L))
+                                player.seekTo(newPos)
+                                seekFeedbackText = "+${seekForwardSeconds}s"
+                                seekFeedbackVisible = true
+                                com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏩ DoubleTap right: +${seekForwardSeconds}s")
+                            }
+                            // 左侧 1/3：后退
+                            offset.x < screenWidth / 3 -> {
+                                val seekMs = seekBackwardSeconds * 1000L
+                                val newPos = (player.currentPosition - seekMs).coerceAtLeast(0L)
+                                player.seekTo(newPos)
+                                seekFeedbackText = "-${seekBackwardSeconds}s"
+                                seekFeedbackVisible = true
+                                com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏪ DoubleTap left: -${seekBackwardSeconds}s")
+                            }
+                            // 中间：暂停/播放
+                            else -> {
+                                player.playWhenReady = !player.playWhenReady
+                                com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏯️ DoubleTap center: toggle play/pause")
+                            }
+                        }
+                    },
+                    onPress = { offset ->
+                        //  等待手指抬起
+                        tryAwaitRelease()
+                        //  如果之前是长按状态，松开时恢复原速度
+                        if (isLongPressing) {
+                            playerState.player.setPlaybackSpeed(originalSpeed)
+                            isLongPressing = false
+                            longPressSpeedFeedbackVisible = false
+                            com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏹️ LongPress released: speed ${originalSpeed}x")
+                        }
                     }
                 )
             }
@@ -509,6 +575,70 @@ fun VideoPlayerSection(
                             )
                         )
                     }
+                }
+            }
+        }
+        
+        //  [新增] 双击跳转视觉反馈 (±Ns 提示)
+        LaunchedEffect(seekFeedbackVisible) {
+            if (seekFeedbackVisible) {
+                kotlinx.coroutines.delay(800)
+                seekFeedbackVisible = false
+            }
+        }
+        
+        AnimatedVisibility(
+            visible = seekFeedbackVisible && !isInPipMode,
+            modifier = Modifier.align(Alignment.Center),
+            enter = scaleIn(initialScale = 0.5f) + fadeIn(),
+            exit = scaleOut(targetScale = 0.8f) + fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(Color.Black.copy(0.75f), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = seekFeedbackText ?: "",
+                    color = if (seekFeedbackText?.startsWith("+") == true) Color.Green else Color.Red,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        }
+        
+        //  [新增] 长按倍速视觉反馈 (显示当前倍速)
+        AnimatedVisibility(
+            visible = longPressSpeedFeedbackVisible && !isInPipMode,
+            modifier = Modifier.align(Alignment.Center),
+            enter = scaleIn(initialScale = 0.5f) + fadeIn(),
+            exit = scaleOut(targetScale = 0.8f) + fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(0.75f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = CupertinoIcons.Default.Forward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "${longPressSpeed}x 快进中",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                 }
             }
         }

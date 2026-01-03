@@ -22,7 +22,7 @@ private val Context.settingsDataStore by preferencesDataStore(name = "settings_p
  * 将多个独立的设置流合并为单一流，避免每个设置变化都触发重组
  */
 data class HomeSettings(
-    val displayMode: Int = 0,              // 展示模式 (0=网格, 1=故事卡片, 2=玻璃拟态)
+    val displayMode: Int = 0,              // 展示模式 (0=网格, 1=故事卡片)
     val isBottomBarFloating: Boolean = true,
     val bottomBarLabelMode: Int = 0,       // (0=图标+文字, 1=仅图标, 2=仅文字)
     val isHeaderBlurEnabled: Boolean = true,
@@ -43,6 +43,11 @@ object SettingsManager {
     private val KEY_BG_PLAY = booleanPreferencesKey("bg_play")
     //  [新增] 手势灵敏度和主题色
     private val KEY_GESTURE_SENSITIVITY = floatPreferencesKey("gesture_sensitivity")
+    //  [新增] 双击跳转秒数 (可分开设置快进和后退)
+    private val KEY_SEEK_FORWARD_SECONDS = intPreferencesKey("seek_forward_seconds")
+    private val KEY_SEEK_BACKWARD_SECONDS = intPreferencesKey("seek_backward_seconds")
+    //  [新增] 长按倍速 (默认 2.0x)
+    private val KEY_LONG_PRESS_SPEED = floatPreferencesKey("long_press_speed")
     private val KEY_THEME_COLOR_INDEX = intPreferencesKey("theme_color_index")
     //  [新增] 应用图标 Key (Blue, Red, Green...)
     private val KEY_APP_ICON = androidx.datastore.preferences.core.stringPreferencesKey("app_icon_key")
@@ -166,10 +171,17 @@ object SettingsManager {
         context.settingsDataStore.edit { preferences -> preferences[KEY_DYNAMIC_COLOR] = value }
     }
 
-    // --- 后台/画中画播放 ---
+    /**
+     * @deprecated 此设置已被 MiniPlayerMode 替代
+     * 请使用 getMiniPlayerMode() 和 setMiniPlayerMode() 替代
+     * - MiniPlayerMode.SYSTEM_PIP 相当于 bgPlay = true
+     * - MiniPlayerMode.OFF 相当于 bgPlay = false
+     */
+    @Deprecated("Use getMiniPlayerMode() instead", ReplaceWith("getMiniPlayerMode(context)"))
     fun getBgPlay(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_BG_PLAY] ?: false }
 
+    @Deprecated("Use setMiniPlayerMode() instead", ReplaceWith("setMiniPlayerMode(context, mode)"))
     suspend fun setBgPlay(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_BG_PLAY] = value }
     }
@@ -181,6 +193,35 @@ object SettingsManager {
     suspend fun setGestureSensitivity(context: Context, value: Float) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_GESTURE_SENSITIVITY] = value.coerceIn(0.5f, 2.0f) 
+        }
+    }
+
+    //  [新增] --- 双击跳转秒数 ---
+    fun getSeekForwardSeconds(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SEEK_FORWARD_SECONDS] ?: 10 }
+
+    suspend fun setSeekForwardSeconds(context: Context, seconds: Int) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_SEEK_FORWARD_SECONDS] = seconds.coerceIn(1, 60)
+        }
+    }
+
+    fun getSeekBackwardSeconds(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SEEK_BACKWARD_SECONDS] ?: 10 }
+
+    suspend fun setSeekBackwardSeconds(context: Context, seconds: Int) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_SEEK_BACKWARD_SECONDS] = seconds.coerceIn(1, 60)
+        }
+    }
+
+    //  [新增] --- 长按倍速 (默认 2.0x) ---
+    fun getLongPressSpeed(context: Context): Flow<Float> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_LONG_PRESS_SPEED] ?: 2.0f }
+
+    suspend fun setLongPressSpeed(context: Context, speed: Float) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_LONG_PRESS_SPEED] = speed.coerceIn(1.5f, 3.0f)
         }
     }
 

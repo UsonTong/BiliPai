@@ -85,6 +85,10 @@ class DanmakuManager private constructor(
     private var cachedDanmakuList: List<DanmakuData>? = null
     private var cachedCid: Long = 0L
     
+    //  [新增] 记录原始弹幕滚动时间（用于倍速同步）
+    private var originalMoveTime: Long = 8000L  // 默认 8 秒
+    private var currentVideoSpeed: Float = 1.0f
+    
     // 配置
     val config = DanmakuConfig()
     
@@ -207,7 +211,9 @@ class DanmakuManager private constructor(
         // 应用配置
         controller?.let { ctrl ->
             config.applyTo(ctrl.config)
-            Log.w(TAG, " DanmakuController configured")
+            //  [新增] 保存原始 moveTime，用于倍速同步
+            originalMoveTime = ctrl.config.scroll.moveTime
+            Log.w(TAG, " DanmakuController configured, originalMoveTime=$originalMoveTime")
         } ?: Log.e(TAG, " Controller is null!")
         
         //  [关键修复] 等待 View 布局完成后再设置弹幕数据
@@ -387,6 +393,27 @@ class DanmakuManager private constructor(
                     } ?: run {
                         controller?.clear()
                         Log.w(TAG, " No cached danmaku, just cleared screen")
+                    }
+                }
+            }
+            
+            //  [新增] 视频倍速变化时同步弹幕速度
+            override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+                val videoSpeed = playbackParameters.speed
+                Log.w(TAG, "⏩ onPlaybackParametersChanged: videoSpeed=$videoSpeed, previous=$currentVideoSpeed")
+                
+                //  同步弹幕速度：视频 2x 时，弹幕也需要 2 倍速滚动
+                // 通过减少 moveTime 来加快弹幕滚动
+                if (videoSpeed != currentVideoSpeed) {
+                    currentVideoSpeed = videoSpeed
+                    
+                    controller?.let { ctrl ->
+                        // 根据视频倍速调整弹幕滚动时间
+                        // 视频 2x 倍速 = 弹幕滚动时间减半
+                        val adjustedMoveTime = (originalMoveTime / videoSpeed).toLong()
+                        ctrl.config.scroll.moveTime = adjustedMoveTime
+                        ctrl.invalidateView()
+                        Log.w(TAG, "⏩ Danmaku moveTime: original=$originalMoveTime, adjusted=$adjustedMoveTime (video=${videoSpeed}x)")
                     }
                 }
             }

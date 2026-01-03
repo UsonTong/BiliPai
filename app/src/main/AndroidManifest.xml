@@ -43,6 +43,35 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            
+            <!-- 🔗 Deep Link: bilibili.com 视频链接 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.bilibili.com" android:pathPrefix="/video/" />
+                <data android:scheme="https" android:host="bilibili.com" android:pathPrefix="/video/" />
+                <data android:scheme="https" android:host="m.bilibili.com" android:pathPrefix="/video/" />
+                <data android:scheme="http" android:host="www.bilibili.com" android:pathPrefix="/video/" />
+                <data android:scheme="http" android:host="bilibili.com" android:pathPrefix="/video/" />
+                <data android:scheme="http" android:host="m.bilibili.com" android:pathPrefix="/video/" />
+            </intent-filter>
+            
+            <!-- 🔗 Deep Link: b23.tv 短链接 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="b23.tv" />
+                <data android:scheme="http" android:host="b23.tv" />
+            </intent-filter>
+            
+            <!-- 📤 分享文本意图 (用户分享链接文本到 BiliPai) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Default Alias (3D - 默认) -->

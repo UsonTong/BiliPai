@@ -454,70 +454,64 @@ private fun PortraitTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 返回按钮
+        // 返回按钮 - 简洁无背景
         IconButton(
             onClick = onBack,
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+            modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 imageVector = CupertinoIcons.Default.ChevronBackward,
                 contentDescription = "返回",
                 tint = Color.White,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
         
         // 右侧按钮组
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            //  听视频模式按钮
+            //  听视频模式按钮 - 激活时保留背景色
             IconButton(
                 onClick = onAudioMode,
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        if (isAudioOnly) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.4f), 
-                        CircleShape
+                    .size(32.dp)
+                    .then(
+                        if (isAudioOnly) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
+                        else Modifier
                     )
             ) {
                 Icon(
                     imageVector = CupertinoIcons.Default.Headphones,
                     contentDescription = "听视频",
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
-            //  设置按钮
+            //  设置按钮 - 无背景
             IconButton(
                 onClick = onSettings,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = CupertinoIcons.Default.Ellipsis,
                     contentDescription = "设置",
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             
-            // 分享按钮
+            // 分享按钮 - 无背景
             IconButton(
                 onClick = onShare,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = CupertinoIcons.Default.SquareAndArrowUp,
                     contentDescription = "分享",
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

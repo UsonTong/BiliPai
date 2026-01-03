@@ -24,7 +24,6 @@ import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
-import com.android.purebilibili.feature.home.components.cards.GlassVideoCard
 import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -179,14 +178,6 @@ fun CategoryScreen(
                             1 -> {
                                 //  故事卡片 (Apple TV+ 风格)
                                 StoryVideoCard(
-                                    video = video,
-                                    index = index,  //  动画索引
-                                    onClick = { bvid, _ -> onVideoClick(bvid, video.id, video.pic) }
-                                )
-                            }
-                            2 -> {
-                                //  玻璃拟态 (Vision Pro 风格)
-                                GlassVideoCard(
                                     video = video,
                                     index = index,  //  动画索引
                                     onClick = { bvid, _ -> onVideoClick(bvid, video.id, video.pic) }

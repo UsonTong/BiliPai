@@ -45,7 +45,6 @@ import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  // 
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.home.components.cards.LiveRoomCard
 import com.android.purebilibili.feature.home.components.cards.StoryVideoCard   //  故事卡片
-import com.android.purebilibili.feature.home.components.cards.GlassVideoCard   //  玻璃拟态
 import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.VideoCardSkeleton
 import com.android.purebilibili.core.ui.ErrorState as ModernErrorState
@@ -827,22 +826,11 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .jiggleOnDissolve(video.bvid)  // 📳 iOS 风格抖动
                                 ) {
-                                    // � [新增] 根据展示模式选择卡片样式
+                                    //  根据展示模式选择卡片样式 (0=网格, 1=故事卡片)
                                     when (displayMode) {
                                         1 -> {
                                             //  故事卡片 (Apple TV+ 风格)
                                             StoryVideoCard(
-                                                video = video,
-                                                index = index,  //  动画索引
-                                                animationEnabled = cardAnimationEnabled,  //  动画开关
-                                                transitionEnabled = cardTransitionEnabled, //  过渡动画开关
-                                                onDismiss = { viewModel.startVideoDissolve(video.bvid) },
-                                                onClick = { bvid, cid -> wrappedOnVideoClick(bvid, cid, video.pic) }
-                                            )
-                                        }
-                                        2 -> {
-                                            //  玻璃拟态 (Vision Pro 风格)
-                                            GlassVideoCard(
                                                 video = video,
                                                 index = index,  //  动画索引
                                                 animationEnabled = cardAnimationEnabled,  //  动画开关

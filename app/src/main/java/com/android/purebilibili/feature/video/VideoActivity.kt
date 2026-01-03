@@ -289,11 +289,11 @@ class VideoActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        //  检查设置是否开启了后台播放
-        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val bgPlayEnabled = prefs.getBoolean("bg_play", false)
+        //  [修复] 使用 SettingsManager 读取正确的小窗模式设置
+        val mode = com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(this)
+        val shouldEnterPip = mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bgPlayEnabled) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && shouldEnterPip) {
             val state = viewModel.uiState.value
             if (state is PlayerUiState.Success) {
                 enterPictureInPictureMode(buildPipParams(true))

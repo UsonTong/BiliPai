@@ -136,7 +136,15 @@ class PlayerViewModel : ViewModel() {
     val currentPlayer: Player?
         get() = exoPlayer
         
-    //  Audio Mode State
+    /**
+     *  UI 仅音频模式状态
+     * 
+     * 注意：这与 SettingsManager.MiniPlayerMode.BACKGROUND 是两个不同的概念：
+     * - isInAudioMode: UI 层的仅音频显示模式，用户主动切换，显示音频播放界面
+     * - MiniPlayerMode.BACKGROUND: 设置层的后台音频模式，应用退到后台时的行为
+     * 
+     * isInAudioMode 控制 UI 显示，MiniPlayerMode.BACKGROUND 控制后台行为
+     */
     private val _isInAudioMode = MutableStateFlow(false)
     val isInAudioMode = _isInAudioMode.asStateFlow()
     

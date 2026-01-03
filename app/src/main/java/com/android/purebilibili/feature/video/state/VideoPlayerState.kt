@@ -296,8 +296,8 @@ fun rememberVideoPlayerState(
     //  [后台恢复优化] 监听生命周期，保存/恢复播放状态
     var savedPosition by remember { mutableStateOf(-1L) }
     var wasPlaying by remember { mutableStateOf(false) }
-    //  [新增] 保存原始视频轨道参数（用于前台恢复）
-    var savedTrackParams by remember { mutableStateOf<androidx.media3.common.TrackSelectionParameters?>(null) }
+    //  [修复] 记录是否从后台音频模式恢复（后台音频时不应 seek 回旧位置）
+    var wasBackgroundAudio by remember { mutableStateOf(false) }
     
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
@@ -316,48 +316,32 @@ fun rememberVideoPlayerState(
                     // 1. 应用内小窗模式 - 继续播放
                     // 2. 系统 PiP 模式 - 用户按 Home 键返回桌面时继续播放
                     // 3. 后台音频模式 - 继续播放音频
-                    val shouldContinuePlayback = miniPlayerManager.isMiniMode 
-                        || miniPlayerManager.shouldEnterPip()
-                        || miniPlayerManager.shouldContinueBackgroundAudio()
+                    val isMiniMode = miniPlayerManager.isMiniMode
+                    val isPip = miniPlayerManager.shouldEnterPip()
+                    val isBackgroundAudio = miniPlayerManager.shouldContinueBackgroundAudio()
+                    val shouldContinuePlayback = isMiniMode || isPip || isBackgroundAudio
+                    
+                    //  [修复] 记录后台音频状态，恢复时不要 seek 回旧位置
+                    wasBackgroundAudio = isBackgroundAudio
                     
                     if (!shouldContinuePlayback) {
                         // 非小窗/PiP/后台模式下暂停
                         player.pause()
                         com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_PAUSE: 暂停播放")
                     } else {
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_PAUSE: 保持播放 (miniMode=${miniPlayerManager.isMiniMode}, pip=${miniPlayerManager.shouldEnterPip()}, bg=${miniPlayerManager.shouldContinueBackgroundAudio()})")
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_PAUSE: 保持播放 (miniMode=$isMiniMode, pip=$isPip, bg=$isBackgroundAudio)")
                     }
-                    com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_PAUSE: pos=$savedPosition, wasPlaying=$wasPlaying")
+                    com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_PAUSE: pos=$savedPosition, wasPlaying=$wasPlaying, bgAudio=$wasBackgroundAudio")
                 }
-                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
-                    //  [后台优化] 进入后台时释放视频 Surface，只保留音频
-                    val shouldPlayBackgroundAudio = miniPlayerManager.shouldContinueBackgroundAudio()
-                    if (shouldPlayBackgroundAudio) {
-                        // 保存原始轨道参数
-                        savedTrackParams = player.trackSelectionParameters
-                        
-                        // 禁用视频轨道，只播放音频（节省 GPU 内存和 CPU）
-                        player.trackSelectionParameters = player.trackSelectionParameters
-                            .buildUpon()
-                            .setMaxVideoSize(0, 0)  // 禁用视频轨道
-                            .build()
-                        
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🔋 ON_STOP: 后台音频模式，禁用视频轨道")
-                    }
-                }
-                androidx.lifecycle.Lifecycle.Event.ON_START -> {
-                    //  [前台恢复] 恢复视频轨道
-                    savedTrackParams?.let { originalParams ->
-                        player.trackSelectionParameters = originalParams
-                        savedTrackParams = null
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🌅 ON_START: 恢复视频轨道")
-                    }
-                }
+                // 🔋 注意: ON_STOP/ON_START 的视频轨道禁用/恢复由 MiniPlayerManager 通过 BackgroundManager 统一处理
+                // 避免重复处理导致 savedTrackParams 被覆盖
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    //  恢复播放状态（仅在非小窗/PiP模式下恢复）
+                    //  [修复] 后台音频模式恢复时不 seek，因为播放器一直在播放
+                    // 只有在非后台音频模式（即播放暂停了）才恢复位置
                     val shouldRestorePlayback = savedPosition >= 0 
                         && !miniPlayerManager.isMiniMode 
                         && !miniPlayerManager.shouldEnterPip()
+                        && !wasBackgroundAudio  //  [关键修复] 后台音频模式不恢复旧位置
                     
                     if (shouldRestorePlayback) {
                         player.seekTo(savedPosition)
@@ -365,6 +349,10 @@ fun rememberVideoPlayerState(
                             player.play()
                         }
                         com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_RESUME: restored pos=$savedPosition, playing=$wasPlaying")
+                    } else if (wasBackgroundAudio) {
+                        //  [修复] 后台音频模式恢复：不 seek，播放器继续当前位置
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_RESUME: 后台音频恢复，当前位置=${player.currentPosition}，不 seek 回 $savedPosition")
+                        wasBackgroundAudio = false  // 重置标志
                     }
                 }
                 else -> {}

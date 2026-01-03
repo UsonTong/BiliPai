@@ -40,6 +40,7 @@ import com.android.purebilibili.feature.settings.AppThemeMode
 import com.android.purebilibili.navigation.AppNavigation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.overlay.MiniPlayerOverlay
@@ -79,10 +80,24 @@ class MainActivity : ComponentActivity() {
         
         // 初始化小窗管理器
         miniPlayerManager = MiniPlayerManager.getInstance(this)
+        
+        //  [新增] 处理 deep link 或分享意图
+        handleIntent(intent)
 
         setContent {
             val context = LocalContext.current
             val navController = androidx.navigation.compose.rememberNavController()
+            
+            //  [新增] 监听 pendingVideoId 并导航到视频详情页
+            LaunchedEffect(pendingVideoId) {
+                pendingVideoId?.let { videoId ->
+                    Logger.d(TAG, "🚀 导航到视频: $videoId")
+                    navController.navigate("video/$videoId?cid=0&cover=") {
+                        launchSingleTop = true
+                    }
+                    pendingVideoId = null  // 清除，避免重复导航
+                }
+            }
             
             //  首次启动检测
             val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
@@ -274,6 +289,94 @@ class MainActivity : ComponentActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipMode = isInPictureInPictureMode
         Logger.d(TAG, " PiP 模式变化: $isInPictureInPictureMode")
+    }
+    
+    //  [新增] 处理 singleTop 模式下的新 Intent
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+    
+    //  待导航的视频 ID（用于在 Compose 中触发导航）
+    var pendingVideoId by mutableStateOf<String?>(null)
+        private set
+    
+    /**
+     *  [新增] 处理 Deep Link 和分享意图
+     */
+    private fun handleIntent(intent: android.content.Intent?) {
+        if (intent == null) return
+        
+        Logger.d(TAG, "🔗 handleIntent: action=${intent.action}, data=${intent.data}")
+        
+        when (intent.action) {
+            android.content.Intent.ACTION_VIEW -> {
+                // 点击链接打开
+                val uri = intent.data
+                if (uri != null) {
+                    val host = uri.host ?: ""
+                    
+                    // b23.tv 短链接需要重定向
+                    if (host.contains("b23.tv")) {
+                        resolveShortLinkAndNavigate(uri.toString())
+                    } else {
+                        // bilibili.com 直接解析
+                        val result = com.android.purebilibili.core.util.BilibiliUrlParser.parseUri(uri)
+                        if (result.isValid) {
+                            result.getVideoId()?.let { videoId ->
+                                Logger.d(TAG, "📺 从 Deep Link 提取到视频: $videoId")
+                                pendingVideoId = videoId
+                            }
+                        }
+                    }
+                }
+            }
+            android.content.Intent.ACTION_SEND -> {
+                // 分享文本到 app
+                val text = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                if (text != null) {
+                    Logger.d(TAG, "📤 收到分享文本: $text")
+                    
+                    // 检查是否包含 b23.tv 短链接
+                    val urls = com.android.purebilibili.core.util.BilibiliUrlParser.extractUrls(text)
+                    val shortLink = urls.find { it.contains("b23.tv") }
+                    
+                    if (shortLink != null) {
+                        resolveShortLinkAndNavigate(shortLink)
+                    } else {
+                        // 直接解析
+                        val result = com.android.purebilibili.core.util.BilibiliUrlParser.parse(text)
+                        if (result.isValid) {
+                            result.getVideoId()?.let { videoId ->
+                                Logger.d(TAG, "📺 从分享文本提取到视频: $videoId")
+                                pendingVideoId = videoId
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     *  解析 b23.tv 短链接并导航
+     */
+    private fun resolveShortLinkAndNavigate(shortUrl: String) {
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            val fullUrl = com.android.purebilibili.core.util.BilibiliUrlParser.resolveShortUrl(shortUrl)
+            if (fullUrl != null) {
+                val result = com.android.purebilibili.core.util.BilibiliUrlParser.parse(fullUrl)
+                if (result.isValid) {
+                    result.getVideoId()?.let { videoId ->
+                        Logger.d(TAG, "📺 从短链接解析到视频: $videoId")
+                        pendingVideoId = videoId
+                    }
+                }
+            } else {
+                Logger.w(TAG, "⚠️ 无法解析短链接: $shortUrl")
+            }
+        }
     }
 }
 
