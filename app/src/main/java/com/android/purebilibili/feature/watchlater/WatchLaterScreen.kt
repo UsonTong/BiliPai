@@ -50,6 +50,16 @@ private fun formatNumber(num: Int): String {
     }
 }
 
+// 辅助函数：修复封面 URL 协议（B站API可能返回http或缺少协议的URL）
+private fun fixCoverUrl(url: String?): String {
+    if (url.isNullOrEmpty()) return ""
+    return when {
+        url.startsWith("//") -> "https:$url"
+        url.startsWith("http://") -> url.replaceFirst("http://", "https://")
+        else -> url
+    }
+}
+
 /**
  * 稍后再看 UI 状态
  */
@@ -226,7 +236,7 @@ private fun WatchLaterVideoCard(
                 .clip(RoundedCornerShape(8.dp))
         ) {
             AsyncImage(
-                model = item.pic,
+                model = fixCoverUrl(item.pic),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

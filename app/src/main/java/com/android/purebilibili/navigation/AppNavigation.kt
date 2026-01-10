@@ -224,7 +224,11 @@ fun AppNavigation(
                     val currentDestination = navController.currentDestination?.route
                     val isNavigatingToAudioMode = currentDestination == ScreenRoutes.AudioMode.route
                     if (activity?.isChangingConfigurations != true && !isNavigatingToAudioMode) {
-                        miniPlayerManager?.enterMiniMode()
+                        //  [修复] 只有在"应用内小窗"模式下才进入小窗
+                        // 后台模式只播放音频，不显示小窗
+                        if (miniPlayerManager?.shouldShowInAppMiniPlayer() == true) {
+                            miniPlayerManager.enterMiniMode()
+                        }
                     }
                 }
             }

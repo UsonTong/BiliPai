@@ -362,14 +362,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             // 关键：确保在任何时刻都有一个活动的入口点，避免系统卡死
             
             try {
-                // 第一步：先启用目标 alias（确保有可用入口）
-                pm.setComponentEnabledSetting(
-                    android.content.ComponentName(packageName, targetAlias),
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
-                )
-                
-                // 第二步：禁用其他所有 alias（只禁用非目标的）
+                // 第一步：禁用所有非目标 alias（保持当前 alias 暂时启用，防止桌面无图标）
                 allAliases.filter { it.second != targetAlias }.forEach { (_, aliasFullName) ->
                     try {
                         pm.setComponentEnabledSetting(
@@ -381,6 +374,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         android.util.Log.w("SettingsViewModel", "Failed to disable alias: $aliasFullName", e)
                     }
                 }
+                
+                // 第二步：短暂延迟，让启动器处理禁用操作
+                kotlinx.coroutines.delay(200)
+                
+                // 第三步：启用目标 alias
+                pm.setComponentEnabledSetting(
+                    android.content.ComponentName(packageName, targetAlias),
+                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    android.content.pm.PackageManager.DONT_KILL_APP
+                )
             } catch (e: Exception) {
                 android.util.Log.e("SettingsViewModel", "Failed to switch app icon to $iconKey", e)
             }

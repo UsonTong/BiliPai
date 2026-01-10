@@ -380,7 +380,7 @@ fun FullscreenPlayerOverlay(
                         this.player = exoPlayer
                         useController = false
                         keepScreenOn = true
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)  // 禁用系统缓冲指示器
                         resizeMode = aspectRatio.resizeMode
                     }
                 },

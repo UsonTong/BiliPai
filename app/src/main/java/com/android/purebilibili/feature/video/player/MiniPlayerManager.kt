@@ -241,6 +241,56 @@ class MiniPlayerManager private constructor(private val context: Context) :
     // --- MediaSession ---
     private var mediaSession: MediaSession? = null
     
+    //  [新增] MediaSession 回调处理器，支持系统媒体控件
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        //  处理系统媒体按钮事件
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent
+        ): Boolean {
+            Logger.d(TAG, " onMediaButtonEvent: action=${intent.action}")
+            return super.onMediaButtonEvent(session, controllerInfo, intent)
+        }
+        
+        //  处理自定义命令（上一首/下一首）
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: androidx.media3.session.SessionCommand,
+            args: android.os.Bundle
+        ): com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.SessionResult> {
+            Logger.d(TAG, " onCustomCommand: ${customCommand.customAction}")
+            when (customCommand.customAction) {
+                "SKIP_TO_PREVIOUS" -> playPrevious()
+                "SKIP_TO_NEXT" -> playNext()
+            }
+            return com.google.common.util.concurrent.Futures.immediateFuture(
+                androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS)
+            )
+        }
+        
+        //  设置可用操作
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            Logger.d(TAG, " onConnect: ${controller.packageName}")
+            // 允许所有连接并启用所有播放命令
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                        .add(androidx.media3.session.SessionCommand("SKIP_TO_PREVIOUS", android.os.Bundle.EMPTY))
+                        .add(androidx.media3.session.SessionCommand("SKIP_TO_NEXT", android.os.Bundle.EMPTY))
+                        .build()
+                )
+                .setAvailablePlayerCommands(
+                    MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS  // 默认包含 seek/play/pause 等
+                )
+                .build()
+        }
+    }
+    
     // ==========  小窗模式判断方法 ==========
     
     /**
@@ -331,6 +381,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
             )
             mediaSession = MediaSession.Builder(context, _player!!)
                 .setSessionActivity(pendingIntent)
+                .setCallback(mediaSessionCallback)  //  支持系统媒体控件
                 .build()
         }
         return _player!!

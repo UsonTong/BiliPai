@@ -918,7 +918,7 @@ fun VideoDetailScreen(
                         androidx.media3.ui.PlayerView(ctx).apply {
                             player = playerState.player
                             useController = false
-                            setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
+                            setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_NEVER)  // 禁用系统缓冲指示器
                         }
                     },
                     update = { view ->

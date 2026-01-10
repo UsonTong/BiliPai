@@ -201,7 +201,8 @@ object DownloadManager {
     }
     
     /**
-     * 下载单个文件
+     * 多线程分段下载单个文件
+     * 使用 Range 请求分段下载，4个线程并发
      */
     private suspend fun downloadFile(
         url: String, 
@@ -209,10 +210,150 @@ object DownloadManager {
         taskId: String,
         onProgress: (Float) -> Unit
     ) = withContext(Dispatchers.IO) {
+        // 获取用户 Cookie
+        val sessData = com.android.purebilibili.core.store.TokenManager.sessDataCache ?: ""
+        val biliJct = com.android.purebilibili.core.store.TokenManager.csrfCache ?: ""
+        val buvid3 = com.android.purebilibili.core.store.TokenManager.buvid3Cache ?: ""
+        val cookieString = buildString {
+            if (sessData.isNotEmpty()) append("SESSDATA=$sessData; ")
+            if (biliJct.isNotEmpty()) append("bili_jct=$biliJct; ")
+            if (buvid3.isNotEmpty()) append("buvid3=$buvid3; ")
+        }
+        
+        // 首先获取文件大小
+        val headRequest = Request.Builder()
+            .url(url)
+            .head()
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .header("Referer", "https://www.bilibili.com")
+            .header("Cookie", cookieString)
+            .build()
+        
+        val headResponse = client.newCall(headRequest).execute()
+        val totalBytes = headResponse.header("Content-Length")?.toLongOrNull() ?: 0L
+        val acceptRanges = headResponse.header("Accept-Ranges")
+        headResponse.close()
+        
+        // 如果服务器不支持 Range 或文件太小，使用单线程下载
+        if (acceptRanges != "bytes" || totalBytes < 1024 * 1024) { // 小于 1MB 用单线程
+            downloadFileSingleThread(url, file, cookieString, onProgress)
+            return@withContext
+        }
+        
+        // 多线程分段下载
+        val threadCount = 4  // 4个并发线程
+        val segmentSize = totalBytes / threadCount
+        val segmentProgress = LongArray(threadCount)
+        val progressLock = Any()
+        
+        // 创建临时分段文件
+        val segmentFiles = (0 until threadCount).map { 
+            File(getDownloadDir(), "${taskId}_seg$it.tmp") 
+        }
+        
+        try {
+            // 并发下载所有分段
+            val jobs = (0 until threadCount).map { index ->
+                async {
+                    val start = index * segmentSize
+                    val end = if (index == threadCount - 1) totalBytes - 1 else (index + 1) * segmentSize - 1
+                    
+                    downloadSegment(
+                        url = url,
+                        file = segmentFiles[index],
+                        start = start,
+                        end = end,
+                        cookieString = cookieString,
+                        onProgress = { downloaded ->
+                            synchronized(progressLock) {
+                                segmentProgress[index] = downloaded
+                                val total = segmentProgress.sum()
+                                onProgress(total.toFloat() / totalBytes)
+                            }
+                        }
+                    )
+                }
+            }
+            
+            // 等待所有分段下载完成
+            jobs.awaitAll()
+            
+            // 合并分段文件
+            java.io.RandomAccessFile(file, "rw").use { output ->
+                segmentFiles.forEach { segmentFile ->
+                    segmentFile.inputStream().use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                        }
+                    }
+                }
+            }
+            
+            com.android.purebilibili.core.util.Logger.d("DownloadManager", "🚀 Multi-thread download completed: ${file.name}")
+            
+        } finally {
+            // 清理临时分段文件
+            segmentFiles.forEach { it.delete() }
+        }
+    }
+    
+    /**
+     * 下载单个分段
+     */
+    private suspend fun downloadSegment(
+        url: String,
+        file: File,
+        start: Long,
+        end: Long,
+        cookieString: String,
+        onProgress: (Long) -> Unit
+    ) = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .header("Referer", "https://www.bilibili.com")
+            .header("Cookie", cookieString)
+            .header("Range", "bytes=$start-$end")
+            .build()
+        
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful && response.code != 206) {
+            throw Exception("HTTP ${response.code}")
+        }
+        
+        val body = response.body ?: throw Exception("Empty response")
+        var downloadedBytes = 0L
+        
+        FileOutputStream(file).use { output ->
+            body.byteStream().use { input ->
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    if (!isActive) throw CancellationException()
+                    output.write(buffer, 0, bytesRead)
+                    downloadedBytes += bytesRead
+                    onProgress(downloadedBytes)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 单线程下载（降级方案）
+     */
+    private suspend fun downloadFileSingleThread(
+        url: String,
+        file: File,
+        cookieString: String,
+        onProgress: (Float) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .header("Referer", "https://www.bilibili.com")
+            .header("Cookie", cookieString)
             .build()
         
         val response = client.newCall(request).execute()
@@ -229,12 +370,9 @@ object DownloadManager {
                 val buffer = ByteArray(8192)
                 var bytesRead: Int
                 while (input.read(buffer).also { bytesRead = it } != -1) {
-                    // 检查是否取消
                     if (!isActive) throw CancellationException()
-                    
                     output.write(buffer, 0, bytesRead)
                     downloadedBytes += bytesRead
-                    
                     if (totalBytes > 0) {
                         onProgress(downloadedBytes.toFloat() / totalBytes)
                     }
@@ -242,6 +380,7 @@ object DownloadManager {
             }
         }
     }
+
     
     /**
      * 使用 Android MediaMuxer 合并音视频

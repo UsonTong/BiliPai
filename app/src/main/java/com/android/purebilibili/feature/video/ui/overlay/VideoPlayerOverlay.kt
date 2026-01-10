@@ -63,6 +63,7 @@ fun VideoPlayerOverlay(
     showStats: Boolean = false,
     realResolution: String = "",
     isQualitySwitching: Boolean = false,
+    isBuffering: Boolean = false,  // 缓冲状态
     isVip: Boolean = false,
     //  [新增] 弹幕开关和设置
     danmakuEnabled: Boolean = true,
@@ -335,6 +336,16 @@ fun VideoPlayerOverlay(
                     )
                 }
             }
+        }
+
+        // --- 5.4  缓冲加载指示器 ---
+        AnimatedVisibility(
+            visible = isBuffering && !isQualitySwitching && !isVisible,
+            modifier = Modifier.align(Alignment.Center),
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(200))
+        ) {
+            CupertinoActivityIndicator()
         }
 
         // --- 5.5  清晰度切换中 Loading 指示器 ---

@@ -142,6 +142,22 @@ fun VideoPlayerSection(
     var isLongPressing by remember { mutableStateOf(false) }
     var originalSpeed by remember { mutableFloatStateOf(1.0f) }
     var longPressSpeedFeedbackVisible by remember { mutableStateOf(false) }
+    
+    //  [新增] 缓冲状态监听
+    var isBuffering by remember { mutableStateOf(false) }
+    DisposableEffect(playerState.player) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = playbackState == Player.STATE_BUFFERING
+            }
+        }
+        playerState.player.addListener(listener)
+        // 初始化状态
+        isBuffering = playerState.player.playbackState == Player.STATE_BUFFERING
+        onDispose {
+            playerState.player.removeListener(listener)
+        }
+    }
 
     // 📱 [优化] 复用 VideoPlayerState 中的视频尺寸状态，避免重复监听
     val videoSizeState by playerState.videoSize.collectAsState()
@@ -451,7 +467,7 @@ fun VideoPlayerSection(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = playerState.player
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)  // 禁用系统缓冲指示器，使用自定义iOS风格加载动画
                         useController = false
                         keepScreenOn = true
                         resizeMode = currentAspectRatio.resizeMode
@@ -656,6 +672,7 @@ fun VideoPlayerSection(
                 realResolution = realResolution,
                 //  [新增] 传入清晰度切换状态和会员状态
                 isQualitySwitching = uiState.isQualitySwitching,
+                isBuffering = isBuffering,  // 缓冲状态
                 isLoggedIn = uiState.isLoggedIn,
                 isVip = uiState.isVip,
                 //  [新增] 弹幕开关和设置

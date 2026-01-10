@@ -236,7 +236,8 @@ private fun SpaceContent(
                         SeasonSection(
                             season = season,
                             archives = state.seasonArchives[season.meta.season_id] ?: emptyList(),
-                            onVideoClick = onVideoClick
+                            onVideoClick = onVideoClick,
+                            mid = state.userInfo.mid
                         )
                     }
                 }
@@ -845,8 +846,11 @@ private fun SpaceTab(
 private fun SeasonSection(
     season: SeasonItem,
     archives: List<SeasonArchiveItem>,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    mid: Long = 0L  // UP主的mid，用于构建分享链接
 ) {
+    val context = LocalContext.current
+    
     Column(modifier = Modifier.fillMaxWidth()) {
         // 标题行
         Row(
@@ -869,6 +873,29 @@ private fun SeasonSection(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+            
+            // 分享按钮
+            IconButton(
+                onClick = {
+                    // 使用 space.bilibili.com 域名（www 域名会 404）
+                    val shareUrl = "https://space.bilibili.com/$mid/lists/${season.meta.season_id}?type=season"
+                    val shareText = "${season.meta.name}\n$shareUrl"
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "【合集】${season.meta.name}")
+                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(intent, "分享合集"))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    CupertinoIcons.Default.SquareAndArrowUp,
+                    contentDescription = "分享合集",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
         // 横向视频列表
@@ -887,6 +914,7 @@ private fun SeasonSection(
         Spacer(Modifier.height(12.dp))
     }
 }
+
 
 /**
  *  系列区块

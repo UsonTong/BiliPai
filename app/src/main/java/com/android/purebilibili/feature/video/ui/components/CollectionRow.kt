@@ -20,6 +20,8 @@ import com.android.purebilibili.data.model.response.UgcSeason
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.ChevronForward
 import io.github.alexzhirkevich.cupertino.icons.outlined.Folder
+import io.github.alexzhirkevich.cupertino.icons.outlined.SquareAndArrowUp
+import androidx.compose.ui.platform.LocalContext
 
 /**
  *  视频合集展示行
@@ -113,6 +115,28 @@ fun CollectionRow(
             }
             
             Spacer(modifier = Modifier.width(6.dp))
+            
+            //  分享按钮
+            val context = LocalContext.current
+            IconButton(
+                onClick = {
+                    val shareUrl = "https://space.bilibili.com/${ugcSeason.mid}/lists/${ugcSeason.id}?type=season"
+                    val shareText = "${ugcSeason.title}\n$shareUrl"
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(intent, "分享合集"))
+                },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    CupertinoIcons.Default.SquareAndArrowUp,
+                    contentDescription = "分享合集",
+                    modifier = Modifier.size(16.dp),
+                    tint = iOSBlue
+                )
+            }
             
             //  右侧箭头
             Icon(
