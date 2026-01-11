@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -99,6 +100,7 @@ import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
 import com.android.purebilibili.feature.video.ui.overlay.PlayerProgress
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
+import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager  //  弹幕管理器
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -134,6 +136,23 @@ fun VideoDetailScreen(
     //     .collectAsState(initial = false)
 
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    
+    // 📐 [大屏适配] 仅 Expanded 才启用平板分栏布局
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+    val useTabletLayout = windowSizeClass.isExpandedScreen
+    
+    // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
+    // 使用 rememberSaveable 确保状态在横竖屏切换时保持
+    var userRequestedFullscreen by rememberSaveable { mutableStateOf(false) }
+    
+    // 📐 全屏模式逻辑：
+    // - 手机：横屏时自动进入全屏
+    // - 大屏（Expanded）：只有用户主动点击全屏按钮后才进入全屏
+    val isFullscreenMode = if (useTabletLayout) {
+        userRequestedFullscreen
+    } else {
+        isLandscape
+    }
 
     var isPipMode by remember { mutableStateOf(isInPipMode) }
     LaunchedEffect(isInPipMode) { isPipMode = isInPipMode }
@@ -149,11 +168,15 @@ fun VideoDetailScreen(
     
     // 📱 [优化] isPortraitFullscreen 和 isVerticalVideo 现在从 playerState 获取（见 playerState 定义后）
     
-    //  从小窗展开时自动进入横屏全屏
+    //  从小窗展开时自动进入全屏
     LaunchedEffect(startInFullscreen) {
-        if (startInFullscreen && !isLandscape) {
-            context.findActivity()?.let { activity ->
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        if (startInFullscreen) {
+            if (useTabletLayout) {
+                userRequestedFullscreen = true
+            } else if (!isLandscape) {
+                context.findActivity()?.let { activity ->
+                    activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
             }
         }
     }
@@ -214,6 +237,9 @@ fun VideoDetailScreen(
             
             //  [安全网] 确保状态栏被恢复（以防 handleBack 未被调用，如系统返回）
             restoreStatusBar()
+
+            // 恢复屏幕方向
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
     
@@ -284,6 +310,39 @@ fun VideoDetailScreen(
     // 📱 [优化] 竖屏全屏状态现在由 playerState 集中管理
     val isPortraitFullscreen by playerState.isPortraitFullscreen.collectAsState()
 
+    // 📲 小窗模式（手机/平板统一逻辑）
+    val handlePipClick = {
+        // 使用 MiniPlayerManager 进入应用内小窗模式
+        miniPlayerManager?.let { manager ->
+            //  [埋点] PiP 进入事件
+            com.android.purebilibili.core.util.AnalyticsHelper.logPictureInPicture(
+                videoId = bvid,
+                action = "enter_mini"
+            )
+
+            // 1. 将当前播放器信息传递给小窗管理器
+            val info = uiState as? PlayerUiState.Success
+            manager.setVideoInfo(
+                bvid = bvid,
+                title = info?.info?.title ?: "",
+                cover = info?.info?.pic ?: "",
+                owner = info?.info?.owner?.name ?: "",
+                cid = info?.info?.cid ?: 0L,
+                externalPlayer = playerState.player
+            )
+
+            // 2. 进入小窗模式
+            manager.enterMiniMode()
+
+            // 3. 返回上一页（首页）
+            onBack()
+        } ?: run {
+            // 如果 miniPlayerManager 不存在，直接返回
+            com.android.purebilibili.core.util.Logger.w("VideoDetailScreen", "⚠️ miniPlayerManager 为 null，无法进入小窗")
+            onBack()
+        }
+    }
+
     //  核心修改：初始化评论 & 媒体中心信息
     LaunchedEffect(uiState) {
         if (uiState is PlayerUiState.Success) {
@@ -335,19 +394,29 @@ fun VideoDetailScreen(
     //  弹幕加载逻辑已移至 VideoPlayerState 内部处理
     // 避免在此处重复消耗 InputStream
 
-    // 辅助函数：切换屏幕方向
-    fun toggleOrientation() {
-        val activity = context.findActivity() ?: return
-        if (isLandscape) {
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        } else {
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    // 辅助函数：切换全屏状态
+    val toggleFullscreen = {
+        val activity = context.findActivity()
+        if (activity != null) {
+            if (useTabletLayout) {
+                // 🖥️ 平板：仅切换 UI 状态，不改变屏幕方向
+                userRequestedFullscreen = !userRequestedFullscreen
+            } else {
+                // 📱 手机：通过旋转屏幕触发全屏
+                if (isLandscape) {
+                    userRequestedFullscreen = false
+                    activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                } else {
+                    userRequestedFullscreen = true
+                    activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+            }
         }
     }
 
     //  拦截系统返回键：如果是全屏模式，则先退出全屏
-    BackHandler(enabled = isLandscape) {
-        toggleOrientation()
+    BackHandler(enabled = isFullscreenMode) {
+        toggleFullscreen()
     }
     
     // 📱 拦截系统返回键：如果是竖屏全屏模式，则先退出竖屏全屏
@@ -366,14 +435,14 @@ fun VideoDetailScreen(
             val window = (view.context.findActivity())?.window ?: return@SideEffect
             val insetsController = WindowCompat.getInsetsController(window, view)
 
-            if (isLandscape) {
-                // 全屏隐藏状态栏
+            if (isFullscreenMode) {
+                // 📱 手机全屏隐藏状态栏
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 window.statusBarColor = Color.Black.toArgb()
                 window.navigationBarColor = Color.Black.toArgb()
             } else {
-                //  [沉浸式] 竖屏时状态栏透明，让视频延伸到状态栏下方
+                //  [沉浸式] 非全屏模式：状态栏透明，让视频延伸到状态栏下方
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.isAppearanceLightStatusBars = false  // 白色图标（视频区域是深色的）
                 window.statusBarColor = Color.Transparent.toArgb()  // 透明状态栏
@@ -385,11 +454,11 @@ fun VideoDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isLandscape) Color.Black else MaterialTheme.colorScheme.background)
+            .background(if (isFullscreenMode) Color.Black else MaterialTheme.colorScheme.background)
     ) {
-        //  横竖屏过渡动画
+        // 📐 [平板适配] 全屏模式过渡动画（只有手机横屏才进入全屏）
         AnimatedContent(
-            targetState = isLandscape,
+            targetState = isFullscreenMode,
             transitionSpec = {
                 (fadeIn(animationSpec = tween(300)) +
                  scaleIn(initialScale = 0.92f, animationSpec = tween(300)))
@@ -398,17 +467,17 @@ fun VideoDetailScreen(
                         scaleOut(targetScale = 1.08f, animationSpec = tween(200))
                     )
             },
-            label = "orientation_transition"
-        ) { targetIsLandscape ->
-            if (targetIsLandscape) {
+            label = "fullscreen_transition"
+        ) { targetIsFullscreen ->
+            if (targetIsFullscreen) {
                 VideoPlayerSection(
                     playerState = playerState,
                     uiState = uiState,
                     isFullscreen = true,
                     isInPipMode = isPipMode,
-                    onToggleFullscreen = { toggleOrientation() },
+                    onToggleFullscreen = { toggleFullscreen() },
                     onQualityChange = { qid, pos -> viewModel.changeQuality(qid, pos) },
-                    onBack = { toggleOrientation() },
+                    onBack = { toggleFullscreen() },
                     // 🔗 [新增] 分享功能
                     bvid = bvid,
                     //  实验性功能：双击点赞
@@ -439,6 +508,32 @@ fun VideoDetailScreen(
                 )
             } else {
                 //  沉浸式布局：视频延伸到状态栏 + 内容区域
+                //  📐 [大屏适配] 仅 Expanded 使用分栏布局
+                
+                //  📐 [大屏适配] 根据设备类型选择布局
+                if (useTabletLayout) {
+                    // 🖥️ 平板：左右分栏布局（视频+信息 | 评论/推荐）
+                    TabletVideoLayout(
+                        playerState = playerState,
+                        uiState = uiState,
+                        commentState = commentState,
+                        viewModel = viewModel,
+                        commentViewModel = commentViewModel,
+                        configuration = configuration,
+                        isVerticalVideo = isVerticalVideo,
+                        sleepTimerMinutes = sleepTimerMinutes,
+                        viewPoints = viewPoints,
+                        bvid = bvid,
+                        onBack = handleBack,
+                        onUpClick = onUpClick,
+                        onNavigateToAudioMode = onNavigateToAudioMode,
+                        onToggleFullscreen = { toggleFullscreen() },  // 📺 平板全屏切换
+                        isInPipMode = isPipMode,
+                        onPipClick = handlePipClick,
+                        transitionEnabled = transitionEnabled  //  传递过渡动画开关
+                    )
+                } else {
+                    // 📱 手机竖屏：原有单列布局
                 Column(modifier = Modifier.fillMaxSize()) {
                     //  [沉浸式] 获取状态栏高度
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -525,7 +620,7 @@ fun VideoDetailScreen(
                                 uiState = uiState,
                                 isFullscreen = false,
                                 isInPipMode = isPipMode,
-                                onToggleFullscreen = { toggleOrientation() },
+                                onToggleFullscreen = { toggleFullscreen() },
                                 onQualityChange = { qid, pos -> viewModel.changeQuality(qid, pos) },
                                 onBack = handleBack,
                                 // 🔗 [新增] 分享功能
@@ -560,37 +655,7 @@ fun VideoDetailScreen(
                                 isVerticalVideo = isVerticalVideo,
                                 onPortraitFullscreen = { playerState.setPortraitFullscreen(true) },
                                 // 📲 [修复] 小窗模式 - 转移到应用内小窗而非直接进入系统 PiP
-                                onPipClick = {
-                                    // 使用 MiniPlayerManager 进入应用内小窗模式
-                                    miniPlayerManager?.let { manager ->
-                                        //  [埋点] PiP 进入事件
-                                        com.android.purebilibili.core.util.AnalyticsHelper.logPictureInPicture(
-                                            videoId = bvid,
-                                            action = "enter_mini"
-                                        )
-                                        
-                                        // 1. 将当前播放器信息传递给小窗管理器
-                                        val info = uiState as? PlayerUiState.Success
-                                        manager.setVideoInfo(
-                                            bvid = bvid,
-                                            title = info?.info?.title ?: "",
-                                            cover = info?.info?.pic ?: "",
-                                            owner = info?.info?.owner?.name ?: "",
-                                            cid = info?.info?.cid ?: 0L,
-                                            externalPlayer = playerState.player
-                                        )
-                                        
-                                        // 2. 进入小窗模式
-                                        manager.enterMiniMode()
-                                        
-                                        // 3. 返回上一页（首页）
-                                        onBack()
-                                    } ?: run {
-                                        // 如果 miniPlayerManager 不存在，直接返回
-                                        com.android.purebilibili.core.util.Logger.w("VideoDetailScreen", "⚠️ miniPlayerManager 为 null，无法进入小窗")
-                                        onBack()
-                                    }
-                                }
+                                onPipClick = handlePipClick
                                 //  空降助手 - 已由插件系统自动处理
                                 // sponsorSegment = sponsorSegment,
                                 // showSponsorSkipButton = showSponsorSkipButton,
@@ -811,14 +876,15 @@ fun VideoDetailScreen(
                                                 )
                                             }
                                         }
-                                    }
                                 }
                             }
                         }
-                    }
                 }
-            }
-        }
+                }  // 📱 手机竖屏布局结束（Column）
+                }  // Box with nested scroll
+            }  // else shouldUseSplitLayout
+        }  // else targetIsLandscape
+        }  // AnimatedContent
         
         // 📱 [新增] 竖屏全屏覆盖层
         if (isPortraitFullscreen && !isLandscape && uiState is PlayerUiState.Success) {
@@ -851,6 +917,9 @@ fun VideoDetailScreen(
                 .getDanmakuEnabled(context)
                 .collectAsState(initial = true)
             val scope = rememberCoroutineScope()
+            
+            //  弹幕管理器（用于进度条拖动时清除弹幕）
+            val danmakuManager = rememberDanmakuManager()
             
             // 状态栏隐藏控制
             var isStatusBarHidden by remember { mutableStateOf(false) }
@@ -957,6 +1026,7 @@ fun VideoDetailScreen(
                         isPlaying = !isPlaying
                     },
                     onSeek = { playerState.player.seekTo(it) },
+                    onSeekStart = { danmakuManager.clear() },  //  拖动进度条时清除弹幕
                     onSpeedClick = { showSpeedMenu = true },
                     onQualityClick = { showQualityMenu = true },
                     onRatioClick = { showRatioMenu = true },

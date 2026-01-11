@@ -516,6 +516,9 @@ fun FullscreenPlayerOverlay(
                             Slider(
                                 value = if (isDragging) dragProgress else currentProgress,
                                 onValueChange = { newValue ->
+                                    if (!isDragging) {
+                                        danmakuManager.clear()  //  拖动开始时清除弹幕
+                                    }
                                     isDragging = true
                                     dragProgress = newValue
                                     lastInteractionTime = System.currentTimeMillis()

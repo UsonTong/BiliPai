@@ -57,6 +57,7 @@ fun BottomControlBar(
     currentRatio: VideoAspectRatio = VideoAspectRatio.FIT,
     onPlayPauseClick: () -> Unit,
     onSeek: (Long) -> Unit,
+    onSeekStart: () -> Unit = {},  //  [新增] 拖动进度条开始回调（清除弹幕）
     onSpeedClick: () -> Unit = {},
     onRatioClick: () -> Unit = {},
     onToggleFullscreen: () -> Unit,
@@ -93,6 +94,7 @@ fun BottomControlBar(
             duration = progress.duration,
             bufferedPosition = progress.buffered,
             onSeek = onSeek,
+            onSeekStart = onSeekStart,  //  传递给进度条
             videoshotData = videoshotData,
             viewPoints = viewPoints,
             currentChapter = currentChapter,
@@ -255,6 +257,7 @@ fun VideoProgressBar(
     duration: Long,
     bufferedPosition: Long,
     onSeek: (Long) -> Unit,
+    onSeekStart: () -> Unit = {},  //  [新增] 拖动开始回调（用于清除弹幕）
     videoshotData: com.android.purebilibili.data.model.response.VideoshotData? = null,
     // 📖 [新增] 视频章节数据
     viewPoints: List<com.android.purebilibili.data.model.response.ViewPoint> = emptyList(),
@@ -302,6 +305,7 @@ fun VideoProgressBar(
                         isDragging = true
                         tempProgress = (offset.x / size.width).coerceIn(0f, 1f)
                         dragOffsetX = offset.x
+                        onSeekStart()  //  拖动开始时清除弹幕
                     },
                     onDrag = { change, _ ->
                         change.consume()

@@ -117,23 +117,31 @@ fun FrostedBottomBar(
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()  //  触觉反馈
     
+    // 📐 [平板适配] 检测屏幕尺寸
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+    val isTablet = windowSizeClass.isTablet
+    
     //  读取当前模糊强度以确定背景透明度
     val context = androidx.compose.ui.platform.LocalContext.current
     val blurIntensity by com.android.purebilibili.core.store.SettingsManager.getBlurIntensity(context)
         .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
     val backgroundAlpha = com.android.purebilibili.core.ui.blur.BlurStyles.getBackgroundAlpha(blurIntensity)
 
-    //  根据 labelMode 动态计算高度
+    // 📐 [平板适配] 根据 labelMode 和屏幕尺寸动态计算高度
     val floatingHeight = when (labelMode) {
-        0 -> 64.dp   // 图标+文字
-        2 -> 48.dp   // 仅文字
-        else -> 56.dp // 仅图标
+        0 -> if (isTablet) 76.dp else 64.dp   // 图标+文字 (平板增大)
+        2 -> if (isTablet) 56.dp else 48.dp   // 仅文字
+        else -> if (isTablet) 68.dp else 56.dp // 仅图标 (平板增大)
     }
     val dockedHeight = when (labelMode) {
-        0 -> 60.dp   // 图标+文字
-        2 -> 44.dp   // 仅文字
-        else -> 52.dp // 仅图标
+        0 -> if (isTablet) 72.dp else 60.dp   // 图标+文字
+        2 -> if (isTablet) 52.dp else 44.dp   // 仅文字
+        else -> if (isTablet) 64.dp else 52.dp // 仅图标
     }
+    
+    // 📐 [平板适配] 图标大小
+    val iconSize = if (isTablet) 30.dp else 26.dp
+    val iconWithTextSize = if (isTablet) 28.dp else 24.dp
     
     //  根据样式计算垂直偏移以确保视觉居中
     //  正值向下偏移，负值向上偏移
@@ -147,8 +155,9 @@ fun FrostedBottomBar(
         else -> 0.dp
     }
     
-    val barHorizontalPadding = if (isFloating) 24.dp else 0.dp
-    val barBottomPadding = if (isFloating) 16.dp else 0.dp
+    // 📐 [平板适配] 水平间距
+    val barHorizontalPadding = if (isFloating) (if (isTablet) 40.dp else 24.dp) else 0.dp
+    val barBottomPadding = if (isFloating) (if (isTablet) 20.dp else 16.dp) else 0.dp
     // [新增] 获取圆角缩放比例
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val floatingCornerRadius = iOSCornerRadius.Floating * cornerRadiusScale  // 28.dp * scale + 8
@@ -159,7 +168,8 @@ fun FrostedBottomBar(
             .fillMaxWidth()
             .padding(horizontal = barHorizontalPadding)
             .padding(bottom = barBottomPadding)
-            .then(if (isFloating) Modifier.navigationBarsPadding() else Modifier)
+            .then(if (isFloating) Modifier.navigationBarsPadding() else Modifier),
+        contentAlignment = Alignment.BottomCenter // 确保内容居中
     ) {
         //  主内容层
         Surface(
@@ -167,6 +177,7 @@ fun FrostedBottomBar(
                 .then(
                     if (isFloating) {
                          Modifier
+                            .widthIn(max = 640.dp) // [平板适配] 限制最大宽度，防止按钮过分疏散
                             .shadow(
                                 elevation = 8.dp,
                                 shape = barShape,
@@ -407,7 +418,7 @@ fun FrostedBottomBar(
                                 // 图标 + 文字
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
+                                        .size(iconWithTextSize)  // 📐 响应式图标大小
                                         .graphicsLayer {
                                             scaleX = scale
                                             scaleY = scale
@@ -448,7 +459,7 @@ fun FrostedBottomBar(
                                 // 仅图标 (默认)
                                 Box(
                                     modifier = Modifier
-                                        .size(26.dp)
+                                        .size(iconSize)  // 📐 响应式图标大小
                                         .graphicsLayer {
                                             scaleX = scale
                                             scaleY = scale

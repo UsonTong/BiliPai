@@ -143,6 +143,9 @@ class MainActivity : ComponentActivity() {
             
             //  全局 Haze 状态，用于实现毛玻璃效果
             val mainHazeState = remember { dev.chrisbanes.haze.HazeState() }
+            
+            //  📐 [平板适配] 计算窗口尺寸类
+            val windowSizeClass = com.android.purebilibili.core.util.calculateWindowSizeClass()
 
             // 6. 传入参数
             PureBiliBiliTheme(
@@ -153,8 +156,14 @@ class MainActivity : ComponentActivity() {
                 fontScale = fontScale,
                 uiScale = uiScale
             ) {
+                //  📐 [平板适配] 提供全局 WindowSizeClass
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.android.purebilibili.core.util.LocalWindowSizeClass provides windowSizeClass
+                ) {
                 Box(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)  // 📐 [修复] 防止平板端返回后出现黑边
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
@@ -236,6 +245,7 @@ class MainActivity : ComponentActivity() {
                     //  护眼模式覆盖层（最顶层，应用于所有内容）
                     EyeProtectionOverlay()
                 }
+                }  // 📐 CompositionLocalProvider 结束
             }
         }
     }

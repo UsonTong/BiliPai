@@ -38,6 +38,7 @@ import com.android.purebilibili.core.store.SettingsManager //  引入 SettingsMa
 import com.android.purebilibili.feature.home.components.BottomNavItem
 import com.android.purebilibili.feature.home.components.FluidHomeTopBar
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
+import com.android.purebilibili.feature.home.components.FrostedSideBar
 import com.android.purebilibili.feature.home.components.CategoryTabRow
 import com.android.purebilibili.feature.home.components.iOSHomeHeader  //  iOS 大标题头部
 import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  //  iOS 下拉刷新指示器
@@ -54,6 +55,7 @@ import com.android.purebilibili.core.ui.shimmer
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope  //  共享过渡
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard  //  粒子消散动画
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve      // 📳 iOS 风格抖动效果
+import com.android.purebilibili.core.util.responsiveContentWidth
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import coil.imageLoader
 import kotlinx.coroutines.launch
@@ -215,9 +217,31 @@ fun HomeScreen(
     //  [新增] 底栏项目颜色配置
     val bottomBarItemColors by SettingsManager.getBottomBarItemColors(context).collectAsState(initial = emptyMap())
     
-    //  [修复] 根据展示模式动态设置网格列数
-    // 故事卡片需要单列全宽，网格和玻璃使用双列
-    val gridColumns = if (displayMode == 1) 1 else 2
+    //  📐 [平板适配] 根据屏幕尺寸和展示模式动态设置网格列数
+    // 故事卡片需要单列全宽，网格和玻璃使用双列，平板端使用多列
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+    val contentWidth = if (windowSizeClass.isExpandedScreen) {
+        minOf(windowSizeClass.widthDp, 1000.dp)
+    } else {
+        windowSizeClass.widthDp
+    }
+    val adaptiveColumns = remember(contentWidth, displayMode) {
+        val minColumnWidth = if (displayMode == 1) 240.dp else 180.dp
+        val maxColumns = if (displayMode == 1) 2 else 6
+        val columns = (contentWidth / minColumnWidth).toInt()
+        columns.coerceIn(1, maxColumns)
+    }
+    val gridColumns = if (windowSizeClass.isExpandedScreen) {
+        adaptiveColumns
+    } else {
+        com.android.purebilibili.core.util.rememberResponsiveValue(
+            compact = if (displayMode == 1) 1 else 2,  // 手机：故事1列，其他2列
+            medium = if (displayMode == 1) 2 else 3    // 中等宽度：故事2列，其它3列
+        )
+    }
+    
+    //  📐 [大屏适配] 强制使用底栏，不使用侧边导航
+    val useSideNavigation = false // windowSizeClass.isExpandedScreen
 
     //  [修复] 恢复状态栏样式：确保从视频详情页返回后状态栏正确
     // 当使用滑动动画时，Theme.kt 的 SideEffect 可能不会重新执行
@@ -254,6 +278,23 @@ fun HomeScreen(
     
     //  当前选中的导航项
     var currentNavItem by remember { mutableStateOf(BottomNavItem.HOME) }
+
+    // 统一导航点击逻辑（底栏/侧栏复用）
+    val handleNavItemClick: (BottomNavItem) -> Unit = { item ->
+        currentNavItem = item
+        when (item) {
+            BottomNavItem.HOME -> {
+                coroutineScope.launch { gridState.animateScrollToItem(0) }
+            }
+            BottomNavItem.DYNAMIC -> onDynamicClick()
+            BottomNavItem.HISTORY -> onHistoryClick()
+            BottomNavItem.PROFILE -> onProfileClick()
+            BottomNavItem.FAVORITE -> onFavoriteClick()
+            BottomNavItem.LIVE -> onLiveListClick()
+            BottomNavItem.WATCHLATER -> onWatchLaterClick()
+            BottomNavItem.STORY -> onStoryClick()
+        }
+    }
     
     //  [新增] 底栏显示模式设置
     val bottomBarVisibilityMode by SettingsManager.getBottomBarVisibilityMode(context).collectAsState(
@@ -271,7 +312,11 @@ fun HomeScreen(
     var lastFirstVisibleItem by remember { mutableIntStateOf(0) }
     
     //  [新增] 滚动方向检测逻辑
-    LaunchedEffect(gridState, bottomBarVisibilityMode) {
+    LaunchedEffect(gridState, bottomBarVisibilityMode, useSideNavigation) {
+        if (useSideNavigation) {
+            bottomBarVisible = false
+            return@LaunchedEffect
+        }
         if (bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.SCROLL_HIDE) {
             // 非滚动隐藏模式时，根据设置决定底栏可见性
             bottomBarVisible = bottomBarVisibilityMode == SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE
@@ -332,7 +377,10 @@ fun HomeScreen(
     // ON_START: 恢复底栏（仅在从视频页返回时）
     // ON_STOP: 隐藏底栏（导航到其他页面时，避免影响导航栏区域）
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, useSideNavigation) {
+        if (useSideNavigation) {
+            return@DisposableEffect onDispose { }
+        }
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
@@ -547,8 +595,10 @@ fun HomeScreen(
         }
     }
 
+    val scaffoldContent: @Composable () -> Unit = {
     Scaffold(
         bottomBar = {
+            if (!useSideNavigation) {
             //  尝试获取共享过渡作用域
             val sharedTransitionScope = LocalSharedTransitionScope.current
             
@@ -584,22 +634,7 @@ fun HomeScreen(
                     ) {
                         FrostedBottomBar(
                             currentItem = currentNavItem,
-                            onItemClick = { item ->
-                                currentNavItem = item
-                                when(item) {
-                                    BottomNavItem.HOME -> {
-                                        coroutineScope.launch { gridState.animateScrollToItem(0) }
-                                    }
-                                    BottomNavItem.DYNAMIC -> onDynamicClick()
-                                    BottomNavItem.HISTORY -> onHistoryClick()
-                                    BottomNavItem.PROFILE -> onProfileClick()
-                                    //  [新增] 扩展项目点击处理
-                                    BottomNavItem.FAVORITE -> onFavoriteClick()
-                                    BottomNavItem.LIVE -> onLiveListClick()
-                                    BottomNavItem.WATCHLATER -> onWatchLaterClick()
-                                    BottomNavItem.STORY -> onStoryClick()
-                                }
-                            },
+                            onItemClick = handleNavItemClick,
                             onHomeDoubleTap = {
                                 coroutineScope.launch { gridState.animateScrollToItem(0) }
                             },
@@ -614,22 +649,7 @@ fun HomeScreen(
                     // 贴底式底栏
                     FrostedBottomBar(
                         currentItem = currentNavItem,
-                        onItemClick = { item ->
-                            currentNavItem = item
-                            when(item) {
-                                BottomNavItem.HOME -> {
-                                    coroutineScope.launch { gridState.animateScrollToItem(0) }
-                                }
-                                BottomNavItem.DYNAMIC -> onDynamicClick()
-                                BottomNavItem.HISTORY -> onHistoryClick()
-                                BottomNavItem.PROFILE -> onProfileClick()
-                                //  [新增] 扩展项目点击处理
-                                BottomNavItem.FAVORITE -> onFavoriteClick()
-                                BottomNavItem.LIVE -> onLiveListClick()
-                                BottomNavItem.WATCHLATER -> onWatchLaterClick()
-                                BottomNavItem.STORY -> onStoryClick()
-                            }
-                        },
+                        onItemClick = handleNavItemClick,
                         onHomeDoubleTap = {
                             coroutineScope.launch { gridState.animateScrollToItem(0) }
                         },
@@ -641,12 +661,19 @@ fun HomeScreen(
                     )
                 }
             }
+            }
         },
         //  [新增] JSON 插件过滤提示
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.padding(bottom = if (isBottomBarFloating) 100.dp else 80.dp)
+                modifier = Modifier.padding(
+                    bottom = when {
+                        useSideNavigation -> navBarHeight + 8.dp
+                        isBottomBarFloating -> 100.dp
+                        else -> 80.dp
+                    }
+                )
             )
         },
         //  [修复] 禁用 Scaffold 默认的 contentWindowInsets，防止底部出现白色填充
@@ -666,6 +693,7 @@ fun HomeScreen(
                         top = 128.dp,  //  [优化] 确保卡片圆角完全显示
                         //  [修复] 动态底部 padding
                         bottom = when {
+                            useSideNavigation -> navBarHeight + 8.dp
                             isBottomBarFloating -> 100.dp
                             bottomBarVisible -> 64.dp + navBarHeight + 20.dp
                             else -> navBarHeight + 8.dp
@@ -675,7 +703,15 @@ fun HomeScreen(
                     ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (useSideNavigation) {
+                                Modifier.responsiveContentWidth(maxWidth = 1000.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     items(8) { index ->
                         VideoCardSkeleton(index = index)
@@ -690,8 +726,16 @@ fun HomeScreen(
                     onRetry = { viewModel.refresh() },
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(
+                            if (useSideNavigation) {
+                                Modifier.responsiveContentWidth(maxWidth = 1000.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                         //  [修复] 动态底部 padding
                         .padding(bottom = when {
+                            useSideNavigation -> navBarHeight + 8.dp
                             isBottomBarFloating -> 100.dp
                             bottomBarVisible -> 64.dp + navBarHeight + 20.dp
                             else -> navBarHeight + 8.dp
@@ -727,6 +771,7 @@ fun HomeScreen(
                         top = 128.dp,  //  [优化] 确保卡片圆角完全显示
                         //  [修复] 底栏隐藏时减少底部 padding，避免白色填充
                         bottom = when {
+                            useSideNavigation -> navBarHeight + 8.dp
                             isBottomBarFloating -> 100.dp
                             bottomBarVisible -> 64.dp + navBarHeight + 20.dp  // 底栏可见：底栏高度 + 导航栏 + 间距
                             else -> navBarHeight + 8.dp  // 底栏隐藏：只需导航栏安全区 + 少量间距
@@ -738,8 +783,15 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(
+                            if (useSideNavigation) {
+                                Modifier.responsiveContentWidth(maxWidth = 1000.dp)
+                            } else {
+                                Modifier
+                            }
+                        )
                         //  [修复] 底栏隐藏时不需要额外的导航栏 padding
-                        .padding(bottom = if (isBottomBarFloating || !bottomBarVisible) 0.dp else navBarHeight)
+                        .padding(bottom = if (useSideNavigation || isBottomBarFloating || !bottomBarVisible) 0.dp else navBarHeight)
                         //  [改进] 水平滑动手势 + 平滑动画偏移
                         .graphicsLayer {
                             // 使用动画值实现平滑过渡
@@ -971,5 +1023,31 @@ fun HomeScreen(
                 )
             }
         }
+    }
+    }
+
+    if (useSideNavigation) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            FrostedSideBar(
+                currentItem = currentNavItem,
+                onItemClick = handleNavItemClick,
+                onHomeDoubleTap = {
+                    coroutineScope.launch { gridState.animateScrollToItem(0) }
+                },
+                hazeState = if (isBottomBarBlurEnabled) hazeState else null,
+                visibleItems = visibleBottomBarItems,
+                itemColorIndices = bottomBarItemColors
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1f)
+            ) {
+                scaffoldContent()
+            }
+        }
+    } else {
+        scaffoldContent()
     }
 }

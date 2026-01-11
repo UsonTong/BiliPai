@@ -110,7 +110,9 @@ fun VideoPlayerOverlay(
     isVerticalVideo: Boolean = false,
     onPortraitFullscreen: () -> Unit = {},
     // 📲 [新增] 小窗模式
-    onPipClick: () -> Unit = {}
+    onPipClick: () -> Unit = {},
+    //  [新增] 拖动进度条开始回调（用于清除弹幕）
+    onSeekStart: () -> Unit = {}
 ) {
     var showQualityMenu by remember { mutableStateOf(false) }
     var showSpeedMenu by remember { mutableStateOf(false) }
@@ -270,6 +272,7 @@ fun VideoPlayerOverlay(
                         isPlaying = !isPlaying
                     },
                     onSeek = { position -> player.seekTo(position) },
+                    onSeekStart = onSeekStart,  //  拖动进度条开始时清除弹幕
                     onSpeedClick = { showSpeedMenu = true },
                     onRatioClick = { showRatioMenu = true },
                     onToggleFullscreen = onToggleFullscreen,

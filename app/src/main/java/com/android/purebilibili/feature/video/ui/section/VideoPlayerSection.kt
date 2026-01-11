@@ -752,7 +752,9 @@ fun VideoPlayerSection(
                 isVerticalVideo = isVerticalVideo,
                 onPortraitFullscreen = onPortraitFullscreen,
                 // 📲 [新增] 小窗模式
-                onPipClick = onPipClick
+                onPipClick = onPipClick,
+                //  [新增] 拖动进度条开始时清除弹幕
+                onSeekStart = { danmakuManager.clear() }
             )
         }
         

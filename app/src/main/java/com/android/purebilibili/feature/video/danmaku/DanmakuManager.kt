@@ -585,6 +585,46 @@ class DanmakuManager private constructor(
     }
     
     /**
+     *  清除当前显示的弹幕（拖动进度条时调用）
+     */
+    fun clear() {
+        Log.d(TAG, "🧹 clear() - clearing displayed danmakus")
+        controller?.clear()
+    }
+    
+    /**
+     *  跳转到指定时间（拖动进度条完成时调用）
+     * 会清除当前弹幕并从新位置开始显示
+     * 
+     * @param positionMs 目标位置（毫秒）
+     */
+    fun seekTo(positionMs: Long) {
+        Log.w(TAG, "⏭️ seekTo($positionMs) - refreshing danmaku")
+        
+        cachedDanmakuList?.let { list ->
+            // 先清除当前显示的弹幕
+            controller?.clear()
+            // 重新设置数据基准
+            controller?.setData(list, 0)
+            // 从新位置开始
+            controller?.start(positionMs)
+            
+            // 根据播放器状态决定是否暂停
+            if (player?.isPlaying == true && config.isEnabled) {
+                isPlaying = true
+                Log.w(TAG, "⏭️ Danmaku restarted at ${positionMs}ms")
+            } else {
+                controller?.pause()
+                isPlaying = false
+                Log.w(TAG, "⏭️ Danmaku paused at ${positionMs}ms (player not playing)")
+            }
+        } ?: run {
+            controller?.clear()
+            Log.w(TAG, "⏭️ No cached danmaku, just cleared")
+        }
+    }
+    
+    /**
      * 清除视图引用（防止内存泄漏）
      */
     fun clearViewReference() {
