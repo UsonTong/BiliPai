@@ -108,7 +108,7 @@ fun AdaptiveNavigationContainer(
  */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun AdaptiveSideNavigationRail(
+fun AdaptiveSideNavigationRail(
     items: List<AdaptiveNavItem>,
     selectedItemId: String,
     onItemSelected: (String) -> Unit,

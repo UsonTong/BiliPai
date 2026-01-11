@@ -969,4 +969,22 @@ object SettingsManager {
         return context.getSharedPreferences("ui_customization", Context.MODE_PRIVATE)
             .getFloat("ui_scale", 1.0f)
     }
+    
+    // ========== 📱 平板导航模式 ==========
+    
+    private val KEY_TABLET_NAVIGATION_MODE = booleanPreferencesKey("tablet_use_sidebar")
+    
+    /**
+     *  平板导航模式
+     * - false: 使用底栏（默认，与手机一致）
+     * - true: 使用侧边栏
+     */
+    fun getTabletUseSidebar(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_TABLET_NAVIGATION_MODE] ?: false }  // 默认使用底栏
+
+    suspend fun setTabletUseSidebar(context: Context, useSidebar: Boolean) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_TABLET_NAVIGATION_MODE] = useSidebar 
+        }
+    }
 }

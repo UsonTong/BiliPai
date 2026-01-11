@@ -112,7 +112,8 @@ fun FrostedBottomBar(
     labelMode: Int = 1,  //  0=图标+文字, 1=仅图标, 2=仅文字
     onHomeDoubleTap: () -> Unit = {},  //  双击首页回到顶部
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),  //  [新增] 可配置的可见项目
-    itemColorIndices: Map<String, Int> = emptyMap()  //  [新增] 项目颜色索引映射
+    itemColorIndices: Map<String, Int> = emptyMap(),  //  [新增] 项目颜色索引映射
+    onToggleSidebar: (() -> Unit)? = null  // 📱 [平板适配] 切换到侧边栏
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()  //  触觉反馈
@@ -281,6 +282,69 @@ fun FrostedBottomBar(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
             ) {
+                // 📱 [平板适配] 切换按钮集成在底栏内部 (作为第一项)
+                if (isTablet && onToggleSidebar != null) {
+                    // 追踪点击状态
+                    var isPending by remember { mutableStateOf(false) }
+                    
+                    // 颜色动画
+                    val primaryColor = MaterialTheme.colorScheme.primary
+                    val unselectedColor = if (hazeState != null) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) // 与其他图标一致的未选中颜色
+                    } else {
+                        BottomBarColors.UNSELECTED
+                    }
+                    
+                    val iconColor by animateColorAsState(
+                        targetValue = if (isPending) primaryColor else unselectedColor,
+                        animationSpec = spring(),
+                        label = "iconColor"
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f) // 均分宽度
+                            .fillMaxHeight()
+                            .offset(y = contentVerticalOffset)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null // 自定义动画
+                            ) {
+                                isPending = true
+                                haptic(HapticType.LIGHT)
+                                kotlinx.coroutines.MainScope().launch {
+                                    kotlinx.coroutines.delay(100)
+                                    onToggleSidebar()
+                                    isPending = false
+                                }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier.size(iconSize) // 使用标准图标大小
+                        ) {
+                            Icon(
+                                imageVector = CupertinoIcons.Outlined.SidebarLeft,
+                                contentDescription = "侧边栏",
+                                tint = iconColor,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                         if (labelMode == 0) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "侧栏", // 简洁的标签
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = iconColor
+                            )
+                        }
+                    }
+                }
+
                 visibleItems.forEach { item ->  //  [修改] 使用可配置的项目列表
                     val isSelected = item == currentItem
                     

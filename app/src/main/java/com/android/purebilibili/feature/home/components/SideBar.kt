@@ -42,7 +42,8 @@ fun FrostedSideBar(
     hazeState: HazeState? = null,
     onHomeDoubleTap: () -> Unit = {},
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
-    itemColorIndices: Map<String, Int> = emptyMap() // Keep explicit map type to match usage
+    itemColorIndices: Map<String, Int> = emptyMap(), // Keep explicit map type to match usage
+    onToggleSidebar: (() -> Unit)? = null  // 📱 [平板适配] 切换到底栏
 ) {
     val haptic = rememberHapticFeedback()
     
@@ -208,6 +209,30 @@ fun FrostedSideBar(
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp)) // 项目间距
+            }
+            
+            Spacer(modifier = Modifier.weight(1f)) // 占据剩余空间
+            
+            // 📱 [平板适配] 切换到底栏按钮 (底部)
+            if (onToggleSidebar != null) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { 
+                            haptic(HapticType.LIGHT)
+                            onToggleSidebar() 
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        CupertinoIcons.Outlined.SidebarRight, // 使用 SidebarRight 表示关闭侧边栏/切换到底栏
+                        contentDescription = "切换到底栏",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

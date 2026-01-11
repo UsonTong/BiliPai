@@ -1,4 +1,3 @@
-// 文件路径: feature/profile/ProfileScreen.kt
 package com.android.purebilibili.feature.profile
 
 import android.app.Activity
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-//  Cupertino Icons - iOS SF Symbols 风格图标
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -37,7 +35,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-//  已改用 MaterialTheme.colorScheme.primary
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSOrange
@@ -50,6 +47,8 @@ import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.BiliGradientButton
+import com.android.purebilibili.core.ui.AdaptiveSplitLayout
+import com.android.purebilibili.core.util.LocalWindowSizeClass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +66,7 @@ fun ProfileScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
+    val windowSizeClass = LocalWindowSizeClass.current
 
     //  设置沉浸式状态栏和导航栏（进入时修改，离开时恢复）
     DisposableEffect(state) {
@@ -108,24 +108,25 @@ fun ProfileScreen(
     }
 
     //  未登录状态使用沉浸式全屏布局，已登录使用正常 Scaffold
-    when (val s = state) {
-        is ProfileUiState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-                LoadingAnimation(size = 80.dp)
-            }
+    val currentUiState = state
+    if (currentUiState is ProfileUiState.Loading) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+            LoadingAnimation(size = 80.dp)
         }
-        is ProfileUiState.LoggedOut -> {
-            //  沉浸式全屏布局
-            GuestProfileContent(
-                onGoToLogin = onGoToLogin,
-                onBack = onBack,
-                onSettingsClick = onSettingsClick
-            )
-        }
-        is ProfileUiState.Success -> {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                topBar = {
+    } else if (currentUiState is ProfileUiState.LoggedOut) {
+        //  沉浸式全屏布局
+        GuestProfileContent(
+            onGoToLogin = onGoToLogin,
+            onBack = onBack,
+            onSettingsClick = onSettingsClick
+        )
+    } else if (currentUiState is ProfileUiState.Success) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                // Hide TopBar on Tablet Split Layout if desired, or keep it.
+                // Keeping it for consistency and access to Settings.
+                if (!windowSizeClass.shouldUseSplitLayout) {
                     TopAppBar(
                         title = { },
                         navigationIcon = {
@@ -141,19 +142,135 @@ fun ProfileScreen(
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                     )
                 }
-            ) { padding ->
-                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                    UserProfileContent(
-                        user = s.user,
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                if (windowSizeClass.shouldUseSplitLayout) {
+                    TabletProfileContent(
+                        user = currentUiState.user,
                         onLogout = {
                             viewModel.logout()
                             onLogoutSuccess()
                         },
                         onHistoryClick = onHistoryClick,
                         onFavoriteClick = onFavoriteClick,
-                        onFollowingClick = { onFollowingClick(s.user.mid) },  //  传递用户 mid
+                        onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
+                        onDownloadClick = onDownloadClick,
+                        onSettingsClick = onSettingsClick
+                    )
+                } else {
+                    MobileProfileContent(
+                        user = currentUiState.user,
+                        onLogout = {
+                            viewModel.logout()
+                            onLogoutSuccess()
+                        },
+                        onHistoryClick = onHistoryClick,
+                        onFavoriteClick = onFavoriteClick,
+                        onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                         onDownloadClick = onDownloadClick
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TabletProfileContent(
+    user: UserState,
+    onLogout: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onFollowingClick: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    AdaptiveSplitLayout(
+        modifier = Modifier.fillMaxSize(),
+        primaryRatio = 0.4f,
+        primaryContent = {
+            // Left Pane: User Info & Stats & VIP
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(CupertinoIcons.Default.Gearshape, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                
+                UserInfoSection(user, centered = true)
+                Spacer(modifier = Modifier.height(24.dp))
+                UserStatsSection(user, onFollowingClick)
+                Spacer(modifier = Modifier.height(24.dp))
+                VipBannerSection(user)
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        },
+        secondaryContent = {
+            // Right Pane: Services
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(24.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "我的服务",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    ServicesSection(onHistoryClick, onFavoriteClick, onDownloadClick)
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    Button(
+                        onClick = onLogout,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("退出登录")
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun MobileProfileContent(
+    user: UserState,
+    onLogout: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onFollowingClick: () -> Unit,
+    onDownloadClick: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        item { UserInfoSection(user) }
+        item { UserStatsSection(user, onFollowingClick) }
+        item { VipBannerSection(user) }
+        item { ServicesSection(onHistoryClick, onFavoriteClick, onDownloadClick) }
+        item {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
+                TextButton(onClick = onLogout, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    Text("退出登录")
                 }
             }
         }
@@ -274,41 +391,15 @@ fun GuestProfileContent(
 }
 
 @Composable
-fun UserProfileContent(
-    user: UserState,
-    onLogout: () -> Unit,
-    onHistoryClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onFollowingClick: () -> Unit = {},  //  关注列表点击
-    onDownloadClick: () -> Unit = {}    //  离线缓存点击
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 32.dp)
-    ) {
-        item { UserInfoSection(user) }
-        item { UserStatsSection(user, onFollowingClick) }
-        item { VipBannerSection(user) }
-        item { ServicesSection(onHistoryClick, onFavoriteClick, onDownloadClick) }
-        item {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
-                TextButton(onClick = onLogout, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                    Text("退出登录")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun UserInfoSection(user: UserState) {
+fun UserInfoSection(user: UserState, centered: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             //  修复：背景色
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (centered) Arrangement.Center else Arrangement.Start
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current).data(FormatUtils.fixImageUrl(user.face)).crossfade(true).placeholder(android.R.color.darker_gray).build(),
@@ -319,28 +410,40 @@ fun UserInfoSection(user: UserState) {
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop
         )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            //  修复：用户名颜色
-            Text(
-                text = user.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (user.isVip) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LevelTag(level = user.level)
-                Spacer(modifier = Modifier.width(8.dp))
-                if (user.isVip) {
-                    Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.dp)) {
-                        Text(user.vipLabel.ifEmpty { "大会员" }, fontSize = 10.sp, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                    }
-                } else {
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
-                        Text("正式会员", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                    }
-                }
+        if (!centered) {
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                UserInfoText(user)
+            }
+        }
+    }
+    if (centered) {
+         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            UserInfoText(user, centered = true)
+        }
+    }
+}
+
+@Composable
+fun UserInfoText(user: UserState, centered: Boolean = false) {
+    //  修复：用户名颜色
+    Text(
+        text = user.name,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = if (user.isVip) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        LevelTag(level = user.level)
+        Spacer(modifier = Modifier.width(8.dp))
+        if (user.isVip) {
+            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.dp)) {
+                Text(user.vipLabel.ifEmpty { "大会员" }, fontSize = 10.sp, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+        } else {
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
+                Text("正式会员", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
             }
         }
     }

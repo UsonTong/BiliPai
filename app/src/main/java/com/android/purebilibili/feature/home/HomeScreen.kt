@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.ExperimentalFoundationApi //  Added
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -240,8 +242,20 @@ fun HomeScreen(
         )
     }
     
-    //  📐 [大屏适配] 强制使用底栏，不使用侧边导航
-    val useSideNavigation = false // windowSizeClass.isExpandedScreen
+    
+    //  � [平板导航切换] 用户偏好设置
+    val tabletUseSidebar by SettingsManager.getTabletUseSidebar(context).collectAsState(initial = false)
+    
+    //  �📐 [大屏适配] 平板导航模式：根据用户偏好决定
+    // 仅在平板且用户选择了侧边栏时使用侧边导航
+    val useSideNavigation = windowSizeClass.isExpandedScreen && tabletUseSidebar
+    
+    //  📱 [切换导航模式] 处理函数
+    val onToggleNavigationMode: () -> Unit = {
+        coroutineScope.launch {
+            SettingsManager.setTabletUseSidebar(context, !tabletUseSidebar)
+        }
+    }
 
     //  [修复] 恢复状态栏样式：确保从视频详情页返回后状态栏正确
     // 当使用滑动动画时，Theme.kt 的 SideEffect 可能不会重新执行
@@ -642,7 +656,8 @@ fun HomeScreen(
                             isFloating = true,
                             labelMode = bottomBarLabelMode,
                             visibleItems = visibleBottomBarItems,
-                            itemColorIndices = bottomBarItemColors  //  [新增] 传入颜色配置
+                            itemColorIndices = bottomBarItemColors,  //  [新增] 传入颜色配置
+                            onToggleSidebar = if (windowSizeClass.isExpandedScreen) onToggleNavigationMode else null  // 📱 平板切换
                         )
                     }
                 } else {
@@ -657,7 +672,8 @@ fun HomeScreen(
                         isFloating = false,
                         labelMode = bottomBarLabelMode,
                         visibleItems = visibleBottomBarItems,
-                        itemColorIndices = bottomBarItemColors  //  [新增] 传入颜色配置
+                        itemColorIndices = bottomBarItemColors,  //  [新增] 传入颜色配置
+                        onToggleSidebar = if (windowSizeClass.isExpandedScreen) onToggleNavigationMode else null  // 📱 平板切换
                     )
                 }
             }
@@ -713,7 +729,8 @@ fun HomeScreen(
                             }
                         )
                 ) {
-                    items(8) { index ->
+                    // 📱 [平板适配] 根据列数动态生成骨架屏数量
+                    items(gridColumns * 4) { index ->
                         VideoCardSkeleton(index = index)
                     }
                 }
@@ -1026,8 +1043,20 @@ fun HomeScreen(
     }
     }
 
-    if (useSideNavigation) {
-        Row(modifier = Modifier.fillMaxSize()) {
+    // 📱 [平板适配] 导航模式切换动画
+    // 始终使用 Row 布局，通过动画控制侧边栏的显示/隐藏
+    Row(modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = useSideNavigation,
+            enter = slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(300, easing = LinearOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutHorizontally(
+                targetOffsetX = { -it },
+                animationSpec = tween(250, easing = FastOutLinearInEasing)
+            ) + fadeOut(animationSpec = tween(200))
+        ) {
             FrostedSideBar(
                 currentItem = currentNavItem,
                 onItemClick = handleNavItemClick,
@@ -1036,18 +1065,17 @@ fun HomeScreen(
                 },
                 hazeState = if (isBottomBarBlurEnabled) hazeState else null,
                 visibleItems = visibleBottomBarItems,
-                itemColorIndices = bottomBarItemColors
+                itemColorIndices = bottomBarItemColors,
+                onToggleSidebar = onToggleNavigationMode
             )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-            ) {
-                scaffoldContent()
-            }
         }
-    } else {
-        scaffoldContent()
+
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(1f)
+        ) {
+            scaffoldContent()
+        }
     }
 }
