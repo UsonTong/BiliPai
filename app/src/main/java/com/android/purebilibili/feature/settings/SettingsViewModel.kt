@@ -334,36 +334,61 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val packageName = context.packageName
             
             // alias 映射 - 必须与 AndroidManifest.xml 中声明的完全一致
+            // [修复] 键必须与 IconSettingsScreen.kt 中的 IconOption.key 一致
             val allAliases = listOf(
-                // 🎀 二次元少女系列 (新增)
+                // 默认系列
+                "default" to "${packageName}.MainActivityAliasYuki",  // 默认使用 Yuki 图标
+                "icon_blue" to "${packageName}.MainActivityAliasBlue",
+                "icon_neon" to "${packageName}.MainActivityAliasNeon",
+                "icon_retro" to "${packageName}.MainActivityAliasRetro",
+                "icon_3d" to "${packageName}.MainActivityAlias3D",
+                // 特色系列
+                "icon_anime" to "${packageName}.MainActivityAliasAnime",
+                "icon_flat" to "${packageName}.MainActivityAliasFlat",
+                "icon_telegram_blue" to "${packageName}.MainActivityAliasTelegramBlue",
+                "icon_telegram_green" to "${packageName}.MainActivityAliasGreen",
+                "icon_telegram_pink" to "${packageName}.MainActivityAliasPink",
+                "icon_telegram_purple" to "${packageName}.MainActivityAliasPurple",
+                "icon_telegram_dark" to "${packageName}.MainActivityAliasDark",
+                // 兼容旧键名 (向后兼容)
                 "Yuki" to "${packageName}.MainActivityAliasYuki",
                 "Anime" to "${packageName}.MainActivityAliasAnime",
                 "Tv" to "${packageName}.MainActivityAliasTv",
                 "Headphone" to "${packageName}.MainActivityAliasHeadphone",
-                // 经典系列
                 "3D" to "${packageName}.MainActivityAlias3D",
                 "Blue" to "${packageName}.MainActivityAliasBlue",
                 "Retro" to "${packageName}.MainActivityAliasRetro",
                 "Flat" to "${packageName}.MainActivityAliasFlat",
-                "Flat Material" to "${packageName}.MainActivityAliasFlatMaterial",
                 "Neon" to "${packageName}.MainActivityAliasNeon",
-                "Telegram Blue" to "${packageName}.MainActivityAliasTelegramBlue",
-                "Pink" to "${packageName}.MainActivityAliasPink",
-                "Purple" to "${packageName}.MainActivityAliasPurple",
-                "Green" to "${packageName}.MainActivityAliasGreen",
-                "Dark" to "${packageName}.MainActivityAliasDark"
+                "Telegram Blue" to "${packageName}.MainActivityAliasTelegramBlue"
             )
             
             // 找到需要启用的 alias
             val targetAlias = allAliases.find { it.first == iconKey }?.second
-                ?: "${packageName}.MainActivityAliasYuki" // 默认Yuki (比心少女)
+                ?: "${packageName}.MainActivityAlias3D" // 默认 3D 图标
             
-            //  [修复] 先启用目标 alias，再禁用其他 alias
-            // 关键：确保在任何时刻都有一个活动的入口点，避免系统卡死
+            // [修复] 获取所有唯一的 alias 名称（去重，因为向后兼容映射可能有重复）
+            val allUniqueAliases = allAliases.map { it.second }.distinct()
+            
+            android.util.Log.d("SettingsViewModel", "Switching icon to: $iconKey -> $targetAlias")
             
             try {
-                // 第一步：禁用所有非目标 alias（保持当前 alias 暂时启用，防止桌面无图标）
-                allAliases.filter { it.second != targetAlias }.forEach { (_, aliasFullName) ->
+                // 第一步：先启用目标 alias（确保始终有一个活动入口点）
+                // ⚠️ [修复] 在尝试杀死进程的操作前，再次延迟，确保 DataStore/SharedPrefs 完全写入磁盘
+                kotlinx.coroutines.delay(100)
+                
+                pm.setComponentEnabledSetting(
+                    android.content.ComponentName(packageName, targetAlias),
+                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    android.content.pm.PackageManager.DONT_KILL_APP
+                )
+                android.util.Log.d("SettingsViewModel", "Enabled alias: $targetAlias")
+                
+                // 第二步：短暂延迟，让启动器处理启用操作
+                kotlinx.coroutines.delay(300)
+                
+                // 第三步：禁用所有其他 alias
+                allUniqueAliases.filter { it != targetAlias }.forEach { aliasFullName ->
                     try {
                         pm.setComponentEnabledSetting(
                             android.content.ComponentName(packageName, aliasFullName),
@@ -374,16 +399,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         android.util.Log.w("SettingsViewModel", "Failed to disable alias: $aliasFullName", e)
                     }
                 }
-                
-                // 第二步：短暂延迟，让启动器处理禁用操作
-                kotlinx.coroutines.delay(200)
-                
-                // 第三步：启用目标 alias
-                pm.setComponentEnabledSetting(
-                    android.content.ComponentName(packageName, targetAlias),
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
-                )
+                android.util.Log.d("SettingsViewModel", "Icon switch completed: $iconKey")
             } catch (e: Exception) {
                 android.util.Log.e("SettingsViewModel", "Failed to switch app icon to $iconKey", e)
             }

@@ -71,21 +71,72 @@ fun AppNavigation(
     val cardTransitionEnabled by com.android.purebilibili.core.store.SettingsManager
         .getCardTransitionEnabled(context).collectAsState(initial = false)
 
+    // 🔒 [防抖] 全局导航防抖机制 - 防止快速点击导致页面重复加载
+    val lastNavigationTime = androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val canNavigate: () -> Boolean = {
+        val currentTime = System.currentTimeMillis()
+        val canNav = currentTime - lastNavigationTime.longValue > 300 // 300ms 防抖
+        if (canNav) lastNavigationTime.longValue = currentTime
+        canNav
+    }
+
     // 统一跳转逻辑
     fun navigateToVideo(bvid: String, cid: Long = 0L, coverUrl: String = "") {
+        // 🔒 防抖检查
+        if (!canNavigate()) return
+        
+        //  [修复] 设置导航标志，抑制小窗显示
+        miniPlayerManager?.isNavigatingToVideo = true
         //  如果有小窗在播放，先退出小窗模式
         //  [修复] 点击新视频时，立即关闭小窗不播放退出动画，避免闪烁
         miniPlayerManager?.exitMiniMode(animate = false)
         navController.navigate(VideoRoute.createRoute(bvid, cid, coverUrl))
     }
 
+    //  [修复] 通用单例跳转（防止重复打开相同页面）
+    fun navigateTo(route: String) {
+        if (!canNavigate()) return
+        // 如果当前已经在目标页面，则不进行跳转
+        if (navController.currentDestination?.route == route) return
+
+        navController.navigate(route) {
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     // 动画时长
     val animDuration = 350
 
+    // 🚀 [新手引导] 检查是否首次启动
+    // 如果是首次启动，则进入 OnboardingScreen，否则进入 HomeScreen
+    val welcomePrefs = androidx.compose.runtime.remember { context.getSharedPreferences("app_welcome", android.content.Context.MODE_PRIVATE) }
+    // 注意：这里仅读取初始状态用于设置 startDestination
+    // 后续状态更新由 OnboardingScreen 完成
+    val firstLaunchShown = welcomePrefs.getBoolean("first_launch_shown", false)
+    val startDestination = if (firstLaunchShown) ScreenRoutes.Home.route else ScreenRoutes.Onboarding.route
+
     NavHost(
         navController = navController,
-        startDestination = ScreenRoutes.Home.route
+        startDestination = startDestination
     ) {
+        // --- 0. [新增] 新手引导页 ---
+        composable(
+            route = ScreenRoutes.Onboarding.route,
+            exitTransition = { fadeOut(animationSpec = tween(400)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(400)) }
+        ) {
+            com.android.purebilibili.feature.onboarding.OnboardingScreen(
+                onFinish = {
+                    //  用户完成引导，写入标记
+                    welcomePrefs.edit().putBoolean("first_launch_shown", true).apply()
+                    //  跳转到首页，并清除引导页栈
+                    navController.navigate(ScreenRoutes.Home.route) {
+                         popUpTo(ScreenRoutes.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
         // --- 1. 首页 ---
         composable(
             route = ScreenRoutes.Home.route,
@@ -106,29 +157,30 @@ fun AppNavigation(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
-                    onSearchClick = { navController.navigate(ScreenRoutes.Search.route) },
-                    onAvatarClick = { navController.navigate(ScreenRoutes.Login.route) },
-                    onProfileClick = { navController.navigate(ScreenRoutes.Profile.route) },
-                    onSettingsClick = { navController.navigate(ScreenRoutes.Settings.route) },
-                    onDynamicClick = { navController.navigate(ScreenRoutes.Dynamic.route) },
-                    onHistoryClick = { navController.navigate(ScreenRoutes.History.route) },
-                    onPartitionClick = { navController.navigate(ScreenRoutes.Partition.route) },  //  分区点击
+                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                    onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
+                    onProfileClick = { navigateTo(ScreenRoutes.Profile.route) },
+                    onSettingsClick = { navigateTo(ScreenRoutes.Settings.route) },
+                    // 🔒 [防抖 + SingleTop] 底栏导航优化
+                    onDynamicClick = { navigateTo(ScreenRoutes.Dynamic.route) },
+                    onHistoryClick = { navigateTo(ScreenRoutes.History.route) },
+                    onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },  //  分区点击
                     onLiveClick = { roomId, title, uname ->
-                        navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                        if (canNavigate()) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
                     },
                     //  [修复] 番剧点击导航，接受类型参数
                     onBangumiClick = { initialType ->
-                        navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
+                        if (canNavigate()) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
                     },
                     //  分类点击：跳转到分类详情页面
                     onCategoryClick = { tid, name ->
-                        navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
+                        if (canNavigate()) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
                     },
                     //  [新增] 底栏扩展项目导航
-                    onFavoriteClick = { navController.navigate(ScreenRoutes.Favorite.route) },
-                    onLiveListClick = { navController.navigate(ScreenRoutes.LiveList.route) },
-                    onWatchLaterClick = { navController.navigate(ScreenRoutes.WatchLater.route) },
-                    onStoryClick = { navController.navigate(ScreenRoutes.Story.route) }  //  [新增] 竖屏短视频
+                    onFavoriteClick = { navigateTo(ScreenRoutes.Favorite.route) },
+                    onLiveListClick = { navigateTo(ScreenRoutes.LiveList.route) },
+                    onWatchLaterClick = { navigateTo(ScreenRoutes.WatchLater.route) },
+                    onStoryClick = { navigateTo(ScreenRoutes.Story.route) }  //  [新增] 竖屏短视频
                 )
             }
         }
@@ -217,6 +269,8 @@ fun AppNavigation(
             //  [修复] 使用 Activity 引用检测配置变化（如旋转）
             val activity = context as? android.app.Activity
             DisposableEffect(Unit) {
+                //  [修复] 重置导航标志，允许小窗在返回时显示
+                miniPlayerManager?.isNavigatingToVideo = false
                 onVideoDetailEnter()
                 onDispose {
                     onVideoDetailExit()
@@ -339,9 +393,10 @@ fun AppNavigation(
                             // 番剧: 导航到番剧播放页
                             if (historyItem.epid > 0 && historyItem.seasonId > 0) {
                                 navController.navigate(ScreenRoutes.BangumiPlayer.createRoute(historyItem.seasonId, historyItem.epid))
-                            } else if (historyItem.seasonId > 0) {
-                                // 有 seasonId 但没有 epid，先进详情页
-                                navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId))
+                            } else if (historyItem.seasonId > 0 || historyItem.epid > 0) {
+                                // 有 seasonId (可能是 oid) 或 epid，进详情页
+                                // 注意：即使 seasonId 可能是错误的 (AVID)，只要有 epid，新的详情页逻辑也能正确加载
+                                navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId, historyItem.epid))
                             } else {
                                 // 异常情况，尝试普通视频方式
                                 navigateToVideo(bvid, cid, "")
@@ -513,6 +568,7 @@ fun AppNavigation(
                 onPermissionClick = { navController.navigate(ScreenRoutes.PermissionSettings.route) },
                 onPluginsClick = { navController.navigate(ScreenRoutes.PluginsSettings.route) },
                 onNavigateToBottomBarSettings = { navController.navigate(ScreenRoutes.BottomBarSettings.route) },
+                onReplayOnboardingClick = { navController.navigate(ScreenRoutes.Onboarding.route) },
                 mainHazeState = mainHazeState //  传递全局 Haze 状态
             )
         }
@@ -696,14 +752,17 @@ fun AppNavigation(
         composable(
             route = ScreenRoutes.BangumiDetail.route,
             arguments = listOf(
-                navArgument("seasonId") { type = NavType.LongType }
+                navArgument("seasonId") { type = NavType.LongType },
+                navArgument("epId") { type = NavType.LongType; defaultValue = 0L }
             ),
             enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) { backStackEntry ->
             val seasonId = backStackEntry.arguments?.getLong("seasonId") ?: 0L
+            val epId = backStackEntry.arguments?.getLong("epId") ?: 0L
             com.android.purebilibili.feature.bangumi.BangumiDetailScreen(
                 seasonId = seasonId,
+                epId = epId,
                 onBack = { navController.popBackStack() },
                 onEpisodeClick = { episode ->
                     //  [修改] 跳转到番剧播放页

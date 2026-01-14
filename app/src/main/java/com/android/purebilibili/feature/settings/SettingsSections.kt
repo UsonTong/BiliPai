@@ -23,6 +23,7 @@ import io.github.alexzhirkevich.cupertino.CupertinoSwitchDefaults
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
+import com.android.purebilibili.core.ui.common.copyOnLongPress
 
 // ═══════════════════════════════════════════════════
 //  UI 组件 (Stateless Components)
@@ -114,7 +115,8 @@ fun SettingClickableItem(
     title: String,
     value: String? = null,
     onClick: (() -> Unit)? = null,
-    iconTint: Color = MaterialTheme.colorScheme.primary
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    enableCopy: Boolean = false
 ) {
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val iconCornerRadius = iOSCornerRadius.Small * cornerRadiusScale
@@ -163,7 +165,8 @@ fun SettingClickableItem(
                     style = MaterialTheme.typography.bodyMedium, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = if (enableCopy) Modifier.copyOnLongPress(value, title) else Modifier
                 )
             }
             if (onClick != null) {
@@ -194,7 +197,8 @@ fun FollowAuthorSection(
             title = "Telegram 频道",
             value = "@BiliPai",
             onClick = onTelegramClick,
-            iconTint = Color(0xFF0088CC)
+            iconTint = Color(0xFF0088CC),
+            enableCopy = true
         )
         Divider()
         SettingClickableItem(
@@ -202,7 +206,8 @@ fun FollowAuthorSection(
             title = "Twitter / X",
             value = "@YangY_0x00",
             onClick = onTwitterClick,
-            iconTint = Color(0xFF1DA1F2)
+            iconTint = Color(0xFF1DA1F2),
+            enableCopy = true
         )
     }
 }
@@ -363,7 +368,8 @@ fun AboutSection(
             title = "开源主页",
             value = "GitHub",
             onClick = onGithubClick,
-            iconTint = iOSPurple
+            iconTint = iOSPurple,
+            enableCopy = true
         )
         Divider()
         SettingClickableItem(
@@ -371,7 +377,8 @@ fun AboutSection(
             title = "版本",
             value = "v$versionName",
             onClick = onVersionClick,
-            iconTint = iOSTeal
+            iconTint = iOSTeal,
+            enableCopy = true
         )
         Divider()
         SettingClickableItem(

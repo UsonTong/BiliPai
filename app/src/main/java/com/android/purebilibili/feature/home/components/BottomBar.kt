@@ -118,6 +118,19 @@ fun FrostedBottomBar(
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()  //  触觉反馈
     
+    // 🔒 [防抖] 防止快速点击导致页面重复加载
+    var lastClickTime by remember { mutableStateOf(0L) }
+    val debounceClick: (BottomNavItem, () -> Unit) -> Unit = remember {
+        { item, action ->
+            val currentTime = System.currentTimeMillis()
+            // 300ms 防抖 + 已经是当前项时跳过
+            if (currentTime - lastClickTime > 300 && item != currentItem) {
+                lastClickTime = currentTime
+                action()
+            }
+        }
+    }
+    
     // 📐 [平板适配] 检测屏幕尺寸
     val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
     val isTablet = windowSizeClass.isTablet
@@ -439,14 +452,17 @@ fun FrostedBottomBar(
                                     Modifier.pointerInput(Unit) {
                                         detectTapGestures(
                                             onTap = {
-                                                isPending = true  //  立即变色
-                                                haptic(HapticType.LIGHT)
-                                                //  颜色切换完成后再播放晃动动画，然后切换页面
-                                                kotlinx.coroutines.MainScope().launch {
-                                                    kotlinx.coroutines.delay(100)  // 等待颜色动画
-                                                    wobbleAngle = 15f  //  触发晃动
-                                                    kotlinx.coroutines.delay(150)  // 等待晃动动画
-                                                    onItemClick(item)
+                                                // 🔒 [防抖] 使用防抖包装避免快速点击重复导航
+                                                debounceClick(item) {
+                                                    isPending = true  //  立即变色
+                                                    haptic(HapticType.LIGHT)
+                                                    //  颜色切换完成后再播放晃动动画，然后切换页面
+                                                    kotlinx.coroutines.MainScope().launch {
+                                                        kotlinx.coroutines.delay(100)  // 等待颜色动画
+                                                        wobbleAngle = 15f  //  触发晃动
+                                                        kotlinx.coroutines.delay(150)  // 等待晃动动画
+                                                        onItemClick(item)
+                                                    }
                                                 }
                                             },
                                             onDoubleTap = {
@@ -461,14 +477,17 @@ fun FrostedBottomBar(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
                                     ) { 
-                                        isPending = true  //  立即变色
-                                        haptic(HapticType.LIGHT)
-                                        //  颜色切换完成后再播放晃动动画，然后切换页面
-                                        kotlinx.coroutines.MainScope().launch {
-                                            kotlinx.coroutines.delay(100)  // 等待颜色动画
-                                            wobbleAngle = 15f  //  触发晃动
-                                            kotlinx.coroutines.delay(150)  // 等待晃动动画
-                                            onItemClick(item)
+                                        // 🔒 [防抖] 使用防抖包装避免快速点击重复导航
+                                        debounceClick(item) {
+                                            isPending = true  //  立即变色
+                                            haptic(HapticType.LIGHT)
+                                            //  颜色切换完成后再播放晃动动画，然后切换页面
+                                            kotlinx.coroutines.MainScope().launch {
+                                                kotlinx.coroutines.delay(100)  // 等待颜色动画
+                                                wobbleAngle = 15f  //  触发晃动
+                                                kotlinx.coroutines.delay(150)  // 等待晃动动画
+                                                onItemClick(item)
+                                            }
                                         }
                                     }
                                 }

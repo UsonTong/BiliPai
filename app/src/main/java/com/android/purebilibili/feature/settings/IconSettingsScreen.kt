@@ -55,25 +55,30 @@ data class IconGroup(val title: String, val icons: List<IconOption>)
 fun getIconGroups(): List<IconGroup> {
     return listOf(
         IconGroup(
-            title = "默认",
+            title = "精选",
             icons = listOf(
-                IconOption("default", "默认", "默认图标", R.mipmap.ic_launcher_round),
-                IconOption("icon_blue", "蓝色", "蓝色图标", R.mipmap.ic_launcher_blue_round),
-                IconOption("icon_neon", "霓虹", "霓虹图标", R.mipmap.ic_launcher_neon_round),
-                IconOption("icon_retro", "复古", "复古图标", R.mipmap.ic_launcher_retro_round),
-                IconOption("icon_3d", "3D", "3D图标", R.mipmap.ic_launcher_3d_round),
+                IconOption("icon_3d", "3D立体", "全新3D设计", R.mipmap.ic_launcher_3d_foreground),
+                IconOption("Yuki", "比心少女", "经典二次元", R.mipmap.ic_launcher_round),
+                IconOption("icon_anime", "蓝发电视", "bilibili风格", R.mipmap.ic_launcher_anime)
             )
         ),
         IconGroup(
-            title = "特色",
+            title = "经典设计",
             icons = listOf(
-                IconOption("icon_anime", "二次元", "二次元图标", R.mipmap.ic_launcher_anime),
-                IconOption("icon_flat", "扁平", "扁平图标", R.mipmap.ic_launcher_flat_round),
-                IconOption("icon_telegram_blue", "Telegram 蓝", "Telegram 风格", R.mipmap.ic_launcher_telegram_blue_round),
-                IconOption("icon_telegram_green", "Telegram 绿", "Telegram 风格", R.mipmap.ic_launcher_telegram_green_round),
-                IconOption("icon_telegram_pink", "Telegram 粉", "Telegram 风格", R.mipmap.ic_launcher_telegram_pink_round),
-                IconOption("icon_telegram_purple", "Telegram 紫", "Telegram 风格", R.mipmap.ic_launcher_telegram_purple_round),
-                IconOption("icon_telegram_dark", "Telegram 黑", "Telegram 风格", R.mipmap.ic_launcher_telegram_dark_round),
+                IconOption("icon_blue", "经典蓝", "纯净蓝色", R.mipmap.ic_launcher_blue_round),
+                IconOption("icon_retro", "复古", "怀旧电视", R.mipmap.ic_launcher_retro_round),
+                IconOption("icon_neon", "霓虹", "赛博朋克", R.mipmap.ic_launcher_neon_round),
+                IconOption("icon_flat", "扁平", "现代极简", R.mipmap.ic_launcher_flat_round),
+            )
+        ),
+        IconGroup(
+            title = "Telegram 风格",
+            icons = listOf(
+                IconOption("icon_telegram_blue", "纸飞机蓝", "Telegram 蓝", R.mipmap.ic_launcher_telegram_blue_round),
+                IconOption("icon_telegram_green", "薄荷绿", "Telegram 绿", R.mipmap.ic_launcher_telegram_green_round),
+                IconOption("icon_telegram_pink", "樱花粉", "Telegram 粉", R.mipmap.ic_launcher_telegram_pink_round),
+                IconOption("icon_telegram_purple", "香芋紫", "Telegram 紫", R.mipmap.ic_launcher_telegram_purple_round),
+                IconOption("icon_telegram_dark", "暗夜蓝", "Telegram 黑", R.mipmap.ic_launcher_telegram_dark_round),
             )
         )
     )

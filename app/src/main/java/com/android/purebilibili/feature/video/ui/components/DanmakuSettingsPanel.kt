@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput  // [#6修复] 手势拦截
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -69,7 +70,16 @@ fun DanmakuSettingsPanel(
             modifier = Modifier
                 .widthIn(min = 300.dp, max = 380.dp)
                 .heightIn(max = 500.dp)  // 限制最大高度
-                .clickable(enabled = false) {},
+                // [#6修复] 完全消费触摸事件，防止手势穿透到视频进度条
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            // 消费所有触摸事件
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                },
             color = PanelBackground,
             shape = RoundedCornerShape(20.dp),
             tonalElevation = 16.dp,
@@ -128,11 +138,11 @@ fun DanmakuSettingsPanel(
                             onValueChange = onOpacityChange
                         )
                         
-                        // Font scale slider
+                        // Font scale slider - [问题9修复] 支持更小的字体 (30%-200%)
                         DanmakuSliderItem(
                             label = "字体大小",
                             value = fontScale,
-                            valueRange = 0.5f..2f,
+                            valueRange = 0.3f..2f,
                             displayValue = { "${(it * 100).toInt()}%" },
                             onValueChange = onFontScaleChange
                         )

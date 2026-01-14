@@ -398,6 +398,7 @@ class DanmakuManager private constructor(
             }
             
             //  [新增] 视频倍速变化时同步弹幕速度
+            //  [问题10修复] 优化长按加速视频时的弹幕同步
             override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
                 val videoSpeed = playbackParameters.speed
                 Log.w(TAG, "⏩ onPlaybackParametersChanged: videoSpeed=$videoSpeed, previous=$currentVideoSpeed")
@@ -405,6 +406,7 @@ class DanmakuManager private constructor(
                 //  同步弹幕速度：视频 2x 时，弹幕也需要 2 倍速滚动
                 // 通过减少 moveTime 来加快弹幕滚动
                 if (videoSpeed != currentVideoSpeed) {
+                    val previousSpeed = currentVideoSpeed
                     currentVideoSpeed = videoSpeed
                     
                     controller?.let { ctrl ->
@@ -412,6 +414,18 @@ class DanmakuManager private constructor(
                         // 视频 2x 倍速 = 弹幕滚动时间减半
                         val adjustedMoveTime = (originalMoveTime / videoSpeed).toLong()
                         ctrl.config.scroll.moveTime = adjustedMoveTime
+                        
+                        // [问题10修复] 当从加速恢复到正常速度时，重新同步弹幕位置
+                        // 这防止长按快进后弹幕位置不同步
+                        if (previousSpeed > 1.0f && videoSpeed == 1.0f) {
+                            val currentPos = exoPlayer.currentPosition
+                            Log.w(TAG, "⏩ Speed returned to normal, resyncing danmaku at ${currentPos}ms")
+                            cachedDanmakuList?.let { list ->
+                                ctrl.setData(list, 0)
+                                ctrl.start(currentPos)
+                            }
+                        }
+                        
                         ctrl.invalidateView()
                         Log.w(TAG, "⏩ Danmaku moveTime: original=$originalMoveTime, adjusted=$adjustedMoveTime (video=${videoSpeed}x)")
                     }

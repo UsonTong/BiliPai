@@ -728,7 +728,7 @@ fun HomeScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(gridColumns),
                     contentPadding = PaddingValues(
-                        top = listTopPadding,  //  [优化] 确保卡片圆角完全显示
+                        top = 0.dp,  //  [修改] Header 作为 item，顶部由 Header 自身处理
                         //  [修复] 动态底部 padding
                         bottom = when {
                             useSideNavigation -> navBarHeight + 8.dp
@@ -751,35 +751,88 @@ fun HomeScreen(
                             }
                         )
                 ) {
+                    // [新增] 骨架屏状态下的 Header
+                    item(span = { GridItemSpan(gridColumns) }) {
+                        iOSHomeHeader(
+                            scrollOffset = 0f,
+                            user = state.user,
+                            onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
+                            onSettingsClick = onSettingsClick,
+                            onSearchClick = onSearchClick,
+                            categoryIndex = displayedTabIndex,
+                            onCategorySelected = { index ->
+                                viewModel.updateDisplayedTabIndex(index)
+                                val category = HomeCategory.entries[index]
+                                when (category) {
+                                    HomeCategory.ANIME -> onBangumiClick(1)
+                                    HomeCategory.MOVIE -> onBangumiClick(2)
+                                    else -> viewModel.switchCategory(category)
+                                }
+                            },
+                            onPartitionClick = onPartitionClick,
+                            isScrollingUp = true,
+                            hazeState = if (isHeaderBlurEnabled) hazeState else null,
+                            isRefreshing = isRefreshing,
+                            pullProgress = pullRefreshState.distanceFraction
+                        )
+                    }
+
                     // 📱 [平板适配] 根据列数动态生成骨架屏数量
                     items(gridColumns * 4) { index ->
                         VideoCardSkeleton(index = index)
                     }
                 }
-            //  [修复] 根据分类类型判断是否有内容
             } else if (state.error != null && 
                 ((state.currentCategory == HomeCategory.LIVE && state.liveRooms.isEmpty()) ||
                  (state.currentCategory != HomeCategory.LIVE && state.videos.isEmpty()))) {
-                ModernErrorState(
-                    message = state.error ?: "未知错误",
-                    onRetry = { viewModel.refresh() },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (useSideNavigation) {
-                                Modifier.responsiveContentWidth(maxWidth = 1000.dp)
-                            } else {
-                                Modifier
-                            }
+                
+                // [修改] 错误状态改为 Grid 布局，包含 Header
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(gridColumns),
+                    contentPadding = PaddingValues(top = 0.dp), // Header 自带 Padding
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // 1. Header Item
+                    item(span = { GridItemSpan(gridColumns) }) {
+                        iOSHomeHeader(
+                            scrollOffset = 0f,
+                            user = state.user,
+                            onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
+                            onSettingsClick = onSettingsClick,
+                            onSearchClick = onSearchClick,
+                            categoryIndex = displayedTabIndex,
+                            onCategorySelected = { index ->
+                                viewModel.updateDisplayedTabIndex(index)
+                                val category = HomeCategory.entries[index]
+                                when (category) {
+                                    HomeCategory.ANIME -> onBangumiClick(1)
+                                    HomeCategory.MOVIE -> onBangumiClick(2)
+                                    else -> viewModel.switchCategory(category)
+                                }
+                            },
+                            onPartitionClick = onPartitionClick,
+                            isScrollingUp = true,
+                            hazeState = if (isHeaderBlurEnabled) hazeState else null,
+                            isRefreshing = isRefreshing,
+                            pullProgress = pullRefreshState.distanceFraction
                         )
-                        //  [修复] 动态底部 padding
-                        .padding(bottom = when {
-                            useSideNavigation -> navBarHeight + 8.dp
-                            isBottomBarFloating -> 100.dp
-                            bottomBarVisible -> 64.dp + navBarHeight + 20.dp
-                            else -> navBarHeight + 8.dp
-                        })
-                )
+                    }
+
+                    // 2. Error Message Item
+                    item(span = { GridItemSpan(gridColumns) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(500.dp), // 给定高度确保居中
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ModernErrorState(
+                                message = state.error ?: "未知错误",
+                                onRetry = { viewModel.refresh() }
+                            )
+                        }
+                    }
+                }
             } else {
                 //  [性能优化] 移除 AnimatedContent 包裹，减少分类切换时的重组开销
                 // 原：AnimatedContent 对整个 Grid 做动画，成本很高
@@ -991,6 +1044,7 @@ fun HomeScreen(
                                                 isFollowing = video.owner.mid in state.followingMids,  //  判断是否已关注
                                                 animationEnabled = cardAnimationEnabled,    //  进场动画开关
                                                 transitionEnabled = cardTransitionEnabled,  //  过渡动画开关
+                                                isDataSaverActive = isDataSaverActive,      // 🚀 [性能优化] 从列表级别传入
                                                 onDismiss = { viewModel.startVideoDissolve(video.bvid) },
                                                 onClick = { bvid, cid -> wrappedOnVideoClick(bvid, cid, video.pic) }
                                             )
@@ -1030,34 +1084,43 @@ fun HomeScreen(
 
             //  iOS 风格 Header (带滚动隐藏/显示动画)
             //  [修复] Header 在 haze Box 外部，但在同一个父 Box 内，可以正确模糊
-            iOSHomeHeader(
-                scrollOffset = scrollOffset,
-                user = state.user,
-                onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
-                onSettingsClick = onSettingsClick,
-                onSearchClick = onSearchClick,
-                categoryIndex = displayedTabIndex,
-                onCategorySelected = { index ->
-                    viewModel.updateDisplayedTabIndex(index)
-                    val category = HomeCategory.entries[index]
-                    when (category) {
-                        HomeCategory.ANIME -> onBangumiClick(1)
-                        HomeCategory.MOVIE -> onBangumiClick(2)
-                        // All others (Game, Knowledge, Tech, etc.) are handled by state switch
-                        else -> viewModel.switchCategory(category)
-                    }
-                },
-                onPartitionClick = onPartitionClick,
-                isScrollingUp = isScrollingUp,
-                hazeState = if (isHeaderBlurEnabled) hazeState else null,
-                onStatusBarDoubleTap = {
-                    coroutineScope.launch {
-                        gridState.animateScrollToItem(0)
-                    }
-                },
-                isRefreshing = isRefreshing,
-                pullProgress = pullRefreshState.distanceFraction
-            )
+            //  [逻辑优化] 仅在非 Loading 且无 Error 时显示 overlay header -> 改为：不在骨架屏状态且不在错误状态时显示
+            //  这样 LoadMore (isLoading=true 但 videosNotEmpty) 时也能显示 Header
+            val isSkeletonState = state.isLoading && state.videos.isEmpty() && state.liveRooms.isEmpty()
+            val isErrorState = state.error != null && 
+                ((state.currentCategory == HomeCategory.LIVE && state.liveRooms.isEmpty()) ||
+                 (state.currentCategory != HomeCategory.LIVE && state.videos.isEmpty()))
+
+            if (!isSkeletonState && !isErrorState) {
+                iOSHomeHeader(
+                    scrollOffset = scrollOffset,
+                    user = state.user,
+                    onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
+                    onSettingsClick = onSettingsClick,
+                    onSearchClick = onSearchClick,
+                    categoryIndex = displayedTabIndex,
+                    onCategorySelected = { index ->
+                        viewModel.updateDisplayedTabIndex(index)
+                        val category = HomeCategory.entries[index]
+                        when (category) {
+                            HomeCategory.ANIME -> onBangumiClick(1)
+                            HomeCategory.MOVIE -> onBangumiClick(2)
+                            // All others (Game, Knowledge, Tech, etc.) are handled by state switch
+                            else -> viewModel.switchCategory(category)
+                        }
+                    },
+                    onPartitionClick = onPartitionClick,
+                    isScrollingUp = isScrollingUp,
+                    hazeState = if (isHeaderBlurEnabled) hazeState else null,
+                    onStatusBarDoubleTap = {
+                        coroutineScope.launch {
+                            gridState.animateScrollToItem(0)
+                        }
+                    },
+                    isRefreshing = isRefreshing,
+                    pullProgress = pullRefreshState.distanceFraction
+                )
+            }
         }  //  关闭父 Box
     }
     }

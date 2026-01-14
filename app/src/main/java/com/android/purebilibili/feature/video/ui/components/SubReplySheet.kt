@@ -34,7 +34,8 @@ fun SubReplySheet(
     emoteMap: Map<String, String>,
     onDismiss: () -> Unit,
     onLoadMore: () -> Unit,
-    onTimestampClick: ((Long) -> Unit)? = null  //  [新增] 时间戳点击跳转
+    onTimestampClick: ((Long) -> Unit)? = null,  //  [新增] 时间戳点击跳转
+    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null  // [问题14修复] 图片预览回调
 ) {
     //  必须用 Box 包裹，否则 align 报错
     Box(modifier = Modifier.fillMaxSize()) {
@@ -89,7 +90,8 @@ fun SubReplySheet(
                         emoteMap = emoteMap,
                         onLoadMore = onLoadMore,
                         onTimestampClick = onTimestampClick,
-                        upMid = state.upMid  // [修复] 使用正确的 UP 主 mid
+                        upMid = state.upMid,  // [修复] 使用正确的 UP 主 mid
+                        onImagePreview = onImagePreview  // [问题14修复] 传递图片预览回调
                     )
                 }
             }
@@ -106,7 +108,8 @@ fun SubReplyList(
     emoteMap: Map<String, String>,
     onLoadMore: () -> Unit,
     onTimestampClick: ((Long) -> Unit)? = null,
-    upMid: Long = 0  //  UP主 mid 用于 UP 标签
+    upMid: Long = 0,  //  UP主 mid 用于 UP 标签
+    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null  // [问题14修复] 图片预览回调
 ) {
     val listState = rememberLazyListState()
     val shouldLoadMore by remember {
@@ -142,6 +145,7 @@ fun SubReplyList(
                     onClick = {}, 
                     onSubClick = {},
                     onTimestampClick = onTimestampClick,
+                    onImagePreview = onImagePreview,  // [问题14修复] 传递图片预览回调
                     hideSubPreview = true  // [修复] 隐藏楼中楼预览，避免重复显示
                 )
                 HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -153,7 +157,8 @@ fun SubReplyList(
                     emoteMap = emoteMap, 
                     onClick = {}, 
                     onSubClick = {},
-                    onTimestampClick = onTimestampClick
+                    onTimestampClick = onTimestampClick,
+                    onImagePreview = onImagePreview  // [问题14修复] 传递图片预览回调
                 )
             }
             item {

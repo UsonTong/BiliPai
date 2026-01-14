@@ -274,21 +274,27 @@ object SettingsManager {
 
     //  [新增] --- 应用图标 ---
     fun getAppIcon(context: Context): Flow<String> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_APP_ICON] ?: "Yuki" }
+        .map { preferences -> preferences[KEY_APP_ICON] ?: "icon_3d" }
 
     suspend fun setAppIcon(context: Context, iconKey: String) {
+        // 1. Write to DataStore (suspends until persisted)
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_APP_ICON] = iconKey
         }
-        //  同步到 SharedPreferences，供 Application 同步读取
-        context.getSharedPreferences("app_icon_cache", Context.MODE_PRIVATE)
-            .edit().putString("current_icon", iconKey).apply()
+        
+        // 2. Write to SharedPreferences synchronously using commit()
+        // This is critical because changing the app icon (activity-alias) often kills the process immediately.
+        // apply() is asynchronous and might not finish before the process dies.
+        val success = context.getSharedPreferences("app_icon_cache", Context.MODE_PRIVATE)
+            .edit().putString("current_icon", iconKey).commit()
+            
+        com.android.purebilibili.core.util.Logger.d("SettingsManager", "App icon saved: $iconKey, persisted to prefs: $success")
     }
     
     //  同步读取当前图标设置（用于 Application 启动时同步）
     fun getAppIconSync(context: Context): String {
         return context.getSharedPreferences("app_icon_cache", Context.MODE_PRIVATE)
-            .getString("current_icon", "Yuki") ?: "Yuki"
+            .getString("current_icon", "icon_3d") ?: "icon_3d"
     }
 
     //  [新增] --- 底部栏样式 ---
@@ -1032,6 +1038,68 @@ object SettingsManager {
     suspend fun setTabletUseSidebar(context: Context, useSidebar: Boolean) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_TABLET_NAVIGATION_MODE] = useSidebar 
+        }
+    }
+    
+    // ========== [问题12] 视频操作按钮可见性 ==========
+    
+    private val KEY_HIDE_TRIPLE_BUTTON = booleanPreferencesKey("hide_triple_button")
+    private val KEY_HIDE_CACHE_BUTTON = booleanPreferencesKey("hide_cache_button")
+    
+    /**
+     *  隐藏三连按钮开关
+     * - false: 显示（默认）
+     * - true: 隐藏
+     */
+    fun getHideTripleButton(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HIDE_TRIPLE_BUTTON] ?: false }
+
+    suspend fun setHideTripleButton(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_HIDE_TRIPLE_BUTTON] = value 
+        }
+    }
+    
+    /**
+     *  隐藏缓存按钮开关
+     * - false: 显示（默认）
+     * - true: 隐藏
+     */
+    fun getHideCacheButton(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HIDE_CACHE_BUTTON] ?: false }
+
+    suspend fun setHideCacheButton(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_HIDE_CACHE_BUTTON] = value 
+        }
+    }
+    
+    // ========== [问题3] 动态页布局方向 ==========
+    
+    private val KEY_DYNAMIC_PAGE_LAYOUT_DIRECTION = intPreferencesKey("dynamic_page_layout_direction")
+    
+    /**
+     *  动态页布局方向
+     * - 0: 左侧（默认，适合左撇子）
+     * - 1: 右侧（适合右撇子）
+     */
+    enum class DynamicLayoutDirection(val value: Int, val label: String) {
+        LEFT(0, "左侧"),
+        RIGHT(1, "右侧");
+        
+        companion object {
+            fun fromValue(value: Int): DynamicLayoutDirection = entries.find { it.value == value } ?: LEFT
+        }
+    }
+    
+    fun getDynamicLayoutDirection(context: Context): Flow<DynamicLayoutDirection> = context.settingsDataStore.data
+        .map { preferences -> 
+            DynamicLayoutDirection.fromValue(preferences[KEY_DYNAMIC_PAGE_LAYOUT_DIRECTION] ?: 0)
+        }
+
+    suspend fun setDynamicLayoutDirection(context: Context, direction: DynamicLayoutDirection) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_DYNAMIC_PAGE_LAYOUT_DIRECTION] = direction.value 
         }
     }
 }

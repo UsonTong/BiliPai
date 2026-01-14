@@ -46,6 +46,7 @@ import com.android.purebilibili.core.util.responsiveContentWidth
 @Composable
 fun BangumiDetailScreen(
     seasonId: Long,
+    epId: Long = 0,
     onBack: () -> Unit,
     onEpisodeClick: (BangumiEpisode) -> Unit,  // 点击剧集播放
     onSeasonClick: (Long) -> Unit = {},        //  点击切换季度
@@ -54,8 +55,8 @@ fun BangumiDetailScreen(
     val detailState by viewModel.detailState.collectAsState()
     
     // 加载详情
-    LaunchedEffect(seasonId) {
-        viewModel.loadSeasonDetail(seasonId)
+    LaunchedEffect(seasonId, epId) {
+        viewModel.loadSeasonDetail(seasonId, epId)
     }
     
     Scaffold(

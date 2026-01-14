@@ -141,36 +141,39 @@ fun BottomControlBar(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.weight(1f)
             ) {
-                // Speed button
-                Surface(
-                    onClick = onSpeedClick,
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = if (currentSpeed == 1.0f) "倍速" else "${currentSpeed}x",
-                        color = if (currentSpeed != 1.0f) MaterialTheme.colorScheme.primary else Color.White,
-                        fontSize = 10.sp,  //  缩小字体
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)  //  缩小 padding
-                    )
-                }
-                
-                Spacer(modifier = Modifier.width(3.dp))  //  缩小间距
-                
-                //  Aspect Ratio button
-                Surface(
-                    onClick = onRatioClick,
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = currentRatio.displayName,
-                        color = if (currentRatio != VideoAspectRatio.FIT) MaterialTheme.colorScheme.primary else Color.White,
-                        fontSize = 10.sp,  //  缩小字体
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)  //  缩小 padding
-                    )
+                // [问题13修复] 倍速和比例按钮仅在全屏时显示
+                if (isFullscreen) {
+                    // Speed button
+                    Surface(
+                        onClick = onSpeedClick,
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = if (currentSpeed == 1.0f) "倍速" else "${currentSpeed}x",
+                            color = if (currentSpeed != 1.0f) MaterialTheme.colorScheme.primary else Color.White,
+                            fontSize = 10.sp,  //  缩小字体
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)  //  缩小 padding
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(3.dp))  //  缩小间距
+                    
+                    //  Aspect Ratio button
+                    Surface(
+                        onClick = onRatioClick,
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = currentRatio.displayName,
+                            color = if (currentRatio != VideoAspectRatio.FIT) MaterialTheme.colorScheme.primary else Color.White,
+                            fontSize = 10.sp,  //  缩小字体
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)  //  缩小 padding
+                        )
+                    }
                 }
                 
                 //  [新增] 竖屏模式弹幕开关和清晰度

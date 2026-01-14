@@ -75,9 +75,9 @@ sealed class ScreenRoutes(val route: String) {
         }
     }
     
-    object BangumiDetail : ScreenRoutes("bangumi/{seasonId}") {
-        fun createRoute(seasonId: Long): String {
-            return "bangumi/$seasonId"
+    object BangumiDetail : ScreenRoutes("bangumi/{seasonId}?epId={epId}") {
+        fun createRoute(seasonId: Long, epId: Long = 0): String {
+            return "bangumi/$seasonId?epId=$epId"
         }
     }
     
@@ -97,4 +97,7 @@ sealed class ScreenRoutes(val route: String) {
             return "category/$tid?name=${android.net.Uri.encode(name)}"
         }
     }
+
+    // [新增] 新手引导页面
+    object Onboarding : ScreenRoutes("onboarding")
 }

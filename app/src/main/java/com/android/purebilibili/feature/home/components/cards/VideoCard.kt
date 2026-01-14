@@ -62,6 +62,7 @@ fun ElegantVideoCard(
     animationEnabled: Boolean = true,   //  卡片进场动画开关
     transitionEnabled: Boolean = false, //  卡片过渡动画开关
     showPublishTime: Boolean = false,   //  是否显示发布时间（搜索结果用）
+    isDataSaverActive: Boolean = false, // 🚀 [性能优化] 从父级传入，避免每个卡片重复计算
     onDismiss: (() -> Unit)? = null,    //  [新增] 删除/过滤回调（长按触发）
     onClick: (String, Long) -> Unit
 ) {
@@ -175,11 +176,7 @@ fun ElegantVideoCard(
                 .clip(RoundedCornerShape(cardCornerRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            // 📉 [省流量] 根据省流量模式动态调整图片尺寸
-            val context = LocalContext.current
-            val isDataSaverActive = remember {
-                com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
-            }
+            // 🚀 [性能优化] 使用从父级传入的 isDataSaverActive，避免每个卡片重复计算
             val imageWidth = if (isDataSaverActive) 240 else 360
             val imageHeight = if (isDataSaverActive) 150 else 225
             

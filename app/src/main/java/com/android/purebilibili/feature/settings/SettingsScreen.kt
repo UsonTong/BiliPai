@@ -29,7 +29,7 @@ import com.android.purebilibili.core.util.EasterEggs
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.LogCollector
 import com.android.purebilibili.core.plugin.PluginManager
-import com.android.purebilibili.feature.onboarding.OnboardingBottomSheet
+
 import dev.chrisbanes.haze.haze
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -49,6 +49,7 @@ fun SettingsScreen(
     onPermissionClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
     onNavigateToBottomBarSettings: () -> Unit = {},
+    onReplayOnboardingClick: () -> Unit = {},
     mainHazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val context = LocalContext.current
@@ -70,7 +71,6 @@ fun SettingsScreen(
     var cacheProgress by remember { mutableStateOf<CacheClearProgress?>(null) }
     var versionClickCount by remember { mutableIntStateOf(0) }
     var showEasterEggDialog by remember { mutableStateOf(false) }
-    var showOnboardingReplay by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
     
     // Haze State for this screen
@@ -129,7 +129,6 @@ fun SettingsScreen(
     val onTelegramClick: () -> Unit = { uriHandler.openUri("https://t.me/BiliPai") }
     val onTwitterClick: () -> Unit = { uriHandler.openUri("https://x.com/YangY_0x00") }
     val onGithubClick: () -> Unit = { uriHandler.openUri(GITHUB_URL) }
-    val onReplayOnboardingAction: () -> Unit = { showOnboardingReplay = true }
 
     // Effects
     LaunchedEffect(showCacheAnimation) {
@@ -236,7 +235,7 @@ fun SettingsScreen(
                 onLicenseClick = onOpenSourceLicensesClick,
                 onGithubClick = onGithubClick,
                 onVersionClick = onVersionClickAction,
-                onReplayOnboardingClick = onReplayOnboardingAction,
+                onReplayOnboardingClick = onReplayOnboardingClick,
                 onTelegramClick = onTelegramClick,
                 onTwitterClick = onTwitterClick,
                 onDownloadPathClick = onDownloadPathAction,
@@ -266,7 +265,7 @@ fun SettingsScreen(
                 onLicenseClick = onOpenSourceLicensesClick,
                 onGithubClick = onGithubClick,
                 onVersionClick = onVersionClickAction,
-                onReplayOnboardingClick = onReplayOnboardingAction,
+                onReplayOnboardingClick = onReplayOnboardingClick,
                 onTelegramClick = onTelegramClick,
                 onTwitterClick = onTwitterClick,
                 onDownloadPathClick = onDownloadPathAction,
@@ -287,11 +286,7 @@ fun SettingsScreen(
         }
         
         // Onboarding Bottom Sheet (Shared)
-        OnboardingBottomSheet(
-            visible = showOnboardingReplay,
-            onDismiss = { showOnboardingReplay = false },
-            mainHazeState = settingsHazeState
-        )
+
     }
 }
 

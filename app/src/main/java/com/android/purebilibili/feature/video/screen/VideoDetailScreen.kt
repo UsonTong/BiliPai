@@ -13,6 +13,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
@@ -428,6 +430,20 @@ fun VideoDetailScreen(
     BackHandler(enabled = isPortraitFullscreen) {
         playerState.setPortraitFullscreen(false)
     }
+    
+    // 📱 [新增] 拦截系统返回键：手机横屏进入了平板分栏模式，应切换回竖屏而非退出
+    val isPhoneInLandscapeSplitView = useTabletLayout && 
+        configuration.smallestScreenWidthDp < 600 && 
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    
+    BackHandler(enabled = isPhoneInLandscapeSplitView && !isFullscreenMode && !isPortraitFullscreen) {
+        com.android.purebilibili.core.util.Logger.d(
+            "VideoDetailScreen", 
+            "📱 System back pressed in phone landscape split-view, rotating to PORTRAIT"
+        )
+        val activity = context.findActivity()
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    }
 
     // 沉浸式状态栏控制
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -546,7 +562,35 @@ fun VideoDetailScreen(
                         sleepTimerMinutes = sleepTimerMinutes,
                         viewPoints = viewPoints,
                         bvid = bvid,
-                        onBack = handleBack,
+                        onBack = {
+                            // 📱 手机误入平板模式（如横屏宽度触发 Expanded），点击返回应切换回竖屏
+                            // 🔧 [修复] 检查 smallestScreenWidthDp 确保这不是真正的平板
+                            val smallestWidth = configuration.smallestScreenWidthDp
+                            val isPhone = smallestWidth < 600
+                            val currentOrientation = configuration.orientation
+                            val isInLandscape = currentOrientation == Configuration.ORIENTATION_LANDSCAPE
+                            
+                            com.android.purebilibili.core.util.Logger.d(
+                                "VideoDetailScreen", 
+                                "📱 onBack clicked: smallestWidth=$smallestWidth, isPhone=$isPhone, " +
+                                "orientation=$currentOrientation, isLandscape=$isInLandscape, " +
+                                "activity=${activity != null}"
+                            )
+                            
+                            if (isPhone && isInLandscape) {
+                                com.android.purebilibili.core.util.Logger.d(
+                                    "VideoDetailScreen", 
+                                    "📱 Rotating to PORTRAIT"
+                                )
+                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                            } else {
+                                com.android.purebilibili.core.util.Logger.d(
+                                    "VideoDetailScreen", 
+                                    "📱 Calling handleBack()"
+                                )
+                                handleBack()
+                            }
+                        },
                         onUpClick = onUpClick,
                         onNavigateToAudioMode = onNavigateToAudioMode,
                         onToggleFullscreen = { toggleFullscreen() },  // 📺 平板全屏切换
@@ -793,45 +837,59 @@ fun VideoDetailScreen(
                                 //  下载进度
                                 val downloadProgress by viewModel.downloadProgress.collectAsState()
                                 
-                                VideoContentSection(
-                                    info = success.info,
-                                    relatedVideos = success.related,
-                                    replies = commentState.replies,
-                                    replyCount = commentState.replyCount,
-                                    emoteMap = success.emoteMap,
-                                    isRepliesLoading = commentState.isRepliesLoading,
-                                    isFollowing = success.isFollowing,
-                                    isFavorited = success.isFavorited,
-                                    isLiked = success.isLiked,
-                                    coinCount = success.coinCount,
-                                    currentPageIndex = currentPageIndex,
-                                    downloadProgress = downloadProgress,
-                                    isInWatchLater = success.isInWatchLater,
-                                    followingMids = success.followingMids,
-                                    videoTags = success.videoTags,
-                                    //  [新增] 评论排序/筛选参数
-                                    sortMode = commentState.sortMode,
-                                    upOnlyFilter = commentState.upOnlyFilter,
-                                    onSortModeChange = { commentViewModel.setSortMode(it) },
-                                    onUpOnlyToggle = { commentViewModel.toggleUpOnly() },
-                                    onFollowClick = { viewModel.toggleFollow() },
-                                    onFavoriteClick = { viewModel.toggleFavorite() },
-                                    onLikeClick = { viewModel.toggleLike() },
-                                    onCoinClick = { viewModel.openCoinDialog() },
-                                    onTripleClick = { viewModel.doTripleAction() },
-                                    onPageSelect = { viewModel.switchPage(it) },
-                                    onUpClick = onUpClick,
-                                    onRelatedVideoClick = { vid -> viewModel.loadVideo(vid) },
-                                    onSubReplyClick = { commentViewModel.openSubReply(it) },
-                                    onLoadMoreReplies = { commentViewModel.loadComments() },
-                                    onDownloadClick = { viewModel.openDownloadDialog() },
-                                    onWatchLaterClick = { viewModel.toggleWatchLater() },
-                                    //  [新增] 时间戳点击跳转
-                                    onTimestampClick = { positionMs ->
-                                        playerState.player.seekTo(positionMs)
-                                        playerState.player.play()
-                                    }
-                                )
+                                // 📱 [优化] 视频切换过渡动画
+                                AnimatedContent(
+                                    targetState = success.info.bvid,
+                                    transitionSpec = {
+                                        // 左右滑动 + 淡入淡出过渡动画
+                                        (slideInHorizontally { width -> width / 4 } + fadeIn(animationSpec = tween(300)))
+                                            .togetherWith(
+                                                slideOutHorizontally { width -> -width / 4 } + fadeOut(animationSpec = tween(300))
+                                            )
+                                    },
+                                    label = "video_content_transition"
+                                ) { currentBvid ->
+                                    // 使用 currentBvid 确保动画正确触发（实际仍使用 success.info）
+                                    VideoContentSection(
+                                        info = success.info,
+                                        relatedVideos = success.related,
+                                        replies = commentState.replies,
+                                        replyCount = commentState.replyCount,
+                                        emoteMap = success.emoteMap,
+                                        isRepliesLoading = commentState.isRepliesLoading,
+                                        isFollowing = success.isFollowing,
+                                        isFavorited = success.isFavorited,
+                                        isLiked = success.isLiked,
+                                        coinCount = success.coinCount,
+                                        currentPageIndex = currentPageIndex,
+                                        downloadProgress = downloadProgress,
+                                        isInWatchLater = success.isInWatchLater,
+                                        followingMids = success.followingMids,
+                                        videoTags = success.videoTags,
+                                        //  [新增] 评论排序/筛选参数
+                                        sortMode = commentState.sortMode,
+                                        upOnlyFilter = commentState.upOnlyFilter,
+                                        onSortModeChange = { commentViewModel.setSortMode(it) },
+                                        onUpOnlyToggle = { commentViewModel.toggleUpOnly() },
+                                        onFollowClick = { viewModel.toggleFollow() },
+                                        onFavoriteClick = { viewModel.toggleFavorite() },
+                                        onLikeClick = { viewModel.toggleLike() },
+                                        onCoinClick = { viewModel.openCoinDialog() },
+                                        onTripleClick = { viewModel.doTripleAction() },
+                                        onPageSelect = { viewModel.switchPage(it) },
+                                        onUpClick = onUpClick,
+                                        onRelatedVideoClick = { vid -> viewModel.loadVideo(vid) },
+                                        onSubReplyClick = { commentViewModel.openSubReply(it) },
+                                        onLoadMoreReplies = { commentViewModel.loadComments() },
+                                        onDownloadClick = { viewModel.openDownloadDialog() },
+                                        onWatchLaterClick = { viewModel.toggleWatchLater() },
+                                        //  [新增] 时间戳点击跳转
+                                        onTimestampClick = { positionMs ->
+                                            playerState.player.seekTo(positionMs)
+                                            playerState.player.play()
+                                        }
+                                    )
+                                }
                             }
 
                             is PlayerUiState.Error -> {
@@ -1166,6 +1224,22 @@ fun VideoDetailScreen(
         }
         
         //  评论二级弹窗
+        // [#14修复] 添加图片预览状态
+        var subReplyShowImagePreview by remember { mutableStateOf(false) }
+        var subReplyPreviewImages by remember { mutableStateOf<List<String>>(emptyList()) }
+        var subReplyPreviewIndex by remember { mutableIntStateOf(0) }
+        var subReplySourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+        
+        // [#14修复] 评论详情图片预览对话框
+        if (subReplyShowImagePreview && subReplyPreviewImages.isNotEmpty()) {
+            ImagePreviewDialog(
+                images = subReplyPreviewImages,
+                initialIndex = subReplyPreviewIndex,
+                sourceRect = subReplySourceRect,
+                onDismiss = { subReplyShowImagePreview = false }
+            )
+        }
+        
         if (subReplyState.visible) {
             BackHandler {
                 commentViewModel.closeSubReply()
@@ -1181,6 +1255,13 @@ fun VideoDetailScreen(
                     playerState.player.seekTo(positionMs)
                     playerState.player.play()
                     commentViewModel.closeSubReply()  // 关闭弹窗以便看视频
+                },
+                // [#14修复] 图片预览回调
+                onImagePreview = { images, index, rect ->
+                    subReplyPreviewImages = images
+                    subReplyPreviewIndex = index
+                    subReplySourceRect = rect
+                    subReplyShowImagePreview = true
                 }
             )
         }

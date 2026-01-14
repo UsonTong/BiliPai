@@ -621,7 +621,8 @@ interface BangumiApi {
     // 番剧详情 -  返回 ResponseBody 自行解析，防止 OOM
     @GET("pgc/view/web/season")
     suspend fun getSeasonDetail(
-        @Query("season_id") seasonId: Long
+        @Query("season_id") seasonId: Long? = null,
+        @Query("ep_id") epId: Long? = null
     ): ResponseBody
     
     // 番剧播放地址

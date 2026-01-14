@@ -169,6 +169,9 @@ class MiniPlayerManager private constructor(private val context: Context) :
     
     var isMiniMode by mutableStateOf(false)
         private set
+    
+    // 🚀 [新增] 导航抑制标志：在导航到视频页面期间不显示小窗
+    var isNavigatingToVideo by mutableStateOf(false)
 
     var isPlaying by mutableStateOf(false)
         private set
@@ -309,8 +312,10 @@ class MiniPlayerManager private constructor(private val context: Context) :
      */
     fun shouldShowInAppMiniPlayer(): Boolean {
         val mode = getCurrentMode()
-        val result = mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY && isActive
-        Logger.d(TAG, " shouldShowInAppMiniPlayer: mode=$mode, isActive=$isActive, result=$result")
+        // 🚀 [修复] 导航期间不显示小窗，避免闪烁
+        val result = mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY 
+            && isActive && !isNavigatingToVideo
+        Logger.d(TAG, " shouldShowInAppMiniPlayer: mode=$mode, isActive=$isActive, navigating=$isNavigatingToVideo, result=$result")
         return result
     }
     

@@ -196,22 +196,22 @@ fun AppearanceSettingsContent(
                     value = when(state.appIcon) {
                         // 🎀 二次元少女系列
                         "Yuki" -> "比心少女"
-                        "Anime" -> "蓝发电视"
+                        "Anime", "icon_anime" -> "蓝发电视"
                         "Tv" -> "双马尾"
                         "Headphone" -> "耳机少女"
                         // 经典系列
-                        "3D" -> "3D立体"
-                        "Blue" -> "经典蓝"
-                        "Retro" -> "复古怀旧"
-                        "Flat" -> "扁平现代"
+                        "3D", "icon_3d" -> "3D立体"
+                        "Blue", "icon_blue" -> "经典蓝"
+                        "Retro", "icon_retro" -> "复古怀旧"
+                        "Flat", "icon_flat" -> "扁平现代"
                         "Flat Material" -> "扁平材质"
-                        "Neon" -> "霓虹"
-                        "Telegram Blue" -> "纸飞机蓝"
-                        "Pink" -> "樱花粉"
-                        "Purple" -> "香芋紫"
-                        "Green" -> "薄荷绿"
-                        "Dark" -> "暗夜蓝"
-                        else -> "比心少女"  // 默认是 Yuki
+                        "Neon", "icon_neon" -> "霓虹"
+                        "Telegram Blue", "icon_telegram_blue" -> "纸飞机蓝"
+                        "Pink", "icon_telegram_pink" -> "樱花粉"
+                        "Purple", "icon_telegram_purple" -> "香芋紫"
+                        "Green", "icon_telegram_green" -> "薄荷绿"
+                        "Dark", "icon_telegram_dark" -> "暗夜蓝"
+                        else -> "3D立体"  // 默认显示 3D立体 (对应默认 icon_3d)
                     },
                     onClick = onNavigateToIconSettings,
                     iconTint = iOSPurple
