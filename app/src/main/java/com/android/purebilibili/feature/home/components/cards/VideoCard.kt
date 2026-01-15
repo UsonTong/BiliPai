@@ -40,6 +40,8 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.spring
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 //  [预览播放] 相关引用已移除
 
 // 显式导入 collectAsState 以避免 ambiguity 或 missing reference
@@ -71,9 +73,9 @@ fun ElegantVideoCard(
     val haptic = rememberHapticFeedback()
     val scope = rememberCoroutineScope()
     
-    //  [新增] 获取圆角缩放比例
+    //  [HIG] 动态圆角 - 12dp 标准
     val cornerRadiusScale = LocalCornerRadiusScale.current
-    val cardCornerRadius = iOSCornerRadius.Small * cornerRadiusScale  // 10.dp * scale
+    val cardCornerRadius = 12.dp * cornerRadiusScale  // HIG 标准圆角
     val smallCornerRadius = iOSCornerRadius.Tiny * cornerRadiusScale  // 4.dp * scale
     
     //  [新增] 长按删除菜单状态
@@ -100,8 +102,9 @@ fun ElegantVideoCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            //  [新增] 进场动画 - 交错缩放+滑入，支持开关控制
-            .animateEnter(index = index, key = video.bvid, animationEnabled = animationEnabled)
+            //  [修复] 进场动画 - 使用 Unit 作为 key，只在首次挂载时播放
+            // 原问题：使用 video.bvid 作为 key，分类切换时所有卡片重新触发动画（缩放收缩效果）
+            .animateEnter(index = index, key = Unit, animationEnabled = animationEnabled)
             //  [新增] 记录卡片位置
             .onGloballyPositioned { coordinates ->
                 cardBounds = coordinates.boundsInRoot()
@@ -259,6 +262,7 @@ fun ElegantVideoCard(
         
         Spacer(modifier = Modifier.height(8.dp))
         
+        //  [HIG] 标题 - 15sp Medium, 行高 20sp
         Text(
             text = video.title,
             maxLines = 2,
@@ -266,11 +270,12 @@ fun ElegantVideoCard(
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Medium,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
+                fontSize = 15.sp,  // HIG body 标准
+                lineHeight = 20.sp,  // HIG 行高
                 color = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier
+                .semantics { contentDescription = "视频标题: ${video.title}" }
                 //  [交互优化] 标题区域：长按弹出惨淡，点击跳转
                 .pointerInput(onDismiss) {
                     if (onDismiss != null) {
@@ -324,7 +329,9 @@ fun ElegantVideoCard(
                         .data(FormatUtils.fixImageUrl(video.owner.face))
                         .crossfade(100)
                         .size(32, 32)
-                        .memoryCacheKey("avatar_${video.owner.mid}")
+                        //  [修复] 使用 face URL hashCode 作为缓存 key
+                        // 原因: 历史记录的 owner.mid 可能为空，导致所有头像共享同一缓存
+                        .memoryCacheKey("avatar_${video.owner.face.hashCode()}")
                         .build(),
                     contentDescription = null,
                     modifier = Modifier
@@ -335,10 +342,10 @@ fun ElegantVideoCard(
                 )
             }
             
-            //  UP主名称
+            //  [HIG] UP主名称 - 13sp footnote 标准
             Text(
                 text = video.owner.name,
-                fontSize = 11.sp,
+                fontSize = 13.sp,  // HIG footnote 标准
                 fontWeight = FontWeight.Normal,
                 color = iOSSystemGray,
                 maxLines = 1,

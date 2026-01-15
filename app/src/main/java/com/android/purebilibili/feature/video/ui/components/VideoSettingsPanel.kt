@@ -89,28 +89,9 @@ fun VideoSettingsPanel(
         .getLongPressSpeed(context)
         .collectAsState(initial = 2.0f)
     
-    ModalBottomSheet(
+    com.android.purebilibili.core.ui.IOSModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = {
-            // iOS 风格拖拽指示器
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(2.5.dp))
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-            }
-        }
+        sheetState = sheetState
     ) {
         LazyColumn(
             modifier = Modifier

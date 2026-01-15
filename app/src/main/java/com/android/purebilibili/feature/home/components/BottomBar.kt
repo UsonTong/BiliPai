@@ -44,6 +44,7 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 
 /**
  * 底部导航项枚举 -  使用 iOS SF Symbols 风格图标
+ * [HIG] 所有图标包含 contentDescription 用于无障碍访问
  */
 enum class BottomNavItem(
     val label: String,
@@ -52,43 +53,43 @@ enum class BottomNavItem(
 ) {
     HOME(
         "首页",
-        { Icon(CupertinoIcons.Filled.House, null) },
-        { Icon(CupertinoIcons.Outlined.House, null) }
+        { Icon(CupertinoIcons.Filled.House, contentDescription = "首页") },
+        { Icon(CupertinoIcons.Outlined.House, contentDescription = "首页") }
     ),
     DYNAMIC(
         "动态",
-        { Icon(CupertinoIcons.Filled.BellBadge, null) },
-        { Icon(CupertinoIcons.Outlined.Bell, null) }
+        { Icon(CupertinoIcons.Filled.BellBadge, contentDescription = "动态") },
+        { Icon(CupertinoIcons.Outlined.Bell, contentDescription = "动态") }
     ),
     STORY(
         "短视频",
-        { Icon(CupertinoIcons.Filled.PlayCircle, null) },
-        { Icon(CupertinoIcons.Outlined.PlayCircle, null) }
+        { Icon(CupertinoIcons.Filled.PlayCircle, contentDescription = "短视频") },
+        { Icon(CupertinoIcons.Outlined.PlayCircle, contentDescription = "短视频") }
     ),
     HISTORY(
         "历史",
-        { Icon(CupertinoIcons.Filled.Clock, null) },
-        { Icon(CupertinoIcons.Outlined.Clock, null) }
+        { Icon(CupertinoIcons.Filled.Clock, contentDescription = "历史记录") },
+        { Icon(CupertinoIcons.Outlined.Clock, contentDescription = "历史记录") }
     ),
     PROFILE(
         "我的",
-        { Icon(CupertinoIcons.Filled.PersonCircle, null) },
-        { Icon(CupertinoIcons.Outlined.Person, null) }
+        { Icon(CupertinoIcons.Filled.PersonCircle, contentDescription = "个人中心") },
+        { Icon(CupertinoIcons.Outlined.Person, contentDescription = "个人中心") }
     ),
     FAVORITE(
         "收藏",
-        { Icon(CupertinoIcons.Filled.Star, null) },
-        { Icon(CupertinoIcons.Outlined.Star, null) }
+        { Icon(CupertinoIcons.Filled.Star, contentDescription = "收藏夹") },
+        { Icon(CupertinoIcons.Outlined.Star, contentDescription = "收藏夹") }
     ),
     LIVE(
         "直播",
-        { Icon(CupertinoIcons.Filled.Video, null) },
-        { Icon(CupertinoIcons.Outlined.Video, null) }
+        { Icon(CupertinoIcons.Filled.Video, contentDescription = "直播") },
+        { Icon(CupertinoIcons.Outlined.Video, contentDescription = "直播") }
     ),
     WATCHLATER(
         "稍后看",
-        { Icon(CupertinoIcons.Filled.Bookmark, null) },
-        { Icon(CupertinoIcons.Outlined.Bookmark, null) }
+        { Icon(CupertinoIcons.Filled.Bookmark, contentDescription = "稀后再看") },
+        { Icon(CupertinoIcons.Outlined.Bookmark, contentDescription = "稀后再看") }
     )
 }
 

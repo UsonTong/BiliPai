@@ -19,6 +19,7 @@ import com.android.purebilibili.core.ui.blur.BlurIntensity
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlinx.coroutines.launch
+import com.android.purebilibili.core.ui.components.*
 
 /**
  *  动画与效果设置二级页面
@@ -84,10 +85,10 @@ fun AnimationSettingsContent(
     ) {
             
             //  卡片动画
-            item { SettingsSectionTitle("卡片动画") }
+            item { IOSSectionTitle("卡片动画") }
             item {
-                SettingsGroup {
-                    SettingSwitchItem(
+                IOSGroup {
+                    IOSSwitchItem(
                         icon = CupertinoIcons.Default.WandAndStars,
                         title = "进场动画",
                         subtitle = "首页视频卡片的入场动画效果",
@@ -96,7 +97,7 @@ fun AnimationSettingsContent(
                         iconTint = iOSPink
                     )
                     Divider()
-                    SettingSwitchItem(
+                    IOSSwitchItem(
                         icon = CupertinoIcons.Default.ArrowLeftArrowRight,
                         title = "过渡动画",
                         subtitle = "点击卡片时的共享元素过渡效果",
@@ -108,10 +109,10 @@ fun AnimationSettingsContent(
             }
             
             // ✨ 磨砂效果
-            item { SettingsSectionTitle("磨砂效果") }
+            item { IOSSectionTitle("磨砂效果") }
             item {
-                SettingsGroup {
-                    SettingSwitchItem(
+                IOSGroup {
+                    IOSSwitchItem(
                         icon = CupertinoIcons.Default.Sparkles,
                         title = "底栏磨砂",
                         subtitle = "底部导航栏的毛玻璃模糊效果",
@@ -132,10 +133,10 @@ fun AnimationSettingsContent(
             }
             
             // 📐 底栏样式
-            item { SettingsSectionTitle("底栏样式") }
+            item { IOSSectionTitle("底栏样式") }
             item {
-                SettingsGroup {
-                    SettingSwitchItem(
+                IOSGroup {
+                    IOSSwitchItem(
                         icon = CupertinoIcons.Default.RectangleStack,
                         title = "悬浮底栏",
                         subtitle = "关闭后底栏将沉浸式贴底显示",

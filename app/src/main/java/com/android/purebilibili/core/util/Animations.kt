@@ -124,6 +124,15 @@ fun Modifier.animateEnter(
         return@composed this
     }
     
+    //  [修复] 检查是否正在切换分类，跳过动画避免收缩效果
+    if (CardPositionManager.isSwitchingCategory) {
+        LaunchedEffect(Unit) {
+            delay(300)  // 等待分类切换完成
+            CardPositionManager.isSwitchingCategory = false
+        }
+        return@composed this
+    }
+    
     // 🚀 [性能优化] 使用单一进度值驱动所有动画属性
     // 替代原来的 3 个 Animatable 对象，减少内存分配和协程开销
     var animationStarted by remember(key) { mutableStateOf(false) }

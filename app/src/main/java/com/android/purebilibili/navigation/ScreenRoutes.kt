@@ -39,7 +39,7 @@ sealed class ScreenRoutes(val route: String) {
     object PluginsSettings : ScreenRoutes("plugins_settings")  //  插件中心
     object BottomBarSettings : ScreenRoutes("bottom_bar_settings")  //  底栏管理
     //  [新增] 更多外观设置子页面
-    object ThemeSettings : ScreenRoutes("theme_settings")  // 主题设置
+
     object IconSettings : ScreenRoutes("icon_settings")  // 图标设置
     object AnimationSettings : ScreenRoutes("animation_settings")  // 动画设置
 

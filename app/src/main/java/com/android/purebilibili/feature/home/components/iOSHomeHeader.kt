@@ -149,41 +149,47 @@ fun iOSHomeHeader(
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 头像
+                // 头像 - HIG: 最小触摸目标 44pt
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .iOSTapEffect { onAvatarClick() }
-                        .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        .size(44.dp)  // HIG 最小触摸目标
+                        .iOSTapEffect { onAvatarClick() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (user.isLogin && user.face.isNotEmpty()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(FormatUtils.fixImageUrl(user.face))
-                                .crossfade(true).build(),
-                            contentDescription = "Avatar",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("未", fontSize = 11.sp, fontWeight = FontWeight.Bold, 
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)  // 实际头像尺寸
+                            .clip(CircleShape)
+                            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
+                        if (user.isLogin && user.face.isNotEmpty()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(FormatUtils.fixImageUrl(user.face))
+                                    .crossfade(true).build(),
+                                contentDescription = "用户头像",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("未", fontSize = 11.sp, fontWeight = FontWeight.Bold, 
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
                 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))  // 调整间距适配更大触摸区域
                 
-                //  搜索框 - iOS 风格
+                //  搜索框 - iOS 风格 (HIG: 圆角 10pt)
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))  // HIG 标准圆角
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { 
                             haptic(HapticType.LIGHT)
@@ -195,7 +201,7 @@ fun iOSHomeHeader(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             CupertinoIcons.Default.MagnifyingGlass,
-                            null,
+                            contentDescription = "搜索",
                             tint = iOSSystemGray,
                             modifier = Modifier.size(18.dp)
                         )
@@ -213,19 +219,19 @@ fun iOSHomeHeader(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                // 设置按钮
+                // 设置按钮 - HIG: 最小触摸目标 44pt
                 IconButton(
                     onClick = { 
                         haptic(HapticType.LIGHT)
                         onSettingsClick() 
                     },
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(44.dp)  // HIG 最小触摸目标
                 ) {
                     Icon(
                         CupertinoIcons.Default.Gear,
-                        contentDescription = "Settings",
+                        contentDescription = "设置",
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)  // 稍大图标
                     )
                 }
             }

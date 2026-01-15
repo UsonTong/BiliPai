@@ -36,6 +36,8 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlinx.coroutines.launch
 
+import com.android.purebilibili.core.ui.components.IOSSectionTitle
+
 const val GITHUB_URL = "https://github.com/jay3-yy/BiliPai/"
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,7 +185,7 @@ fun SettingsScreen(
     }
     
     if (showPathDialog) {
-        AlertDialog(
+        com.android.purebilibili.core.ui.IOSAlertDialog(
             onDismissRequest = { showPathDialog = false },
             title = { Text("下载位置", color = MaterialTheme.colorScheme.onSurface) },
             text = { 
@@ -195,26 +197,24 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = { showPathDialog = false; directoryPicker.launch(null) }) { Text("选择自定义目录") }
+                com.android.purebilibili.core.ui.IOSDialogAction(onClick = { showPathDialog = false; directoryPicker.launch(null) }) { Text("选择自定义目录") }
             },
             dismissButton = { 
-                TextButton(onClick = { 
+                com.android.purebilibili.core.ui.IOSDialogAction(onClick = { 
                     scope.launch { SettingsManager.setDownloadPath(context, null) }
                     showPathDialog = false
                     Toast.makeText(context, "已重置为默认路径", Toast.LENGTH_SHORT).show()
                 }) { Text("使用默认") } 
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+            }
         )
     }
     
     if (showEasterEggDialog) {
-        AlertDialog(
+        com.android.purebilibili.core.ui.IOSAlertDialog(
             onDismissRequest = { showEasterEggDialog = false; versionClickCount = 0 },
             title = { Text(" 你发现了彩蛋！", fontWeight = FontWeight.Bold) },
             text = { Text("感谢你使用 BiliPai！这是一个用爱发电的开源项目。") },
-            confirmButton = { Button(onClick = { showEasterEggDialog = false; versionClickCount = 0 }) { Text("我知道了！") } },
-            containerColor = MaterialTheme.colorScheme.surface
+            confirmButton = { com.android.purebilibili.core.ui.IOSDialogAction(onClick = { showEasterEggDialog = false; versionClickCount = 0 }) { Text("我知道了！") } }
         )
     }
 
@@ -352,12 +352,12 @@ private fun MobileSettingsLayout(
                 .fillMaxSize(),
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            item { SettingsSectionTitle("关注作者") }
+            item { IOSSectionTitle("关注作者") }
             item { 
                 FollowAuthorSection(onTelegramClick, onTwitterClick)  
             }
             
-            item { SettingsSectionTitle("常规") }
+            item { IOSSectionTitle("常规") }
             item { 
                 GeneralSection(
                     onAppearanceClick = onAppearanceClick,
@@ -366,17 +366,17 @@ private fun MobileSettingsLayout(
                 )
             }
             
-            item { SettingsSectionTitle("隐私与安全") }
+            item { IOSSectionTitle("隐私与安全") }
             item { 
                 PrivacySection(privacyModeEnabled, onPrivacyModeChange, onPermissionClick)
             }
             
-            item { SettingsSectionTitle("数据与存储") }
+            item { IOSSectionTitle("数据与存储") }
             item { 
                 DataStorageSection(customDownloadPath, cacheSize, onDownloadPathClick, onClearCacheClick)
             }
             
-            item { SettingsSectionTitle("开发者选项") }
+            item { IOSSectionTitle("开发者选项") }
             item {
                 DeveloperSection(
                     crashTrackingEnabled, analyticsEnabled, pluginCount,
@@ -385,7 +385,7 @@ private fun MobileSettingsLayout(
                 )
             }
             
-            item { SettingsSectionTitle("关于") }
+            item { IOSSectionTitle("关于") }
             item {
                 AboutSection(
                     versionName, easterEggEnabled,

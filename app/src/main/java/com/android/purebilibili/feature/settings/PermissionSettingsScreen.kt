@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.theme.iOSPink  // 存储权限图标色
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSGreen
@@ -201,10 +202,10 @@ fun PermissionSettingsContent(
             
             // 需要运行时请求的权限
             item {
-                SettingsSectionTitle("需要授权的权限")
+                IOSSectionTitle("需要授权的权限")
             }
             item {
-                SettingsGroup {
+                IOSGroup {
                     permissions.filter { !it.isNormal }.forEachIndexed { index, info ->
                         if (index > 0) Divider()
                         PermissionItem(
@@ -220,10 +221,10 @@ fun PermissionSettingsContent(
             
             // 普通权限（自动授予）
             item {
-                SettingsSectionTitle("自动授予的权限")
+                IOSSectionTitle("自动授予的权限")
             }
             item {
-                SettingsGroup {
+                IOSGroup {
                     permissions.filter { it.isNormal }.forEachIndexed { index, info ->
                         if (index > 0) Divider()
                         PermissionItem(

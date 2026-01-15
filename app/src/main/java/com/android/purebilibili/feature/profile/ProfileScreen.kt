@@ -49,6 +49,12 @@ import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.BiliGradientButton
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.ui.components.IOSGroup
+import com.android.purebilibili.core.ui.components.IOSClickableItem
+import com.android.purebilibili.core.ui.components.IOSDivider
+import com.android.purebilibili.core.ui.components.IOSSwitchItem
+import com.android.purebilibili.core.ui.components.IOSSectionTitle
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,25 +128,30 @@ fun ProfileScreen(
             onSettingsClick = onSettingsClick
         )
     } else if (currentUiState is ProfileUiState.Success) {
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        
         Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                // Hide TopBar on Tablet Split Layout if desired, or keep it.
-                // Keeping it for consistency and access to Settings.
                 if (!windowSizeClass.shouldUseSplitLayout) {
-                    TopAppBar(
-                        title = { },
+                    LargeTopAppBar(
+                        title = { Text("我的", fontWeight = FontWeight.Bold) },
                         navigationIcon = {
                             IconButton(onClick = onBack) {
-                                Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
                             }
                         },
                         actions = {
                             IconButton(onClick = onSettingsClick) {
-                                Icon(CupertinoIcons.Default.Gearshape, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(CupertinoIcons.Default.Gearshape, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                        scrollBehavior = scrollBehavior,
+                        colors = TopAppBarDefaults.largeTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
                 }
             }
@@ -279,10 +290,13 @@ fun MobileProfileContent(
         item { VipBannerSection(user) }
         item { ServicesSection(onHistoryClick, onFavoriteClick, onDownloadClick, onWatchLaterClick) }
         item {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
-                TextButton(onClick = onLogout, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                    Text("退出登录")
-                }
+            IOSGroup {
+                IOSClickableItem(
+                    title = "退出登录",
+                    onClick = onLogout,
+                    textColor = MaterialTheme.colorScheme.error,
+                    centered = true
+                )
             }
         }
     }
@@ -522,58 +536,37 @@ fun VipBannerSection(user: UserState) {
 fun ServicesSection(
     onHistoryClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onDownloadClick: () -> Unit = {},  //  离线缓存
-    onWatchLaterClick: () -> Unit = {} // 稍后再看
+    onDownloadClick: () -> Unit = {},
+    onWatchLaterClick: () -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(8.dp))
-            //  修复：卡片背景
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        //  修复：标题颜色
-        Text(
-            "更多服务",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(16.dp)
+    IOSSectionTitle("我的服务")
+    IOSGroup {
+        IOSClickableItem(
+            icon = CupertinoIcons.Default.ArrowDownCircle,
+            title = "离线缓存",
+            onClick = onDownloadClick,
+            iconTint = MaterialTheme.colorScheme.primary
         )
-
-        ServiceItem(CupertinoIcons.Default.ArrowDownCircle, "离线缓存", MaterialTheme.colorScheme.primary, onClick = onDownloadClick)
-        Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(start = 56.dp))
-
-        ServiceItem(CupertinoIcons.Default.Clock, "历史记录", iOSBlue, onClick = onHistoryClick)
-        Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(start = 56.dp))
-
-        ServiceItem(CupertinoIcons.Default.Bookmark, "我的收藏", iOSYellow, onClick = onFavoriteClick)
-        Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(start = 56.dp))
-
-        ServiceItem(CupertinoIcons.Default.Bookmark, "稍后再看", iOSGreen, onClick = onWatchLaterClick)
-    }
-}
-
-@Composable
-fun ServiceItem(
-    icon: ImageVector,
-    title: String,
-    iconColor: Color,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
-        //  修复：文字颜色
-        Text(text = title, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        //  修复：箭头颜色
-        Icon(CupertinoIcons.Default.ChevronForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        IOSDivider(startIndent = 66.dp)
+        IOSClickableItem(
+            icon = CupertinoIcons.Default.Clock,
+            title = "历史记录",
+            onClick = onHistoryClick,
+            iconTint = iOSBlue
+        )
+        IOSDivider(startIndent = 66.dp)
+        IOSClickableItem(
+            icon = CupertinoIcons.Default.Bookmark,
+            title = "我的收藏",
+            onClick = onFavoriteClick,
+            iconTint = iOSYellow
+        )
+        IOSDivider(startIndent = 66.dp)
+        IOSClickableItem(
+            icon = CupertinoIcons.Default.Bookmark,
+            title = "稍后再看",
+            onClick = onWatchLaterClick,
+            iconTint = iOSGreen
+        )
     }
 }

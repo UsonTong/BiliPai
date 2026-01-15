@@ -192,7 +192,7 @@ fun TabletSettingsLayout(
                                     // Or just simple stack: Root -> Appearance -> Theme
                                     // Let's implement simple logic: if in Theme/Icon/Anim, go back to Appearance.
                                     // if in Appearance, go back to Null.
-                                    if (detail == SettingsDetail.THEME || detail == SettingsDetail.ICONS || detail == SettingsDetail.ANIMATION) {
+                                    if (detail == SettingsDetail.ICONS || detail == SettingsDetail.ANIMATION) {
                                         activeDetail = SettingsDetail.APPEARANCE
                                     } else {
                                         activeDetail = null
@@ -209,17 +209,8 @@ fun TabletSettingsLayout(
                                 state = state,
                                 viewModel = viewModel,
                                 context = context,
-                                onNavigateToThemeSettings = { activeDetail = SettingsDetail.THEME },
                                 onNavigateToIconSettings = { activeDetail = SettingsDetail.ICONS },
-                                onNavigateToAnimationSettings = { activeDetail = SettingsDetail.ANIMATION },
-                                onNavigateToBottomBarSettings = { /* Already in right pane? Or separate? BottomBarSettings not refactored yet. */ }
-                            )
-                            SettingsDetail.THEME -> ThemeSettingsContent(
-                                state = state,
-                                viewModel = viewModel,
-                                context = context,
-                                showThemeDialog = false, // Not used as we moved state inside, but parameter remains
-                                onShowThemeDialogChange = {} 
+                                onNavigateToAnimationSettings = { activeDetail = SettingsDetail.ANIMATION }
                             )
                             SettingsDetail.ICONS -> {
                                 // Need to recreate the data here or reuse helper?
@@ -383,7 +374,7 @@ fun TabletSettingsLayout(
 }
 
 enum class SettingsDetail {
-    APPEARANCE, THEME, ICONS, ANIMATION, PLAYBACK, BOTTOM_BAR, PERMISSION, PLUGINS
+    APPEARANCE, ICONS, ANIMATION, PLAYBACK, BOTTOM_BAR, PERMISSION, PLUGINS
 }
 
 // Helper to access Icon Groups if possible, otherwise I'll need to copy helper function

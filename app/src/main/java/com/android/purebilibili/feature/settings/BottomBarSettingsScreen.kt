@@ -27,6 +27,7 @@ import com.android.purebilibili.core.theme.BottomBarColors  //  统一底栏颜�
 import com.android.purebilibili.core.theme.BottomBarColorPalette  //  调色板
 import com.android.purebilibili.core.theme.BottomBarColorNames  //  颜色名称
 import kotlinx.coroutines.launch
+import com.android.purebilibili.core.ui.components.*
 
 /**
  *  底栏项目配置
@@ -133,9 +134,192 @@ fun BottomBarSettingsContent(
                 )
             }
             
+            // 显示设置
+            item {
+                IOSSectionTitle("显示设置")
+            }
+
+            item {
+                IOSGroup {
+                    val scope = rememberCoroutineScope()
+                    val visibilityMode by SettingsManager.getBottomBarVisibilityMode(context).collectAsState(initial = SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE)
+                    val labelMode by SettingsManager.getBottomBarLabelMode(context).collectAsState(initial = 0)
+                    
+                    //  底栏显示模式选择（抽屉式）
+                    var visibilityModeExpanded by remember { mutableStateOf(false) }
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { visibilityModeExpanded = !visibilityModeExpanded }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                CupertinoIcons.Default.Eye,
+                                contentDescription = null,
+                                tint = com.android.purebilibili.core.theme.iOSOrange,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "显示模式",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = visibilityMode.label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = if (visibilityModeExpanded) CupertinoIcons.Default.ChevronUp else CupertinoIcons.Default.ChevronDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        
+                        // 展开后的选项
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = visibilityModeExpanded,
+                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(top = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                com.android.purebilibili.core.store.SettingsManager.BottomBarVisibilityMode.entries.forEach { mode ->
+                                    val isSelected = mode == visibilityMode
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            )
+                                            .clickable {
+                                                scope.launch {
+                                                    SettingsManager.setBottomBarVisibilityMode(context, mode)
+                                                }
+                                                visibilityModeExpanded = false
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                mode.label,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary 
+                                                        else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                mode.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                        if (isSelected) {
+                                            Icon(
+                                                CupertinoIcons.Default.Checkmark,
+                                                contentDescription = "已选择",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    //  底栏标签样式（选择器）
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                CupertinoIcons.Default.Tag,
+                                contentDescription = null,
+                                tint = com.android.purebilibili.core.theme.iOSPurple,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = "标签样式",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = when(labelMode) {
+                                        0 -> "图标 + 文字"
+                                        2 -> "仅文字"
+                                        else -> "仅图标"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // 三种模式选择按钮
+                            listOf(
+                                Triple(0, "图标+文字", CupertinoIcons.Default.House),
+                                Triple(1, "仅图标", CupertinoIcons.Default.Heart),
+                                Triple(2, "仅文字", CupertinoIcons.Default.Character)
+                            ).forEach { (mode, label, icon) ->
+                                val isSelected = labelMode == mode
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable { 
+                                            scope.launch { SettingsManager.setBottomBarLabelMode(context, mode) }
+                                        }
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                            else Color.Transparent
+                                        )
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary
+                                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 当前底栏预览
             item {
-                SettingsSectionTitle("当前底栏")
+                IOSSectionTitle("当前底栏")
             }
             
             item {
@@ -148,11 +332,11 @@ fun BottomBarSettingsContent(
             // 可用项目列表
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                SettingsSectionTitle("可用项目")
+                IOSSectionTitle("可用项目")
             }
             
             item {
-                SettingsGroup {
+                IOSGroup {
                     allBottomBarTabs.forEachIndexed { index, tab ->
                         if (index > 0) {
                             HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -201,14 +385,16 @@ fun BottomBarSettingsContent(
             // 重置按钮
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedButton(
+                io.github.alexzhirkevich.cupertino.CupertinoButton(
                     onClick = {
                         localOrder = listOf("HOME", "DYNAMIC", "HISTORY", "PROFILE")
                         localVisibleTabs = setOf("HOME", "DYNAMIC", "HISTORY", "PROFILE")
                         saveConfig()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = io.github.alexzhirkevich.cupertino.CupertinoButtonDefaults.borderedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     Icon(CupertinoIcons.Default.ArrowCounterclockwise, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -319,22 +505,19 @@ private fun BottomBarTabItem(
         }
         
         // 开关
-        Switch(
+        io.github.alexzhirkevich.cupertino.CupertinoSwitch(
             checked = isVisible,
             onCheckedChange = { newValue -> if (canToggle) onToggle(newValue) },
             enabled = canToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+            colors = io.github.alexzhirkevich.cupertino.CupertinoSwitchDefaults.colors(
+                checkedTrackColor = MaterialTheme.colorScheme.primary
             )
         )
     }
     
     //  颜色选择弹窗
     if (showColorPicker) {
-        AlertDialog(
+        com.android.purebilibili.core.ui.IOSAlertDialog(
             onDismissRequest = { showColorPicker = false },
             title = { Text("选择${tab.label}颜色") },
             text = {
@@ -363,7 +546,8 @@ private fun BottomBarTabItem(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = BottomBarColorNames[index],
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.weight(1f))
                             if (index == colorIndex) {
@@ -379,8 +563,10 @@ private fun BottomBarTabItem(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showColorPicker = false }) {
-                    Text("取消")
+                com.android.purebilibili.core.ui.IOSDialogAction(
+                    onClick = { showColorPicker = false }
+                ) {
+                    Text("取消", color = MaterialTheme.colorScheme.primary)
                 }
             }
         )

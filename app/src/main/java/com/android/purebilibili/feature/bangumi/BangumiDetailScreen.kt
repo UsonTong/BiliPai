@@ -811,7 +811,7 @@ private fun MobileBangumiDetailContent(
         
         //  快速跳转对话框（在 LazyColumn 外部）
         if (showJumpDialog && !detail.episodes.isNullOrEmpty()) {
-            AlertDialog(
+            com.android.purebilibili.core.ui.IOSAlertDialog(
                 onDismissRequest = { showJumpDialog = false },
                 title = { Text("跳转到第几集") },
                 text = {
@@ -838,7 +838,7 @@ private fun MobileBangumiDetailContent(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    com.android.purebilibili.core.ui.IOSDialogAction(
                         onClick = {
                             val epNumber = jumpInputText.toIntOrNull()
                             if (epNumber == null || epNumber < 1 || epNumber > detail.episodes.size) {
@@ -856,7 +856,7 @@ private fun MobileBangumiDetailContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showJumpDialog = false }) {
+                    com.android.purebilibili.core.ui.IOSDialogAction(onClick = { showJumpDialog = false }) {
                         Text("取消")
                     }
                 }
@@ -969,13 +969,11 @@ private fun EpisodeSelectionSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
-    ModalBottomSheet(
+    com.android.purebilibili.core.ui.IOSModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = null,  // 使用自定义标题栏
-        contentWindowInsets = { WindowInsets(0.dp) }  //  沉浸式
+        windowInsets = WindowInsets(0.dp)  //  沉浸式
     ) {
         Column(
             modifier = Modifier

@@ -757,7 +757,7 @@ fun CoinDialog(
     
     val maxCoins = 2 - currentCoinCount  // 剩余可投数量
     
-    AlertDialog(
+    com.android.purebilibili.core.ui.IOSAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("投币", fontWeight = FontWeight.Bold) },
         text = {
@@ -809,15 +809,14 @@ fun CoinDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { onConfirm(selectedCount.coerceAtMost(maxCoins), alsoLike) },
-                enabled = maxCoins > 0
+            com.android.purebilibili.core.ui.IOSDialogAction(
+                onClick = { onConfirm(selectedCount.coerceAtMost(maxCoins), alsoLike) }
             ) {
-                Text("投币")
+                Text("投币", color = if (maxCoins > 0) com.android.purebilibili.core.theme.iOSBlue else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            com.android.purebilibili.core.ui.IOSDialogAction(onClick = onDismiss) {
                 Text("取消")
             }
         }

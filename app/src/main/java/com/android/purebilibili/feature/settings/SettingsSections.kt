@@ -29,158 +29,18 @@ import com.android.purebilibili.core.ui.common.copyOnLongPress
 //  UI 组件 (Stateless Components)
 // ═══════════════════════════════════════════════════
 
-@Composable
-fun SettingsSectionTitle(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = 0.5.sp,
-        modifier = Modifier.padding(start = 32.dp, top = 24.dp, bottom = 8.dp)
-    )
-}
+// ═══════════════════════════════════════════════════
+//  UI 组件 (Stateless Components)
+// ═══════════════════════════════════════════════════
 
-@Composable
-fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    val cornerRadiusScale = LocalCornerRadiusScale.current
-    val groupCornerRadius = iOSCornerRadius.Medium * cornerRadiusScale
-    
-    Surface(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(groupCornerRadius)),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp,
-        tonalElevation = 1.dp
-    ) {
-        Column(content = content)
-    }
-}
+// Delegated to core/ui/components/iOSListComponents.kt
+import com.android.purebilibili.core.ui.components.IOSSectionTitle as SettingsSectionTitle
+import com.android.purebilibili.core.ui.components.IOSGroup as SettingsGroup
+import com.android.purebilibili.core.ui.components.IOSSwitchItem as SettingSwitchItem
+import com.android.purebilibili.core.ui.components.IOSClickableItem as SettingClickableItem
+import com.android.purebilibili.core.ui.components.IOSDivider as SettingsDivider
 
-@Composable
-fun SettingSwitchItem(
-    icon: ImageVector? = null,
-    title: String,
-    subtitle: String? = null,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    iconTint: Color = MaterialTheme.colorScheme.primary
-) {
-    val cornerRadiusScale = LocalCornerRadiusScale.current
-    val iconCornerRadius = iOSCornerRadius.Small * cornerRadiusScale
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (icon != null) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(iconCornerRadius))
-                    .background(iconTint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            if (subtitle != null) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        val primaryColor = MaterialTheme.colorScheme.primary
-        CupertinoSwitch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = CupertinoSwitchDefaults.colors(
-                thumbColor = Color.White,
-                checkedTrackColor = primaryColor,
-                uncheckedTrackColor = Color(0xFFE9E9EA)
-            )
-        )
-    }
-}
 
-@Composable
-fun SettingClickableItem(
-    icon: ImageVector? = null,
-    iconPainter: androidx.compose.ui.graphics.painter.Painter? = null,
-    title: String,
-    value: String? = null,
-    onClick: (() -> Unit)? = null,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
-    enableCopy: Boolean = false
-) {
-    val cornerRadiusScale = LocalCornerRadiusScale.current
-    val iconCornerRadius = iOSCornerRadius.Small * cornerRadiusScale
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (icon != null || iconPainter != null) {
-            if (iconTint != Color.Unspecified) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(iconCornerRadius))
-                        .background(iconTint.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (icon != null) {
-                        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                    } else if (iconPainter != null) {
-                        Icon(painter = iconPainter, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier.size(36.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (icon != null) {
-                        Icon(icon, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(36.dp))
-                    } else if (iconPainter != null) {
-                        Icon(painter = iconPainter, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(36.dp))
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-        }
-        Text(text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (value != null) {
-                Text(
-                    text = value, 
-                    style = MaterialTheme.typography.bodyMedium, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = if (enableCopy) Modifier.copyOnLongPress(value, title) else Modifier
-                )
-            }
-            if (onClick != null) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(CupertinoIcons.Default.ChevronForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f), modifier = Modifier.size(20.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun Divider() {
-    Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(MaterialTheme.colorScheme.surfaceVariant))
-}
 
 // ═══════════════════════════════════════════════════
 //  业务板块 (Business Sections)
@@ -200,7 +60,7 @@ fun FollowAuthorSection(
             iconTint = Color(0xFF0088CC),
             enableCopy = true
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = AppIcons.Twitter,
             title = "Twitter / X",
@@ -226,7 +86,7 @@ fun GeneralSection(
             onClick = onAppearanceClick,
             iconTint = iOSPink
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.Play,
             title = "播放设置",
@@ -234,7 +94,7 @@ fun GeneralSection(
             onClick = onPlaybackClick,
             iconTint = iOSGreen
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.RectangleStack,
             title = "底栏设置",
@@ -260,7 +120,7 @@ fun PrivacySection(
             onCheckedChange = onPrivacyModeChange,
             iconTint = iOSPurple
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.Lock,
             title = "权限管理",
@@ -286,7 +146,7 @@ fun DataStorageSection(
             onClick = onDownloadPathClick,
             iconTint = iOSBlue
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.Trash,
             title = "清除缓存",
@@ -316,7 +176,7 @@ fun DeveloperSection(
             onCheckedChange = onCrashTrackingChange,
             iconTint = iOSTeal
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingSwitchItem(
             icon = CupertinoIcons.Default.ChartBar,
             title = "使用情况统计",
@@ -325,7 +185,7 @@ fun DeveloperSection(
             onCheckedChange = onAnalyticsChange,
             iconTint = iOSBlue
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.PuzzlepieceExtension,
             title = "插件中心",
@@ -333,7 +193,7 @@ fun DeveloperSection(
             onClick = onPluginsClick,
             iconTint = iOSPurple
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.DocTextMagnifyingglass,
             title = "导出日志",
@@ -362,7 +222,7 @@ fun AboutSection(
             onClick = onLicenseClick,
             iconTint = iOSOrange
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.Link,
             title = "开源主页",
@@ -371,7 +231,7 @@ fun AboutSection(
             iconTint = iOSPurple,
             enableCopy = true
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.InfoCircle,
             title = "版本",
@@ -380,7 +240,7 @@ fun AboutSection(
             iconTint = iOSTeal,
             enableCopy = true
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
             icon = CupertinoIcons.Default.BookCircle,
             title = "重播新手引导",
@@ -388,7 +248,7 @@ fun AboutSection(
             onClick = onReplayOnboardingClick,
             iconTint = iOSPink
         )
-        Divider()
+        SettingsDivider(startIndent = 66.dp)
         SettingSwitchItem(
             icon = CupertinoIcons.Default.Gift,
             title = "趣味彩蛋",

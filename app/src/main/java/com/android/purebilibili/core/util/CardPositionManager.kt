@@ -38,6 +38,13 @@ object CardPositionManager {
         private set
     
     /**
+     *  [新增] 是否正在切换分类
+     * 用于跳过首页卡片的入场动画，避免切换标签时出现收缩效果
+     */
+    @Volatile
+    var isSwitchingCategory: Boolean = false
+    
+    /**
      *  [新增] 屏幕密度，用于计算 dp 到 px
      */
     var lastScreenDensity: Float = 3f

@@ -37,6 +37,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     //  [新增] 切换分类
     fun switchCategory(category: HomeCategory) {
         if (_uiState.value.currentCategory == category) return
+        
+        //  [修复] 标记正在切换分类，避免入场动画产生收缩效果
+        com.android.purebilibili.core.util.CardPositionManager.isSwitchingCategory = true
+        
         viewModelScope.launch {
             //  [修复] 如果切换到直播分类，未登录用户默认显示热门
             val liveSubCategory = if (category == HomeCategory.LIVE) {

@@ -606,23 +606,13 @@ fun AppNavigation(
         ) {
             AppearanceSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToBottomBarSettings = { navController.navigate(ScreenRoutes.BottomBarSettings.route) },
-                onNavigateToThemeSettings = { navController.navigate(ScreenRoutes.ThemeSettings.route) },
+
                 onNavigateToIconSettings = { navController.navigate(ScreenRoutes.IconSettings.route) },
                 onNavigateToAnimationSettings = { navController.navigate(ScreenRoutes.AnimationSettings.route) }
             )
         }
         
-        // ---  主题设置页面 ---
-        composable(
-            route = ScreenRoutes.ThemeSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
-        ) {
-            com.android.purebilibili.feature.settings.ThemeSettingsScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
+
         
         // ---  图标设置页面 ---
         composable(
