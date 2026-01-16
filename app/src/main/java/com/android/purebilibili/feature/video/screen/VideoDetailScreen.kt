@@ -338,8 +338,8 @@ fun VideoDetailScreen(
                 externalPlayer = playerState.player
             )
 
-            // 2. 进入小窗模式
-            manager.enterMiniMode()
+            // 2. 进入小窗模式（强制，不管当前模式设置）
+            manager.enterMiniMode(forced = true)
 
             // 3. 返回上一页（首页）
             onBack()

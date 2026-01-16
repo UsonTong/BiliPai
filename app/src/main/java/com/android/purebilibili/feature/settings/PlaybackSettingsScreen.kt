@@ -94,7 +94,7 @@ fun PlaybackSettingsContent(
     
     val miniPlayerMode by com.android.purebilibili.core.store.SettingsManager
         .getMiniPlayerMode(context).collectAsState(
-            initial = com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY
+            initial = com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF
         )
     
     // ... [保留原有逻辑: checkPipPermission, gotoPipSettings] ...
@@ -190,7 +190,7 @@ fun PlaybackSettingsContent(
             item {
                 val scope = rememberCoroutineScope()
                 
-                // 模式选项
+                // 🔄 [简化] 只有两种模式：默认 和 画中画
                 val modeOptions = com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.entries
                 var isExpanded by remember { mutableStateOf(false) }
                 
@@ -198,13 +198,13 @@ fun PlaybackSettingsContent(
                     //  点击展开模式选择
                     IOSClickableItem(
                         icon = CupertinoIcons.Default.Pip,
-                        title = "小窗模式",
+                        title = "后台播放模式",
                         value = miniPlayerMode.label,
                         onClick = { isExpanded = !isExpanded },
                         iconTint = iOSTeal
                     )
                     
-                    //  展开的模式选择列表
+                    //  展开的模式选择列表（简化为2选项）
                     androidx.compose.animation.AnimatedVisibility(
                         visible = isExpanded,
                         enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),

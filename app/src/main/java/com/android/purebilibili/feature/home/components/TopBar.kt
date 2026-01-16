@@ -291,38 +291,80 @@ fun CategoryTabRow(
                         )
                     }
                     
-                    //  下拉菜单
+                    //  iOS 风格下拉菜单 - 毛玻璃风格
                     DropdownMenu(
                         expanded = showMoreMenu,
-                        onDismissRequest = { showMoreMenu = false }
+                        onDismissRequest = { showMoreMenu = false },
+                        modifier = Modifier
+                            .width(150.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                shape = RoundedCornerShape(14.dp)
+                            )
                     ) {
+                        // 分类图标映射
+                        val categoryIcons = mapOf(
+                            "追番" to CupertinoIcons.Default.Film,
+                            "影视" to CupertinoIcons.Default.Tv,
+                            "游戏" to CupertinoIcons.Default.Gamecontroller,
+                            "知识" to CupertinoIcons.Default.Book,
+                            "科技" to CupertinoIcons.Default.Cpu
+                        )
+                        
                         moreCategories.forEachIndexed { index, category ->
                             val actualIndex = primaryCount + index
                             val isThisSelected = actualIndex == selectedIndex
+                            val icon = categoryIcons[category] ?: CupertinoIcons.Default.Folder
                             
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = category,
-                                        color = if (isThisSelected) primaryColor else MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = if (isThisSelected) FontWeight.SemiBold else FontWeight.Normal
+                            // 菜单项
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (isThisSelected) primaryColor.copy(alpha = 0.15f)
+                                        else Color.Transparent
                                     )
-                                },
-                                onClick = {
-                                    onCategorySelected(actualIndex)
-                                    showMoreMenu = false
-                                },
-                                leadingIcon = if (isThisSelected) {
-                                    {
-                                        Icon(
-                                            CupertinoIcons.Default.Checkmark,
-                                            contentDescription = null,
-                                            tint = primaryColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                                    .clickable {
+                                        onCategorySelected(actualIndex)
+                                        showMoreMenu = false
                                     }
-                                } else null
-                            )
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 图标
+                                Icon(
+                                    icon,
+                                    contentDescription = null,
+                                    tint = if (isThisSelected) primaryColor 
+                                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(10.dp))
+                                
+                                // 文字
+                                Text(
+                                    text = category,
+                                    color = if (isThisSelected) primaryColor 
+                                            else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = if (isThisSelected) FontWeight.SemiBold 
+                                                 else FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                // 选中勾选
+                                if (isThisSelected) {
+                                    Icon(
+                                        CupertinoIcons.Default.Checkmark,
+                                        contentDescription = null,
+                                        tint = primaryColor,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

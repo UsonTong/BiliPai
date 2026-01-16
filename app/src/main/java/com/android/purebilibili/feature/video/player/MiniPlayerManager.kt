@@ -172,6 +172,11 @@ class MiniPlayerManager private constructor(private val context: Context) :
     
     // 🚀 [新增] 导航抑制标志：在导航到视频页面期间不显示小窗
     var isNavigatingToVideo by mutableStateOf(false)
+    
+    // 🎯 [新增] 导航离开标志：区分"应用导航离开"和"应用进入后台"
+    // true = 用户通过返回按钮离开视频页面，应该停止播放
+    // false = 用户按 Home 键离开应用，应该继续后台播放
+    var isLeavingByNavigation by mutableStateOf(false)
 
     var isPlaying by mutableStateOf(false)
         private set
@@ -306,16 +311,12 @@ class MiniPlayerManager private constructor(private val context: Context) :
     /**
      * 判断是否应该显示应用内小窗（返回首页时）
      *  只有 IN_APP_ONLY 模式才显示应用内悬浮小窗
-     * - SYSTEM_PIP: 使用系统画中画
-     * - BACKGROUND: 只播放音频，不显示小窗
-     * - OFF: 完全关闭
      */
     fun shouldShowInAppMiniPlayer(): Boolean {
         val mode = getCurrentMode()
-        // 🚀 [修复] 导航期间不显示小窗，避免闪烁
         val result = mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY 
             && isActive && !isNavigatingToVideo
-        Logger.d(TAG, " shouldShowInAppMiniPlayer: mode=$mode, isActive=$isActive, navigating=$isNavigatingToVideo, result=$result")
+        Logger.d(TAG, "📲 shouldShowInAppMiniPlayer: mode=$mode, isActive=$isActive, navigating=$isNavigatingToVideo, result=$result")
         return result
     }
     
@@ -330,18 +331,53 @@ class MiniPlayerManager private constructor(private val context: Context) :
     }
     
     /**
-     * 判断是否应该继续后台音频播放
+     * 🎯 判断是否应该继续后台音频播放
+     * 
+     * OFF模式（官方B站行为）：
+     * - 切到桌面 → 继续后台播放
+     * - 通过返回按钮离开视频页 → 停止播放
      */
     fun shouldContinueBackgroundAudio(): Boolean {
         val mode = getCurrentMode()
-        return mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.BACKGROUND && isActive
+        return when (mode) {
+            com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF -> {
+                // 默认模式：只有切到桌面（非导航离开）才继续后台播放
+                isActive && !isLeavingByNavigation
+            }
+            com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY -> {
+                // 应用内小窗模式：由小窗接管，不需要后台音频
+                false
+            }
+            com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP -> {
+                // 画中画模式：由 PiP 接管
+                false
+            }
+        }
+    }
+    
+    /**
+     * 🔄 重置导航离开标志（在视频页计入时调用）
+     */
+    fun resetNavigationFlag() {
+        isLeavingByNavigation = false
+        Logger.d(TAG, "🔄 resetNavigationFlag: isLeavingByNavigation=false")
+    }
+    
+    /**
+     * 🎯 标记通过导航离开（在返回按钮点击时调用）
+     */
+    fun markLeavingByNavigation() {
+        isLeavingByNavigation = true
+        Logger.d(TAG, "🎯 markLeavingByNavigation: isLeavingByNavigation=true")
     }
     
     /**
      * 判断小窗功能是否完全关闭
+     * 🔄 [简化] 现在只有 OFF 和 SYSTEM_PIP，OFF 模式下返回 false（因为支持后台播放）
      */
     fun isMiniPlayerDisabled(): Boolean {
-        return getCurrentMode() == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF
+        // 两种模式都支持某种形式的后台播放，所以不再"完全关闭"
+        return false
     }
 
 
@@ -452,24 +488,29 @@ class MiniPlayerManager private constructor(private val context: Context) :
 
     /**
      * 进入小窗模式
+     * @param forced 强制进入（点击小窗按钮时使用），忽略模式检查
      */
-    fun enterMiniMode() {
+    fun enterMiniMode(forced: Boolean = false) {
         val mode = getCurrentMode()
-        Logger.d(TAG, " enterMiniMode called: isActive=$isActive, currentBvid=$currentBvid, isMiniMode=$isMiniMode, mode=$mode")
+        Logger.d(TAG, "📲 enterMiniMode called: isActive=$isActive, forced=$forced, mode=$mode")
         
-        //  [检查] 如果小窗功能关闭，不进入小窗模式
-        if (isMiniPlayerDisabled()) {
-            Logger.d(TAG, " Mini player is disabled by user settings (mode=OFF)")
+        // 非强制模式下，只有 IN_APP_ONLY 才自动进入小窗
+        if (!forced && mode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY) {
+            Logger.d(TAG, "⚠️ Auto mini player only works in IN_APP_ONLY mode, current mode=$mode")
             return
         }
         
         if (!isActive) {
-            com.android.purebilibili.core.util.Logger.w(TAG, " Cannot enter mini mode: isActive is false!")
+            Logger.w(TAG, "⚠️ Cannot enter mini mode: isActive is false!")
             return
         }
-        Logger.d(TAG, " Entering mini mode for video: $currentTitle")
+        Logger.d(TAG, "📲 Entering mini mode for video: $currentTitle (forced=$forced)")
         isMiniMode = true
-        // 继续播放
+        
+        // 🔔 [修复] 进入小窗时更新媒体通知（系统控制中心显示）
+        if (currentTitle.isNotEmpty()) {
+            updateMediaMetadata(currentTitle, currentOwner, currentCover)
+        }
     }
 
     //  [新增] 是否执行退出动画 (用于在点击新视频时瞬间消失，避免闪烁)

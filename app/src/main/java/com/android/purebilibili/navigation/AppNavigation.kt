@@ -271,6 +271,8 @@ fun AppNavigation(
             DisposableEffect(Unit) {
                 //  [修复] 重置导航标志，允许小窗在返回时显示
                 miniPlayerManager?.isNavigatingToVideo = false
+                // 🎯 [新增] 重置导航离开标志（进入视频页时）
+                miniPlayerManager?.resetNavigationFlag()
                 onVideoDetailEnter()
                 onDispose {
                     onVideoDetailExit()
@@ -302,6 +304,8 @@ fun AppNavigation(
                     onBack = { 
                         //  标记正在返回，跳过首页卡片入场动画
                         CardPositionManager.markReturning()
+                        // 🎯 [新增] 标记通过导航离开，让播放器暂停
+                        miniPlayerManager?.markLeavingByNavigation()
                         //  [修复] 不再在这里调用 enterMiniMode，由 onDispose 统一处理
                         navController.popBackStack() 
                     },

@@ -677,27 +677,29 @@ object SettingsManager {
     private val KEY_MINI_PLAYER_MODE = intPreferencesKey("mini_player_mode")
     
     /**
-     *  小窗播放模式
-     * - OFF: 关闭小窗功能
-     * - IN_APP_ONLY: 仅应用内小窗（返回首页时显示）
-     * - SYSTEM_PIP: 系统画中画（退出应用时自动进入PiP）
-     * - BACKGROUND: 后台音频（仅播放音频，无画面）
+     *  小窗播放模式（3 种）
+     * - OFF: 默认模式（官方B站行为：切到桌面后台播放，返回主页停止）
+     * - IN_APP_ONLY: 应用内小窗（返回主页时显示悬浮小窗）
+     * - SYSTEM_PIP: 系统画中画（切到桌面时自动进入画中画模式）
      */
     enum class MiniPlayerMode(val value: Int, val label: String, val description: String) {
-        OFF(0, "关闭", "不使用小窗播放"),
-        IN_APP_ONLY(1, "应用内小窗", "返回首页时显示悬浮小窗"),
-        SYSTEM_PIP(2, "系统画中画", "退出应用时自动进入画中画模式"),
-        BACKGROUND(3, "后台音频", "退出应用后仅继续播放音频");
+        OFF(0, "默认", "切到桌面后台播放，返回主页停止"),
+        IN_APP_ONLY(1, "应用内小窗", "返回主页时显示悬浮小窗"),
+        SYSTEM_PIP(2, "画中画", "切到桌面进入系统画中画");
         
         companion object {
-            fun fromValue(value: Int): MiniPlayerMode = entries.find { it.value == value } ?: IN_APP_ONLY
+            fun fromValue(value: Int): MiniPlayerMode = when(value) {
+                1 -> IN_APP_ONLY
+                2 -> SYSTEM_PIP
+                else -> OFF
+            }
         }
     }
     
     // --- 小窗模式设置 ---
     fun getMiniPlayerMode(context: Context): Flow<MiniPlayerMode> = context.settingsDataStore.data
         .map { preferences -> 
-            MiniPlayerMode.fromValue(preferences[KEY_MINI_PLAYER_MODE] ?: MiniPlayerMode.IN_APP_ONLY.value)
+            MiniPlayerMode.fromValue(preferences[KEY_MINI_PLAYER_MODE] ?: MiniPlayerMode.OFF.value)
         }
 
     suspend fun setMiniPlayerMode(context: Context, mode: MiniPlayerMode) {
@@ -712,7 +714,7 @@ object SettingsManager {
     //  同步读取小窗模式（用于 MiniPlayerManager）
     fun getMiniPlayerModeSync(context: Context): MiniPlayerMode {
         val value = context.getSharedPreferences("mini_player", Context.MODE_PRIVATE)
-            .getInt("mode", MiniPlayerMode.IN_APP_ONLY.value)
+            .getInt("mode", MiniPlayerMode.OFF.value)
         return MiniPlayerMode.fromValue(value)
     }
     

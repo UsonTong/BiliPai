@@ -73,11 +73,8 @@ fun MiniPlayerOverlay(
     com.android.purebilibili.core.util.Logger.d("MiniPlayerOverlay", 
         " Overlay: mode=$currentMode, isMiniMode=${miniPlayerManager.isMiniMode}, isActive=${miniPlayerManager.isActive}")
     
-    //  [重构] 使用新的模式判断方法，替代原来的 bgPlay 检查
-    // 小窗模式为 OFF 时不渲染
-    if (miniPlayerManager.isMiniPlayerDisabled()) {
-        return
-    }
+    //  [简化] 小窗可见性由 AnimatedVisibility 的 isMiniMode && isActive 控制
+    // 不再需要额外的模式检查
 
     
     val configuration = LocalConfiguration.current

@@ -90,23 +90,18 @@ fun iOSHomeHeader(
         .collectAsState(initial = BlurIntensity.THIN)
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
 
-    //  动态背景颜色
-    //  [修复] 强制提高背景不透明度 (0.95f)，解决滑动时文字看不清的问题
-    val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) 0.95f else 1f)
-
+    //  [优化] 使用 blurIntensity 对应的背景透明度实现毛玻璃质感
+    val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) backgroundAlpha else 1f)
+    
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // ===== 分类标签栏 =====
         // ===== 分类标签栏 =====
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(top = totalHeaderTopPadding)
-                // .graphicsLayer { ... } // 移除滚动隐藏动画，锁定标签栏
-                // 保持默认状态：可见且无位移
-                .clip(androidx.compose.ui.graphics.RectangleShape)
                 .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
                 .background(headerColor)
         ) {
@@ -122,7 +117,6 @@ fun iOSHomeHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(1f)
-                .clip(androidx.compose.ui.graphics.RectangleShape)
                 .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
                 .background(headerColor)
         ) {
@@ -184,13 +178,13 @@ fun iOSHomeHeader(
                 
                 Spacer(modifier = Modifier.width(8.dp))  // 调整间距适配更大触摸区域
                 
-                //  搜索框 - iOS 风格 (HIG: 圆角 10pt)
+                //  搜索框 - iOS 风格 (HIG: 圆角 10pt) - 优化柔和半透明效果
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                         .clip(RoundedCornerShape(10.dp))  // HIG 标准圆角
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))  // 更柔和的半透明
                         .clickable { 
                             haptic(HapticType.LIGHT)
                             onSearchClick() 

@@ -715,14 +715,18 @@ fun HomeScreen(
         contentWindowInsets = WindowInsets(0),
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        //  [修复] 将 Header 移到 haze Box 外部
-        // hazeChild 只能模糊同级或父级 haze 源的内容，不能模糊自身所属的内容
-        //  [还原] 恢复原来的布局结构，Header 在 Box 内部
+        //  [重构] 实现真正的毛玻璃效果
+        // 外层 Box 包含：1) hazeSource 内容层  2) Header overlay 层
+        // Header 在 hazeSource 外部，可以正确模糊内层内容
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = hazeState)  //  使用正确的 Haze API
+            modifier = Modifier.fillMaxSize()
         ) {
+            // ===== 内容层 (hazeSource) =====
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState)  //  使用正确的 Haze API
+            ) {
             if (state.isLoading && state.videos.isEmpty() && state.liveRooms.isEmpty()) {
                 //  首次加载改为骨架屏
                 LazyVerticalGrid(
@@ -1080,12 +1084,9 @@ fun HomeScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(20.dp))
                     }
                 }
-                }
-
-            //  iOS 风格 Header (带滚动隐藏/显示动画)
-            //  [修复] Header 在 haze Box 外部，但在同一个父 Box 内，可以正确模糊
-            //  [逻辑优化] 仅在非 Loading 且无 Error 时显示 overlay header -> 改为：不在骨架屏状态且不在错误状态时显示
-            //  这样 LoadMore (isLoading=true 但 videosNotEmpty) 时也能显示 Header
+            } // 关闭 PullToRefreshBox
+            //  ===== Header Overlay (毛玻璃效果) =====
+            //  Header 现在在 hazeSource 外部，可以正确模糊内层内容
             val isSkeletonState = state.isLoading && state.videos.isEmpty() && state.liveRooms.isEmpty()
             val isErrorState = state.error != null && 
                 ((state.currentCategory == HomeCategory.LIVE && state.liveRooms.isEmpty()) ||
@@ -1121,9 +1122,47 @@ fun HomeScreen(
                     pullProgress = pullRefreshState.distanceFraction
                 )
             }
-        }  //  关闭父 Box
-    }
-    }
+            }  // 关闭 else 分支
+        }  // 关闭 hazeSource Box
+        
+        //  ===== Header Overlay (毛玻璃效果) =====
+        //  Header 现在在外层 Box 内、hazeSource 外部，可以正确模糊内层内容
+        val isSkeletonState = state.isLoading && state.videos.isEmpty() && state.liveRooms.isEmpty()
+        val isErrorState = state.error != null && 
+            ((state.currentCategory == HomeCategory.LIVE && state.liveRooms.isEmpty()) ||
+             (state.currentCategory != HomeCategory.LIVE && state.videos.isEmpty()))
+
+        if (!isSkeletonState && !isErrorState) {
+            iOSHomeHeader(
+                scrollOffset = scrollOffset,
+                user = state.user,
+                onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
+                onSettingsClick = onSettingsClick,
+                onSearchClick = onSearchClick,
+                categoryIndex = displayedTabIndex,
+                onCategorySelected = { index ->
+                    viewModel.updateDisplayedTabIndex(index)
+                    val category = HomeCategory.entries[index]
+                    when (category) {
+                        HomeCategory.ANIME -> onBangumiClick(1)
+                        HomeCategory.MOVIE -> onBangumiClick(2)
+                        else -> viewModel.switchCategory(category)
+                    }
+                },
+                onPartitionClick = onPartitionClick,
+                isScrollingUp = isScrollingUp,
+                hazeState = if (isHeaderBlurEnabled) hazeState else null,
+                onStatusBarDoubleTap = {
+                    coroutineScope.launch {
+                        gridState.animateScrollToItem(0)
+                    }
+                },
+                isRefreshing = isRefreshing,
+                pullProgress = pullRefreshState.distanceFraction
+            )
+        }
+    }  // 关闭外层 Box
+    }  // 关闭 Scaffold content
     }  //  关闭 scaffoldContent lambda
     // 📱 [平板适配] 导航模式切换动画
     // 始终使用 Row 布局，通过动画控制侧边栏的显示/隐藏
