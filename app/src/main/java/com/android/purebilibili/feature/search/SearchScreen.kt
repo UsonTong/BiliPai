@@ -181,8 +181,49 @@ fun SearchScreen(
                                             animationEnabled = cardAnimationEnabled,
                                             transitionEnabled = cardTransitionEnabled,
                                             showPublishTime = true,
+                                            //  [交互优化] 传递 onWatchLater 用于显示菜单选项
+                                            onWatchLater = { viewModel.addToWatchLater(video.bvid, video.id) },
                                             onClick = { bvid, _ -> onVideoClick(bvid, 0) }
                                         )
+                                        
+                                        //  [新增] 无限滚动触发：当滚动到最后几个 item 时加载更多
+                                        if (index == state.searchResults.size - 3 && state.hasMoreResults && !state.isLoadingMore) {
+                                            LaunchedEffect(state.currentPage) {
+                                                viewModel.loadMoreResults()
+                                            }
+                                        }
+                                    }
+                                    
+                                    //  [新增] 加载更多指示器
+                                    if (state.isLoadingMore) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                        }
+                                    }
+                                    
+                                    //  [新增] 已加载全部提示
+                                    if (!state.hasMoreResults && state.searchResults.isNotEmpty() && !state.isLoadingMore) {
+                                        item {
+                                            Text(
+                                                text = "已加载全部 ${state.searchResults.size} 条结果",
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                fontSize = 12.sp
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -201,16 +242,34 @@ fun SearchScreen(
                                     }
                                 }
                             }
-                            else -> {
-                                // 其他类型暂未支持
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
+                            com.android.purebilibili.data.model.response.SearchType.BANGUMI -> {
+                                //  番剧搜索结果
+                                LazyColumn(
+                                    contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
                                 ) {
-                                    Text(
-                                        "该搜索类型暂未支持",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    items(state.bangumiResults) { bangumiItem ->
+                                        BangumiSearchResultCard(
+                                            item = bangumiItem,
+                                            onClick = { /* TODO: Navigate to bangumi detail */ }
+                                        )
+                                    }
+                                }
+                            }
+                            com.android.purebilibili.data.model.response.SearchType.LIVE -> {
+                                //  直播搜索结果
+                                LazyColumn(
+                                    contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    items(state.liveResults) { liveItem ->
+                                        LiveSearchResultCard(
+                                            item = liveItem,
+                                            onClick = { /* TODO: Navigate to live room */ }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -513,7 +572,8 @@ fun SearchTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal).asPaddingValues()),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -743,7 +803,9 @@ fun SearchFilterBar(
         ) {
             listOf(
                 com.android.purebilibili.data.model.response.SearchType.VIDEO to "视频",
-                com.android.purebilibili.data.model.response.SearchType.UP to "UP主"
+                com.android.purebilibili.data.model.response.SearchType.UP to "UP主",
+                com.android.purebilibili.data.model.response.SearchType.BANGUMI to "番剧",
+                com.android.purebilibili.data.model.response.SearchType.LIVE to "直播"
             ).forEach { (type, label) ->
                 val isSelected = currentType == type
                 Surface(
@@ -1117,6 +1179,221 @@ fun UpSearchResultCard(
                         text = "视频 ${cleanedItem.videos}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ *  番剧搜索结果卡片
+ */
+@Composable
+fun BangumiSearchResultCard(
+    item: com.android.purebilibili.data.model.response.BangumiSearchItem,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // 封面
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(item.cover)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = item.title,
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(110.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // 番剧信息
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // 类型 + 集数
+                Row {
+                    if (item.seasonTypeName.isNotBlank()) {
+                        Text(
+                            text = item.seasonTypeName,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    if (item.indexShow.isNotBlank()) {
+                        Text(
+                            text = item.indexShow,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // 评分
+                item.mediaScore?.let { score ->
+                    if (score.score > 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "⭐ ${score.score}",
+                                fontSize = 12.sp,
+                                color = Color(0xFFFF9800)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${score.userCount}人评分",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+                
+                // 简介
+                if (item.desc.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.desc,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ *  直播搜索结果卡片
+ */
+@Composable
+fun LiveSearchResultCard(
+    item: com.android.purebilibili.data.model.response.LiveRoomSearchItem,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 封面
+            Box {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.cover.ifBlank { item.uface })
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(68.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
+                )
+                
+                // 直播状态标签
+                if (item.live_status == 1) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp),
+                        color = Color(0xFFFF4081),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "直播中",
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
+                // 在线人数
+                if (item.online > 0) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp),
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = FormatUtils.formatStat(item.online.toLong()),
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // 直播信息
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // 主播名
+                Text(
+                    text = item.uname,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                // 分区
+                if (item.area_v2_name.isNotBlank()) {
+                    Text(
+                        text = "${item.area_v2_parent_name} · ${item.area_v2_name}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }

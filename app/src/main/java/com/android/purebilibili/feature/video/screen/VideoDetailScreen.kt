@@ -880,6 +880,7 @@ fun VideoDetailScreen(
                                         replyCount = commentState.replyCount,
                                         emoteMap = success.emoteMap,
                                         isRepliesLoading = commentState.isRepliesLoading,
+                                        isRepliesEnd = commentState.isRepliesEnd,
                                         isFollowing = success.isFollowing,
                                         isFavorited = success.isFavorited,
                                         isLiked = success.isLiked,

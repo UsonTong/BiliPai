@@ -81,7 +81,7 @@ fun DynamicTopBarWithTabs(
                     "动态",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black // 强制黑色
+                    color = MaterialTheme.colorScheme.onBackground // 自适应颜色
                 )
                 
                 Spacer(modifier = Modifier.weight(1f))
@@ -99,7 +99,7 @@ fun DynamicTopBarWithTabs(
                         imageVector = if (displayMode == DynamicDisplayMode.SIDEBAR)
                             CupertinoIcons.Default.ListBullet else CupertinoIcons.Default.RectangleStack,
                         contentDescription = "切换布局模式",
-                        tint = Color.Black, // 强制黑色
+                        tint = MaterialTheme.colorScheme.onSurface, // 自适应颜色
                         modifier = Modifier.size(22.dp)
                     )
                 }

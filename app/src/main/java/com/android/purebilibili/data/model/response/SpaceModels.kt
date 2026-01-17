@@ -289,3 +289,279 @@ data class SeriesPage(
     val size: Int = 30,
     val total: Int = 0
 )
+
+// ==========  主页 Tab Models ==========
+
+// 置顶视频响应 /x/space/top/arc
+@kotlinx.serialization.Serializable
+data class SpaceTopArcResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceTopArcData? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceTopArcData(
+    val aid: Long = 0,
+    val bvid: String = "",
+    val title: String = "",
+    val pic: String = "",
+    val duration: Int = 0,
+    val pubdate: Long = 0,
+    val stat: SpaceTopArcStat = SpaceTopArcStat(),
+    val reason: String = ""  // 置顶理由
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceTopArcStat(
+    val view: Long = 0,
+    val danmaku: Long = 0,
+    val reply: Long = 0,
+    val favorite: Long = 0,
+    val coin: Long = 0,
+    val share: Long = 0,
+    val like: Long = 0
+)
+
+// 个人公告响应 /x/space/notice
+@kotlinx.serialization.Serializable
+data class SpaceNoticeResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: String = ""  // 公告内容（纯文本或 HTML）
+)
+
+// ==========  动态 Tab Models ==========
+
+// 用户动态响应 /x/polymer/web-dynamic/v1/feed/space
+@kotlinx.serialization.Serializable
+data class SpaceDynamicResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceDynamicData? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicData(
+    val has_more: Boolean = false,
+    val offset: String = "",
+    val items: List<SpaceDynamicItem> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicItem(
+    val id_str: String = "",
+    val modules: SpaceDynamicModules = SpaceDynamicModules(),
+    val type: String = "",  // DYNAMIC_TYPE_AV, DYNAMIC_TYPE_DRAW, DYNAMIC_TYPE_WORD 等
+    val visible: Boolean = true
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicModules(
+    val module_author: SpaceDynamicAuthor? = null,
+    val module_dynamic: SpaceDynamicContent? = null,
+    val module_stat: SpaceDynamicStat? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicAuthor(
+    val mid: Long = 0,
+    val name: String = "",
+    val face: String = "",
+    val pub_time: String = "",
+    val pub_ts: Long = 0
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicContent(
+    val desc: SpaceDynamicDesc? = null,
+    val major: SpaceDynamicMajor? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicDesc(
+    val text: String = "",
+    val rich_text_nodes: List<SpaceDynamicRichText> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicRichText(
+    val type: String = "",  // RICH_TEXT_NODE_TYPE_TEXT, RICH_TEXT_NODE_TYPE_EMOJI 等
+    val text: String = "",
+    val orig_text: String = "",
+    val emoji: SpaceDynamicEmoji? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicEmoji(
+    val icon_url: String = "",
+    val size: Int = 1,
+    val text: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicMajor(
+    val type: String = "",  // MAJOR_TYPE_ARCHIVE, MAJOR_TYPE_DRAW, MAJOR_TYPE_OPUS 等
+    val archive: SpaceDynamicArchive? = null,
+    val draw: SpaceDynamicDraw? = null,
+    val opus: SpaceDynamicOpus? = null
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicArchive(
+    val aid: String = "",
+    val bvid: String = "",
+    val title: String = "",
+    val cover: String = "",
+    val desc: String = "",
+    val duration_text: String = "",
+    val stat: SpaceDynamicArchiveStat = SpaceDynamicArchiveStat()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicArchiveStat(
+    val play: String = "",
+    val danmaku: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicDraw(
+    val id: Long = 0,
+    val items: List<SpaceDynamicDrawItem> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicDrawItem(
+    val src: String = "",
+    val width: Int = 0,
+    val height: Int = 0
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicOpus(
+    val summary: SpaceDynamicOpusSummary? = null,
+    val pics: List<SpaceDynamicDrawItem> = emptyList(),
+    val title: String = ""
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicOpusSummary(
+    val text: String = "",
+    val rich_text_nodes: List<SpaceDynamicRichText> = emptyList()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicStat(
+    val comment: SpaceDynamicCount = SpaceDynamicCount(),
+    val forward: SpaceDynamicCount = SpaceDynamicCount(),
+    val like: SpaceDynamicCount = SpaceDynamicCount()
+)
+
+@kotlinx.serialization.Serializable
+data class SpaceDynamicCount(
+    val count: Int = 0,
+    val forbidden: Boolean = false
+)
+
+// ==========  Space Audio Models ==========
+
+@Serializable
+data class SpaceAudioResponse(
+    val code: Int = 0,
+    val msg: String = "",
+    val data: SpaceAudioData? = null
+)
+
+@Serializable
+data class SpaceAudioData(
+    val curPage: Int = 1,
+    val pageCount: Int = 0,
+    val totalSize: Int = 0,
+    val pageSize: Int = 30,
+    val data: List<SpaceAudioItem>? = null
+)
+
+@Serializable
+data class SpaceAudioItem(
+    val id: Long = 0,
+    val uid: Long = 0,
+    val uname: String = "",
+    val author: String = "",
+    val title: String = "",
+    val cover: String = "",
+    val intro: String = "",
+    val lyric: String = "",
+    val crtype: Int = 0,
+    val duration: Int = 0,
+    val passtime: Long = 0,
+    val curtime: Long = 0,
+    val aid: Long = 0,
+    val bvid: String = "",
+    val ctime: Long = 0,
+    val coin_num: Int = 0,
+    val play_count: Int = 0,
+    val reply_count: Int = 0,
+    val share_count: Int = 0,
+    val collect_count: Int = 0
+)
+
+// ==========  Space Article Models ==========
+
+@Serializable
+data class SpaceArticleResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceArticleData? = null
+)
+
+@Serializable
+data class SpaceArticleData(
+    val lists: List<SpaceArticleItem> = emptyList(),
+    val pn: Int = 1,
+    val ps: Int = 30,
+    val total: Int = 0
+)
+
+@Serializable
+data class SpaceArticleItem(
+    val id: Long = 0,
+    val category: SpaceArticleCategory? = null,
+    val title: String = "",
+    val summary: String = "",
+    val banner_url: String = "",
+    val template_id: Int = 0,
+    val state: Int = 0,
+    val author: SpaceArticleAuthor? = null,
+    val stats: SpaceArticleStats? = null,
+    val publish_time: Long = 0,
+    val ctime: Long = 0,
+    val mtime: Long = 0,
+    val is_like: Boolean = false,
+    val image_urls: List<String> = emptyList()
+)
+
+@Serializable
+data class SpaceArticleCategory(
+    val id: Int = 0,
+    val parent_id: Int = 0,
+    val name: String = ""
+)
+
+@Serializable
+data class SpaceArticleAuthor(
+    val mid: Long = 0,
+    val name: String = "",
+    val face: String = ""
+)
+
+@Serializable
+data class SpaceArticleStats(
+    val view: Int = 0,
+    val favorite: Int = 0,
+    val like: Int = 0,
+    val dislike: Int = 0,
+    val reply: Int = 0,
+    val share: Int = 0,
+    val coin: Int = 0,
+    val dynamic: Int = 0
+)

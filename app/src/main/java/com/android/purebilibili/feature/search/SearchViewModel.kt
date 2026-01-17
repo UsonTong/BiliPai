@@ -9,6 +9,8 @@ import com.android.purebilibili.data.model.response.HotItem
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.data.model.response.SearchUpItem
 import com.android.purebilibili.data.model.response.SearchType
+import com.android.purebilibili.data.model.response.BangumiSearchItem
+import com.android.purebilibili.data.model.response.LiveRoomSearchItem
 import com.android.purebilibili.data.repository.SearchRepository
 import com.android.purebilibili.data.repository.SearchOrder
 import com.android.purebilibili.data.repository.SearchDuration
@@ -29,6 +31,10 @@ data class SearchUiState(
     val searchResults: List<VideoItem> = emptyList(),
     //  UP主 结果
     val upResults: List<SearchUpItem> = emptyList(),
+    //  [新增] 番剧结果
+    val bangumiResults: List<BangumiSearchItem> = emptyList(),
+    //  [新增] 直播结果
+    val liveResults: List<LiveRoomSearchItem> = emptyList(),
     val hotList: List<HotItem> = emptyList(),
     val historyList: List<SearchHistory> = emptyList(),
     //  搜索建议
@@ -41,7 +47,12 @@ data class SearchUiState(
     val searchOrder: SearchOrder = SearchOrder.TOTALRANK,
     val searchDuration: SearchDuration = SearchDuration.ALL,
     //  搜索彩蛋消息
-    val easterEggMessage: String? = null
+    val easterEggMessage: String? = null,
+    //  [新增] 分页状态
+    val currentPage: Int = 1,
+    val totalPages: Int = 1,
+    val hasMoreResults: Boolean = false,
+    val isLoadingMore: Boolean = false
 )
 
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
@@ -115,7 +126,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             com.android.purebilibili.core.util.EasterEggs.checkSearchEasterEgg(keyword)
         } else null
 
-        //  清空建议列表，设置彩蛋消息
+        //  清空建议列表，设置彩蛋消息，重置分页状态
         _uiState.update { 
             it.copy(
                 query = keyword, 
@@ -123,7 +134,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 showResults = true, 
                 suggestions = emptyList(), 
                 error = null,
-                easterEggMessage = easterEggMessage
+                easterEggMessage = easterEggMessage,
+                currentPage = 1,  // [新增] 重置分页
+                hasMoreResults = false,
+                isLoadingMore = false
             ) 
         }
         saveHistory(keyword)
@@ -138,12 +152,21 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 SearchType.VIDEO -> {
                     val order = _uiState.value.searchOrder
                     val duration = _uiState.value.searchDuration
-                    val result = SearchRepository.search(keyword, order, duration)
-                    result.onSuccess { videos ->
+                    val result = SearchRepository.search(keyword, order, duration, page = 1)
+                    result.onSuccess { (videos, pageInfo) ->
                         //  [修复] 应用插件过滤（UP主拉黑、关键词屏蔽等）
                         val filteredVideos = com.android.purebilibili.core.plugin.PluginManager
                             .filterFeedItems(videos)
-                        _uiState.update { it.copy(isSearching = false, searchResults = filteredVideos, upResults = emptyList()) }
+                        _uiState.update { 
+                            it.copy(
+                                isSearching = false, 
+                                searchResults = filteredVideos, 
+                                upResults = emptyList(),
+                                currentPage = pageInfo.currentPage,
+                                totalPages = pageInfo.totalPages,
+                                hasMoreResults = pageInfo.hasMore
+                            ) 
+                        }
                     }.onFailure { e ->
                         _uiState.update { it.copy(isSearching = false, error = e.message ?: "搜索失败") }
                     }
@@ -151,14 +174,100 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 SearchType.UP -> {
                     val result = SearchRepository.searchUp(keyword)
                     result.onSuccess { ups ->
-                        _uiState.update { it.copy(isSearching = false, upResults = ups, searchResults = emptyList()) }
+                        _uiState.update { 
+                            it.copy(
+                                isSearching = false, 
+                                upResults = ups, 
+                                searchResults = emptyList(),
+                                bangumiResults = emptyList(),
+                                liveResults = emptyList(),
+                                hasMoreResults = false
+                            ) 
+                        }
                     }.onFailure { e ->
                         _uiState.update { it.copy(isSearching = false, error = e.message ?: "搜索失败") }
                     }
                 }
-                else -> {
-                    // 其他类型暂未实现
-                    _uiState.update { it.copy(isSearching = false, error = "该搜索类型暂未支持") }
+                SearchType.BANGUMI -> {
+                    val result = SearchRepository.searchBangumi(keyword, page = 1)
+                    result.onSuccess { (bangumis, pageInfo) ->
+                        _uiState.update { 
+                            it.copy(
+                                isSearching = false, 
+                                bangumiResults = bangumis,
+                                searchResults = emptyList(),
+                                upResults = emptyList(),
+                                liveResults = emptyList(),
+                                currentPage = pageInfo.currentPage,
+                                totalPages = pageInfo.totalPages,
+                                hasMoreResults = pageInfo.hasMore
+                            ) 
+                        }
+                    }.onFailure { e ->
+                        _uiState.update { it.copy(isSearching = false, error = e.message ?: "搜索失败") }
+                    }
+                }
+                SearchType.LIVE -> {
+                    val result = SearchRepository.searchLive(keyword, page = 1)
+                    result.onSuccess { (liveRooms, pageInfo) ->
+                        _uiState.update { 
+                            it.copy(
+                                isSearching = false, 
+                                liveResults = liveRooms,
+                                searchResults = emptyList(),
+                                upResults = emptyList(),
+                                bangumiResults = emptyList(),
+                                currentPage = pageInfo.currentPage,
+                                totalPages = pageInfo.totalPages,
+                                hasMoreResults = pageInfo.hasMore
+                            ) 
+                        }
+                    }.onFailure { e ->
+                        _uiState.update { it.copy(isSearching = false, error = e.message ?: "搜索失败") }
+                    }
+                }
+            }
+        }
+    }
+    
+    //  [新增] 加载更多搜索结果
+    fun loadMoreResults() {
+        val state = _uiState.value
+        
+        // 检查条件：必须是视频搜索、有更多结果、不在加载中
+        if (state.searchType != SearchType.VIDEO || !state.hasMoreResults || state.isLoadingMore || state.query.isBlank()) {
+            return
+        }
+        
+        _uiState.update { it.copy(isLoadingMore = true) }
+        
+        val nextPage = state.currentPage + 1
+        
+        viewModelScope.launch {
+            val order = state.searchOrder
+            val duration = state.searchDuration
+            val result = SearchRepository.search(state.query, order, duration, page = nextPage)
+            
+            result.onSuccess { (videos, pageInfo) ->
+                //  应用插件过滤
+                val filteredVideos = com.android.purebilibili.core.plugin.PluginManager
+                    .filterFeedItems(videos)
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoadingMore = false,
+                        searchResults = it.searchResults + filteredVideos,  // 追加新结果
+                        currentPage = pageInfo.currentPage,
+                        totalPages = pageInfo.totalPages,
+                        hasMoreResults = pageInfo.hasMore
+                    ) 
+                }
+            }.onFailure { e ->
+                _uiState.update { 
+                    it.copy(
+                        isLoadingMore = false, 
+                        error = "加载更多失败: ${e.message}"
+                    ) 
                 }
             }
         }
@@ -224,6 +333,18 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     fun clearHistory() {
         viewModelScope.launch {
             searchDao.clearAll()
+        }
+    }
+    
+    //  [新增] 添加到稀后再看
+    fun addToWatchLater(bvid: String, aid: Long) {
+        viewModelScope.launch {
+            val result = com.android.purebilibili.data.repository.ActionRepository.toggleWatchLater(aid, true)
+            result.onSuccess {
+                android.widget.Toast.makeText(getApplication(), "已添加到稍后再看", android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure { e ->
+                android.widget.Toast.makeText(getApplication(), e.message ?: "添加失败", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

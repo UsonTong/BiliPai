@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.space
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,6 +48,7 @@ fun SpaceScreen(
     mid: Long,
     onBack: () -> Unit,
     onVideoClick: (String) -> Unit,
+    onViewAllClick: (String, Long, Long, String) -> Unit = { _, _, _, _ -> }, // type, id, mid, title
     viewModel: SpaceViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -107,7 +109,12 @@ fun SpaceScreen(
                         onVideoClick = onVideoClick,
                         onLoadMore = { viewModel.loadMoreVideos() },
                         onCategoryClick = { viewModel.selectCategory(it) },
-                        onSortOrderClick = { viewModel.selectSortOrder(it) }  //  排序点击
+                        onSortOrderClick = { viewModel.selectSortOrder(it) },
+                        onLoadHome = { viewModel.loadSpaceHome() },
+                        onLoadDynamic = { viewModel.loadSpaceDynamic(refresh = true) },
+                        onLoadMoreDynamic = { viewModel.loadSpaceDynamic(refresh = false) },
+                        onSubTabSelected = { viewModel.selectSubTab(it) },
+                        onViewAllClick = onViewAllClick
                     )
                 }
             }
@@ -121,8 +128,14 @@ private fun SpaceContent(
     onVideoClick: (String) -> Unit,
     onLoadMore: () -> Unit,
     onCategoryClick: (Int) -> Unit,  //  分类点击回调
-    onSortOrderClick: (VideoSortOrder) -> Unit  //  排序点击回调
+    onSortOrderClick: (VideoSortOrder) -> Unit,  //  排序点击回调
+    onLoadHome: () -> Unit,  //  加载主页数据
+    onLoadDynamic: () -> Unit,  //  加载动态数据
+    onLoadMoreDynamic: () -> Unit,  //  加载更多动态
+    onSubTabSelected: (SpaceSubTab) -> Unit,  // Uploads Sub-tab selection
+    onViewAllClick: (String, Long, Long, String) -> Unit
 ) {
+    val context = LocalContext.current
     //  当前选中的 Tab（目前只实现投稿页）
     var selectedTab by remember { mutableIntStateOf(2) }  // 默认投稿
     
@@ -173,89 +186,161 @@ private fun SpaceContent(
         //  根据 Tab 显示不同内容
         when (selectedTab) {
             2 -> {  // 投稿
-                // 投稿视频标题和排序按钮 (跨满列)
+                // 投稿分类侧边栏 - 显示为水平标签（移动端适配）
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "视频",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        val displayCount = if (state.totalVideos > 0) state.totalVideos else state.videos.size
-                        Text(
-                            text = " · $displayCount",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                        
-                        Spacer(Modifier.weight(1f))
-                        
-                        SortButtonRow(
-                            currentOrder = state.sortOrder,
-                            onOrderClick = onSortOrderClick
-                        )
-                    }
+                    SpaceUploadsHeader(
+                        selectedTab = state.selectedSubTab,
+                        videoCount = state.totalVideos,
+                        articleCount = state.articles.size,
+                        audioCount = state.audios.size,
+                        onTabSelected = onSubTabSelected
+                    )
                 }
-                
-                // 视频列表 (网格)
-                items(state.videos, key = { it.bvid }) { video ->
-                    // Map SpaceVideoItem to VideoItem
-                    val videoItem = remember(video) {
-                        VideoItem(
-                            bvid = video.bvid,
-                            title = video.title,
-                            pic = video.pic,
-                            owner = Owner(mid = state.userInfo.mid, name = state.userInfo.name, face = state.userInfo.face),
-                            stat = Stat(view = video.play, danmaku = 0, reply = video.comment, favorite = 0, coin = 0, share = 0, like = 0),
-                            pubdate = video.created,
-                            duration = try {
-                                val parts = video.length.split(":")
-                                if (parts.size == 2) {
-                                    parts[0].toInt() * 60 + parts[1].toInt()
-                                } else {
-                                    0
+
+                when (state.selectedSubTab) {
+                    SpaceSubTab.VIDEO -> {
+                        // 播放全部 + 排序按钮行 - 官方风格
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 播放全部按钮
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable { 
+                                            state.videos.firstOrNull()?.let { onVideoClick(it.bvid) }
+                                        }
+                                        .padding(end = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        CupertinoIcons.Default.Play,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "播放全部",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
                                 }
-                            } catch (e: Exception) { 0 }
-                        )
-                    }
-                    
-                    Box(modifier = Modifier.padding(horizontal = 8.dp)) {
-                         ElegantVideoCard(
-                             video = videoItem,
-                             index = 0, // Not important for static card
-                             animationEnabled = false,
-                             transitionEnabled = false,
-                             showPublishTime = true,
-                             onClick = { bvid, _ -> onVideoClick(bvid) }
-                         )
-                    }
-                }
-                
-                // 加载中指示器 (跨满列)
-                if (state.isLoadingMore) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CupertinoActivityIndicator()
+                                
+                                Spacer(Modifier.weight(1f))
+                                
+                                // 排序下拉 - 简化显示当前排序方式
+                                Row(
+                                    modifier = Modifier.clickable { 
+                                        // 切换排序
+                                        val next = when (state.sortOrder) {
+                                            VideoSortOrder.PUBDATE -> VideoSortOrder.CLICK
+                                            VideoSortOrder.CLICK -> VideoSortOrder.STOW
+                                            VideoSortOrder.STOW -> VideoSortOrder.PUBDATE
+                                        }
+                                        onSortOrderClick(next)
+                                    },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = when (state.sortOrder) {
+                                            VideoSortOrder.PUBDATE -> "最新发布"
+                                            VideoSortOrder.CLICK -> "最多播放"
+                                            VideoSortOrder.STOW -> "最多收藏"
+                                        },
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Icon(
+                                        CupertinoIcons.Default.ChevronDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // 视频列表 - 列表样式（非网格）
+                        state.videos.forEach { video ->
+                            item(key = "video_${video.bvid}", span = { GridItemSpan(maxLineSpan) }) {
+                                SpaceVideoListItem(
+                                    video = video,
+                                    onClick = { onVideoClick(video.bvid) }
+                                )
+                            }
+                        }
+
+                        // Load More for Video
+                         if (state.isLoadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CupertinoActivityIndicator()
+                                }
+                            }
+                        } else if (!state.hasMoreVideos && state.videos.isNotEmpty()) {
+                             item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    Text("—— 没有更多了 ——", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
                         }
                     }
-                } else if (!state.hasMoreVideos && state.videos.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("—— 没有更多了 ——", color = Color.Gray, fontSize = 12.sp)
+                    SpaceSubTab.AUDIO -> {
+                         items(state.audios, key = { it.id }) { audio ->
+                             SpaceAudioCard(audio = audio, onClick = { /* TODO: Play Audio */ })
+                         }
+                         
+                         // Load More for Audio
+                        if (state.isLoadingAudios) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CupertinoActivityIndicator()
+                                }
+                            }
+                        } else if (!state.hasMoreAudios && state.audios.isNotEmpty()) {
+                             item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    Text("—— 没有更多了 ——", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                        } else if (state.audios.isEmpty() && !state.isLoadingAudios) {
+                             item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("暂无音频", color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
+                    SpaceSubTab.ARTICLE -> {
+                         items(state.articles, key = { it.id }) { article ->
+                             SpaceArticleCard(article = article, onClick = { /* TODO: Open Article */ })
+                         }
+                         
+                         // Load More for Articles
+                        if (state.isLoadingArticles) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CupertinoActivityIndicator()
+                                }
+                            }
+                        } else if (!state.hasMoreArticles && state.articles.isNotEmpty()) {
+                             item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    Text("—— 没有更多了 ——", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                        } else if (state.articles.isEmpty() && !state.isLoadingArticles) {
+                             item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("暂无专栏", color = Color.Gray)
+                                }
+                            }
                         }
                     }
                 }
@@ -278,7 +363,10 @@ private fun SpaceContent(
                             season = season,
                             archives = state.seasonArchives[season.meta.season_id] ?: emptyList(),
                             onVideoClick = onVideoClick,
-                            mid = state.userInfo.mid
+                            mid = state.userInfo.mid,
+                            onMoreClick = {
+                                onViewAllClick("season", season.meta.season_id, state.userInfo.mid, season.meta.name)
+                            }
                         )
                     }
                 }
@@ -289,7 +377,10 @@ private fun SpaceContent(
                         SeriesSection(
                             series = series,
                             archives = state.seriesArchives[series.meta.series_id] ?: emptyList(),
-                            onVideoClick = onVideoClick
+                            onVideoClick = onVideoClick,
+                            onMoreClick = {
+                                onViewAllClick("series", series.meta.series_id, state.userInfo.mid, series.meta.name)
+                            }
                         )
                     }
                 }
@@ -311,18 +402,151 @@ private fun SpaceContent(
                 }
             }
             
-            else -> {  // 主页 或 动态 (跨满列)
+            
+            0 -> {  //  主页 Tab - 官方客户端风格
+                // 触发加载
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "该功能暂未开放",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    LaunchedEffect(Unit) { onLoadHome() }
+                }
+                
+                // 视频区块 - "视频 xxxx" + "查看更多"
+                if (state.videos.isNotEmpty() || state.totalVideos > 0) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceHomeSectionHeader(
+                            title = "视频",
+                            count = if (state.totalVideos > 0) state.totalVideos else state.videos.size,
+                            onViewMore = { 
+                                // 切换到投稿Tab (index 2)
+                                selectedTab = 2
+                                onSubTabSelected(SpaceSubTab.VIDEO)
+                            }
                         )
+                    }
+                    
+                    // 显示前4个视频 (2x2 网格)
+                    val videosToShow = state.videos.take(4)
+                    items(videosToShow, key = { "home_video_${it.bvid}" }) { video ->
+                        Box(modifier = Modifier.padding(horizontal = 8.dp)) {
+                            SpaceHomeVideoCard(
+                                video = video,
+                                onClick = { onVideoClick(video.bvid) }
+                            )
+                        }
+                    }
+                }
+                
+                // 置顶视频 (如果存在)
+                if (state.topVideo != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceHomeTopVideo(
+                            topVideo = state.topVideo,
+                            onVideoClick = onVideoClick
+                        )
+                    }
+                }
+                
+                // 图文区块 (如果有)
+                if (state.articles.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceHomeSectionHeader(
+                            title = "图文",
+                            count = state.articles.size,
+                            onViewMore = { 
+                                // 切换到投稿Tab的图文分类
+                                selectedTab = 2
+                                onSubTabSelected(SpaceSubTab.ARTICLE)
+                            }
+                        )
+                    }
+                    
+                    // 显示前2个图文 (列表样式)
+                    state.articles.take(2).forEach { article ->
+                        item(key = "home_article_${article.id}", span = { GridItemSpan(maxLineSpan) }) {
+                            SpaceArticleCard(article = article, onClick = { /* TODO */ })
+                        }
+                    }
+                }
+                
+                // 公告
+                if (state.notice.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceHomeNotice(notice = state.notice)
+                    }
+                }
+                
+                // 如果啥都没有
+                if (state.videos.isEmpty() && state.topVideo == null && state.notice.isEmpty() && state.articles.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无主页内容",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+            
+            1 -> {  //  动态 Tab
+                // 触发加载
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    LaunchedEffect(Unit) { onLoadDynamic() }
+                }
+                
+                // 动态列表
+                if (state.dynamics.isEmpty() && !state.isLoadingDynamics) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无动态",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                } else {
+                    state.dynamics.forEachIndexed { index, dynamic ->
+                        item(key = "dynamic_${dynamic.id_str}", span = { GridItemSpan(maxLineSpan) }) {
+                            SpaceDynamicCard(
+                                dynamic = dynamic,
+                                onVideoClick = onVideoClick
+                            )
+                            
+                            // 触发加载更多
+                            if (index == state.dynamics.size - 3 && state.hasMoreDynamics && !state.isLoadingDynamics) {
+                                LaunchedEffect(index) { onLoadMoreDynamic() }
+                            }
+                        }
+                    }
+                    
+                    // 加载中指示器
+                    if (state.isLoadingDynamics) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CupertinoActivityIndicator()
+                            }
+                        }
+                    } else if (!state.hasMoreDynamics) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("—— 没有更多了 ——", color = Color.Gray, fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -647,6 +871,135 @@ private fun SpaceVideoItem(video: SpaceVideoItem, onClick: () -> Unit) {
 }
 
 /**
+ * 投稿视频列表项 - 官方客户端风格
+ * 左侧封面 + 右侧信息（标题、时间、播放/评论数）
+ */
+@Composable
+private fun SpaceVideoListItem(
+    video: SpaceVideoItem,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .iOSTapEffect(scale = 0.98f) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // 封面 - 16:9 比例
+        Box(
+            modifier = Modifier
+                .width(140.dp)
+                .height(80.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(FormatUtils.fixImageUrl(video.pic))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // 时长标签
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp),
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = video.length,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+        }
+        
+        Spacer(Modifier.width(10.dp))
+        
+        // 右侧信息
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .height(80.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // 标题
+            Text(
+                text = video.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            
+            // 底部信息行
+            Column {
+                // 时间
+                Text(
+                    text = FormatUtils.formatPublishTime(video.created.toLong()),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+                
+                Spacer(Modifier.height(2.dp))
+                
+                // 播放和评论数
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Default.Play,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = FormatUtils.formatStat(video.play.toLong()),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
+                    
+                    Spacer(Modifier.width(12.dp))
+                    
+                    Icon(
+                        CupertinoIcons.Default.Message,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = FormatUtils.formatStat(video.comment.toLong()),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
+                }
+            }
+        }
+        
+        // 更多按钮
+        IconButton(
+            onClick = { /* TODO: 更多操作菜单 */ },
+            modifier = Modifier.size(32.dp).align(Alignment.CenterVertically)
+        ) {
+            Icon(
+                CupertinoIcons.Default.Ellipsis,
+                contentDescription = "更多",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
+
+/**
  *  分类标签行组件
  */
 @Composable
@@ -888,7 +1241,8 @@ private fun SeasonSection(
     season: SeasonItem,
     archives: List<SeasonArchiveItem>,
     onVideoClick: (String) -> Unit,
-    mid: Long = 0L  // UP主的mid，用于构建分享链接
+    mid: Long = 0L,  // UP主的mid，用于构建分享链接
+    onMoreClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     
@@ -937,6 +1291,21 @@ private fun SeasonSection(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
+            
+            Spacer(Modifier.width(4.dp))
+            
+            // 查看全部按钮
+            TextButton(
+                onClick = onMoreClick,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(
+                    text = "查看全部 >",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
         // 横向视频列表
@@ -964,7 +1333,8 @@ private fun SeasonSection(
 private fun SeriesSection(
     series: SeriesItem,
     archives: List<SeriesArchiveItem>,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    onMoreClick: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -987,6 +1357,21 @@ private fun SeriesSection(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+            
+            Spacer(Modifier.width(4.dp))
+            
+            // 查看全部按钮
+            TextButton(
+                onClick = onMoreClick,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(
+                    text = "查看全部 >",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         
         // 横向视频列表
@@ -1172,5 +1557,845 @@ private fun SeriesVideoCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
+    }
+}
+
+// ==========  主页 Tab 组件 ==========
+
+/**
+ * 主页区块标题 - "视频 xxxx" + "查看更多 >"
+ */
+@Composable
+private fun SpaceHomeSectionHeader(
+    title: String,
+    count: Int,
+    onViewMore: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = count.toString(),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+        
+        Spacer(Modifier.weight(1f))
+        
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onViewMore() }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "查看更多",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+            Icon(
+                CupertinoIcons.Default.ChevronForward,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+/**
+ * 主页视频卡片 - 网格样式
+ */
+@Composable
+private fun SpaceHomeVideoCard(
+    video: SpaceVideoItem,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .iOSTapEffect(scale = 0.97f) { onClick() }
+    ) {
+        // 封面
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(FormatUtils.fixImageUrl(video.pic))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // 时长
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp),
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = video.length,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+        }
+        
+        Spacer(Modifier.height(6.dp))
+        
+        // 标题
+        Text(
+            text = video.title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Spacer(Modifier.height(4.dp))
+        
+        // 播放量
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                CupertinoIcons.Default.Play,
+                contentDescription = null,
+                modifier = Modifier.size(11.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Text(
+                text = FormatUtils.formatStat(video.play.toLong()),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.padding(start = 2.dp)
+            )
+        }
+    }
+}
+
+/**
+ *  置顶视频卡片
+ */
+@Composable
+private fun SpaceHomeTopVideo(
+    topVideo: SpaceTopArcData,
+    onVideoClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "📌 置顶视频",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .clickable { onVideoClick(topVideo.bvid) }
+                .padding(12.dp)
+        ) {
+            // 封面
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(88.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(FormatUtils.fixImageUrl(topVideo.pic))
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                
+                // 时长
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp),
+                    color = Color.Black.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = FormatUtils.formatDuration(topVideo.duration),
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.width(12.dp))
+            
+            // 信息
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = topVideo.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(Modifier.height(8.dp))
+                
+                // 置顶理由
+                if (topVideo.reason.isNotEmpty()) {
+                    Text(
+                        text = "「${topVideo.reason}」",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
+                
+                Spacer(Modifier.weight(1f))
+                
+                // 统计
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Default.Play,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = " ${FormatUtils.formatStat(topVideo.stat.view)}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Icon(
+                        CupertinoIcons.Default.Heart,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = " ${FormatUtils.formatStat(topVideo.stat.like)}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ *  公告卡片
+ */
+@Composable
+private fun SpaceHomeNotice(notice: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = "📢 公告",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = notice,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(12.dp),
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+// ==========  动态 Tab 组件 ==========
+
+/**
+ *  动态卡片（简化版，不复用 DynamicCard 以避免依赖问题）
+ */
+@Composable
+private fun SpaceDynamicCard(
+    dynamic: SpaceDynamicItem,
+    onVideoClick: (String) -> Unit
+) {
+    val author = dynamic.modules.module_author
+    val content = dynamic.modules.module_dynamic
+    val stat = dynamic.modules.module_stat
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(12.dp)
+    ) {
+        // 发布时间
+        if (author != null && author.pub_time.isNotEmpty()) {
+            Text(
+                text = author.pub_time,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        
+        // 文字内容
+        val text = content?.desc?.text ?: content?.major?.opus?.summary?.text ?: ""
+        if (text.isNotEmpty()) {
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 6,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        
+        // 视频类型
+        content?.major?.archive?.let { archive ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onVideoClick(archive.bvid) }
+                    .padding(8.dp)
+            ) {
+                // 封面
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(FormatUtils.fixImageUrl(archive.cover))
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(75.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                )
+                
+                Spacer(Modifier.width(10.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = archive.title,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            CupertinoIcons.Default.Play,
+                            contentDescription = null,
+                            modifier = Modifier.size(11.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = " ${archive.stat.play}",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // 图片类型
+        content?.major?.draw?.let { draw ->
+            if (draw.items.isNotEmpty()) {
+                val imageCount = draw.items.size
+                val columns = when {
+                    imageCount == 1 -> 1
+                    imageCount <= 4 -> 2
+                    else -> 3
+                }
+                
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height((if (imageCount == 1) 200 else if (imageCount <= 4) 160 else 180).dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(draw.items.take(9)) { item ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(FormatUtils.fixImageUrl(item.src))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(6.dp))
+                        )
+                    }
+                }
+            }
+        }
+        
+        // 统计
+        if (stat != null) {
+            Row(
+                modifier = Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Default.ArrowTurnUpRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = " ${stat.forward.count}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Default.Message,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = " ${stat.comment.count}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Default.Heart,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = " ${stat.like.count}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ==========  Uploads Tab Sidebar Component (Official Style) ==========
+
+/**
+ * 投稿侧边栏 - 官方客户端风格
+ * 左侧显示内容类型和数量
+ */
+@Composable
+private fun SpaceUploadsSidebar(
+    selectedTab: SpaceSubTab,
+    videoCount: Int,
+    articleCount: Int,
+    audioCount: Int,
+    onTabSelected: (SpaceSubTab) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(80.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.95f))
+            .padding(vertical = 8.dp)
+    ) {
+        SidebarItem(
+            title = "视频",
+            count = videoCount,
+            isSelected = selectedTab == SpaceSubTab.VIDEO,
+            onClick = { onTabSelected(SpaceSubTab.VIDEO) }
+        )
+        SidebarItem(
+            title = "图文",
+            count = articleCount,
+            isSelected = selectedTab == SpaceSubTab.ARTICLE,
+            onClick = { onTabSelected(SpaceSubTab.ARTICLE) }
+        )
+        SidebarItem(
+            title = "音频",
+            count = audioCount,
+            isSelected = selectedTab == SpaceSubTab.AUDIO,
+            onClick = { onTabSelected(SpaceSubTab.AUDIO) }
+        )
+    }
+}
+
+@Composable
+private fun SidebarItem(
+    title: String,
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) 
+        MaterialTheme.colorScheme.surface 
+    else 
+        Color.Transparent
+    
+    val textColor = if (isSelected) 
+        MaterialTheme.colorScheme.primary 
+    else 
+        Color.White.copy(alpha = 0.9f)
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .background(backgroundColor)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = textColor
+            )
+            if (count > 0) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = count.toString(),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = textColor.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 投稿分类头部 - 官方客户端风格水平标签
+ * 显示视频/图文/音频分类及数量（可横向滚动）
+ */
+@Composable
+private fun SpaceUploadsHeader(
+    selectedTab: SpaceSubTab,
+    videoCount: Int,
+    articleCount: Int,
+    audioCount: Int,
+    onTabSelected: (SpaceSubTab) -> Unit
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        item {
+            UploadsHeaderTab(
+                title = "视频",
+                count = videoCount,
+                isSelected = selectedTab == SpaceSubTab.VIDEO,
+                onClick = { onTabSelected(SpaceSubTab.VIDEO) }
+            )
+        }
+        item {
+            UploadsHeaderTab(
+                title = "图文",
+                count = articleCount,
+                isSelected = selectedTab == SpaceSubTab.ARTICLE,
+                onClick = { onTabSelected(SpaceSubTab.ARTICLE) }
+            )
+        }
+        item {
+            UploadsHeaderTab(
+                title = "音频",
+                count = audioCount,
+                isSelected = selectedTab == SpaceSubTab.AUDIO,
+                onClick = { onTabSelected(SpaceSubTab.AUDIO) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun UploadsHeaderTab(
+    title: String,
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) 
+        MaterialTheme.colorScheme.primary 
+    else 
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+    
+    val textColor = if (isSelected) 
+        Color.White 
+    else 
+        MaterialTheme.colorScheme.onSurfaceVariant
+    
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { onClick() },
+        color = backgroundColor,
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = textColor
+            )
+            if (count > 0) {
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = count.toString(),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+// ==========  Uploads Sub-Tab Components ==========
+
+@Composable
+private fun SpaceSubTabRow(
+    selectedTab: SpaceSubTab,
+    onTabSelected: (SpaceSubTab) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SpaceSubTabChip("视频", selectedTab == SpaceSubTab.VIDEO) { onTabSelected(SpaceSubTab.VIDEO) }
+        SpaceSubTabChip("音频", selectedTab == SpaceSubTab.AUDIO) { onTabSelected(SpaceSubTab.AUDIO) }
+        SpaceSubTabChip("专栏", selectedTab == SpaceSubTab.ARTICLE) { onTabSelected(SpaceSubTab.ARTICLE) }
+    }
+}
+
+@Composable
+private fun SpaceSubTabChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+   Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary 
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } 
+}
+
+@Composable
+private fun SpaceAudioCard(
+    audio: com.android.purebilibili.data.model.response.SpaceAudioItem,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Cover
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+             AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(com.android.purebilibili.core.util.FormatUtils.fixImageUrl(audio.cover))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        
+        Spacer(Modifier.width(12.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = audio.title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    CupertinoIcons.Default.MusicNote,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+                 Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "${com.android.purebilibili.core.util.FormatUtils.formatStat(audio.play_count.toLong())}播放 · ${com.android.purebilibili.core.util.FormatUtils.formatDuration(audio.duration)}",
+                     fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        }
+        
+        IconButton(onClick = onClick) {
+             Icon(
+                CupertinoIcons.Default.PlayCircle,
+                contentDescription = "Play",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpaceArticleCard(
+    article: com.android.purebilibili.data.model.response.SpaceArticleItem,
+    onClick: () -> Unit
+) {
+     Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        // Title
+        Text(
+            text = article.title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        if (article.image_urls.isNotEmpty()) {
+             Spacer(Modifier.height(8.dp))
+             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                 article.image_urls.take(3).forEach { url ->
+                     AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.android.purebilibili.core.util.FormatUtils.fixImageUrl(url))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                 }
+             }
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        
+        // Stats
+        Row(verticalAlignment = Alignment.CenterVertically) {
+             Text(
+                text = if (article.category?.name?.isNotEmpty() == true) article.category.name else "专栏",
+                 fontSize = 11.sp,
+                 color = MaterialTheme.colorScheme.primary,
+                 modifier = Modifier
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha=0.3f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            )
+            
+            Spacer(Modifier.width(8.dp))
+            
+            Text(
+                text = "${com.android.purebilibili.core.util.FormatUtils.formatStat(article.stats?.view?.toLong() ?: 0)}阅读 · ${com.android.purebilibili.core.util.FormatUtils.formatStat(article.stats?.like?.toLong() ?: 0)}点赞",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+        
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 12.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+        )
     }
 }

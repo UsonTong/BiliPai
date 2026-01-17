@@ -68,6 +68,7 @@ fun ElegantVideoCard(
     showPublishTime: Boolean = false,   //  是否显示发布时间（搜索结果用）
     isDataSaverActive: Boolean = false, // 🚀 [性能优化] 从父级传入，避免每个卡片重复计算
     onDismiss: (() -> Unit)? = null,    //  [新增] 删除/过滤回调（长按触发）
+    onWatchLater: (() -> Unit)? = null,  //  [新增] 稍后再看回调
     onClick: (String, Long) -> Unit
 ) {
     val haptic = rememberHapticFeedback()
@@ -168,7 +169,7 @@ fun ElegantVideoCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(coverUrl)
-                    .size(imageWidth, imageHeight)  // � 省流量时使用更小尺寸
+                    .size(imageWidth, imageHeight)  // 省流量时使用更小尺寸
                     .crossfade(100)  //  缩短淡入时间
                     .memoryCacheKey("cover_${video.bvid}_${if (isDataSaverActive) "s" else "n"}")
                     .diskCacheKey("cover_${video.bvid}_${if (isDataSaverActive) "s" else "n"}")
@@ -178,9 +179,9 @@ fun ElegantVideoCard(
                 contentScale = ContentScale.Crop
             )
             
-
             
             //  底部渐变遮罩
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -262,48 +263,80 @@ fun ElegantVideoCard(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        //  [HIG] 标题 - 15sp Medium, 行高 20sp
-        Text(
-            text = video.title,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,  // HIG body 标准
-                lineHeight = 20.sp,  // HIG 行高
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier
-                .semantics { contentDescription = "视频标题: ${video.title}" }
-                //  [交互优化] 标题区域：长按弹出惨淡，点击跳转
-                .pointerInput(onDismiss) {
-                    if (onDismiss != null) {
-                        detectTapGestures(
-                            onLongPress = {
-                                haptic(HapticType.HEAVY)
-                                showDismissMenu = true
-                            },
-                            onTap = {
-                                cardBounds?.let { bounds ->
-                                    CardPositionManager.recordCardPosition(bounds, screenWidthPx, screenHeightPx, density = densityValue)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // 标题行：标题 + 更多按钮
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            //  [HIG] 标题 - 15sp Medium, 行高 20sp
+            Text(
+                text = video.title,
+                maxLines = 2,
+                minLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp,  // HIG body 标准
+                    lineHeight = 20.sp,  // HIG 行高
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = "视频标题: ${video.title}" }
+                    //  [交互优化] 标题区域：长按弹出菜单，点击跳转
+                    .pointerInput(onDismiss, onWatchLater) {
+                        val hasLongPressMenu = onDismiss != null || onWatchLater != null
+                        if (hasLongPressMenu) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    haptic(HapticType.HEAVY)
+                                    showDismissMenu = true
+                                },
+                                onTap = {
+                                    cardBounds?.let { bounds ->
+                                        CardPositionManager.recordCardPosition(bounds, screenWidthPx, screenHeightPx, density = densityValue)
+                                    }
+                                    onClick(video.bvid, 0)
                                 }
-                                onClick(video.bvid, 0)
-                            }
-                        )
-                    } else {
-                        // 如果没有 onDismiss 回调，则只处理点击
-                        detectTapGestures(
-                            onTap = {
-                                cardBounds?.let { bounds ->
-                                    CardPositionManager.recordCardPosition(bounds, screenWidthPx, screenHeightPx, density = densityValue)
+                            )
+                        } else {
+                            detectTapGestures(
+                                onTap = {
+                                    cardBounds?.let { bounds ->
+                                        CardPositionManager.recordCardPosition(bounds, screenWidthPx, screenHeightPx, density = densityValue)
+                                    }
+                                    onClick(video.bvid, 0)
                                 }
-                                onClick(video.bvid, 0)
-                            }
-                        )
+                            )
+                        }
                     }
+            )
+
+            //  [新增] 更多按钮 - 标题右侧
+            val hasMenu = onDismiss != null || onWatchLater != null
+            if (hasMenu) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 4.dp, top = 2.dp) // 微调位置对齐第一行文字
+                        .size(20.dp)
+                        .clickable { 
+                            haptic(HapticType.LIGHT)
+                            showDismissMenu = true 
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "⋮",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-        )
+            }
+        }
         
         Spacer(modifier = Modifier.height(6.dp))
         
@@ -364,23 +397,42 @@ fun ElegantVideoCard(
         }
     }
     
-    //  [新增] 长按删除菜单
+    //  [新增] 长按操作菜单
     DropdownMenu(
         expanded = showDismissMenu,
         onDismissRequest = { showDismissMenu = false }
     ) {
-        DropdownMenuItem(
-            text = { 
-                Text(
-                    "🚫 不感兴趣",
-                    color = MaterialTheme.colorScheme.onSurface
-                ) 
-            },
-            onClick = {
-                showDismissMenu = false
-                onDismiss?.invoke()
-            }
-        )
+        // 稍后再看
+        if (onWatchLater != null) {
+            DropdownMenuItem(
+                text = { 
+                    Text(
+                        "🕐 稍后再看",
+                        color = MaterialTheme.colorScheme.onSurface
+                    ) 
+                },
+                onClick = {
+                    showDismissMenu = false
+                    onWatchLater.invoke()
+                }
+            )
+        }
+        
+        // 不感兴趣 (放第一位，方便操作) -> 改回下方
+        if (onDismiss != null) {
+            DropdownMenuItem(
+                text = { 
+                    Text(
+                        "🚫 不感兴趣",
+                        color = MaterialTheme.colorScheme.onSurface
+                    ) 
+                },
+                onClick = {
+                    showDismissMenu = false
+                    onDismiss.invoke()
+                }
+            )
+        }
     }
 }
 

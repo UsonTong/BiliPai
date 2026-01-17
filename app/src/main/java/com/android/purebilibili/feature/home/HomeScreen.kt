@@ -1050,6 +1050,7 @@ fun HomeScreen(
                                                 transitionEnabled = cardTransitionEnabled,  //  过渡动画开关
                                                 isDataSaverActive = isDataSaverActive,      // 🚀 [性能优化] 从列表级别传入
                                                 onDismiss = { viewModel.startVideoDissolve(video.bvid) },
+                                                onWatchLater = { viewModel.addToWatchLater(video.bvid, video.id) }, //  [新增] 稍后再看回调
                                                 onClick = { bvid, cid -> wrappedOnVideoClick(bvid, cid, video.pic) }
                                             )
                                         }

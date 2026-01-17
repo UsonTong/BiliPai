@@ -11,17 +11,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.ExperimentalFoundationApi
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
+import com.android.purebilibili.core.ui.animation.DissolvableVideoCard
+import com.android.purebilibili.core.ui.animation.jiggleOnDissolve
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import com.android.purebilibili.core.ui.blur.unifiedBlur
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -70,7 +80,8 @@ private fun fixCoverUrl(url: String?): String {
 data class WatchLaterUiState(
     val items: List<VideoItem> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val dissolvingIds: Set<String> = emptySet() // [新增] 用于已播放 Thanos Snap 动画的卡片
 )
 
 /**
@@ -93,6 +104,7 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
                 if (response.code == 0 && response.data != null) {
                     val items = response.data.list?.map { item ->
                         VideoItem(
+                            id = item.aid,  // 存储 aid 用于删除
                             bvid = item.bvid ?: "",
                             title = item.title ?: "",
                             pic = item.pic ?: "",
@@ -124,7 +136,72 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
     }
+    
+    // [新增] 开始消散动画
+    fun startVideoDissolve(bvid: String) {
+        _uiState.value = _uiState.value.copy(
+            dissolvingIds = _uiState.value.dissolvingIds + bvid
+        )
+    }
+
+    // [新增] 动画完成，执行删除
+    fun completeVideoDissolve(bvid: String) {
+        // 先从 UI 状态移除 ID（动画结束），然后调用删除逻辑
+        _uiState.value = _uiState.value.copy(
+            dissolvingIds = _uiState.value.dissolvingIds - bvid
+        )
+        // 查找对应的 aid 进行删除
+        val item = _uiState.value.items.find { it.bvid == bvid }
+        item?.let { deleteItem(it.id) }
+    }
+
+    /**
+     * 从稀后再看删除视频
+     */
+    fun deleteItem(aid: Long) {
+        // 乐观更新：直接从列表中移除，不需要重新请求
+        val currentList = _uiState.value.items
+        val newList = currentList.filter { it.id != aid }
+        _uiState.value = _uiState.value.copy(items = newList)
+
+        viewModelScope.launch {
+            try {
+                val api = NetworkModule.api
+                val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache ?: ""
+                if (csrf.isEmpty()) {
+                    android.widget.Toast.makeText(getApplication(), "请先登录", android.widget.Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val response = api.deleteFromWatchLater(aid = aid, csrf = csrf)
+                if (response.code == 0) {
+                    // 从列表中移除该项
+                    val currentItems = _uiState.value.items
+                    _uiState.value = _uiState.value.copy(
+                        items = currentItems.filter { 
+                            // VideoItem 没有 aid 字段，需要通过其他方式匹配
+                            // 由于删除是通过 aid 的，这里我们重新加载数据
+                            true
+                        }
+                    )
+                    // 重新加载数据以确保一致性
+                    // loadData()
+                    android.widget.Toast.makeText(getApplication(), "已从稍后再看移除", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    android.widget.Toast.makeText(getApplication(), "移除失败: ${response.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                android.widget.Toast.makeText(getApplication(), "移除失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }
+
+/**
+ *  稍后再看页面
+ */
+
+// ... (existing imports)
 
 /**
  *  稍后再看页面
@@ -137,28 +214,43 @@ fun WatchLaterScreen(
     viewModel: WatchLaterViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    
+    val hazeState = remember { HazeState() }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("稍后再看", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+            // 使用 Box 包裹实现毛玻璃背景
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .unifiedBlur(hazeState)
+            ) {
+                TopAppBar(
+                    title = { Text("稍后再看", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        scrolledContainerColor = Color.Transparent
+                    ),
+                    scrollBehavior = scrollBehavior
                 )
-            )
+                
+                // 分割线 (仅在滚动时显示? 这里简化一直显示细线或跟随滚动)
+                // 暂时不加显式分割线，依靠毛玻璃效果
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .hazeSource(state = hazeState) // 内容作为模糊源
         ) {
             when {
                 state.isLoading -> {
@@ -201,21 +293,46 @@ fun WatchLaterScreen(
                     }
                 }
                 else -> {
+                    // 计算合适的列数
+                    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+                    val minColWidth = if (windowSizeClass.isExpandedScreen) 240.dp else 170.dp
+                    
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 300.dp),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        columns = GridCells.Adaptive(minColWidth), // 使用 Adaptive 自适应列宽
+                        contentPadding = PaddingValues(
+                            start = 8.dp, 
+                            end = 8.dp, 
+                            top = padding.calculateTopPadding() + 8.dp, 
+                            bottom = padding.calculateBottomPadding() + 8.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        items(state.items) { item ->
-                            ElegantVideoCard(
-                                video = item,
-                                index = 0,
-                                animationEnabled = false,
-                                transitionEnabled = false,
-                                showPublishTime = true,
-                                onClick = { bvid, _ -> onVideoClick(bvid, 0L) }
-                            )
+
+                        itemsIndexed(
+                            items = state.items,
+                            key = { _, item -> item.bvid } 
+                        ) { index, item ->
+                            val isDissolving = item.bvid in state.dissolvingIds
+                            
+                            DissolvableVideoCard(
+                                isDissolving = isDissolving,
+                                onDissolveComplete = { viewModel.completeVideoDissolve(item.bvid) },
+                                cardId = item.bvid,
+                                modifier = Modifier.jiggleOnDissolve(item.bvid)
+                            ) {
+                                ElegantVideoCard(
+                                    video = item,
+                                    index = index,
+                                    animationEnabled = true, // 保留首页卡片动画
+                                    transitionEnabled = true, // 共享元素过渡
+                                    showPublishTime = true,
+                                    // 触发 Thanos 响指动画 (开始消散)
+                                    onDismiss = { viewModel.startVideoDissolve(item.bvid) },  
+                                    onClick = { bvid, _ -> onVideoClick(bvid, 0L) }
+                                )
+                            }
                         }
                     }
                 }

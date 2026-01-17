@@ -396,14 +396,14 @@ class PlayerViewModel : ViewModel() {
         
         // 🎯 [关键修复] 即使 currentBvid 为空（新 ViewModel），如果播放器已经在播放这个视频，也不要重新加载
         // 这种情况发生在 Notification -> MainActivity (New Activity/VM) -> VideoDetailScreen -> reuse attached player
-        val isAlreadyPlayingTarget = isPlayerHealthy && (currentBvid == bvid || (currentBvid.isEmpty() && player?.isPlaying == true))
-        
-        if (!force && isAlreadyPlayingTarget) {
-            Logger.d("PlayerVM", "🎯 $bvid already playing healthy, skip reload (currentBvid=$currentBvid)")
+        val isPlayerPlayingSameVideo = isPlayerHealthy && (currentBvid == bvid || (currentBvid.isEmpty() && player?.isPlaying == true))
+        val isUiLoaded = currentSuccess != null && currentSuccess.info.bvid == bvid
+
+        if (!force && isPlayerPlayingSameVideo && isUiLoaded) {
+            Logger.d("PlayerVM", "🎯 $bvid already playing healthy + UI loaded, skip reload")
             // 补全 ViewModel 状态：currentBvid 可能为空，需要同步
             if (currentBvid.isEmpty()) {
                 currentBvid = bvid
-                // 如果需要恢复 UI 状态 (Title, etc)，应该在 cache 中查找或等待 attachPlayer 时的同步
             }
             
             //  确保音量正常
@@ -412,6 +412,12 @@ class PlayerViewModel : ViewModel() {
                 player.play()
             }
             return
+        }
+
+        // 如果播放器正在播放目标视频，但 UI 未加载（新 ViewModel），我们需要获取信息但跳过播放器重置
+        val shouldSkipPlayerPrepare = !force && isPlayerPlayingSameVideo
+        if (shouldSkipPlayerPrepare) {
+            Logger.d("PlayerVM", "🎯 $bvid already playing but UI missing (New VM). Fetching info, skipping player prepare.")
         }
         
         if (currentBvid.isNotEmpty() && currentBvid != bvid) saveCurrentPosition()
@@ -457,10 +463,19 @@ class PlayerViewModel : ViewModel() {
                     currentCid = result.info.cid
                     
                     // Play video
-                    if (result.audioUrl != null) {
-                        playbackUseCase.playDashVideo(result.playUrl, result.audioUrl, cachedPosition)
+                    if (!shouldSkipPlayerPrepare) {
+                        if (result.audioUrl != null) {
+                            playbackUseCase.playDashVideo(result.playUrl, result.audioUrl, cachedPosition)
+                        } else {
+                            playbackUseCase.playVideo(result.playUrl, cachedPosition)
+                        }
                     } else {
-                        playbackUseCase.playVideo(result.playUrl, cachedPosition)
+                         // 🎯 Skip preparing player, but ensure it's playing if needed
+                         Logger.d("PlayerVM", "🎯 Skipping player preparation (already playing)")
+                         exoPlayer?.let { p ->
+                             p.volume = 1.0f
+                             if (!p.isPlaying) p.play()
+                         }
                     }
                     
                     //  收集所有 CDN URL (主+备用)

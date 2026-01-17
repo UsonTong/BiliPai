@@ -62,6 +62,15 @@ sealed class ScreenRoutes(val route: String) {
             return "space/$mid"
         }
     }
+
+    //  [新增] 合集/系列详情页面
+    object SeasonSeriesDetail : ScreenRoutes("season_series_detail/{type}/{id}?mid={mid}&title={title}") {
+        fun createRoute(type: String, id: Long, mid: Long, title: String): String {
+            // Encode title to handle special characters
+            val encodedTitle = android.net.Uri.encode(title)
+            return "season_series_detail/$type/$id?mid=$mid&title=$encodedTitle"
+        }
+    }
     
     //  [新增] 直播播放页面
     object Live : ScreenRoutes("live/{roomId}?title={title}&uname={uname}") {

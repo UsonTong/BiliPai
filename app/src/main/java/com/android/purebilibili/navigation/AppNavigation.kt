@@ -38,6 +38,7 @@ import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.dynamic.DynamicScreen
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.ui.ProvideAnimatedVisibilityScope
+import com.android.purebilibili.core.ui.SharedTransitionProvider
 
 // 定义路由参数结构
 object VideoRoute {
@@ -116,10 +117,11 @@ fun AppNavigation(
     val firstLaunchShown = welcomePrefs.getBoolean("first_launch_shown", false)
     val startDestination = if (firstLaunchShown) ScreenRoutes.Home.route else ScreenRoutes.Onboarding.route
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
+    SharedTransitionProvider {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination
+        ) {
         // --- 0. [新增] 新手引导页 ---
         composable(
             route = ScreenRoutes.Onboarding.route,
@@ -365,45 +367,47 @@ fun AppNavigation(
                 historyViewModel.loadData()
             }
             
-            CommonListScreen(
-                viewModel = historyViewModel,
-                onBack = { navController.popBackStack() },
-                onVideoClick = { bvid, cid ->
-                    // [修复] 根据历史记录类型导航到不同页面
-                    val historyItem = historyViewModel.getHistoryItem(bvid)
-                    when (historyItem?.business) {
-                        com.android.purebilibili.data.model.response.HistoryBusiness.PGC -> {
-                            // 番剧: 导航到番剧播放页
-                            if (historyItem.epid > 0 && historyItem.seasonId > 0) {
-                                navController.navigate(ScreenRoutes.BangumiPlayer.createRoute(historyItem.seasonId, historyItem.epid))
-                            } else if (historyItem.seasonId > 0 || historyItem.epid > 0) {
-                                // 有 seasonId (可能是 oid) 或 epid，进详情页
-                                // 注意：即使 seasonId 可能是错误的 (AVID)，只要有 epid，新的详情页逻辑也能正确加载
-                                navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId, historyItem.epid))
-                            } else {
-                                // 异常情况，尝试普通视频方式
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                CommonListScreen(
+                    viewModel = historyViewModel,
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { bvid, cid ->
+                        // [修复] 根据历史记录类型导航到不同页面
+                        val historyItem = historyViewModel.getHistoryItem(bvid)
+                        when (historyItem?.business) {
+                            com.android.purebilibili.data.model.response.HistoryBusiness.PGC -> {
+                                // 番剧: 导航到番剧播放页
+                                if (historyItem.epid > 0 && historyItem.seasonId > 0) {
+                                    navController.navigate(ScreenRoutes.BangumiPlayer.createRoute(historyItem.seasonId, historyItem.epid))
+                                } else if (historyItem.seasonId > 0 || historyItem.epid > 0) {
+                                    // 有 seasonId (可能是 oid) 或 epid，进详情页
+                                    // 注意：即使 seasonId 可能是错误的 (AVID)，只要有 epid，新的详情页逻辑也能正确加载
+                                    navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId, historyItem.epid))
+                                } else {
+                                    // 异常情况，尝试普通视频方式
+                                    navigateToVideo(bvid, cid, "")
+                                }
+                            }
+                            com.android.purebilibili.data.model.response.HistoryBusiness.LIVE -> {
+                                // 直播: 导航到直播页
+                                if (historyItem.roomId > 0) {
+                                    navController.navigate(ScreenRoutes.Live.createRoute(
+                                        historyItem.roomId,
+                                        historyItem.videoItem.title,
+                                        historyItem.videoItem.owner.name
+                                    ))
+                                } else {
+                                    navigateToVideo(bvid, cid, "")
+                                }
+                            }
+                            else -> {
+                                // 普通视频 (archive) 或未知类型
                                 navigateToVideo(bvid, cid, "")
                             }
-                        }
-                        com.android.purebilibili.data.model.response.HistoryBusiness.LIVE -> {
-                            // 直播: 导航到直播页
-                            if (historyItem.roomId > 0) {
-                                navController.navigate(ScreenRoutes.Live.createRoute(
-                                    historyItem.roomId,
-                                    historyItem.videoItem.title,
-                                    historyItem.videoItem.owner.name
-                                ))
-                            } else {
-                                navigateToVideo(bvid, cid, "")
-                            }
-                        }
-                        else -> {
-                            // 普通视频 (archive) 或未知类型
-                            navigateToVideo(bvid, cid, "")
                         }
                     }
-                }
-            )
+                )
+            }
         }
 
         // --- 5. 收藏 ---
@@ -413,11 +417,13 @@ fun AppNavigation(
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) {
             val favoriteViewModel: FavoriteViewModel = viewModel()
-            CommonListScreen(
-                viewModel = favoriteViewModel,
-                onBack = { navController.popBackStack() },
-                onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") }
-            )
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                CommonListScreen(
+                    viewModel = favoriteViewModel,
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") }
+                )
+            }
         }
         
         // --- 5.3  [新增] 稍后再看 ---
@@ -426,10 +432,12 @@ fun AppNavigation(
             enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) {
-            com.android.purebilibili.feature.watchlater.WatchLaterScreen(
-                onBack = { navController.popBackStack() },
-                onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") }
-            )
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                com.android.purebilibili.feature.watchlater.WatchLaterScreen(
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") }
+                )
+            }
         }
         
         // --- 5.4  [新增] 直播列表 ---
@@ -438,12 +446,14 @@ fun AppNavigation(
             enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) {
-            com.android.purebilibili.feature.live.LiveListScreen(
-                onBack = { navController.popBackStack() },
-                onLiveClick = { roomId, title, uname ->
-                    navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
-                }
-            )
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                com.android.purebilibili.feature.live.LiveListScreen(
+                    onBack = { navController.popBackStack() },
+                    onLiveClick = { roomId, title, uname ->
+                        navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                    }
+                )
+            }
         }
         
         // --- 5.5  关注列表 ---
@@ -697,8 +707,44 @@ fun AppNavigation(
             com.android.purebilibili.feature.space.SpaceScreen(
                 mid = mid,
                 onBack = { navController.popBackStack() },
-                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }
+                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
+                onViewAllClick = { type, id, mid, title ->
+                    navController.navigate(ScreenRoutes.SeasonSeriesDetail.createRoute(type, id, mid, title))
+                }
             )
+        }
+
+        // --- 9.1 [新增] 合集/系列详情页面 ---
+        composable(
+            route = ScreenRoutes.SeasonSeriesDetail.route,
+            arguments = listOf(
+                navArgument("type") { type = NavType.StringType },
+                navArgument("id") { type = NavType.LongType },
+                navArgument("mid") { type = NavType.LongType },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" }
+            ),
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+        ) { backStackEntry ->
+            val type = backStackEntry.arguments?.getString("type") ?: ""
+            val id = backStackEntry.arguments?.getLong("id") ?: 0L
+            val mid = backStackEntry.arguments?.getLong("mid") ?: 0L
+            val title = Uri.decode(backStackEntry.arguments?.getString("title") ?: "")
+            
+            val viewModel: com.android.purebilibili.feature.space.SeasonSeriesDetailViewModel = viewModel()
+            
+            // Initial load
+            androidx.compose.runtime.LaunchedEffect(type, id) {
+                viewModel.init(type, id, mid, title)
+            }
+            
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                CommonListScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") }
+                )
+            }
         }
         
         // --- 10.  [新增] 直播播放页面 ---
@@ -767,6 +813,7 @@ fun AppNavigation(
                     navController.navigate(ScreenRoutes.BangumiDetail.createRoute(newSeasonId)) {
                         popUpTo(ScreenRoutes.BangumiDetail.createRoute(seasonId)) { inclusive = true }
                     }
+
                 }
             )
         }
@@ -824,5 +871,6 @@ fun AppNavigation(
                 onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) }
             )
         }
+    }
     }
 }

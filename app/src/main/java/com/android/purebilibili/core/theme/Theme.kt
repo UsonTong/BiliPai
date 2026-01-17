@@ -45,6 +45,7 @@ private fun createLightColorScheme(primaryColor: Color) = lightColorScheme(
     onSurface = TextPrimary,
     surfaceVariant = iOSSystemGray5, // Separators / Higher groupings
     onSurfaceVariant = TextSecondary,
+    surfaceContainer = iOSSystemGray5, // iOS System Gray 5 (Light)
     outline = iOSSystemGray3,
     outlineVariant = iOSSystemGray4
 )

@@ -182,3 +182,47 @@ data class SearchSuggestTag(
     val ref: Int = 0,
     val spid: Int = 0
 )
+
+// --- 6. [新增] 直播搜索结果模型 ---
+@Serializable
+data class LiveRoomSearchResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: LiveRoomSearchData? = null
+)
+
+@Serializable
+data class LiveRoomSearchData(
+    val page: Int = 1,
+    val pagesize: Int = 20,
+    val numResults: Int = 0,
+    val numPages: Int = 0,
+    val result: List<LiveRoomSearchItem>? = null
+)
+
+@Serializable
+data class LiveRoomSearchItem(
+    val roomid: Long = 0,           // 房间号
+    val uid: Long = 0,              // 主播 UID
+    val title: String = "",         // 直播标题
+    val uname: String = "",         // 主播名
+    val uface: String = "",         // 主播头像
+    val cover: String = "",         // 直播封面 (user_cover)
+    val online: Int = 0,            // 在线人数
+    val live_status: Int = 0,       // 直播状态 0=未开播 1=直播中 2=轮播
+    val short_id: Int = 0,          // 短号
+    val area_v2_name: String = "",  // 分区名
+    val area_v2_parent_name: String = "", // 父分区名
+    val cate_name: String = "",     // 分类名 (备用)
+    val tags: String = "",          // 标签
+    val hit_columns: List<String>? = null  // 高亮字段
+) {
+    fun cleanupFields(): LiveRoomSearchItem {
+        return this.copy(
+            title = title.replace(Regex("<.*?>"), ""),
+            uname = uname.replace(Regex("<.*?>"), ""),
+            uface = if (uface.startsWith("//")) "https:$uface" else uface,
+            cover = if (cover.startsWith("//")) "https:$cover" else cover
+        )
+    }
+}

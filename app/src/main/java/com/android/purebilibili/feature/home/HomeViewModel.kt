@@ -105,6 +105,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             fetchLiveRooms(isLoadMore = false)
         }
     }
+    
+    //  [新增] 添加到稀后再看
+    fun addToWatchLater(bvid: String, aid: Long) {
+        viewModelScope.launch {
+            val result = com.android.purebilibili.data.repository.ActionRepository.toggleWatchLater(aid, true)
+            result.onSuccess {
+                android.widget.Toast.makeText(getApplication(), "已添加到稍后再看", android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure { e ->
+                android.widget.Toast.makeText(getApplication(), e.message ?: "添加失败", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     private fun loadData() {
         viewModelScope.launch {

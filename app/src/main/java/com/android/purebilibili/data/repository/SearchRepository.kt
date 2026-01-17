@@ -5,6 +5,7 @@ import com.android.purebilibili.core.network.WbiUtils
 import com.android.purebilibili.data.model.response.HotItem
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.data.model.response.SearchUpItem
+import com.android.purebilibili.data.model.response.LiveRoomSearchItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -18,12 +19,21 @@ object SearchRepository {
     
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
-    //  视频搜索 - 支持排序和时长过滤
+    //  [新增] 搜索分页信息
+    data class SearchPageInfo(
+        val currentPage: Int,
+        val totalPages: Int,
+        val totalResults: Int,
+        val hasMore: Boolean
+    )
+
+    //  视频搜索 - 支持排序、时长过滤和分页
     suspend fun search(
         keyword: String,
         order: SearchOrder = SearchOrder.TOTALRANK,
-        duration: SearchDuration = SearchDuration.ALL
-    ): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+        duration: SearchDuration = SearchDuration.ALL,
+        page: Int = 1  // [新增] 页码参数
+    ): Result<Pair<List<VideoItem>, SearchPageInfo>> = withContext(Dispatchers.IO) {
         try {
             val navResp = navApi.getNavInfo()
             val wbiImg = navResp.data?.wbi_img
@@ -36,12 +46,12 @@ object SearchRepository {
                 "search_type" to "video",  // 搜索类型
                 "order" to order.value,     // 排序方式
                 "duration" to duration.value.toString(),  // 时长筛选
-                "page" to "1",              // 页码
+                "page" to page.toString(),  // [修改] 使用传入的页码
                 "pagesize" to "30"          // 每页数量
             )
             
             //  调试日志 - 检查搜索参数
-            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Search params BEFORE sign: keyword=$keyword, order=${order.value}, duration=${duration.value}")
+            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Search params BEFORE sign: keyword=$keyword, order=${order.value}, duration=${duration.value}, page=$page")
             
             val signedParams = if (imgKey.isNotEmpty()) WbiUtils.sign(params, imgKey, subKey) else params
             
@@ -55,9 +65,17 @@ object SearchRepository {
                 ?.map { it.toVideoItem() }
                 ?: emptyList()
             
-            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Search result: ${videoList.size} videos found")
+            //  [新增] 提取分页信息
+            val pageInfo = SearchPageInfo(
+                currentPage = response.data?.page ?: page,
+                totalPages = response.data?.numPages ?: 1,
+                totalResults = response.data?.numResults ?: videoList.size,
+                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+            )
+            
+            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Search result: ${videoList.size} videos found, page ${pageInfo.currentPage}/${pageInfo.totalPages}, hasMore=${pageInfo.hasMore}")
 
-            Result.success(videoList)
+            Result.success(Pair(videoList, pageInfo))
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
@@ -106,6 +124,90 @@ object SearchRepository {
             val response = api.getHotSearch()
             val list = response.data?.trending?.list ?: emptyList()
             Result.success(list)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    //  [新增] 番剧搜索
+    suspend fun searchBangumi(
+        keyword: String,
+        page: Int = 1
+    ): Result<Pair<List<com.android.purebilibili.data.model.response.BangumiSearchItem>, SearchPageInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val navResp = navApi.getNavInfo()
+            val wbiImg = navResp.data?.wbi_img
+            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+
+            val params = mutableMapOf(
+                "keyword" to keyword,
+                "search_type" to "media_bangumi",
+                "page" to page.toString()
+            )
+            
+            val signedParams = if (imgKey.isNotEmpty()) WbiUtils.sign(params, imgKey, subKey) else params
+
+            val response = api.searchBangumi(signedParams)
+            
+            val bangumiList = response.data?.result?.map { item ->
+                // 清理 HTML 标签
+                item.copy(
+                    title = item.title.replace(Regex("<.*?>"), ""),
+                    cover = if (item.cover.startsWith("//")) "https:${item.cover}" else item.cover
+                )
+            } ?: emptyList()
+            
+            val pageInfo = SearchPageInfo(
+                currentPage = response.data?.page ?: page,
+                totalPages = response.data?.numPages ?: 1,
+                totalResults = response.data?.numResults ?: bangumiList.size,
+                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+            )
+            
+            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Bangumi search result: ${bangumiList.size} items, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
+
+            Result.success(Pair(bangumiList, pageInfo))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    //  [新增] 直播搜索
+    suspend fun searchLive(
+        keyword: String,
+        page: Int = 1
+    ): Result<Pair<List<LiveRoomSearchItem>, SearchPageInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val navResp = navApi.getNavInfo()
+            val wbiImg = navResp.data?.wbi_img
+            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+
+            val params = mutableMapOf(
+                "keyword" to keyword,
+                "search_type" to "live_room",
+                "page" to page.toString()
+            )
+            
+            val signedParams = if (imgKey.isNotEmpty()) WbiUtils.sign(params, imgKey, subKey) else params
+
+            val response = api.searchLive(signedParams)
+            
+            val liveList = response.data?.result?.map { it.cleanupFields() } ?: emptyList()
+            
+            val pageInfo = SearchPageInfo(
+                currentPage = response.data?.page ?: page,
+                totalPages = response.data?.numPages ?: 1,
+                totalResults = response.data?.numResults ?: liveList.size,
+                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+            )
+            
+            com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Live search result: ${liveList.size} rooms, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
+
+            Result.success(Pair(liveList, pageInfo))
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)

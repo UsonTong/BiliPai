@@ -61,40 +61,58 @@ object CommentRepository {
 
     /**
      * 获取评论列表
-     * @param mode 排序模式: 3=热度(默认), 2=时间
+     * @param mode 排序模式: 3=热度(默认), 2=时间, 1=回复最多
      */
     suspend fun getComments(aid: Long, page: Int, ps: Int = 20, mode: Int = 3): Result<ReplyData> = withContext(Dispatchers.IO) {
         try {
             // 确保 buvid3 已初始化
             VideoRepository.ensureBuvid3()
             
-            val response = if (mode == 2) {
-                // 时间排序使用旧版 API
-                com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=0 (时间)")
-                api.getReplyListLegacy(
-                    oid = aid,
-                    type = 1,
-                    pn = page,
-                    ps = ps,
-                    sort = 0  // 旧版 API: 0=按时间, 1=按点赞
-                )
-            } else {
-                // 热度排序使用 WBI API
-                val (imgKey, subKey) = getWbiKeys()
-                com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments (WBI): aid=$aid, page=$page, mode=3 (热度)")
-                
-                val params = TreeMap<String, String>()
-                params["oid"] = aid.toString()
-                params["type"] = "1"
-                params["mode"] = "3"  // WBI API: 3=热度
-                params["next"] = page.toString()
-                params["ps"] = ps.toString()
+            val response = when (mode) {
+                2 -> {
+                    // 时间排序使用旧版 API
+                    com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=0 (时间)")
+                    api.getReplyListLegacy(
+                        oid = aid,
+                        type = 1,
+                        pn = page,
+                        ps = ps,
+                        sort = 0  // 旧版 API: 0=按时间
+                    )
+                }
+                1 -> {
+                    // [新增] 回复数排序使用旧版 API
+                    com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=2 (回复数)")
+                    api.getReplyListLegacy(
+                        oid = aid,
+                        type = 1,
+                        pn = page,
+                        ps = ps,
+                        sort = 2  // 旧版 API: 2=按回复数
+                    )
+                }
+                else -> {
+                    // 热度排序使用 WBI API (默认)
+                    val (imgKey, subKey) = getWbiKeys()
+                    com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments (WBI): aid=$aid, page=$page, mode=3 (热度)")
+                    
+                    val params = TreeMap<String, String>()
+                    params["oid"] = aid.toString()
+                    params["type"] = "1"
+                    params["mode"] = "3"  // WBI API: 3=热度
+                    params["next"] = page.toString()
+                    params["ps"] = ps.toString()
 
-                val signedParams = WbiUtils.sign(params, imgKey, subKey)
-                api.getReplyList(signedParams)
+                    val signedParams = WbiUtils.sign(params, imgKey, subKey)
+                    api.getReplyList(signedParams)
+                }
             }
             
-            val sortLabel = if (mode == 2) "时间" else "热度"
+            val sortLabel = when (mode) {
+                2 -> "时间"
+                1 -> "回复数"
+                else -> "热度"
+            }
             com.android.purebilibili.core.util.Logger.d("CommentRepo", " getComments result: mode=$mode($sortLabel), replies=${response.data?.replies?.size ?: 0}, code=${response.code}")
 
             if (response.code == 0) {

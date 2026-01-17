@@ -68,6 +68,7 @@ fun VideoContentSection(
     replyCount: Int,
     emoteMap: Map<String, String>,
     isRepliesLoading: Boolean,
+    isRepliesEnd: Boolean = false,
     isFollowing: Boolean,
     isFavorited: Boolean,
     isLiked: Boolean,
@@ -217,6 +218,7 @@ fun VideoContentSection(
                     replyCount = replyCount,
                     emoteMap = emoteMap,
                     isRepliesLoading = isRepliesLoading,
+                    isRepliesEnd = isRepliesEnd,
                     videoTags = videoTags,
                     sortMode = sortMode,
                     upOnlyFilter = upOnlyFilter,
@@ -308,6 +310,7 @@ private fun VideoCommentTab(
     replyCount: Int,
     emoteMap: Map<String, String>,
     isRepliesLoading: Boolean,
+    isRepliesEnd: Boolean,
     videoTags: List<VideoTag>,
     sortMode: CommentSortMode,
     upOnlyFilter: Boolean,
@@ -388,10 +391,11 @@ private fun VideoCommentTab(
                 ) {
                     when {
                         isRepliesLoading -> CupertinoActivityIndicator()
-                        replies.size >= replyCount && replyCount > 0 -> {
+                        isRepliesEnd || replies.size >= replyCount -> {
                             Text("—— end ——", color = Color.Gray, fontSize = 12.sp)
                         }
-                        replyCount > 0 -> CupertinoActivityIndicator()
+                        // 当 shouldLoadMore 为 true 时才显示加载指示器
+                        shouldLoadMore -> CupertinoActivityIndicator()
                     }
                 }
             }

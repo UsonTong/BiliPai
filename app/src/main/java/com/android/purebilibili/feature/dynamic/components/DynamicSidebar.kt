@@ -71,10 +71,12 @@ fun DynamicSidebar(
             .width(animatedWidth.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.1f)) // 极淡的背景，几乎完全透明
+            .background(
+                MaterialTheme.colorScheme.background // 与主背景一致
+            )
             .border(
                 width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.15f), // 稍微增强一点边框以维持边界感，但背景更通透
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
             )
     ) {
@@ -94,7 +96,7 @@ fun DynamicSidebar(
                  Icon(
                     imageVector = CupertinoIcons.Default.ChevronBackward,
                     contentDescription = "Back",
-                    tint = Color.Black.copy(alpha = 0.8f), // 适配浅色背景
+                    tint = MaterialTheme.colorScheme.onSurface, // 自适应颜色
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -114,7 +116,7 @@ fun DynamicSidebar(
                             .clip(CircleShape)
                             .background(
                                 if (showHiddenUsers) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) 
-                                else Color.Black.copy(alpha = 0.05f) // 更适合浅色背景
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f) // 自适应背景
                             )
                             .clickable { onToggleShowHidden() },
                         contentAlignment = Alignment.Center
@@ -122,7 +124,7 @@ fun DynamicSidebar(
                         Icon(
                             imageVector = if (showHiddenUsers) CupertinoIcons.Default.Eye else CupertinoIcons.Default.EyeSlash,
                             contentDescription = null,
-                            tint = if (showHiddenUsers) MaterialTheme.colorScheme.primary else Color.Gray, // 强制深色/灰色
+                            tint = if (showHiddenUsers) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, // 自适应图标
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -225,7 +227,7 @@ fun SidebarItem(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ),
             contentAlignment = Alignment.Center
@@ -234,7 +236,7 @@ fun SidebarItem(
                 text = icon,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
@@ -243,7 +245,7 @@ fun SidebarItem(
             Text(
                 text = label,
                 fontSize = 10.sp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -274,7 +276,7 @@ fun SidebarUserItem(
                 .padding(vertical = 4.dp, horizontal = 4.dp) // 增加水平间距以适应选中背景
                 .clip(RoundedCornerShape(12.dp)) // 选中态圆角背景
                 .then(
-                    if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                    if (isSelected) Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                     else Modifier
                 )
                 .combinedClickable(
@@ -303,7 +305,7 @@ fun SidebarUserItem(
                         // 选中态边框
                         .then(
                             if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                            else Modifier.border(1.dp, Color.Black.copy(alpha = 0.1f), CircleShape) // 适配浅色背景的深色描边
+                            else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape) // 自适应描边
                         )
                         .padding(2.dp) // 边框与头像间距
                 ) {
@@ -320,13 +322,13 @@ fun SidebarUserItem(
                     )
                 }
 
-                //  在线状态指示器（带白色描边）
+                //  在线状态指示器（带自适应描边）
                 if (user.isLive) {
                     Box(
                         modifier = Modifier
                             .size(14.dp)
                             .align(Alignment.BottomEnd)
-                            .background(Color.White, CircleShape) // 强制白色描边以适应头像
+                            .background(MaterialTheme.colorScheme.surface, CircleShape) // 自适应“挖孔”颜色
                             .padding(2.dp)
                     ) {
                         Box(
@@ -344,7 +346,7 @@ fun SidebarUserItem(
                     text = displayName,
                     fontSize = 11.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.8f), // 强制深色文字
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface, // 自适应文字
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 2.dp)
@@ -354,17 +356,18 @@ fun SidebarUserItem(
 
         DropdownMenu(
             expanded = showMenu,
-            onDismissRequest = { showMenu = false }
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer) // 自适应菜单背景
         ) {
             DropdownMenuItem(
-                text = { Text(if (user.isPinned) "取消置顶" else "置顶") },
+                text = { Text(if (user.isPinned) "取消置顶" else "置顶", color = MaterialTheme.colorScheme.onSurface) },
                 onClick = {
                     showMenu = false
                     onTogglePin()
                 }
             )
             DropdownMenuItem(
-                text = { Text(if (user.isHidden) "取消隐藏" else "隐藏") },
+                text = { Text(if (user.isHidden) "取消隐藏" else "隐藏", color = MaterialTheme.colorScheme.onSurface) },
                 onClick = {
                     showMenu = false
                     onToggleHidden()

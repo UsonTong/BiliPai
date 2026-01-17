@@ -65,7 +65,7 @@ fun DynamicCardV2(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        backgroundColor = androidx.compose.ui.graphics.Color.White, // iOS 风格：纯白背景
+        backgroundColor = MaterialTheme.colorScheme.surfaceContainer, // 自适应主题色
         shape = RoundedCornerShape(20.dp) // 更大的圆角
     ) {
     Column(
@@ -123,21 +123,21 @@ fun DynamicCardV2(
                         )
                     }
                     
-                    // 下拉菜单 - 使用白色背景
+                    // 下拉菜单 - 自适应背景
                     DropdownMenu(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false },
-                        modifier = Modifier.background(androidx.compose.ui.graphics.Color.White)
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer) // 使用 surfaceContainer 获得微略不同的背景
                     ) {
                         // 复制链接
                         DropdownMenuItem(
-                            text = { Text("复制链接", color = androidx.compose.ui.graphics.Color.Black) },
+                            text = { Text("复制链接", color = MaterialTheme.colorScheme.onSurface) },
                             leadingIcon = { 
                                 Icon(
                                     CupertinoIcons.Default.Link,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
-                                    tint = androidx.compose.ui.graphics.Color.Black
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 ) 
                             },
                             onClick = {
@@ -152,13 +152,13 @@ fun DynamicCardV2(
                         
                         // 不感兴趣
                         DropdownMenuItem(
-                            text = { Text("不感兴趣", color = androidx.compose.ui.graphics.Color.Black) },
+                            text = { Text("不感兴趣", color = MaterialTheme.colorScheme.onSurface) },
                             leadingIcon = { 
                                 Icon(
                                     CupertinoIcons.Default.EyeSlash,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
-                                    tint = androidx.compose.ui.graphics.Color.Black
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 ) 
                             },
                             onClick = {

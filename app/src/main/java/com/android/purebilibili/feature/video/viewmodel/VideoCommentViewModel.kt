@@ -10,9 +10,11 @@ import kotlinx.coroutines.launch
 
 //  [修复] 评论排序模式
 // 根据 Bilibili WBI API 文档 (x/v2/reply/wbi/main)：mode=3(按热度), mode=2(按时间)
+// 旧版 API (x/v2/reply): sort=0(按时间), sort=1(按点赞), sort=2(按回复数)
 enum class CommentSortMode(val apiMode: Int, val label: String) {
-    HOT(3, "最热"),      // 按热度排序 (mode=3, 默认)
-    NEWEST(2, "最新")    // 按时间排序（最新优先）(mode=2)
+    HOT(3, "最热"),       // 按热度排序 (mode=3, 默认)
+    NEWEST(2, "最新"),    // 按时间排序（最新优先）(mode=2)
+    REPLY(1, "回复最多")  // [新增] 按回复数排序 (使用旧版 API sort=2)
 }
 
 // 评论状态

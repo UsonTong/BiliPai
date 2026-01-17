@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class SpaceSubTab { VIDEO, AUDIO, ARTICLE }
+
 // UI 状态
 sealed class SpaceUiState {
     object Loading : SpaceUiState()
@@ -30,7 +32,26 @@ sealed class SpaceUiState {
         val seasons: List<SeasonItem> = emptyList(),
         val series: List<SeriesItem> = emptyList(),
         val seasonArchives: Map<Long, List<SeasonArchiveItem>> = emptyMap(),  // season_id -> videos
-        val seriesArchives: Map<Long, List<SeriesArchiveItem>> = emptyMap()   // series_id -> videos
+        val seriesArchives: Map<Long, List<SeriesArchiveItem>> = emptyMap(),   // series_id -> videos
+        //  主页 Tab
+        val topVideo: SpaceTopArcData? = null,
+        val notice: String = "",
+        //  动态 Tab
+        val dynamics: List<SpaceDynamicItem> = emptyList(),
+        val dynamicOffset: String = "",
+        val hasMoreDynamics: Boolean = true,
+        val isLoadingDynamics: Boolean = false,
+        
+        //  Uploads Sub-Tab
+        val selectedSubTab: SpaceSubTab = SpaceSubTab.VIDEO,
+        val audios: List<SpaceAudioItem> = emptyList(),
+        val articles: List<SpaceArticleItem> = emptyList(),
+        val audioPage: Int = 1,
+        val articlePage: Int = 1,
+        val isLoadingAudios: Boolean = false,
+        val isLoadingArticles: Boolean = false,
+        val hasMoreAudios: Boolean = true,
+        val hasMoreArticles: Boolean = true
     ) : SpaceUiState()
     data class Error(val message: String) : SpaceUiState()
 }
@@ -52,6 +73,12 @@ class SpaceViewModel : ViewModel() {
     
     fun loadSpaceInfo(mid: Long) {
         if (mid <= 0) return
+        
+        // Fix: Prevent reloading if data is already loaded for this mid
+        if (currentMid == mid && _uiState.value is SpaceUiState.Success) {
+            return
+        }
+
         currentMid = mid
         currentPage = 1
         
@@ -102,7 +129,7 @@ class SpaceViewModel : ViewModel() {
                     seasons.take(5).forEach { season ->
                         val archives = fetchSeasonArchives(mid, season.meta.season_id)
                         if (archives != null) {
-                            seasonArchives[season.meta.season_id] = archives.take(10)
+                            seasonArchives[season.meta.season_id] = archives
                         }
                     }
                     
@@ -111,7 +138,7 @@ class SpaceViewModel : ViewModel() {
                     series.take(5).forEach { seriesItem ->
                         val archives = fetchSeriesArchives(mid, seriesItem.meta.series_id)
                         if (archives != null) {
-                            seriesArchives[seriesItem.meta.series_id] = archives.take(10)
+                            seriesArchives[seriesItem.meta.series_id] = archives
                         }
                     }
                     
@@ -392,6 +419,220 @@ class SpaceViewModel : ViewModel() {
             }
         } catch (e: Exception) {
             android.util.Log.e("SpaceVM", "fetchSeriesArchives error: ${e.message}", e)
+            null
+        }
+    }
+    
+    // ==========  主页 Tab 数据加载 ==========
+    
+    /**
+     *  加载主页数据（置顶视频 + 公告）
+     */
+    fun loadSpaceHome() {
+        val current = _uiState.value as? SpaceUiState.Success ?: return
+        
+        viewModelScope.launch {
+            try {
+                val topVideoDeferred = async { fetchTopArc(currentMid) }
+                val noticeDeferred = async { fetchNotice(currentMid) }
+                
+                val topVideo = topVideoDeferred.await()
+                val notice = noticeDeferred.await()
+                
+                _uiState.value = current.copy(
+                    topVideo = topVideo,
+                    notice = notice ?: ""
+                )
+                
+                android.util.Log.d("SpaceVM", " loadSpaceHome: topVideo=${topVideo?.title}, notice=${notice?.take(50)}")
+            } catch (e: Exception) {
+                android.util.Log.e("SpaceVM", "loadSpaceHome error: ${e.message}", e)
+            }
+        }
+    }
+    
+    private suspend fun fetchTopArc(mid: Long): SpaceTopArcData? {
+        return try {
+            val response = spaceApi.getTopArc(mid)
+            if (response.code == 0) {
+                response.data
+            } else {
+                // code != 0 可能是没有置顶视频，不算错误
+                android.util.Log.d("SpaceVM", "fetchTopArc: code=${response.code}, msg=${response.message}")
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SpaceVM", "fetchTopArc error: ${e.message}", e)
+            null
+        }
+    }
+    
+    private suspend fun fetchNotice(mid: Long): String? {
+        return try {
+            val response = spaceApi.getNotice(mid)
+            if (response.code == 0) {
+                response.data.takeIf { it.isNotEmpty() }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SpaceVM", "fetchNotice error: ${e.message}", e)
+            null
+        }
+    }
+    
+    // ==========  动态 Tab 数据加载 ==========
+    
+    /**
+     *  加载用户动态
+     */
+    fun loadSpaceDynamic(refresh: Boolean = false) {
+        val current = _uiState.value as? SpaceUiState.Success ?: return
+        if (current.isLoadingDynamics) return
+        if (!refresh && !current.hasMoreDynamics) return
+        
+        viewModelScope.launch {
+            _uiState.value = current.copy(isLoadingDynamics = true)
+            
+            try {
+                val offset = if (refresh) "" else current.dynamicOffset
+                val response = spaceApi.getSpaceDynamic(currentMid, offset)
+                
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                
+                if (response.code == 0 && response.data != null) {
+                    val newItems = response.data.items.filter { it.visible }
+                    val allItems = if (refresh) newItems else currentState.dynamics + newItems
+                    
+                    _uiState.value = currentState.copy(
+                        dynamics = allItems,
+                        dynamicOffset = response.data.offset,
+                        hasMoreDynamics = response.data.has_more,
+                        isLoadingDynamics = false
+                    )
+                    
+                    android.util.Log.d("SpaceVM", " loadSpaceDynamic: +${newItems.size} items, total=${allItems.size}, hasMore=${response.data.has_more}")
+                } else {
+                    android.util.Log.e("SpaceVM", " loadSpaceDynamic failed: code=${response.code}, msg=${response.message}")
+                    _uiState.value = currentState.copy(
+                        isLoadingDynamics = false,
+                        hasMoreDynamics = false
+                    )
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SpaceVM", "loadSpaceDynamic error: ${e.message}", e)
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                _uiState.value = currentState.copy(isLoadingDynamics = false)
+            }
+        }
+    }
+
+    // ==========  Uploads Tab Sub-navigation ==========
+    
+    fun selectSubTab(tab: SpaceSubTab) {
+        val current = _uiState.value as? SpaceUiState.Success ?: return
+        if (current.selectedSubTab == tab) return
+        
+        _uiState.value = current.copy(selectedSubTab = tab)
+        
+        // Check if data needs loading
+        when (tab) {
+            SpaceSubTab.AUDIO -> {
+                if (current.audios.isEmpty() && !current.isLoadingAudios) {
+                    loadSpaceAudios(refresh = true)
+                }
+            }
+            SpaceSubTab.ARTICLE -> {
+                if (current.articles.isEmpty() && !current.isLoadingArticles) {
+                    loadSpaceArticles(refresh = true)
+                }
+            }
+            else -> {}
+        }
+    }
+    
+    fun loadSpaceAudios(refresh: Boolean = false) {
+        val current = _uiState.value as? SpaceUiState.Success ?: return
+        if (current.isLoadingAudios) return
+        if (!refresh && !current.hasMoreAudios) return
+        
+        viewModelScope.launch {
+            _uiState.value = current.copy(isLoadingAudios = true)
+            val page = if (refresh) 1 else current.audioPage + 1
+            
+            try {
+                val result = fetchSpaceAudioList(currentMid, page)
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                
+                if (result != null && result.code == 0) {
+                    val newItems = result.data?.data ?: emptyList()
+                    val allItems = if (refresh) newItems else currentState.audios + newItems
+                    val hasMore = newItems.size >= pageSize
+                    
+                    _uiState.value = currentState.copy(
+                        audios = allItems,
+                        audioPage = page,
+                        hasMoreAudios = hasMore,
+                        isLoadingAudios = false
+                    )
+                } else {
+                     _uiState.value = currentState.copy(isLoadingAudios = false)
+                }
+            } catch (e: Exception) {
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                _uiState.value = currentState.copy(isLoadingAudios = false)
+            }
+        }
+    }
+    
+    fun loadSpaceArticles(refresh: Boolean = false) {
+       val current = _uiState.value as? SpaceUiState.Success ?: return
+        if (current.isLoadingArticles) return
+        if (!refresh && !current.hasMoreArticles) return
+        
+        viewModelScope.launch {
+            _uiState.value = current.copy(isLoadingArticles = true)
+            val page = if (refresh) 1 else current.articlePage + 1
+            
+            try {
+                val result = fetchSpaceArticleList(currentMid, page)
+                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                 
+                 if (result != null && result.code == 0) {
+                     val newItems = result.data?.lists ?: emptyList()
+                     val allItems = if (refresh) newItems else currentState.articles + newItems
+                     val hasMore = newItems.size >= pageSize
+                     
+                     _uiState.value = currentState.copy(
+                         articles = allItems,
+                         articlePage = page,
+                         hasMoreArticles = hasMore,
+                         isLoadingArticles = false
+                     )
+                 } else {
+                     _uiState.value = currentState.copy(isLoadingArticles = false)
+                 }
+            } catch (e: Exception) {
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                _uiState.value = currentState.copy(isLoadingArticles = false)
+            }
+        }
+    }
+    
+    private suspend fun fetchSpaceAudioList(uid: Long, page: Int): SpaceAudioResponse? {
+        return try {
+            spaceApi.getSpaceAudioList(uid = uid, pn = page)
+        } catch (e: Exception) {
+            android.util.Log.e("SpaceVM", "fetchAudio error: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun fetchSpaceArticleList(mid: Long, page: Int): SpaceArticleResponse? {
+        return try {
+            spaceApi.getSpaceArticleList(mid = mid, pn = page)
+        } catch (e: Exception) {
+            android.util.Log.e("SpaceVM", "fetchArticle error: ${e.message}")
             null
         }
     }

@@ -1,8 +1,17 @@
 package com.android.purebilibili.feature.list
 
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import com.android.purebilibili.core.ui.blur.unifiedBlur
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -83,29 +92,49 @@ fun CommonListScreen(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val hazeState = androidx.compose.runtime.remember { HazeState() }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(state.title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
+             // 使用 Box 包裹实现毛玻璃背景
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .unifiedBlur(hazeState)
+            ) {
+                TopAppBar(
+                    title = { Text(state.title) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    ),
+                    scrollBehavior = scrollBehavior
+                )
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .hazeSource(state = hazeState) // 内容作为模糊源
         ) {
             if (state.isLoading) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
-                    contentPadding = PaddingValues(spacing.medium),
+                    contentPadding = PaddingValues(
+                        start = spacing.medium,
+                        end = spacing.medium,
+                        top = padding.calculateTopPadding() + spacing.medium,
+                        bottom = padding.calculateBottomPadding() + spacing.medium
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(spacing.medium),
                     verticalArrangement = Arrangement.spacedBy(spacing.medium),
                     modifier = Modifier.fillMaxSize()
@@ -131,22 +160,32 @@ fun CommonListScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     state = gridState,
-                    contentPadding = PaddingValues(spacing.medium),
+                    contentPadding = PaddingValues(
+                        start = spacing.medium,
+                        end = spacing.medium,
+                        top = padding.calculateTopPadding() + spacing.medium,
+                        bottom = padding.calculateBottomPadding() + spacing.medium
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(spacing.medium),
                     verticalArrangement = Arrangement.spacedBy(spacing.medium),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(state.items) { index, video ->
+                    itemsIndexed(
+                        items = state.items,
+                        key = { _, item -> item.bvid.ifEmpty { item.id.toString() } } // 确保 key 唯一且不为空
+                    ) { index, video ->
                         ElegantVideoCard(
                             video = video,
                             index = index,
+                            animationEnabled = true,
+                            transitionEnabled = true, // 启用共享元素过渡
                             onClick = { bvid, cid -> onVideoClick(bvid, cid) }
                         )
                     }
                     
                     //  加载更多指示器
                     if (isLoadingMore) {
-                        item {
+                        item(span = { GridItemSpan(columns) }) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()

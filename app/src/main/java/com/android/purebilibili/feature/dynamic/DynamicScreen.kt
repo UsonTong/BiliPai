@@ -168,27 +168,9 @@ fun DynamicScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent // 透明背景以显示渐变
     ) { padding ->
-        // 背景层 - 浅色风格
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F7))) {
-             // 极淡的柔光背景 (保持一点点质感)
-            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                 // 顶部淡蓝光晕
-                 drawCircle(
-                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(Color(0xFFE3F2FD), Color.Transparent),
-                        center = androidx.compose.ui.geometry.Offset(size.width * 0.8f, -100f),
-                        radius = size.width * 0.8f
-                     )
-                 )
-                 // 底部淡紫光晕
-                 drawCircle(
-                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(Color(0xFFF3E5F5), Color.Transparent),
-                        center = androidx.compose.ui.geometry.Offset(0f, size.height + 100f),
-                        radius = size.width * 0.8f
-                     )
-                 )
-            }
+        // 背景层 - 自适应 MaterialTheme
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+             // 移除光晕 Canvas，保持纯净背景
         }
 
         //  [新增] 模式切换动画

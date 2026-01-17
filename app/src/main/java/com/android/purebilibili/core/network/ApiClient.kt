@@ -466,6 +466,10 @@ interface SearchApi {
     @GET("x/web-interface/wbi/search/type")
     suspend fun searchBangumi(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.BangumiSearchResponse
     
+    //  [新增] 直播搜索 - search_type=live_room
+    @GET("x/web-interface/wbi/search/type")
+    suspend fun searchLive(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.LiveRoomSearchResponse
+    
     //  搜索建议/联想
     @GET("https://s.search.bilibili.com/main/suggest")
     suspend fun getSearchSuggest(
@@ -595,6 +599,46 @@ interface SpaceApi {
         @Query("ps") ps: Int = 30,
         @Query("sort") sort: String = "desc"
     ): com.android.purebilibili.data.model.response.SeriesArchivesResponse
+    
+    //  置顶视频
+    @GET("x/space/top/arc")
+    suspend fun getTopArc(
+        @Query("vmid") vmid: Long
+    ): com.android.purebilibili.data.model.response.SpaceTopArcResponse
+    
+    //  个人公告
+    @GET("x/space/notice")
+    suspend fun getNotice(
+        @Query("mid") mid: Long
+    ): com.android.purebilibili.data.model.response.SpaceNoticeResponse
+    
+    //  用户动态 (需要登录 Cookie)
+    @GET("x/polymer/web-dynamic/v1/feed/space")
+    suspend fun getSpaceDynamic(
+        @Query("host_mid") hostMid: Long,
+        @Query("offset") offset: String = "",
+        @Query("timezone_offset") timezoneOffset: Int = -480
+    ): com.android.purebilibili.data.model.response.SpaceDynamicResponse
+    
+    //  [New] Get User Audio List
+    @GET("https://api.bilibili.com/audio/music-service/web/song/upper")
+    suspend fun getSpaceAudioList(
+        @Query("uid") uid: Long,
+        @Query("pn") pn: Int = 1,
+        @Query("ps") ps: Int = 30,
+        @Query("order") order: Int = 1,  // 1=latest, 2=hot, 3=duration
+        @Query("jsonp") jsonp: String = "jsonp"
+    ): com.android.purebilibili.data.model.response.SpaceAudioResponse
+
+    //  [New] Get User Article List
+    @GET("https://api.bilibili.com/x/article/up/lists")
+    suspend fun getSpaceArticleList(
+        @Query("mid") mid: Long,
+        @Query("pn") pn: Int = 1,
+        @Query("ps") ps: Int = 30,
+        @Query("sort") sort: String = "publish_time",  // publish_time, view, fav
+        @Query("jsonp") jsonp: String = "jsonp"
+    ): com.android.purebilibili.data.model.response.SpaceArticleResponse
 }
 
 //  [新增] 番剧/影视 API
@@ -899,12 +943,18 @@ object NetworkModule {
 
                 val builder = original.newBuilder()
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-                    .header("Referer", referer)
                     .header("Origin", "https://www.bilibili.com") //  增加 Origin 头
+                
+                //  [关键修复] WBI 签名接口绝对不能设置 Referer 头，否则会失败
+                // 参考：https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md
+                val isWbiEndpoint = url.encodedPath.contains("/wbi/")
+                if (!isWbiEndpoint) {
+                    builder.header("Referer", referer)
+                }
 
                 com.android.purebilibili.core.util.Logger.d(
                     "ApiClient",
-                    " Sending request to ${original.url}, Referer: $referer, hasSess=${!TokenManager.sessDataCache.isNullOrEmpty()}, hasCsrf=${!TokenManager.csrfCache.isNullOrEmpty()}"
+                    " Sending request to ${original.url}, Referer: ${if (isWbiEndpoint) "OMITTED (WBI)" else referer}, hasSess=${!TokenManager.sessDataCache.isNullOrEmpty()}, hasCsrf=${!TokenManager.csrfCache.isNullOrEmpty()}"
                 )
 
                 chain.proceed(builder.build())
