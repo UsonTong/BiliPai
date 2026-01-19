@@ -394,18 +394,22 @@ cd BiliPai
 | [DanmakuRenderEngine](https://github.com/bytedance/DanmakuRenderEngine) | 字节跳动高性能弹幕引擎 |
 | [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) | B 站 API 文档 |
 | [Haze](https://github.com/chrisbanes/haze) | 毛玻璃效果库 |
+| [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass) | 液态玻璃效果 |
 | [Lottie](https://github.com/airbnb/lottie-android) | Airbnb 动画库 |
 | [Coil](https://github.com/coil-kt/coil) | Kotlin 图片加载库 |
 | [Compose Shimmer](https://github.com/valentinilk/compose-shimmer) | 骨架屏加载效果 |
 | [Compose Cupertino](https://github.com/alexzhirkevich/compose-cupertino) | iOS 风格 UI 组件 |
 | [ZXing](https://github.com/zxing/zxing) | 二维码生成 |
 | [Room](https://developer.android.com/training/data-storage/room) | 数据库持久化 |
+| [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) | 偏好设置存储 |
 | [Retrofit](https://github.com/square/retrofit) | HTTP 网络请求 |
 | [OkHttp](https://github.com/square/okhttp) | HTTP 客户端 |
+| [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization) | Kotlin 序列化库 |
 | [Firebase Crashlytics](https://firebase.google.com/docs/crashlytics) | 崩溃追踪分析 |
 | [Orbital](https://github.com/skydoves/Orbital) | 共享元素过渡动画 |
 | [AndroidX Palette](https://developer.android.com/training/material/palette-colors) | 动态取色引擎 |
 | [LeakCanary](https://github.com/square/leakcanary) | 内存泄漏检测 |
+| [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) | 后台任务管理 |
 
 ---
 
