@@ -66,6 +66,9 @@ fun SettingsScreen(
     val analyticsEnabled by SettingsManager.getAnalyticsEnabled(context).collectAsState(initial = true)
     val easterEggEnabled by SettingsManager.getEasterEggEnabled(context).collectAsState(initial = true)
     val customDownloadPath by SettingsManager.getDownloadPath(context).collectAsState(initial = null)
+    val feedApiType by SettingsManager.getFeedApiType(context).collectAsState(
+        initial = SettingsManager.FeedApiType.WEB
+    )
     
     // Local UI State
     var showCacheDialog by remember { mutableStateOf(false) }
@@ -281,7 +284,18 @@ fun SettingsScreen(
                 analyticsEnabled = analyticsEnabled,
                 pluginCount = PluginManager.getEnabledCount(),
                 versionName = com.android.purebilibili.BuildConfig.VERSION_NAME,
-                easterEggEnabled = easterEggEnabled
+                easterEggEnabled = easterEggEnabled,
+                feedApiType = feedApiType,
+                onFeedApiTypeChange = { type ->
+                    scope.launch {
+                        SettingsManager.setFeedApiType(context, type)
+                        android.widget.Toast.makeText(
+                            context, 
+                            "已切换为${type.label}，下拉刷新生效", 
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             )
         }
         
@@ -324,7 +338,9 @@ private fun MobileSettingsLayout(
     analyticsEnabled: Boolean,
     pluginCount: Int,
     versionName: String,
-    easterEggEnabled: Boolean
+    easterEggEnabled: Boolean,
+    feedApiType: SettingsManager.FeedApiType,
+    onFeedApiTypeChange: (SettingsManager.FeedApiType) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -366,6 +382,14 @@ private fun MobileSettingsLayout(
                     onAppearanceClick = onAppearanceClick,
                     onPlaybackClick = onPlaybackClick,
                     onBottomBarClick = onNavigateToBottomBarSettings
+                )
+            }
+            
+            item { IOSSectionTitle("推荐流") }
+            item { 
+                FeedApiSection(
+                    feedApiType = feedApiType,
+                    onFeedApiTypeChange = onFeedApiTypeChange
                 )
             }
             

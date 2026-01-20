@@ -93,9 +93,11 @@ class VideoPlaybackUseCase(
      * Load video data
      * 
      * @param defaultQuality 网络感知的默认清晰度 (WiFi=80/1080P, Mobile=64/720P)
+     * @param aid [修复] 视频 aid，用于移动端推荐流（可能只返回 aid）
      */
     suspend fun loadVideo(
         bvid: String,
+        aid: Long = 0,  // [修复] 新增 aid 参数
         defaultQuality: Int = 64,
         audioQualityPreference: Int = -1,
         videoCodecPreference: String = "hev1",
@@ -103,7 +105,8 @@ class VideoPlaybackUseCase(
     ): VideoLoadResult {
         try {
             //  [风控冷却] 检查是否处于冷却期
-            when (val cooldownStatus = PlaybackCooldownManager.getCooldownStatus(bvid)) {
+            val videoIdentifier = bvid.ifEmpty { "aid:$aid" }
+            when (val cooldownStatus = PlaybackCooldownManager.getCooldownStatus(videoIdentifier)) {
                 is CooldownStatus.GlobalCooldown -> {
                     Logger.w("VideoPlaybackUseCase", "⏳ 全局冷却中，跳过请求: ${cooldownStatus.remainingMinutes}分${cooldownStatus.remainingSeconds}秒")
                     return VideoLoadResult.Error(
@@ -115,9 +118,9 @@ class VideoPlaybackUseCase(
                     )
                 }
                 is CooldownStatus.VideoCooldown -> {
-                    Logger.w("VideoPlaybackUseCase", "⏳ 视频冷却中: $bvid，剩余 ${cooldownStatus.remainingMinutes}分${cooldownStatus.remainingSeconds}秒")
+                    Logger.w("VideoPlaybackUseCase", "⏳ 视频冷却中: $videoIdentifier，剩余 ${cooldownStatus.remainingMinutes}分${cooldownStatus.remainingSeconds}秒")
                     return VideoLoadResult.Error(
-                        error = VideoLoadError.RateLimited(cooldownStatus.remainingMs, bvid),
+                        error = VideoLoadError.RateLimited(cooldownStatus.remainingMs, videoIdentifier),
                         canRetry = false
                     )
                 }
@@ -128,9 +131,9 @@ class VideoPlaybackUseCase(
             
             onProgress("Loading video info...")
             
-            //  [关键修复] 将用户画质设置传递给 Repository
-            val detailResult = VideoRepository.getVideoDetails(bvid, defaultQuality)
-            val relatedVideos = VideoRepository.getRelatedVideos(bvid)
+            //  [关键修复] 传递 aid 参数给 Repository
+            val detailResult = VideoRepository.getVideoDetails(bvid, aid, defaultQuality)
+            val relatedVideos = if (bvid.isNotEmpty()) VideoRepository.getRelatedVideos(bvid) else emptyList()
             val emoteMap = com.android.purebilibili.data.repository.CommentRepository.getEmoteMap()
             
             return detailResult.fold(

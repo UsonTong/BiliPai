@@ -17,14 +17,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy  // [新增] iOS 26 液态玻璃鲜艳度效果
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.CornerRadius
@@ -43,7 +35,7 @@ import kotlin.math.abs
  * @param itemCount 项目数量
  * @param isDragging 是否正在拖拽
  * @param velocity 当前速度（用于形变）
- * @param backdrop Backdrop 实例（用于透镜效果）
+ * @param hazeState HazeState 实例（用于模糊效果）
  * @param modifier Modifier
  */
 @Composable
@@ -53,68 +45,53 @@ fun LiquidIndicator(
     itemCount: Int,
     isDragging: Boolean,
     velocity: Float = 0f,
-    backdrop: Backdrop? = null,
-    startPadding: Dp = 0.dp, // [新增] 起始偏移，用于对齐
+    startPadding: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     
-    // 指示器尺寸 - 变矮变长
-    val indicatorWidth = itemWidth + 24.dp // [修复] 更宽，显著超出图标区域
-    val indicatorHeight = 55.dp // [调整] 用户指定高度 (52 -> 55)
+    // 指示器尺寸
+    val indicatorWidth = itemWidth + 24.dp
+    val indicatorHeight = 55.dp
     
-    // 计算偏移位置
-    // 逻辑：StartPadding + (Index * ItemWidth)
-    val itemStartOffset = with(density) {
-        (position * itemWidth.toPx()).toDp()
-    }
+    // 计算位置 (OFFSET 模式)
+    val itemStartOffset = with(density) { (position * itemWidth.toPx()).toDp() }
+    val currentOffset = startPadding + itemStartOffset + (itemWidth / 2) - (indicatorWidth / 2)
     
-    // 拖拽时的缩放动画
-    val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.05f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
-        label = "indicator_scale"
-    )
+    // 速度形变
+    val velocityFraction = (velocity / 3000f).coerceIn(-1f, 1f)
+    val deformation = abs(velocityFraction) * 0.4f
     
-    // 速度影响的形变
-    val velocityFactor = (velocity / 1000f).coerceIn(-0.15f, 0.15f)
-    // 简化：这里只做简单的缩放，不再做复杂的X/Y拉伸，保持胶囊形状稳定
+    val targetScaleX = 1f + deformation
+    val targetScaleY = 1f - (deformation * 0.6f)
     
-    // 指示器背景颜色
-    val indicatorColor = if (isDarkTheme) {
-        Color.White.copy(alpha = 0.12f)
-    } else {
-        Color.Black.copy(alpha = 0.08f)
-    }
+    val scaleX by animateFloatAsState(targetValue = targetScaleX, animationSpec = spring(dampingRatio = 0.5f, stiffness = 600f), label = "scaleX")
+    val scaleY by animateFloatAsState(targetValue = targetScaleY, animationSpec = spring(dampingRatio = 0.5f, stiffness = 600f), label = "scaleY")
+    val dragScale by animateFloatAsState(targetValue = if (isDragging) 1.0f else 1f, animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f), label = "dragScale")
+
+    val finalScaleX = scaleX * dragScale
+    val finalScaleY = scaleY * dragScale
+
+    // 指示器形状
+    val shape = RoundedCornerShape(indicatorHeight / 2)
     
-    // 既然我们已经禁用了透镜效果来消除伪影，
-    // 这里直接使用最干净的实现方式：一个带动画的 Box
-    // 这样既高效又完全避免了"鬼影"和"重复渲染"的问题
-    
+    // [修改] 颜色：使用 Primary 色调，去除去折射/模糊
+    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+
     Box(
-        modifier = modifier, // 这里从外部传入的是 fillMaxSize
-        contentAlignment = Alignment.CenterStart // [修复] 垂直居中，水平靠左开始
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.CenterStart
     ) {
          Box(
             modifier = Modifier
-                // 核心定位逻辑：
-                // 1. 找到 Item 槽位的起始点: startPadding + itemStartOffset
-                // 2. 找到 Item 槽位的中心点: + itemWidth / 2
-                // 3. 减去指示器的一半宽度: - indicatorWidth / 2
-                .offset(
-                    x = startPadding + itemStartOffset + (itemWidth / 2) - (indicatorWidth / 2), 
-                    y = 0.dp // 因为使用了 CenterStart，这里的 y=0 意味着垂直居中
-                )
+                .offset(x = currentOffset)
                 .size(indicatorWidth, indicatorHeight)
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+                    this.scaleX = finalScaleX
+                    this.scaleY = finalScaleY
+                    shadowElevation = 0f
                 }
-                .clip(RoundedCornerShape(indicatorHeight / 2)) // 完美圆角
+                .clip(shape)
                 .background(indicatorColor)
         )
     }

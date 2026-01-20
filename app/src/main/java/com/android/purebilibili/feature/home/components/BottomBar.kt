@@ -1,7 +1,7 @@
 // 文件路径: feature/home/components/BottomBar.kt
 package com.android.purebilibili.feature.home.components
 
-import com.android.purebilibili.navigation.ScreenRoutes
+// Duplicate import removed
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -27,15 +27,20 @@ import androidx.compose.ui.graphics.graphicsLayer  //  晃动动画
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.util.lerp
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.android.purebilibili.feature.home.components.LiquidIndicator
+import com.android.purebilibili.navigation.ScreenRoutes
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import kotlin.math.abs
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import com.android.purebilibili.core.ui.blur.unifiedBlur  //  统一模糊API
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
+import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.blur.BlurStyles
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import com.android.purebilibili.core.util.HapticType
@@ -56,9 +61,7 @@ import com.android.purebilibili.feature.home.components.LiquidIndicator
 import com.android.purebilibili.feature.home.components.SimpleLiquidIndicator
 // [Removed] internal import for rememberLayerBackdrop
 import androidx.compose.ui.Modifier.Companion.then
-import com.kyant.backdrop.Backdrop  // Need this type for parameter
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop // [Restore] internal import
-import com.kyant.backdrop.backdrops.layerBackdrop
+import dev.chrisbanes.haze.hazeSource
 
 /**
  * 底部导航项枚举 -  使用 iOS SF Symbols 风格图标
@@ -147,8 +150,7 @@ fun FrostedBottomBar(
     onHomeDoubleTap: () -> Unit = {},  //  双击首页回到顶部
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),  //  [新增] 可配置的可见项目
     itemColorIndices: Map<String, Int> = emptyMap(),  //  [新增] 项目颜色索引映射
-    onToggleSidebar: (() -> Unit)? = null,  // 📱 [平板适配] 切换到侧边栏
-    backdrop: Backdrop? = null  // [新增] 外部传入的全屏折射源
+    onToggleSidebar: (() -> Unit)? = null  // 📱 [平板适配] 切换到侧边栏
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()  //  触觉反馈
@@ -340,64 +342,52 @@ fun FrostedBottomBar(
                 }
 
                 //  [重构] 布局结构：
-                //  1. 内容层 (Row) -> 标记为 backdrop 源
-                //  2. 滤镜层 (LiquidIndicator) -> 使用 backdrop 源进行折射
+                //  1. 内容层 (Row) -> 标记为 backdrop 源 (放在底层)
+                //  2. 滤镜层 (LiquidIndicator) -> 使用 backdrop 源进行折射 (放在顶层)
                 
-                // ----------------------------------------------------------------
-                // [简化] 液态玻璃指示器 - 不使用折射效果
-                // ----------------------------------------------------------------
-                // 由于折射效果会导致重复渲染和视觉伪影，现在改用简单的玻璃背景
-                // 指示器只显示半透明背景+高光+阴影，不进行任何内容折射
-                // ----------------------------------------------------------------
-
-                // [指示器层] 简化版液态玻璃 - 不传入 backdrop
-                LiquidIndicator(
-                    position = dampedDragState.value,
-                    itemWidth = itemWidth,
-                    itemCount = itemCount,
-                    isDragging = dampedDragState.isDragging,
-                    velocity = dampedDragState.velocity,
-                    backdrop = null, // [修复] 不使用折射，避免重复指示器
-                    startPadding = rowPadding,
-                    // [修复] 当无选中项时隐藏指示器
-                    // [修复] 垂直偏移: 必须与 BottomBarItem 内容的 contentVerticalOffset 保持一致，否则指示器会偏上
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset(y = contentVerticalOffset) 
-                        .alpha(indicatorAlpha)
-                )
-
-                // 3. [交互层] 可见内容
-                // 放在最上层以接收点击事件，并正常显示
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                // [新增] 恢复 Backdrop 状态
+                
+                // [修改] 移除 Haze/Backdrop，使用普通的层级叠加，指示器使用 Primary 颜色半透明
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // 1. [底层] 内容层
                     BottomBarContent(
-                       visibleItems = visibleItems,
-                       selectedIndex = selectedIndex,
-                       itemColorIndices = itemColorIndices,
-                       onItemClick = onItemClick,
-                       onToggleSidebar = onToggleSidebar,
-                       isTablet = isTablet,
-                       labelMode = labelMode,
-                       hazeState = hazeState,
-                       haptic = haptic,
-                       debounceClick = debounceClick,
-                       onHomeDoubleTap = onHomeDoubleTap,
-                       itemWidth = itemWidth,
-                       rowPadding = rowPadding,
-                       contentVerticalOffset = contentVerticalOffset,
-                       isInteractive = true,
-                       currentPosition = dampedDragState.value, // [新增] 动态位置 (可见层)
-                       // 将手势监听加在可见层
-                       dragModifier = Modifier.horizontalDragGesture(
+                        visibleItems = visibleItems,
+                        selectedIndex = selectedIndex,
+                        itemColorIndices = itemColorIndices,
+                        onItemClick = onItemClick,
+                        onToggleSidebar = onToggleSidebar,
+                        isTablet = isTablet,
+                        labelMode = labelMode,
+                        hazeState = hazeState,
+                        haptic = haptic,
+                        debounceClick = debounceClick,
+                        onHomeDoubleTap = onHomeDoubleTap,
+                        itemWidth = itemWidth,
+                        rowPadding = rowPadding,
+                        contentVerticalOffset = contentVerticalOffset,
+                        isInteractive = true,
+                        currentPosition = dampedDragState.value,
+                        dragModifier = Modifier.horizontalDragGesture(
                             dragState = dampedDragState,
                             itemWidthPx = with(LocalDensity.current) { itemWidth.toPx() }
-                       )
+                        )
                    )
+
+                    // 2. [顶层] 液态指示器 (无折射)
+                    LiquidIndicator(
+                        position = dampedDragState.value,
+                        itemWidth = itemWidth,
+                        itemCount = itemCount,
+                        isDragging = dampedDragState.isDragging,
+                        velocity = dampedDragState.velocity,
+                        startPadding = rowPadding,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(y = contentVerticalOffset) 
+                            .alpha(indicatorAlpha),
+                    )
                 }
-                
-                } // BoxWithConstraints 闭合
+            } // BoxWithConstraints 闭合
                 
                 //  iOS 风格：非悬浮模式时，导航栏区域作为 Spacer 包含在 Surface 内
                 if (!isFloating) {
@@ -560,13 +550,17 @@ private fun BottomBarItem(
         label = "iconColor"
     )
     
-    // [修改] 缩放插值
-    val targetScale = androidx.compose.ui.util.lerp(1.0f, 0.9f, selectionFraction)
-    val scale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = spring(dampingRatio = 0.4f, stiffness = 400f),
-        label = "scale"
-    )
+    // [修改] 缩放插值 - 跃动效果
+    // selectionFraction: 0f (未选中) -> 1f (完全选中)
+    // 这里的逻辑是：当指示器经过时 (0.5f) 图标最大，两端 (0f/1f) 恢复正常
+    // 使用 sin(x * PI) 曲线：sin(0)=0, sin(0.5PI)=1, sin(PI)=0
+    // 基础大小 1.0f，最大放大 1.4f (增强版)
+    val scaleMultiplier = 0.4f
+    val bumpScale = 1.0f + (scaleMultiplier * kotlin.math.sin(selectionFraction * Math.PI)).toFloat()
+    
+    // 直接使用计算出的 bumpScale 作为 scale，因为 selectionFraction 本身已经是平滑动画的值 (由 dampedDragState 驱动)
+    // 这样可以保证图标缩放绝对跟随手指/指示器位置，没有任何滞后
+    val scale = bumpScale
     
     // [修改] Y轴位移插值
     val targetBounceY = androidx.compose.ui.util.lerp(0f, 0f, selectionFraction)

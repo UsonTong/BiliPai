@@ -79,6 +79,39 @@ object VideoRepository {
     // 1. 首页推荐
     suspend fun getHomeVideos(idx: Int = 0): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
         try {
+            //  读取推荐流类型设置
+            val context = com.android.purebilibili.core.network.NetworkModule.appContext
+            val feedApiType = if (context != null) {
+                com.android.purebilibili.core.store.SettingsManager.getFeedApiTypeSync(context)
+            } else {
+                com.android.purebilibili.core.store.SettingsManager.FeedApiType.WEB
+            }
+            
+            com.android.purebilibili.core.util.Logger.d("VideoRepo", " getHomeVideos: feedApiType=$feedApiType, idx=$idx")
+            
+            when (feedApiType) {
+                com.android.purebilibili.core.store.SettingsManager.FeedApiType.MOBILE -> {
+                    // 尝试使用移动端 API
+                    val mobileResult = fetchMobileFeed(idx)
+                    if (mobileResult.isSuccess && mobileResult.getOrNull()?.isNotEmpty() == true) {
+                        mobileResult
+                    } else {
+                        // 移动端 API 失败，回退到 Web API
+                        com.android.purebilibili.core.util.Logger.d("VideoRepo", " Mobile API failed, fallback to Web API")
+                        fetchWebFeed(idx)
+                    }
+                }
+                else -> fetchWebFeed(idx)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    //  Web 端推荐流 (WBI 签名)
+    private suspend fun fetchWebFeed(idx: Int): Result<List<VideoItem>> {
+        try {
             val navResp = api.getNavInfo()
             val wbiImg = navResp.data?.wbi_img ?: throw Exception("无法获取 Key")
             val imgKey = wbiImg.img_url.substringAfterLast("/").substringBefore(".")
@@ -101,12 +134,60 @@ object VideoRepository {
             
             //  [调试] 检查转换后的 VideoItem
             val verticalCount = list.count { it.isVertical }
-            com.android.purebilibili.core.util.Logger.d("VideoRepo", " 首页视频: total=${list.size}, vertical=$verticalCount")
+            com.android.purebilibili.core.util.Logger.d("VideoRepo", " Web推荐: total=${list.size}, vertical=$verticalCount")
             
-            Result.success(list)
+            return Result.success(list)
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(e)
+            return Result.failure(e)
+        }
+    }
+    
+    //  移动端推荐流 (appkey + sign 签名)
+    private suspend fun fetchMobileFeed(idx: Int): Result<List<VideoItem>> {
+        try {
+            val accessToken = TokenManager.accessTokenCache
+            if (accessToken.isNullOrEmpty()) {
+                com.android.purebilibili.core.util.Logger.d("VideoRepo", " No access_token, fallback to Web API")
+                return Result.failure(Exception("需要登录才能使用移动端推荐流"))
+            }
+            
+            val params = mapOf(
+                "idx" to idx.toString(),
+                "pull" to if (idx == 0) "1" else "0",  // 1=刷新, 0=加载更多
+                "column" to "4",  // 4列布局
+                "flush" to "5",   // 刷新间隔
+                "autoplay_card" to "11",
+                "access_key" to accessToken,
+                "appkey" to AppSignUtils.TV_APP_KEY,
+                "ts" to AppSignUtils.getTimestamp().toString(),
+                "mobi_app" to "android",
+                "device" to "android",
+                "build" to "8130300"
+            )
+            
+            val signedParams = AppSignUtils.signForTvLogin(params)
+            
+            com.android.purebilibili.core.util.Logger.d("VideoRepo", " Mobile feed request: idx=$idx")
+            val feedResp = api.getMobileFeed(signedParams)
+            
+            if (feedResp.code != 0) {
+                com.android.purebilibili.core.util.Logger.d("VideoRepo", " Mobile feed error: code=${feedResp.code}, msg=${feedResp.message}")
+                return Result.failure(Exception(feedResp.message))
+            }
+            
+            val list = feedResp.data?.items
+                ?.filter { it.goto == "av" }  // 只保留视频类型
+                ?.map { it.toVideoItem() }
+                ?.filter { it.bvid.isNotEmpty() }
+                ?: emptyList()
+            
+            com.android.purebilibili.core.util.Logger.d("VideoRepo", " Mobile推荐: total=${list.size}")
+            
+            return Result.success(list)
+        } catch (e: Exception) {
+            com.android.purebilibili.core.util.Logger.d("VideoRepo", " Mobile feed exception: ${e.message}")
+            return Result.failure(e)
         }
     }
     
@@ -172,9 +253,20 @@ object VideoRepository {
         }
     }
 
-    suspend fun getVideoDetails(bvid: String, targetQuality: Int? = null): Result<Pair<ViewInfo, PlayUrlData>> = withContext(Dispatchers.IO) {
+    // [修复] 添加 aid 参数支持，修复移动端推荐流视频播放失败问题
+    suspend fun getVideoDetails(bvid: String, aid: Long = 0, targetQuality: Int? = null): Result<Pair<ViewInfo, PlayUrlData>> = withContext(Dispatchers.IO) {
         try {
-            val viewResp = api.getVideoInfo(bvid)
+            // [修复] 优先使用 bvid，如果为空则使用 aid
+            val viewResp = if (bvid.isNotEmpty() && bvid.startsWith("BV")) {
+                com.android.purebilibili.core.util.Logger.d("VideoRepo", " getVideoDetails: using bvid=$bvid")
+                api.getVideoInfo(bvid)
+            } else if (aid > 0) {
+                com.android.purebilibili.core.util.Logger.d("VideoRepo", " getVideoDetails: bvid empty/invalid, using aid=$aid")
+                api.getVideoInfoByAid(aid)
+            } else {
+                throw Exception("无效的视频标识: bvid=$bvid, aid=$aid")
+            }
+            
             val info = viewResp.data ?: throw Exception("视频详情为空: ${viewResp.code}")
             val cid = info.cid
             

@@ -105,6 +105,7 @@ import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.ui.components.BottomInputBar // [New] Bottom Input Bar
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -270,6 +271,20 @@ fun VideoDetailScreen(
             // 2秒后自动隐藏
             kotlinx.coroutines.delay(2000)
             popupMessage = null
+        }
+    }
+    
+    //  [新增] 监听弹幕发送事件 - 将发送的弹幕显示在屏幕上
+    val danmakuManager = rememberDanmakuManager()
+    LaunchedEffect(Unit) {
+        viewModel.danmakuSentEvent.collect { danmakuData ->
+            android.util.Log.d("VideoDetailScreen", "📺 Displaying sent danmaku: ${danmakuData.text}")
+            danmakuManager.addLocalDanmaku(
+                text = danmakuData.text,
+                color = danmakuData.color,
+                mode = danmakuData.mode,
+                fontSize = danmakuData.fontSize
+            )
         }
     }
     
@@ -834,6 +849,19 @@ fun VideoDetailScreen(
                                                 emoteMap = success.emoteMap,
                                                 isRepliesLoading = commentState.isRepliesLoading,
                                                 isRepliesEnd = commentState.isRepliesEnd,
+                                                // [新增] 传递删除相关参数
+                                                currentMid = commentState.currentMid,
+                                                dissolvingIds = commentState.dissolvingIds,
+                                                // [新增] 删除评论
+                                                onDeleteComment = { rpid ->
+                                                    commentViewModel.deleteComment(rpid)
+                                                },
+                                                onDissolveStart = { rpid ->
+                                                    commentViewModel.startDissolve(rpid)
+                                                },
+                                                // [新增] 点赞
+                                                onCommentLike = commentViewModel::likeComment,
+                                                likedComments = commentState.likedComments,
                                                 isFollowing = success.isFollowing,
                                                 isFavorited = success.isFavorited,
                                                 isLiked = success.isLiked,
@@ -864,6 +892,11 @@ fun VideoDetailScreen(
                                                 onTimestampClick = { positionMs ->
                                                     playerState.player.seekTo(positionMs)
                                                     playerState.player.play()
+                                                },
+                                                //  [新增] 弹幕发送
+                                                onDanmakuSendClick = {
+                                                    android.util.Log.d("VideoDetailScreen", "📤 Danmaku send clicked!")
+                                                    viewModel.showDanmakuSendDialog()
                                                 }
                                             )
                                         }
@@ -877,8 +910,14 @@ fun VideoDetailScreen(
                                             onLikeClick = { viewModel.toggleLike() },
                                             onFavoriteClick = { viewModel.toggleFavorite() },
                                             onCoinClick = { viewModel.openCoinDialog() },
-                                            onShareClick = { /* TODO: Share */ },
-                                            onCommentClick = { /* TODO: Open Input Dialog */ },
+                                            onShareClick = { 
+                                                android.util.Log.d("VideoDetailScreen", "📤 Share clicked!")
+                                                // TODO: Implement share
+                                            },
+                                            onCommentClick = { 
+                                                android.util.Log.d("VideoDetailScreen", "📝 Comment input clicked!")
+                                                viewModel.showCommentInputDialog()
+                                            },
                                             hazeState = hazeState
                                         )
                                     }
@@ -1293,6 +1332,37 @@ fun VideoDetailScreen(
             onConfirm = { count, alsoLike -> viewModel.doCoin(count, alsoLike) }
         )
         
+        //  [新增] 弹幕发送对话框
+        val showDanmakuDialog by viewModel.showDanmakuDialog.collectAsState()
+        val isSendingDanmaku by viewModel.isSendingDanmaku.collectAsState()
+        com.android.purebilibili.feature.video.ui.components.DanmakuSendDialog(
+            visible = showDanmakuDialog,
+            onDismiss = { viewModel.hideDanmakuSendDialog() },
+            onSend = { message, color, mode, fontSize ->
+                android.util.Log.d("VideoDetailScreen", "📤 Sending danmaku: $message")
+                viewModel.sendDanmaku(message, color, mode, fontSize)
+            },
+            isSending = isSendingDanmaku
+        )
+        
+        //  [新增] 评论输入对话框
+        val showCommentInput by viewModel.showCommentDialog.collectAsState()
+        val isSendingComment by viewModel.isSendingComment.collectAsState() // 暂时复用 ViewModel 状态?
+        val replyingToComment by viewModel.replyingToComment.collectAsState()
+        val emotePackages by viewModel.emotePackages.collectAsState() // [新增]
+        
+        com.android.purebilibili.feature.video.ui.components.CommentInputDialog(
+            visible = showCommentInput,
+            onDismiss = { viewModel.hideCommentInputDialog() },
+            isSending = isSendingComment,
+            replyToName = replyingToComment?.member?.uname,
+            emotePackages = emotePackages, // [新增]
+            onSend = { message ->
+                viewModel.sendComment(message)
+                viewModel.hideCommentInputDialog()
+            }
+        )
+        
         //  [新增] 下载画质选择对话框
         val showDownloadDialog by viewModel.showDownloadDialog.collectAsState()
         val successForDownload = uiState as? PlayerUiState.Success
@@ -1352,7 +1422,23 @@ fun VideoDetailScreen(
                     subReplyPreviewIndex = index
                     subReplySourceRect = rect
                     subReplyShowImagePreview = true
-                }
+                },
+                //  [修复] 点击评论回复
+                onReplyClick = { replyItem ->
+                    android.util.Log.d("VideoDetailScreen", "📝 Reply to: ${replyItem.member.uname}")
+                    viewModel.setReplyingTo(replyItem)  // 设置回复目标
+                    viewModel.showCommentInputDialog()  // 显示评论输入对话框
+                },
+                // [新增] 删除评论（消散动画）
+                currentMid = commentState.currentMid,
+                onDissolveStart = { rpid ->
+                    commentViewModel.startSubDissolve(rpid)
+                },
+                onDeleteComment = { rpid ->
+                    commentViewModel.deleteSubComment(rpid)
+                },
+                onCommentLike = commentViewModel::likeComment,
+                likedComments = commentState.likedComments
             )
         }
         
@@ -1403,6 +1489,32 @@ fun VideoDetailScreen(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                     modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
                 )
+            }
+        }
+        
+        // 💬 弹幕上下文菜单
+        val danmakuMenuState by viewModel.danmakuMenuState.collectAsState()
+        
+        if (danmakuMenuState.visible) {
+            DanmakuContextMenu(
+                text = danmakuMenuState.text,
+                onDismiss = { viewModel.hideDanmakuMenu() },
+                onLike = { viewModel.likeDanmaku(danmakuMenuState.dmid) },
+                onRecall = { viewModel.recallDanmaku(danmakuMenuState.dmid) },
+                onReport = { reason -> 
+                    viewModel.reportDanmaku(danmakuMenuState.dmid, reason)
+                },
+                onBlockUser = {
+                    viewModel.toast("暂不支持屏蔽用户")
+                }
+            )
+        }
+        
+        // 🔗 绑定弹幕点击监听器
+        LaunchedEffect(danmakuManager) {
+            danmakuManager.setOnDanmakuClickListener { text, dmid, uid, isSelf ->
+                android.util.Log.d("VideoDetailScreen", "👆 Danmaku clicked: $text")
+                viewModel.showDanmakuMenu(dmid, text, uid, isSelf)
             }
         }
     }

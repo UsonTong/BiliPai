@@ -463,6 +463,46 @@ object SettingsManager {
         }
     }
     
+    // ==========  推荐流 API 类型 ==========
+    
+    private val KEY_FEED_API_TYPE = intPreferencesKey("feed_api_type")
+    
+    /**
+     *  推荐流 API 类型
+     * - WEB: 平板端/Web API (x/web-interface/wbi/index/top/feed/rcmd)，使用 WBI 签名
+     * - MOBILE: 移动端 API (x/v2/feed/index)，使用 appkey+sign 签名，需要 access_token
+     */
+    enum class FeedApiType(val value: Int, val label: String, val description: String) {
+        WEB(0, "网页端 (Web)", "使用 Web 推荐算法"),
+        MOBILE(1, "移动端 (App)", "使用手机端推荐算法，需登录");
+        
+        companion object {
+            fun fromValue(value: Int): FeedApiType = entries.find { it.value == value } ?: WEB
+        }
+    }
+    
+    // --- 推荐流类型设置 ---
+    fun getFeedApiType(context: Context): Flow<FeedApiType> = context.settingsDataStore.data
+        .map { preferences -> 
+            FeedApiType.fromValue(preferences[KEY_FEED_API_TYPE] ?: FeedApiType.WEB.value)
+        }
+
+    suspend fun setFeedApiType(context: Context, type: FeedApiType) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_FEED_API_TYPE] = type.value 
+        }
+        //  同步到 SharedPreferences，供 VideoRepository 同步读取
+        context.getSharedPreferences("feed_api", Context.MODE_PRIVATE)
+            .edit().putInt("type", type.value).apply()
+    }
+    
+    //  同步读取推荐流类型（用于 VideoRepository）
+    fun getFeedApiTypeSync(context: Context): FeedApiType {
+        val value = context.getSharedPreferences("feed_api", Context.MODE_PRIVATE)
+            .getInt("type", FeedApiType.WEB.value)
+        return FeedApiType.fromValue(value)
+    }
+    
     // ==========  实验性功能 ==========
     
     private val KEY_AUTO_1080P = booleanPreferencesKey("exp_auto_1080p")

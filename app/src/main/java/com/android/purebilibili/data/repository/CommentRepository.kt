@@ -178,12 +178,35 @@ object CommentRepository {
         map["[笑哭]"] = "http://i0.hdslb.com/bfs/emote/500b63b2f293309a909403a746566fdd6104d498.png"
         map["[妙啊]"] = "http://i0.hdslb.com/bfs/emote/03c39c8eb009f63568971032b49c716259c72441.png"
         try {
-            val response = api.getEmotes()
-            response.data?.packages?.forEach { pkg ->
+            val params = mutableMapOf("business" to "reply")
+            
+            val response = api.getEmotes(params)
+            val packages = response.data?.packages ?: response.data?.all_packages
+            packages?.forEach { pkg ->
                 pkg.emote?.forEach { emote -> map[emote.text] = emote.url }
             }
         } catch (e: Exception) { e.printStackTrace() }
         map
+    }
+
+    /**
+     * 获取表情包列表 (用于UI展示)
+     */
+    suspend fun getEmotePackages(): Result<List<EmotePackage>> = withContext(Dispatchers.IO) {
+        try {
+            val params = mutableMapOf("business" to "reply")
+            
+            val response = api.getEmotes(params)
+            if (response.code == 0) {
+                val data = response.data
+                val pkgs = data?.packages ?: data?.all_packages ?: emptyList()
+                Result.success(pkgs)
+            } else {
+                Result.failure(Exception(response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
     
     /**

@@ -316,23 +316,38 @@ private fun TabletSecondaryContent(
                             items = commentState.replies,
                             key = { "reply_${it.rpid}" }
                         ) { reply ->
-                            ReplyItemView(
-                                item = reply,
-                                emoteMap = success.emoteMap,
-                                upMid = success.info.owner.mid,
-                                onClick = {},
-                                onSubClick = { commentViewModel.openSubReply(it) },
-                                onTimestampClick = { positionMs ->
-                                    playerState.player.seekTo(positionMs)
-                                    playerState.player.play()
-                                },
-                                onImagePreview = { images, index, rect ->
-                                    previewImages = images
-                                    previewInitialIndex = index
-                                    sourceRect = rect
-                                    showImagePreview = true
-                                }
-                            )
+                            // [新增] 使用 DissolvableVideoCard 包裹 (平板端也需要)
+                            com.android.purebilibili.core.ui.animation.DissolvableVideoCard(
+                                isDissolving = reply.rpid in commentState.dissolvingIds,
+                                onDissolveComplete = { commentViewModel.deleteComment(reply.rpid) },
+                                cardId = "comment_${reply.rpid}",
+                                modifier = Modifier.padding(bottom = 1.dp)
+                            ) {
+                                ReplyItemView(
+                                    item = reply,
+                                    emoteMap = success.emoteMap,
+                                    upMid = success.info.owner.mid,
+                                    onClick = {},
+                                    onSubClick = { commentViewModel.openSubReply(it) },
+                                    onTimestampClick = { positionMs ->
+                                        playerState.player.seekTo(positionMs)
+                                        playerState.player.play()
+                                    },
+                                    onImagePreview = { images, index, rect ->
+                                        previewImages = images
+                                        previewInitialIndex = index
+                                        sourceRect = rect
+                                        showImagePreview = true
+                                    },
+                                    // [新增] 点赞按钮
+                                    onLikeClick = { commentViewModel.likeComment(reply.rpid) },
+                                    isLiked = reply.action == 1 || reply.rpid in commentState.likedComments,
+                                    // [新增] 删除按钮
+                                    onDeleteClick = if (commentState.currentMid > 0 && reply.mid == commentState.currentMid) {
+                                        { commentViewModel.startDissolve(reply.rpid) }
+                                    } else null
+                                )
+                            }
                         }
                         
                         // 加载指示器

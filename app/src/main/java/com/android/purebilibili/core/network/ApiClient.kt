@@ -66,6 +66,10 @@ interface BilibiliApi {
     @GET("x/web-interface/wbi/index/top/feed/rcmd")
     suspend fun getRecommendParams(@QueryMap params: Map<String, String>): RecommendResponse
     
+    //  移动端推荐流 API (需要 access_token + appkey 签名)
+    @GET("https://app.bilibili.com/x/v2/feed/index")
+    suspend fun getMobileFeed(@QueryMap params: Map<String, String>): MobileFeedResponse
+    
     @GET("x/web-interface/popular")
     suspend fun getPopularVideos(
         @Query("pn") pn: Int = 1,
@@ -154,6 +158,10 @@ interface BilibiliApi {
     @GET("x/web-interface/view")
     suspend fun getVideoInfo(@Query("bvid") bvid: String): VideoDetailResponse
     
+    // [修复] 通过 aid 获取视频信息 - 用于移动端推荐流（可能只返回 aid）
+    @GET("x/web-interface/view")
+    suspend fun getVideoInfoByAid(@Query("aid") aid: Long): VideoDetailResponse
+    
     //  获取视频标签
     @GET("x/tag/archive/tags")
     suspend fun getVideoTags(@Query("bvid") bvid: String): VideoTagResponse
@@ -233,6 +241,54 @@ interface BilibiliApi {
         @Query("oid") oid: Long,                   // cid
         @Query("segment_index") segmentIndex: Int  // 分段索引 (从 1 开始)
     ): ResponseBody
+    
+    // [新增] 发送弹幕
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v2/dm/post")
+    suspend fun sendDanmaku(
+        @retrofit2.http.Field("oid") oid: Long,               // 视频 cid
+        @retrofit2.http.Field("aid") aid: Long,               // 视频 aid (必需)
+        @retrofit2.http.Field("type") type: Int = 1,          // 弹幕类型: 1=视频
+        @retrofit2.http.Field("msg") msg: String,             // 弹幕内容
+        @retrofit2.http.Field("progress") progress: Long,      // 弹幕出现时间 (毫秒)
+        @retrofit2.http.Field("color") color: Int = 16777215,  // 颜色 (十进制RGB，默认白色)
+        @retrofit2.http.Field("fontsize") fontsize: Int = 25,  // 字号: 18小/25中/36大
+        @retrofit2.http.Field("mode") mode: Int = 1,           // 模式: 1滚动/4底部/5顶部
+        @retrofit2.http.Field("pool") pool: Int = 0,           // 弹幕池: 0普通/1字幕/2特殊
+        @retrofit2.http.Field("plat") plat: Int = 1,           // 平台: 1=web
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SendDanmakuResponse
+
+    // [新增] 撤回弹幕 (2分钟内可撤回，每天3次)
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/dm/recall")
+    suspend fun recallDanmaku(
+        @retrofit2.http.Field("cid") cid: Long,               // 视频 cid
+        @retrofit2.http.Field("dmid") dmid: Long,             // 弹幕 ID
+        @retrofit2.http.Field("csrf") csrf: String
+    ): DanmakuActionResponse
+
+    // [新增] 点赞弹幕
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v2/dm/thumbup/add")
+    suspend fun likeDanmaku(
+        @retrofit2.http.Field("oid") oid: Long,               // 视频 cid
+        @retrofit2.http.Field("dmid") dmid: Long,             // 弹幕 ID
+        @retrofit2.http.Field("op") op: Int = 1,              // 操作: 1点赞/2取消
+        @retrofit2.http.Field("platform") platform: String = "web_player",
+        @retrofit2.http.Field("csrf") csrf: String
+    ): DanmakuActionResponse
+
+    // [新增] 举报弹幕
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/dm/report/add")
+    suspend fun reportDanmaku(
+        @retrofit2.http.Field("cid") cid: Long,               // 视频 cid
+        @retrofit2.http.Field("dmid") dmid: Long,             // 弹幕 ID
+        @retrofit2.http.Field("reason") reason: Int,          // 举报原因
+        @retrofit2.http.Field("content") content: String = "", // 举报内容描述
+        @retrofit2.http.Field("csrf") csrf: String
+    ): DanmakuActionResponse
 
     // ==================== 评论模块 ====================
     // 评论主列表 (需 WBI 签名)
@@ -250,10 +306,6 @@ interface BilibiliApi {
         @Query("sort") sort: Int = 0  // 0=按时间, 1=按点赞数, 2=按回复数
     ): ReplyResponse
 
-    @GET("x/emote/user/panel/web")
-    suspend fun getEmotes(
-        @Query("business") business: String = "reply"
-    ): EmoteResponse
     @GET("x/v2/reply/reply")
     suspend fun getReplyReply(
         @Query("oid") oid: Long,
@@ -261,8 +313,8 @@ interface BilibiliApi {
         @Query("root") root: Long, // 根评论 ID (rpid)
         @Query("pn") pn: Int,     // 页码
         @Query("ps") ps: Int = 20 // 每页数量
-    ): ReplyResponse // 复用 ReplyResponse 结构
-    
+    ): ReplyResponse
+
     // [新增] 发送评论
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/v2/reply/add")
@@ -270,10 +322,19 @@ interface BilibiliApi {
         @retrofit2.http.Field("oid") oid: Long,
         @retrofit2.http.Field("type") type: Int = 1,
         @retrofit2.http.Field("message") message: String,
-        @retrofit2.http.Field("root") root: Long = 0,
-        @retrofit2.http.Field("parent") parent: Long = 0,
+        @retrofit2.http.Field("plat") plat: Int = 1,
+        @retrofit2.http.Field("root") root: Long? = null,
+        @retrofit2.http.Field("parent") parent: Long? = null,
         @retrofit2.http.Field("csrf") csrf: String
     ): AddReplyResponse
+
+    /**
+     * 获取表情包
+     */
+    @GET("x/emote/user/panel/web")
+    suspend fun getEmotes(
+        @QueryMap params: Map<String, String>
+    ): com.android.purebilibili.data.model.response.EmoteResponse
     
     // [新增] 点赞评论
     @retrofit2.http.FormUrlEncoded

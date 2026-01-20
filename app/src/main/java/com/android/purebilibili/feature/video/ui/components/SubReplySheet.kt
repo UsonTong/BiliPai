@@ -36,7 +36,15 @@ fun SubReplySheet(
     onDismiss: () -> Unit,
     onLoadMore: () -> Unit,
     onTimestampClick: ((Long) -> Unit)? = null,
-    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null
+    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null,
+    onReplyClick: ((ReplyItem) -> Unit)? = null,
+    // [新增] 删除评论相关
+    currentMid: Long = 0,
+    onDissolveStart: ((Long) -> Unit)? = null,
+    onDeleteComment: ((Long) -> Unit)? = null,
+    // [新增] 点赞
+    onCommentLike: ((Long) -> Unit)? = null,
+    likedComments: Set<Long> = emptySet()
 ) {
     if (state.visible && state.rootReply != null) {
         com.android.purebilibili.core.ui.IOSModalBottomSheet(
@@ -51,7 +59,15 @@ fun SubReplySheet(
                 onLoadMore = onLoadMore,
                 onTimestampClick = onTimestampClick,
                 upMid = state.upMid,
-                onImagePreview = onImagePreview
+                onImagePreview = onImagePreview,
+                onReplyClick = onReplyClick,
+                // [新增] 消散动画相关
+                dissolvingIds = state.dissolvingIds,
+                currentMid = currentMid,
+                onDissolveStart = onDissolveStart,
+                onDeleteComment = onDeleteComment,
+                onCommentLike = onCommentLike,
+                likedComments = likedComments
             )
         }
     }
@@ -66,8 +82,16 @@ fun SubReplyList(
     emoteMap: Map<String, String>,
     onLoadMore: () -> Unit,
     onTimestampClick: ((Long) -> Unit)? = null,
-    upMid: Long = 0,  //  UP主 mid 用于 UP 标签
-    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null  // [问题14修复] 图片预览回调
+    upMid: Long = 0,
+    onImagePreview: ((List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit)? = null,
+    onReplyClick: ((ReplyItem) -> Unit)? = null,
+    // [新增] 消散动画相关
+    dissolvingIds: Set<Long> = emptySet(),
+    currentMid: Long = 0,
+    onDissolveStart: ((Long) -> Unit)? = null,
+    onDeleteComment: ((Long) -> Unit)? = null,
+    onCommentLike: ((Long) -> Unit)? = null,
+    likedComments: Set<Long> = emptySet()
 ) {
     val listState = rememberLazyListState()
     val shouldLoadMore by remember {
@@ -98,33 +122,63 @@ fun SubReplyList(
             item {
                 ReplyItemView(
                     item = rootReply,
-                    upMid = upMid,  //  传递 UP 主 mid
+                    upMid = upMid,
                     emoteMap = emoteMap, 
-                    onClick = {}, 
+                    onClick = { onReplyClick?.invoke(rootReply) },
                     onSubClick = {},
                     onTimestampClick = onTimestampClick,
-                    onImagePreview = onImagePreview,  // [问题14修复] 传递图片预览回调
-                    hideSubPreview = true  // [修复] 隐藏楼中楼预览，避免重复显示
+                    onImagePreview = onImagePreview,
+                    hideSubPreview = true,
+                    onReplyClick = { onReplyClick?.invoke(rootReply) },
+                    // [新增] 删除按钮
+                    onDeleteClick = if (currentMid > 0 && rootReply.mid == currentMid) {
+                        { onDeleteComment?.invoke(rootReply.rpid) }
+                    } else null,
+                    // [新增] 点赞
+                    onLikeClick = { onCommentLike?.invoke(rootReply.rpid) },
+                    isLiked = rootReply.action == 1 || rootReply.rpid in likedComments
                 )
                 HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
-            items(subReplies) { item ->
-                ReplyItemView(
-                    item = item,
-                    upMid = upMid,  //  传递 UP 主 mid
-                    emoteMap = emoteMap, 
-                    onClick = {}, 
-                    onSubClick = {},
-                    onTimestampClick = onTimestampClick,
-                    onImagePreview = onImagePreview  // [问题14修复] 传递图片预览回调
-                )
+            items(subReplies, key = { it.rpid }) { item ->
+                // [新增] 使用 DissolvableVideoCard 添加消散动画
+                com.android.purebilibili.core.ui.animation.DissolvableVideoCard(
+                    isDissolving = item.rpid in dissolvingIds,
+                    onDissolveComplete = { onDeleteComment?.invoke(item.rpid) },
+                    cardId = "subreply_${item.rpid}",
+                    modifier = Modifier.padding(bottom = 1.dp)
+                ) {
+                    ReplyItemView(
+                        item = item,
+                        upMid = upMid,
+                        emoteMap = emoteMap, 
+                        onClick = { onReplyClick?.invoke(item) },
+                        onSubClick = {},
+                        onTimestampClick = onTimestampClick,
+                        onImagePreview = onImagePreview,
+                        onReplyClick = { onReplyClick?.invoke(item) },
+                        // [修改] 点击删除触发消散动画
+                        onDeleteClick = if (currentMid > 0 && item.mid == currentMid) {
+                            { onDissolveStart?.invoke(item.rpid) }
+                        } else null,
+                        // [新增] 点赞
+                        onLikeClick = { onCommentLike?.invoke(item.rpid) },
+                        isLiked = item.action == 1 || item.rpid in likedComments
+                    )
+                }
             }
             item {
+                // [修复] 滚动到底部时自动加载
+                LaunchedEffect(Unit) {
+                    if (!isLoading && !isEnd) {
+                        onLoadMore()
+                    }
+                }
+                
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     when {
                         isLoading -> CupertinoActivityIndicator()
-                        isEnd -> Text("没有更多回复了", color = MaterialTheme.colorScheme.outline, fontSize = 12.sp)
-                        else -> TextButton(onClick = onLoadMore) { Text("加载更多", color = MaterialTheme.colorScheme.primary) }
+                        else -> Text("没有更多回复了", color = MaterialTheme.colorScheme.outline, fontSize = 12.sp)
                     }
                 }
             }

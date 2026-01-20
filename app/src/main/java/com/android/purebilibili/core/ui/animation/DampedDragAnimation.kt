@@ -54,12 +54,22 @@ class DampedDragAnimationState(
      */
     fun onDrag(dragAmountPx: Float, itemWidthPx: Float) {
         isDragging = true
-        // [增强] 增加阻尼感：拖拽距离打折，模拟由于流体阻力产生的迟滞
-        // 0.6f 的系数意味着手指移动 100px，指示器只移动 60px，产生"重"的感觉
-        val dragResistance = 0.6f
+        // [优化] 橡皮筋阻尼物理：
+        // 1. 在有效范围内 (0 ~ itemCount-1) 阻尼为 1.0 (跟手，无滞后)
+        // 2. 超出边界时，阻尼急剧增加，产生拉伸橡皮筋的感觉
+        
+        val currentValue = animatable.value
+        val isOverscrolling = currentValue < 0f || currentValue > (itemCount - 1).toFloat()
+        
+        // 如果越界，阻尼系数降低 (例如 0.2f)，否则为 1.0f (跟手)
+        // 可以根据越界距离进一步衰减，但固定 0.2f 也是常见的简单实现
+        val dragResistance = if (isOverscrolling) 0.2f else 1.0f
+        
         val deltaIndex = (dragAmountPx / itemWidthPx) * dragResistance
-        // 修复：往右滑(dragAmountPx > 0)应该增加索引，所以改为 +
-        val newValue = (animatable.value + deltaIndex).fastCoerceIn(0f, (itemCount - 1).toFloat())
+        
+        // 允许边缘回弹：放宽限制范围
+        // 范围 [-0.5f, itemCount - 0.5f] 允许向左/向右各拉出半个身位作为极限
+        val newValue = (animatable.value + deltaIndex).fastCoerceIn(-0.5f, (itemCount - 0.5f))
         
         scope.launch {
             animatable.snapTo(newValue)

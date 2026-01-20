@@ -187,7 +187,6 @@ fun AppNavigation(
             ScreenRoutes.AnimationSettings.route,
             ScreenRoutes.PermissionSettings.route,
             ScreenRoutes.PluginsSettings.route,
-            ScreenRoutes.BottomBarSettings.route,
             ScreenRoutes.OpenSourceLicenses.route
         )
         val showBottomBar = (isTopLevelDestination || currentRoute in settingsRoutes) && !useSideNavigation && currentRoute != ScreenRoutes.Story.route

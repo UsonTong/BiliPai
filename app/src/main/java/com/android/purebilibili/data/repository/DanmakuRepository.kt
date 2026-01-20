@@ -228,4 +228,215 @@ object DanmakuRepository {
         
         results.toList()
     }
+    
+    /**
+     * 发送弹幕
+     * 
+     * @param aid 视频 aid (必需)
+     * @param cid 视频 cid (必需)
+     * @param message 弹幕内容 (最多 100 字)
+     * @param progress 弹幕出现时间 (毫秒)
+     * @param color 弹幕颜色 (十进制 RGB，默认白色 16777215)
+     * @param fontSize 字号: 18=小, 25=中(默认), 36=大
+     * @param mode 模式: 1=滚动(默认), 4=底部, 5=顶部
+     * @return 发送结果，包含弹幕 ID
+     */
+    suspend fun sendDanmaku(
+        aid: Long,
+        cid: Long,
+        message: String,
+        progress: Long,
+        color: Int = 16777215,
+        fontSize: Int = 25,
+        mode: Int = 1
+    ): Result<com.android.purebilibili.data.model.response.SendDanmakuData> = withContext(Dispatchers.IO) {
+        try {
+            // 验证登录状态
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
+            if (csrf.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("请先登录"))
+            }
+            
+            // 验证弹幕内容
+            if (message.isBlank()) {
+                return@withContext Result.failure(Exception("弹幕内容不能为空"))
+            }
+            if (message.length > 100) {
+                return@withContext Result.failure(Exception("弹幕内容过长，最多 100 字"))
+            }
+            
+            com.android.purebilibili.core.util.Logger.d(
+                "DanmakuRepo",
+                "📤 sendDanmaku: aid=$aid, cid=$cid, msg=$message, progress=${progress}ms, color=$color, mode=$mode"
+            )
+            
+            val response = api.sendDanmaku(
+                oid = cid,
+                aid = aid,
+                msg = message,
+                progress = progress,
+                color = color,
+                fontsize = fontSize,
+                mode = mode,
+                csrf = csrf
+            )
+            
+            if (response.code == 0 && response.data != null) {
+                com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "✅ Danmaku sent: dmid=${response.data.dmid_str}")
+                Result.success(response.data)
+            } else {
+                val errorMsg = when (response.code) {
+                    -101 -> "请先登录"
+                    -102 -> "账号被封禁"
+                    -111 -> "鉴权失败，请重新登录"
+                    -400 -> "请求参数错误"
+                    -509 -> "请求过于频繁，请稍后再试"
+                    36700 -> "弹幕内容包含敏感词"
+                    36701 -> "弹幕发送冷却中"
+                    36702 -> "弹幕字数过多"
+                    36703 -> "弹幕被禁用"
+                    36704 -> "禁止向此视频发送弹幕"
+                    36705 -> "弹幕包含被禁止的内容"
+                    else -> response.message.ifEmpty { "发送弹幕失败 (${response.code})" }
+                }
+                android.util.Log.e("DanmakuRepo", "❌ sendDanmaku failed: ${response.code} - ${response.message}")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DanmakuRepo", "❌ sendDanmaku exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 撤回弹幕
+     * 
+     * 仅能撤回自己 2 分钟内的弹幕，每天 3 次机会
+     * 
+     * @param cid 视频 cid
+     * @param dmid 弹幕 ID
+     * @return 撤回结果 (message 包含剩余次数)
+     */
+    suspend fun recallDanmaku(
+        cid: Long,
+        dmid: Long
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
+            if (csrf.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("请先登录"))
+            }
+
+            com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "📤 recallDanmaku: cid=$cid, dmid=$dmid")
+            
+            val response = api.recallDanmaku(cid = cid, dmid = dmid, csrf = csrf)
+            
+            if (response.code == 0) {
+                com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "✅ Danmaku recalled: ${response.message}")
+                Result.success(response.message)
+            } else {
+                val errorMsg = when (response.code) {
+                    -101 -> "请先登录"
+                    -111 -> "鉴权失败，请重新登录"
+                    -400 -> "请求参数错误"
+                    36301 -> "撤回次数已用完" 
+                    36302 -> "弹幕发送超过2分钟，无法撤回"
+                    36303 -> "该弹幕无法撤回"
+                    else -> response.message.ifEmpty { "撤回失败 (${response.code})" }
+                }
+                android.util.Log.e("DanmakuRepo", "❌ recallDanmaku failed: ${response.code} - ${response.message}")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DanmakuRepo", "❌ recallDanmaku exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 点赞弹幕
+     * 
+     * @param cid 视频 cid
+     * @param dmid 弹幕 ID
+     * @param like true=点赞, false=取消点赞
+     */
+    suspend fun likeDanmaku(
+        cid: Long,
+        dmid: Long,
+        like: Boolean = true
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
+            if (csrf.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("请先登录"))
+            }
+
+            val op = if (like) 1 else 2
+            com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "📤 likeDanmaku: cid=$cid, dmid=$dmid, op=$op")
+            
+            val response = api.likeDanmaku(oid = cid, dmid = dmid, op = op, csrf = csrf)
+            
+            if (response.code == 0) {
+                com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "✅ Danmaku ${if (like) "liked" else "unliked"}")
+                Result.success(Unit)
+            } else {
+                val errorMsg = when (response.code) {
+                    -101 -> "请先登录"
+                    -111 -> "鉴权失败，请重新登录"
+                    -400 -> "请求参数错误"
+                    65004 -> "已经点过赞了"
+                    65005 -> "已经取消点赞了"
+                    else -> response.message.ifEmpty { "操作失败 (${response.code})" }
+                }
+                android.util.Log.e("DanmakuRepo", "❌ likeDanmaku failed: ${response.code} - ${response.message}")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DanmakuRepo", "❌ likeDanmaku exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 举报弹幕
+     * 
+     * @param cid 视频 cid
+     * @param dmid 弹幕 ID
+     * @param reason 举报原因: 1=违法/2=色情/3=广告/4=引战/5=辱骂/6=剧透/7=刷屏/8=其他
+     * @param content 举报描述 (可选)
+     */
+    suspend fun reportDanmaku(
+        cid: Long,
+        dmid: Long,
+        reason: Int,
+        content: String = ""
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
+            if (csrf.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("请先登录"))
+            }
+
+            com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "📤 reportDanmaku: cid=$cid, dmid=$dmid, reason=$reason")
+            
+            val response = api.reportDanmaku(cid = cid, dmid = dmid, reason = reason, content = content, csrf = csrf)
+            
+            if (response.code == 0) {
+                com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "✅ Danmaku reported")
+                Result.success(Unit)
+            } else {
+                val errorMsg = when (response.code) {
+                    -101 -> "请先登录"
+                    -111 -> "鉴权失败，请重新登录"
+                    -400 -> "请求参数错误"
+                    else -> response.message.ifEmpty { "举报失败 (${response.code})" }
+                }
+                android.util.Log.e("DanmakuRepo", "❌ reportDanmaku failed: ${response.code} - ${response.message}")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DanmakuRepo", "❌ reportDanmaku exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }

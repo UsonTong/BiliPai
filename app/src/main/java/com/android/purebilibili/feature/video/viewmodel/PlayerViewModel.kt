@@ -391,7 +391,8 @@ class PlayerViewModel : ViewModel() {
         }
     }
     
-    fun loadVideo(bvid: String, force: Boolean = false) {
+    // [修复] 添加 aid 参数支持，用于移动端推荐流（可能只返回 aid）
+    fun loadVideo(bvid: String, aid: Long = 0, force: Boolean = false) {
         if (bvid.isBlank()) return
         
         //  防止重复加载：只有在正在加载同一视频时才跳过
@@ -476,7 +477,7 @@ class PlayerViewModel : ViewModel() {
                 com.android.purebilibili.core.util.Logger.d("PlayerViewModel", "📉 省流量模式(${dataSaverMode.label}): 限制画质为480P")
             }
             
-            when (val result = playbackUseCase.loadVideo(bvid, finalQuality, audioQualityPreference, videoCodecPreference)) {
+            when (val result = playbackUseCase.loadVideo(bvid, aid, finalQuality, audioQualityPreference, videoCodecPreference)) {
                 is VideoLoadResult.Success -> {
                     currentCid = result.info.cid
                     
@@ -779,9 +780,294 @@ class PlayerViewModel : ViewModel() {
                     }
                     toast(message)
                 }
-                .onFailure { toast(it.message ?: "\u64cd\u4f5c\u5931\u8d25") }
+                .onFailure { toast(it.message ?: "操作失败") }
         }
+    }
+
+    // ========== 评论发送对话框 ==========
+    
+    private val _showCommentDialog = MutableStateFlow(false)
+    val showCommentDialog = _showCommentDialog.asStateFlow()
+
+    // 表情包数据
+    private val _emotePackages = MutableStateFlow<List<com.android.purebilibili.data.model.response.EmotePackage>>(emptyList())
+    val emotePackages = _emotePackages.asStateFlow()
+    private var isEmotesLoaded = false
+
+    private fun loadEmotes() {
+        if (isEmotesLoaded) return
+        viewModelScope.launch {
+            com.android.purebilibili.data.repository.CommentRepository.getEmotePackages()
+                .onSuccess { 
+                    _emotePackages.value = it 
+                    isEmotesLoaded = true
+                    android.util.Log.d("PlayerViewModel", "📦 Emotes loaded: ${it.size} packages")
+                }
+                .onFailure { Logger.e("PlayerViewModel", "Failed to load emotes", it) }
         }
+    }
+    
+    fun showCommentInputDialog() {
+        android.util.Log.d("PlayerViewModel", "📝 showCommentInputDialog called")
+        _showCommentDialog.value = true
+        // 懒加载表情包
+        loadEmotes()
+    }
+    
+    fun hideCommentInputDialog() {
+        _showCommentDialog.value = false
+    }
+
+    // ========== 弹幕发送 ==========
+    
+    private val _showDanmakuDialog = MutableStateFlow(false)
+    val showDanmakuDialog = _showDanmakuDialog.asStateFlow()
+    
+    private val _isSendingDanmaku = MutableStateFlow(false)
+    val isSendingDanmaku = _isSendingDanmaku.asStateFlow()
+    
+    fun showDanmakuSendDialog() {
+        _showDanmakuDialog.value = true
+    }
+    
+    fun hideDanmakuSendDialog() {
+        _showDanmakuDialog.value = false
+    }
+    
+    /**
+     * 发送弹幕
+     * 
+     * @param message 弹幕内容
+     * @param color 颜色 (十进制 RGB)
+     * @param mode 模式: 1=滚动, 4=底部, 5=顶部
+     * @param fontSize 字号: 18=小, 25=中, 36=大
+     */
+    fun sendDanmaku(
+        message: String,
+        color: Int = 16777215,
+        mode: Int = 1,
+        fontSize: Int = 25
+    ) {
+        val current = _uiState.value as? PlayerUiState.Success ?: run {
+            viewModelScope.launch { toast("视频未加载") }
+            return
+        }
+        
+        if (currentCid == 0L) {
+            viewModelScope.launch { toast("视频未加载") }
+            return
+        }
+        
+        val progress = exoPlayer?.currentPosition ?: 0L
+        
+        viewModelScope.launch {
+            _isSendingDanmaku.value = true
+            
+            com.android.purebilibili.data.repository.DanmakuRepository
+                .sendDanmaku(
+                    aid = current.info.aid,
+                    cid = currentCid,
+                    message = message,
+                    progress = progress,
+                    color = color,
+                    fontSize = fontSize,
+                    mode = mode
+                )
+                .onSuccess {
+                    toast("发送成功")
+                    _showDanmakuDialog.value = false
+                    
+                    // 本地即时显示弹幕
+                    // 注意：这需要在 Composable 中通过 DanmakuManager 调用
+                    // 这里只发送事件通知
+                    _danmakuSentEvent.send(DanmakuSentData(message, color, mode, fontSize))
+                }
+                .onFailure { error ->
+                    toast(error.message ?: "发送失败")
+                }
+            
+            _isSendingDanmaku.value = false
+        }
+    }
+    
+    // 弹幕发送成功事件（用于本地显示）
+    data class DanmakuSentData(val text: String, val color: Int, val mode: Int, val fontSize: Int)
+    private val _danmakuSentEvent = Channel<DanmakuSentData>()
+    val danmakuSentEvent = _danmakuSentEvent.receiveAsFlow()
+    
+    // ========== 弹幕上下文菜单 ==========
+    data class DanmakuMenuState(
+        val visible: Boolean = false,
+        val text: String = "",
+        val dmid: Long = 0,
+        val uid: Long = 0, // 发送者 UID (如果可用)
+        val isSelf: Boolean = false // 是否是自己发送的
+    )
+    
+    private val _danmakuMenuState = MutableStateFlow(DanmakuMenuState())
+    val danmakuMenuState = _danmakuMenuState.asStateFlow()
+    
+    fun showDanmakuMenu(dmid: Long, text: String, uid: Long = 0, isSelf: Boolean = false) {
+        _danmakuMenuState.value = DanmakuMenuState(
+            visible = true,
+            text = text,
+            dmid = dmid,
+            uid = uid,
+            isSelf = isSelf
+        )
+        // 暂停播放 (可选，防止弹幕飘走)
+        // if (exoPlayer?.isPlaying == true) exoPlayer?.pause()
+    }
+    
+    fun hideDanmakuMenu() {
+        _danmakuMenuState.value = _danmakuMenuState.value.copy(visible = false)
+        // 恢复播放?
+    }
+
+    /**
+     * 撤回弹幕
+     * 仅能撤回自己 2 分钟内的弹幕，每天 3 次机会
+     * 
+     * @param dmid 弹幕 ID
+     */
+    fun recallDanmaku(dmid: Long) {
+        if (currentCid == 0L) {
+            viewModelScope.launch { toast("视频未加载") }
+            return
+        }
+        
+        viewModelScope.launch {
+            com.android.purebilibili.data.repository.DanmakuRepository
+                .recallDanmaku(cid = currentCid, dmid = dmid)
+                .onSuccess { message ->
+                    toast(message.ifEmpty { "撤回成功" })
+                }
+                .onFailure { error ->
+                    toast(error.message ?: "撤回失败")
+                }
+        }
+    }
+
+    /**
+     * 点赞弹幕
+     * 
+     * @param dmid 弹幕 ID
+     * @param like true=点赞, false=取消点赞
+     */
+    fun likeDanmaku(dmid: Long, like: Boolean = true) {
+        if (currentCid == 0L) {
+            viewModelScope.launch { toast("视频未加载") }
+            return
+        }
+        
+        viewModelScope.launch {
+            com.android.purebilibili.data.repository.DanmakuRepository
+                .likeDanmaku(cid = currentCid, dmid = dmid, like = like)
+                .onSuccess {
+                    toast(if (like) "点赞成功" else "已取消点赞")
+                }
+                .onFailure { error ->
+                    toast(error.message ?: "操作失败")
+                }
+        }
+    }
+
+    /**
+     * 举报弹幕
+     * 
+     * @param dmid 弹幕 ID
+     * @param reason 举报原因: 1=违法/2=色情/3=广告/4=引战/5=辱骂/6=剧透/7=刷屏/8=其他
+     */
+    fun reportDanmaku(dmid: Long, reason: Int, content: String = "") {
+        if (currentCid == 0L) {
+            viewModelScope.launch { toast("视频未加载") }
+            return
+        }
+        
+        viewModelScope.launch {
+            com.android.purebilibili.data.repository.DanmakuRepository
+                .reportDanmaku(cid = currentCid, dmid = dmid, reason = reason, content = content)
+                .onSuccess {
+                    toast("举报成功")
+                }
+                .onFailure { error ->
+                    toast(error.message ?: "举报失败")
+                }
+        }
+    }
+    
+    // ========== 评论发送 ==========
+    
+    private val _commentInput = MutableStateFlow("")
+    val commentInput = _commentInput.asStateFlow()
+    
+    private val _isSendingComment = MutableStateFlow(false)
+    val isSendingComment = _isSendingComment.asStateFlow()
+    
+    private val _replyingToComment = MutableStateFlow<com.android.purebilibili.data.model.response.ReplyItem?>(null)
+    val replyingToComment = _replyingToComment.asStateFlow()
+    
+    fun setCommentInput(text: String) {
+        _commentInput.value = text
+    }
+    
+    fun setReplyingTo(comment: com.android.purebilibili.data.model.response.ReplyItem?) {
+        _replyingToComment.value = comment
+    }
+    
+    fun clearReplyingTo() {
+        _replyingToComment.value = null
+    }
+    
+    /**
+     * 发送评论
+     * @param inputMessage 可选直接传入的内容，如果不传则使用 state 中的内容
+     */
+    fun sendComment(inputMessage: String? = null) {
+        if (inputMessage != null) {
+            _commentInput.value = inputMessage
+        }
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        val message = _commentInput.value.trim()
+        
+        if (message.isEmpty()) {
+            viewModelScope.launch { toast("请输入评论内容") }
+            return
+        }
+        
+        viewModelScope.launch {
+            _isSendingComment.value = true
+            
+            val replyTo = _replyingToComment.value
+            val root = replyTo?.rpid ?: 0L
+            val parent = replyTo?.rpid ?: 0L
+            
+            com.android.purebilibili.data.repository.CommentRepository
+                .addComment(
+                    aid = current.info.aid,
+                    message = message,
+                    root = root,
+                    parent = parent
+                )
+                .onSuccess { reply ->
+                    toast(if (replyTo != null) "回复成功" else "评论成功")
+                    _commentInput.value = ""
+                    _replyingToComment.value = null
+                    
+                    // 通知 UI 刷新评论列表
+                    _commentSentEvent.send(reply)
+                }
+                .onFailure { error ->
+                    toast(error.message ?: "发送失败")
+                }
+            
+            _isSendingComment.value = false
+        }
+    }
+    
+    // 评论发送成功事件
+    private val _commentSentEvent = Channel<com.android.purebilibili.data.model.response.ReplyItem?>()
+    val commentSentEvent = _commentSentEvent.receiveAsFlow()
 
     
     // ========== Settings: Codec & Audio ==========
@@ -1277,7 +1563,7 @@ class PlayerViewModel : ViewModel() {
         }
     }
     
-    private fun toast(msg: String) { viewModelScope.launch { _toastEvent.send(msg) } }
+    fun toast(msg: String) { viewModelScope.launch { _toastEvent.send(msg) } }
     
     override fun onCleared() {
         super.onCleared()

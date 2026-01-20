@@ -50,9 +50,10 @@ sealed class ScreenRoutes(val route: String) {
     object IconSettings : ScreenRoutes("icon_settings")  // 图标设置
     object AnimationSettings : ScreenRoutes("animation_settings")  // 动画设置
 
-    object VideoPlayer : ScreenRoutes("video_player/{bvid}?cid={cid}") {
-        fun createRoute(bvid: String, cid: Long = 0): String {
-            return "video_player/$bvid?cid=$cid"
+    // [修复] 添加 aid 参数支持，用于移动端推荐流（可能只返回 aid）
+    object VideoPlayer : ScreenRoutes("video_player/{bvid}?cid={cid}&aid={aid}") {
+        fun createRoute(bvid: String, cid: Long = 0, aid: Long = 0): String {
+            return "video_player/$bvid?cid=$cid&aid=$aid"
         }
     }
     

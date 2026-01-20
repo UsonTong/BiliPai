@@ -97,7 +97,17 @@ fun VideoContentSection(
     onLoadMoreReplies: () -> Unit,
     onDownloadClick: () -> Unit = {},
     onWatchLaterClick: () -> Unit = {},
-    onTimestampClick: ((Long) -> Unit)? = null
+    onTimestampClick: ((Long) -> Unit)? = null,
+    onDanmakuSendClick: () -> Unit = {},
+    // [新增] 删除与动画参数
+    currentMid: Long = 0,
+    dissolvingIds: Set<Long> = emptySet(),
+    onDeleteComment: (Long) -> Unit = {},
+    onDissolveStart: (Long) -> Unit = {},
+    // [新增] 点赞回调
+    onCommentLike: (Long) -> Unit = {},
+    // [新增] 已点赞的评论 ID 集合
+    likedComments: Set<Long> = emptySet()
 ) {
     val tabs = listOf("简介", "评论 $replyCount")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -155,6 +165,7 @@ fun VideoContentSection(
             tabs = tabs,
             selectedTabIndex = pagerState.currentPage,
             onTabSelected = onTabSelected,
+            onDanmakuSendClick = onDanmakuSendClick,
             modifier = Modifier
         )
 
@@ -211,6 +222,15 @@ fun VideoContentSection(
                     onUpClick = onUpClick,
                     onSubReplyClick = onSubReplyClick,
                     onLoadMoreReplies = onLoadMoreReplies,
+                    
+                    // [新增] 传递删除相关参数
+                    currentMid = currentMid,
+                    dissolvingIds = dissolvingIds,
+                    onDeleteComment = onDeleteComment,
+                    onDissolveStart = onDissolveStart,
+                    // [新增] 传递点赞回调
+                    onCommentLike = onCommentLike,
+                    likedComments = likedComments,
 
                     onImagePreview = { images, index, rect ->
                         previewImages = images
@@ -226,8 +246,7 @@ fun VideoContentSection(
     }
 }
 
-
-
+// ... VideoIntroTab signature ...
 @Composable
 private fun VideoIntroTab(
     listState: LazyListState,
@@ -308,6 +327,7 @@ private fun VideoIntroTab(
     }
 }
 
+// ... VideoCommentTab signature ...
 @Composable
 private fun VideoCommentTab(
     listState: LazyListState,
@@ -328,7 +348,15 @@ private fun VideoCommentTab(
     onLoadMoreReplies: () -> Unit,
     onImagePreview: (List<String>, Int, Rect?) -> Unit,
     onTimestampClick: ((Long) -> Unit)?,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    // [新增] 参数
+    currentMid: Long,
+    dissolvingIds: Set<Long>,
+    onDeleteComment: (Long) -> Unit,
+    onDissolveStart: (Long) -> Unit,
+    // [新增] 点赞回调
+    onCommentLike: (Long) -> Unit,
+    likedComments: Set<Long>
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -365,17 +393,33 @@ private fun VideoCommentTab(
                 }
             } else {
                 items(items = replies, key = { it.rpid }) { reply ->
-                    ReplyItemView(
-                        item = reply,
-                        upMid = info.owner.mid,
-                        emoteMap = emoteMap,
-                        onClick = {},
-                        onSubClick = { onSubReplyClick(reply) },
-                        onTimestampClick = onTimestampClick,
-                        onImagePreview = { images, index, rect ->
-                            onImagePreview(images, index, rect)
-                        }
-                    )
+                    // [新增] 使用 DissolvableVideoCard 包裹
+                    com.android.purebilibili.core.ui.animation.DissolvableVideoCard(
+                        isDissolving = reply.rpid in dissolvingIds,
+                        onDissolveComplete = { onDeleteComment(reply.rpid) },
+                        cardId = "comment_${reply.rpid}",
+                        modifier = Modifier.padding(bottom = 1.dp) // 小间距防止裁剪
+                    ) {
+                        ReplyItemView(
+                            item = reply,
+                            upMid = info.owner.mid,
+                            emoteMap = emoteMap,
+                            onClick = {},
+                            onSubClick = { onSubReplyClick(reply) },
+                            onTimestampClick = onTimestampClick,
+                            onImagePreview = { images, index, rect ->
+                                onImagePreview(images, index, rect)
+                            },
+                            // [新增] 点赞事件
+                            onLikeClick = { onCommentLike(reply.rpid) },
+                            // [修复] 正确传递点赞状态 (API数据 或 本地乐观更新)
+                            isLiked = reply.action == 1 || reply.rpid in likedComments,
+                            // [新增] 仅当评论 mid 与当前登录用户 mid 一致时显示删除按钮
+                            onDeleteClick = if (currentMid > 0 && reply.mid == currentMid) {
+                                { onDissolveStart(reply.rpid) }
+                            } else null
+                        )
+                    }
                 }
 
                 // 加载更多
@@ -489,6 +533,7 @@ private fun VideoContentTabBar(
     tabs: List<String>,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
+    onDanmakuSendClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -536,7 +581,10 @@ private fun VideoContentTabBar(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .clickable { /* TODO */ }
+                    .clickable { 
+                        android.util.Log.d("VideoContentSection", "📤 点我发弹幕 clicked!")
+                        onDanmakuSendClick() 
+                    }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(

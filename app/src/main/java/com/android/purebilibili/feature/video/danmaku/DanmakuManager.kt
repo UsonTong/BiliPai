@@ -702,6 +702,107 @@ class DanmakuManager private constructor(
     }
     
     /**
+     * [新增] 添加本地弹幕（发送成功后立即显示）
+     * 
+     * 此方法用于在用户发送弹幕后立即将其显示在屏幕上，
+     * 无需等待服务器刷新弹幕列表。
+     * 
+     * @param text 弹幕内容
+     * @param color 弹幕颜色 (十进制 RGB，默认白色 16777215)
+     * @param mode 弹幕模式: 1=滚动(默认), 4=底部, 5=顶部
+     * @param fontSize 字号: 18=小, 25=中(默认), 36=大
+     */
+    fun addLocalDanmaku(
+        text: String,
+        color: Int = 16777215,
+        mode: Int = 1,
+        fontSize: Int = 25
+    ) {
+        val currentPosition = player?.currentPosition ?: run {
+            Log.w(TAG, "📝 addLocalDanmaku: player is null, cannot add danmaku")
+            return
+        }
+        
+        Log.d(TAG, "📝 addLocalDanmaku: text=$text, color=$color, mode=$mode, fontSize=$fontSize, position=${currentPosition}ms")
+        
+        // 使用 TextData (DanmakuData 的具体实现)
+        val danmakuData = com.bytedance.danmaku.render.engine.render.draw.text.TextData().apply {
+            //  [修复] 设置显示时间为当前播放位置 + 100ms 偏移
+            // 这确保弹幕不会因为"已经过去"而被跳过
+            showAtTime = currentPosition + 100L
+            
+            // 设置弹幕内容 - [修改] 使用『』包裹作为标记，更美观
+            this.text = "『 $text 』"
+            
+            // 设置颜色 (ARGB 格式)
+            textColor = color or 0xFF000000.toInt()
+            
+            // 尝试设置边框/背景
+            try {
+                val greenBorder = 0xFF4CAF50.toInt()
+                val clazz = this::class.java
+                
+                // 尝试多个可能的字段名 - 希望能命中一个
+                // 1. borderColor (边框颜色)
+                // 2. strokeColor (可能是文字描边，也可能是框) -> 先前尝试未生效或被覆盖
+                // 3. backgroundColor (背景色)
+                val fieldNames = listOf("borderColor", "backgroundColor", "backColor", "padding")
+                
+                for (name in fieldNames) {
+                    try {
+                        val field = clazz.getDeclaredField(name)
+                        field.isAccessible = true
+                        
+                        if (name == "padding") {
+                             field.setFloat(this, 10f)
+                        } else {
+                             field.setInt(this, greenBorder)
+                        }
+                        Log.d(TAG, "📝 Reflex set $name to Green/Value")
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            } catch (e: Exception) {
+                // 忽略
+            }
+            
+            // 设置弹幕类型 - 使用库的常量
+            layerType = when (mode) {
+                4 -> com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_BOTTOM_CENTER  // 底部
+                5 -> com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_TOP_CENTER     // 顶部
+                else -> com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_SCROLL      // 滚动 (默认)
+            }
+        }
+        
+        // 添加到缓存列表并排序
+        // [核心修复] 必须按时间排序！渲染引擎依赖顺序数据，乱序会导致弹幕无法显示
+        cachedDanmakuList = (cachedDanmakuList ?: emptyList()).plus(danmakuData).sortedBy { it.showAtTime }
+        Log.d(TAG, "📝 Added to cache and sorted, total: ${cachedDanmakuList?.size} danmakus")
+        
+        // 立即显示（通过重新设置数据并跳到当前位置）
+        cachedDanmakuList?.let { list ->
+            Log.d(TAG, "📝 Calling setData with ${list.size} items")
+            controller?.setData(list, 0)
+            controller?.start(currentPosition)
+            
+            //  [关键修复] 强制刷新视图，确保新弹幕立即渲染
+            controller?.invalidateView()
+            Log.d(TAG, "📝 invalidateView called")
+            
+            if (player?.isPlaying == true && config.isEnabled) {
+                isPlaying = true
+                Log.d(TAG, "📝 Danmaku playing")
+            } else {
+                controller?.pause()
+                Log.d(TAG, "📝 Danmaku paused (player not playing)")
+            }
+        }
+        
+        Log.d(TAG, "📝 Local danmaku added and displayed")
+    }
+    
+    /**
      * 清除视图引用（防止内存泄漏）
      */
     fun clearViewReference() {
@@ -736,6 +837,41 @@ class DanmakuManager private constructor(
         Log.d(TAG, " All references cleared")
     }
     
+    /**
+     * 设置弹幕点击监听器
+     *
+     * @param listener 回调函数，参数为 (text, dmid, uid, isSelf)
+     */
+    fun setOnDanmakuClickListener(listener: (String, Long, Long, Boolean) -> Unit) {
+        controller?.let { ctrl ->
+            try {
+                // 暂时使用模拟数据进行测试，因为实际的 API 尚不可用
+                // 实际集成时，需要使用 ctrl.setOnItemClickListener 
+                // 并从 onItemClick 回调中获取 DanmakuData
+                
+                // ctrl.setOnItemClickListener { danmaku ->
+                //     if (danmaku is DanmakuData) {
+                //          // 提取数据
+                //          val text = danmaku.text ?: ""
+                //          val dmid = 0L // 需要从 Tag 或其他字段获取
+                //          val uid = 0L
+                //          val isSelf = false
+                //          listener(text, dmid, uid, isSelf)
+                //          true // consumed
+                //     } else {
+                //          false
+                //     }
+                // }
+                
+                Log.d(TAG, "setOnDanmakuClickListener set (Stub implementation)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set listener", e)
+            }
+        }
+    }
+
+
+
     /**
      * 释放所有资源
      */

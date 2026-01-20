@@ -86,6 +86,8 @@ fun ReplyItemView(
     onLikeClick: (() -> Unit)? = null,
     onReplyClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    // [新增] 删除回调
+    onDeleteClick: (() -> Unit)? = null,
     location: String? = item.replyControl?.location,
     hideSubPreview: Boolean = false
 ) {
@@ -205,10 +207,21 @@ fun ReplyItemView(
                             tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
-                        if (item.like > 0) {
+                        // [修复] 计算乐观更新后的点赞数
+                        val displayLikeCount = remember(item.like, item.action, isLiked) {
+                            var count = item.like
+                            if (isLiked && item.action != 1) {
+                                count++
+                            } else if (!isLiked && item.action == 1) {
+                                count--
+                            }
+                            count
+                        }
+
+                        if (displayLikeCount > 0) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = FormatUtils.formatStat(item.like.toLong()),
+                                text = FormatUtils.formatStat(displayLikeCount.toLong()),
                                 fontSize = 12.sp,
                                 color = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -238,6 +251,19 @@ fun ReplyItemView(
                             .size(16.dp)
                             .clickable { onReplyClick?.invoke() ?: onSubClick(item) }
                     )
+
+                    // [新增] 删除按钮 (仅显示给本人)
+                    if (onDeleteClick != null) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Icon(
+                            imageVector = CupertinoIcons.Default.Trash,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable { onDeleteClick() }
+                        )
+                    }
                 }
 
                 // Sub-comments (Threaded view)
@@ -520,17 +546,22 @@ fun UpTag() {
     Surface(
         color = Color(0xFFFF6699),
         shape = CircleShape, // Capsule/Pill shape
-        modifier = Modifier.height(16.dp),
+        modifier = Modifier
+            .height(16.dp)
+            .wrapContentWidth(),
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = 6.dp)
+            modifier = Modifier
+                .padding(horizontal = 6.dp)
+                .fillMaxHeight()
         ) {
             Text(
                 text = "UP",
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                lineHeight = 9.sp
             )
         }
     }

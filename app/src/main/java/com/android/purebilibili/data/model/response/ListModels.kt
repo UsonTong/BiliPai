@@ -101,7 +101,8 @@ data class FollowingUser(
 data class VideoItem(
     val id: Long = 0,
     val bvid: String = "",
-    val cid: Long = 0,  //  [新增] 明确的 CID 字段，用于播放
+    val aid: Long = 0,   // [修复] 新增 aid 字段，移动端推荐流可能只返回 aid
+    val cid: Long = 0,   //  明确的 CID 字段，用于播放
     val title: String = "",
     val pic: String = "",
     val owner: Owner = Owner(),
@@ -110,7 +111,7 @@ data class VideoItem(
     val progress: Int = -1,
     val view_at: Long = 0,
     val pubdate: Long = 0,
-    val isVertical: Boolean = false  //  [新增] 是否为竖屏视频
+    val isVertical: Boolean = false  //  是否为竖屏视频
 )
 
 @Serializable
@@ -179,13 +180,14 @@ data class RecommendItem(
         return VideoItem(
             id = id,
             bvid = bvid ?: "",
-            cid = cid ?: 0L,  //  [新增] 填充 CID
+            aid = id,  // [修复] 填充 aid (id 通常就是 aid)
+            cid = cid ?: 0L,
             title = title ?: "",
             pic = pic ?: "",
             owner = Owner(mid = owner?.mid ?: 0, name = owner?.name ?: "", face = owner?.face ?: ""),
             stat = Stat(view = requestStatConvert(stat?.view), like = requestStatConvert(stat?.like), danmaku = requestStatConvert(stat?.danmaku)),
             duration = duration ?: 0,
-            isVertical = dimension?.isVertical == true  //  判断竖屏
+            isVertical = dimension?.isVertical == true
         )
     }
     private fun requestStatConvert(num: Long?): Int = num?.toInt() ?: 0
@@ -234,7 +236,8 @@ data class PopularItem(
         return VideoItem(
             id = cid,
             bvid = bvid,
-            cid = cid,  //  [新增] 填充 CID
+            aid = cid,  // [修复] PopularItem 的 cid 实际是 aid
+            cid = cid,
             title = title,
             pic = pic,
             owner = owner,
@@ -284,7 +287,8 @@ data class DynamicRegionItem(
         return VideoItem(
             id = cid,
             bvid = bvid,
-            cid = cid,  //  [新增] 填充 CID
+            aid = aid,  // [修复] 使用实际的 aid 字段
+            cid = cid,
             title = title,
             pic = pic,
             owner = owner,
@@ -333,4 +337,93 @@ data class RegionPage(
     val count: Int = 0,
     val num: Int = 1,
     val size: Int = 30
+)
+
+// --- 7. 移动端推荐流 Response ---
+@Serializable
+data class MobileFeedResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: MobileFeedData? = null
+)
+
+@Serializable
+data class MobileFeedData(
+    val items: List<MobileFeedItem>? = null
+)
+
+@Serializable
+data class MobileFeedItem(
+    val idx: Long = 0,
+    @SerialName("param") val param: String = "",  // 这是 bvid 或 aid
+    val goto: String = "",  // "av" 表示视频
+    val uri: String = "",
+    val cover: String = "",
+    val title: String = "",
+    val duration: Long = 0,
+    val args: MobileFeedArgs? = null,
+    @SerialName("player_args") val playerArgs: MobileFeedPlayerArgs? = null,
+    @SerialName("cover_left_text_1") val coverLeftText1: String = "",  // 播放量
+    @SerialName("cover_left_text_2") val coverLeftText2: String = ""   // 弹幕数
+) {
+    fun toVideoItem(): VideoItem {
+        // [修复] 改进 bvid 提取逻辑
+        // 1. 优先从 uri 提取 (格式: bilibili://video/BV1xxx)
+        // 2. 如果 param 以 "BV" 开头，使用 param
+        // 3. 否则 bvid 置空，依赖 aid 回退
+        val extractedBvid = uri.substringAfterLast("/").takeIf { it.startsWith("BV") }
+            ?: param.takeIf { it.startsWith("BV") }
+            ?: ""
+        
+        // [修复] 获取 aid：优先使用 playerArgs.aid，其次 args.aid，最后尝试解析 param
+        val extractedAid = playerArgs?.aid 
+            ?: args?.aid 
+            ?: param.toLongOrNull() 
+            ?: 0L
+        
+        return VideoItem(
+            id = idx,
+            bvid = extractedBvid,
+            aid = extractedAid,  // [修复] 填充 aid，用于 bvid 为空时的回退
+            cid = playerArgs?.cid ?: 0L,
+            title = title,
+            pic = cover,
+            owner = Owner(
+                mid = args?.upId ?: 0,
+                name = args?.upName ?: "",
+                face = args?.upFace ?: ""
+            ),
+            stat = Stat(
+                view = parseStatText(coverLeftText1),
+                danmaku = parseStatText(coverLeftText2)
+            ),
+            duration = duration.toInt()
+        )
+    }
+    
+    // 解析 "123.4万" -> 1234000
+    private fun parseStatText(text: String): Int {
+        return try {
+            when {
+                text.contains("万") -> (text.replace("万", "").replace(",", "").toFloat() * 10000).toInt()
+                text.contains("亿") -> (text.replace("亿", "").replace(",", "").toFloat() * 100000000).toInt()
+                else -> text.replace(",", "").toIntOrNull() ?: 0
+            }
+        } catch (e: Exception) { 0 }
+    }
+}
+
+@Serializable
+data class MobileFeedArgs(
+    @SerialName("up_id") val upId: Long = 0,
+    @SerialName("up_name") val upName: String = "",
+    @SerialName("up_face") val upFace: String = "",
+    val aid: Long = 0
+)
+
+@Serializable
+data class MobileFeedPlayerArgs(
+    val aid: Long = 0,
+    val cid: Long = 0,
+    val duration: Long = 0
 )
