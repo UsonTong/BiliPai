@@ -193,11 +193,15 @@ fun DynamicCardV2(
         //  图片类型动态（支持GIF + 点击预览）
         content?.major?.draw?.let { draw ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
+            var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
             
             DrawGridV2(
                 items = draw.items,
                 gifImageLoader = gifImageLoader,
-                onImageClick = { index -> selectedImageIndex = index }
+                onImageClick = { index, rect ->
+                    selectedImageIndex = index
+                    sourceRect = rect
+                }
             )
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -206,8 +210,74 @@ fun DynamicCardV2(
                 ImagePreviewDialog(
                     images = draw.items.map { it.src },
                     initialIndex = selectedImageIndex,
+                    sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
                     onDismiss = { selectedImageIndex = -1 }
                 )
+            }
+        }
+        
+        //  [新增] Opus 图文动态 (新版格式)
+        content?.major?.opus?.let { opus ->
+            var selectedImageIndex by remember { mutableIntStateOf(-1) }
+            var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+            
+            // 显示标题 (如果有)
+            opus.title?.let { title ->
+                if (title.isNotEmpty()) {
+                    Text(
+                        title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+            
+            // 显示文字摘要 (如果有且 desc 为空)
+            if (content.desc?.text.isNullOrEmpty()) {
+                opus.summary?.let { summary ->
+                    if (summary.text.isNotEmpty()) {
+                        RichTextContent(
+                            desc = DynamicDesc(
+                                text = summary.text,
+                                rich_text_nodes = summary.rich_text_nodes
+                            ),
+                            onUserClick = onUserClick
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+            
+            // 显示图片 (转换为 DrawItem 格式复用现有组件)
+            if (opus.pics.isNotEmpty()) {
+                val drawItems = opus.pics.map { pic ->
+                    com.android.purebilibili.data.model.response.DrawItem(
+                        src = pic.url,
+                        width = pic.width,
+                        height = pic.height
+                    )
+                }
+                DrawGridV2(
+                    items = drawItems,
+                    gifImageLoader = gifImageLoader,
+                    onImageClick = { index, rect ->
+                        selectedImageIndex = index
+                        sourceRect = rect
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 全屏图片预览
+                if (selectedImageIndex >= 0) {
+                    ImagePreviewDialog(
+                        images = opus.pics.map { it.url },
+                        initialIndex = selectedImageIndex,
+                        sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
+                        onDismiss = { selectedImageIndex = -1 }
+                    )
+                }
             }
         }
         

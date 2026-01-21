@@ -141,8 +141,8 @@ fun ElegantVideoCard(
                         //  添加回弹效果的 spring 动画
                         boundsTransform = { _, _ ->
                             spring(
-                                dampingRatio = 0.7f,   // 轻微回弹
-                                stiffness = 300f       // 适中速度
+                                dampingRatio = 0.8f,   // [Hero] 高阻尼，类似高级跑车悬挂，稳
+                                stiffness = 200f       // [Hero] 低刚度，缓慢展开，营造电影感
                             )
                         },
                         clipInOverlayDuringTransition = OverlayClip(

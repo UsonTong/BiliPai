@@ -56,6 +56,10 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.android.purebilibili.core.ui.blur.unifiedBlur
+import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.ui.blur.BlurStyles
+import com.android.purebilibili.core.ui.blur.BlurIntensity
 
 /**
  *  动态页面 - 支持两种布局模式
@@ -304,36 +308,42 @@ fun DynamicScreen(
                              
                              // 顶部区域：顶栏 + 横向用户列表
                              Column(modifier = Modifier.align(Alignment.TopCenter)) {
-                                 // 应用模糊效果到顶部区域容器
-                                 Box(modifier = Modifier.fillMaxWidth()) {
-                                    // 背景应用模糊
-                                    // 注意：这里可能需要像 iOSHomeHeader 那样处理，或者简单地让 TopBar 处理
-                                    // 鉴于 TopBar 已经处理了，我们只需要让它作为背景
-                                    // 但 HorizontalUserList 也需要在 blur 上方
-                                    
-                                    // 简化处理：让 DynamicTopBarWithTabs 处理模糊，HorizontalUserList 在其下方（视觉上）
-                                    // 这里暂时只给 TopBar 加模糊支持，列表先不加以免复杂化
+                                 // 获取模糊设置
+                                 val blurIntensity by SettingsManager.getBlurIntensity(context)
+                                     .collectAsState(initial = BlurIntensity.THIN)
+                                 val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
+                                 val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+
+                                 // 应用模糊效果到顶部整体区域
+                                 Column(
+                                     modifier = Modifier
+                                         .fillMaxWidth()
+                                         .unifiedBlur(hazeState)
+                                         .background(headerColor)
+                                 ) {
+                                     // 顶栏 - 移除其自带的模糊，使用透明背景
                                      DynamicTopBarWithTabs(
                                          selectedTab = selectedTab,
                                          tabs = tabs,
                                          onTabSelected = { selectedTab = it },
                                          displayMode = displayMode,
                                          onDisplayModeChange = { displayMode = it },
-                                         hazeState = hazeState // 传入
+                                         hazeState = null // 禁用内部模糊，由外层统一处理
+                                     )
+                                     
+                                     //  横向 UP 主列表
+                                     HorizontalUserList(
+                                         users = followedUsers,
+                                         selectedUserId = selectedUserId,
+                                         showHiddenUsers = showHiddenUsers,
+                                         hiddenCount = hiddenUserIds.size,
+                                         onUserClick = { viewModel.selectUser(it) },
+                                         onToggleShowHidden = { viewModel.toggleShowHiddenUsers() },
+                                         onTogglePin = { viewModel.togglePinUser(it) },
+                                         onToggleHidden = { viewModel.toggleHiddenUser(it) },
+                                         modifier = Modifier.fillMaxWidth()
                                      )
                                  }
-                                 
-                                 //  横向 UP 主列表
-                                 HorizontalUserList(
-                                     users = followedUsers,
-                                     selectedUserId = selectedUserId,
-                                     showHiddenUsers = showHiddenUsers,
-                                     hiddenCount = hiddenUserIds.size,
-                                     onUserClick = { viewModel.selectUser(it) },
-                                     onToggleShowHidden = { viewModel.toggleShowHiddenUsers() },
-                                     onTogglePin = { viewModel.togglePinUser(it) },
-                                     onToggleHidden = { viewModel.toggleHiddenUser(it) }
-                                 )
                              }
                         }
                         
@@ -469,16 +479,15 @@ private fun HorizontalUserList(
     onUserClick: (Long?) -> Unit,
     onToggleShowHidden: () -> Unit,
     onTogglePin: (Long) -> Unit,
-    onToggleHidden: (Long) -> Unit
+    onToggleHidden: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp
+    // 移除 Surface，直接使用 LazyRow 配合传入的 modifier，实现背景透明
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
     ) {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
             if (hiddenCount > 0 || showHiddenUsers) {
                 item(key = "hidden_toggle") {
                     Column(
@@ -612,7 +621,6 @@ private fun HorizontalUserList(
             }
         }
     }
-}
 
 /**
  * 错误提示覆盖层

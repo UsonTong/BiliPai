@@ -107,6 +107,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @OptIn(ExperimentalSharedTransitionApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -536,74 +537,51 @@ fun VideoDetailScreen(
             .background(if (isFullscreenMode) Color.Black else MaterialTheme.colorScheme.background)
     ) {
         // 📐 [平板适配] 全屏模式过渡动画（只有手机横屏才进入全屏）
-        AnimatedContent(
-            targetState = isFullscreenMode,
-            transitionSpec = {
-                if (targetState) {
-                    // 进入全屏：放大 + 渐入
-                    (fadeIn(animationSpec = tween(400)) +
-                            scaleIn(initialScale = 0.9f, animationSpec = tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)))
-                        .togetherWith(
-                            fadeOut(animationSpec = tween(400)) +
-                                    scaleOut(targetScale = 1.1f, animationSpec = tween(400))
-                        )
-                } else {
-                    // 退出全屏：缩小 + 渐出
-                    (fadeIn(animationSpec = tween(400)) +
-                            scaleIn(initialScale = 1.1f, animationSpec = tween(400)))
-                        .togetherWith(
-                            fadeOut(animationSpec = tween(400)) +
-                                    scaleOut(targetScale = 0.9f, animationSpec = tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        )
-                }
-            },
-            label = "fullscreen_transition"
-        ) { targetIsFullscreen ->
-            if (targetIsFullscreen) {
-                VideoPlayerSection(
-                    playerState = playerState,
-                    uiState = uiState,
-                    isFullscreen = true,
-                    isInPipMode = isPipMode,
-                    onToggleFullscreen = { toggleFullscreen() },
-                    onQualityChange = { qid, pos -> viewModel.changeQuality(qid, pos) },
-                    onBack = { toggleFullscreen() },
-                    // 🔗 [新增] 分享功能
-                    bvid = bvid,
-                    //  实验性功能：双击点赞
-                    onDoubleTapLike = { viewModel.toggleLike() },
-                    //  [新增] 重载视频
-                    onReloadVideo = { viewModel.reloadVideo() },
-                    //  [新增] CDN 线路切换
-                    cdnCount = (uiState as? PlayerUiState.Success)?.cdnCount ?: 1,
-                    onSwitchCdn = { viewModel.switchCdn() },
-                    onSwitchCdnTo = { viewModel.switchCdnTo(it) },
+        if (isFullscreenMode) {
+            VideoPlayerSection(
+                playerState = playerState,
+                uiState = uiState,
+                isFullscreen = true,
+                isInPipMode = isPipMode,
+                onToggleFullscreen = { toggleFullscreen() },
+                onQualityChange = { qid, pos -> viewModel.changeQuality(qid, pos) },
+                onBack = { toggleFullscreen() },
+                // 🔗 [新增] 分享功能
+                bvid = bvid,
+                //  实验性功能：双击点赞
+                onDoubleTapLike = { viewModel.toggleLike() },
+                //  [新增] 重载视频
+                onReloadVideo = { viewModel.reloadVideo() },
+                //  [新增] CDN 线路切换
+                cdnCount = (uiState as? PlayerUiState.Success)?.cdnCount ?: 1,
+                onSwitchCdn = { viewModel.switchCdn() },
+                onSwitchCdnTo = { viewModel.switchCdnTo(it) },
 
-                    // [New] Codec & Audio (Fullscreen)
-                    currentCodec = codecPreference,
-                    onCodecChange = { viewModel.setVideoCodec(it) },
-                    currentAudioQuality = audioQualityPreference,
-                    onAudioQualityChange = { viewModel.setAudioQuality(it) },
-                    
-                    //  [新增] 音频模式
-                    isAudioOnly = false, // 全屏模式只有视频
-                    onAudioOnlyToggle = { 
-                        viewModel.setAudioMode(true)
-                        onNavigateToAudioMode()
-                    },
-                    
-                    //  [新增] 定时关闭
-                    sleepTimerMinutes = sleepTimerMinutes,
-                    onSleepTimerChange = { viewModel.setSleepTimer(it) },
-                    
-                    // 🖼️ [新增] 视频预览图数据
+                // [New] Codec & Audio (Fullscreen)
+                currentCodec = codecPreference,
+                onCodecChange = { viewModel.setVideoCodec(it) },
+                currentAudioQuality = audioQualityPreference,
+                onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                
+                //  [新增] 音频模式
+                isAudioOnly = false, // 全屏模式只有视频
+                onAudioOnlyToggle = { 
+                    viewModel.setAudioMode(true)
+                    onNavigateToAudioMode()
+                },
+                
+                //  [新增] 定时关闭
+                sleepTimerMinutes = sleepTimerMinutes,
+                onSleepTimerChange = { viewModel.setSleepTimer(it) },
+                
+                // 🖼️ [新增] 视频预览图数据
                     videoshotData = (uiState as? PlayerUiState.Success)?.videoshotData,
                     
                     // 📖 [新增] 视频章节数据
                     viewPoints = viewPoints,
                     isPortraitFullscreen = isPortraitFullscreen
                 )
-            } else {
+        } else {
                 //  沉浸式布局：视频延伸到状态栏 + 内容区域
                 //  📐 [大屏适配] 仅 Expanded 使用分栏布局
                 
@@ -700,8 +678,8 @@ fun VideoDetailScreen(
                                     //  添加回弹效果的 spring 动画
                                     boundsTransform = { _, _ ->
                                         spring(
-                                            dampingRatio = 0.7f,   // 轻微回弹
-                                            stiffness = 300f       // 适中速度
+                                            dampingRatio = 0.8f,   // [Hero] 高阻尼
+                                            stiffness = 200f       // [Hero] 低刚度，与卡片保持一致
                                         )
                                     },
                                     clipInOverlayDuringTransition = OverlayClip(
@@ -850,10 +828,10 @@ fun VideoDetailScreen(
                                     },
                                     label = "video_content_transition"
                                 ) { currentBvid ->
-                                    // 使用 currentBvid 确保动画正确触发（实际仍使用 success.info）
-                                    // 使用 currentBvid 确保动画正确触发（实际仍使用 success.info）
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        // [Blur] Source: 只将内容区域标记为模糊源
+                                    // 使用 currentBvid 确保动画正确触发，并使用 key 显式消耗该参数以解决 unused parameter 报错
+                                    key(currentBvid) {
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            // [Blur] Source: 只将内容区域标记为模糊源
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -941,6 +919,7 @@ fun VideoDetailScreen(
                                     }
                                 }
                             }
+                        }
 
                             is PlayerUiState.Error -> {
                                 val errorState = uiState as PlayerUiState.Error
@@ -1026,8 +1005,6 @@ fun VideoDetailScreen(
                 }  // Box with nested scroll
             }  // else shouldUseSplitLayout
         }  // else targetIsLandscape
-        }  // AnimatedContent
-        
         // 📱 [新增] 竖屏全屏覆盖层
         if (isPortraitFullscreen && !isLandscape && uiState is PlayerUiState.Success) {
             val success = uiState as PlayerUiState.Success

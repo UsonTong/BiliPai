@@ -14,6 +14,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -196,7 +199,7 @@ fun CategoryTabRow(
     val primaryColor = MaterialTheme.colorScheme.primary
     val unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
     
-    // [Refactor] Removed Dock container to merge with unified header
+    // [Refactor] 回退到 Row 布局，增加间距以避免"露半字"的尴尬截断
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -204,36 +207,44 @@ fun CategoryTabRow(
             .padding(horizontal = 4.dp), // Minimal horizontal padding
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // [Refactor] 使用 ScrollableTabRow 支持多Tab
-        ScrollableTabRow(
-            selectedTabIndex = selectedIndex,
-            edgePadding = 12.dp, // Add some edge padding for the first item
-            containerColor = Color.Transparent,
-            contentColor = primaryColor,
-            divider = {}, 
-            indicator = { tabPositions ->
-                // Custom indicator if needed
-            },
+        val listState = rememberLazyListState()
+        
+        // 自动滚动到选中项
+        LaunchedEffect(selectedIndex) {
+            listState.animateScrollToItem(selectedIndex)
+        }
+
+        // [Refactor] 使用 BoxWithConstraints 动态计算宽度，实现"固定显示5个"
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
         ) {
-            categories.forEachIndexed { index, category ->
-                 Box(
-                     modifier = Modifier.wrapContentWidth(),
-                     contentAlignment = Alignment.Center
-                 ) {
-                     CategoryTabItem(
-                         category = category,
-                         isSelected = index == selectedIndex,
-                         primaryColor = primaryColor,
-                         unselectedColor = unselectedColor,
-                         onClick = { onCategorySelected(index) }
-                     )
-                 }
+            // 计算每个 Tab 的宽度：可用宽度 / 5
+            val tabWidth = maxWidth / 5
+
+            LazyRow(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                itemsIndexed(categories) { index, category ->
+                    Box(
+                        modifier = Modifier.width(tabWidth),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CategoryTabItem(
+                            category = category,
+                            isSelected = index == selectedIndex,
+                            primaryColor = primaryColor,
+                            unselectedColor = unselectedColor,
+                            onClick = { onCategorySelected(index) }
+                        )
+                    }
+                }
             }
         }
-
+        
         Spacer(modifier = Modifier.width(4.dp))
         
         //  分区按钮
@@ -293,7 +304,7 @@ fun CategoryTabItem(
                  interactionSource = remember { MutableInteractionSource() },
                  indication = null
              ) { onClick() }
-             .padding(horizontal = 16.dp, vertical = 6.dp), // 调整内边距
+             .padding(horizontal = 10.dp, vertical = 6.dp), // 调整内边距适应 1/5 宽度
          contentAlignment = Alignment.Center
      ) {
          Text(

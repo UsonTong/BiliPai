@@ -590,6 +590,7 @@ fun PinnedTag() {
 }
 
 //  评论图片网格组件 - 支持 GIF 动画
+//  [优化] 更新为匹配动态页面的视觉风格
 @Composable
 fun CommentPictures(
     pictures: List<ReplyPicture>,
@@ -613,6 +614,7 @@ fun CommentPictures(
         }
     }
     val context = LocalContext.current
+    val totalCount = pictures.size  //  [优化] 保存总图片数用于角标显示
     
     //  GIF 图片加载器
     val gifImageLoader = remember {
@@ -634,47 +636,71 @@ fun CommentPictures(
     // 根据图片数量选择不同的布局
     when (pictures.size) {
         1 -> {
-            // 单张图片：限制最大宽度和高度
+            // 单张图片：保持原始比例，限制最大尺寸
             val pic = pictures[0]
-            val aspectRatio = if (pic.imgHeight > 0) pic.imgWidth.toFloat() / pic.imgHeight else 1f
+            //  [优化] 更好的比例计算
+            val aspectRatio = if (pic.imgHeight > 0 && pic.imgWidth > 0) {
+                (pic.imgWidth.toFloat() / pic.imgHeight.toFloat()).coerceIn(0.5f, 2f)
+            } else {
+                1.33f  // 默认 4:3 比例
+            }
             var imageRect by remember { mutableStateOf<Rect?>(null) }
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(imageUrls[0])
-                    .size(coil.size.Size.ORIGINAL)  //  强制加载原图，避免模糊
-                    .addHeader("Referer", "https://www.bilibili.com/")  //  必需
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                imageLoader = gifImageLoader,  //  支持 GIF 和其他格式
-                contentScale = ContentScale.Crop,
+            
+            Box(
                 modifier = Modifier
-                    .widthIn(max = 200.dp)
-                    .heightIn(max = 200.dp)
-                    .aspectRatio(aspectRatio.coerceIn(0.5f, 2f))
-                    .clip(RoundedCornerShape(8.dp))
+                    .widthIn(max = 220.dp)  //  [优化] 增大最大宽度
+                    .heightIn(max = 220.dp)
+                    .aspectRatio(aspectRatio)
+                    .clip(RoundedCornerShape(12.dp))  //  [优化] 更大圆角 8dp → 12dp
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .onGloballyPositioned { coordinates ->
                         imageRect = coordinates.boundsInWindow()
                     }
                     .clickable { onImageClick(imageUrls, 0, imageRect) }
-            )
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrls[0])
+                        .size(coil.size.Size.ORIGINAL)  //  强制加载原图，避免模糊
+                        .addHeader("Referer", "https://www.bilibili.com/")  //  必需
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    imageLoader = gifImageLoader,  //  支持 GIF 和其他格式
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
         else -> {
-            // 多张图片：网格布局 (最多显示 3 列)
-            val columns = minOf(pictures.size, 3)
-            val rows = (pictures.size + columns - 1) / columns
+            // 多张图片：网格布局
+            val displayItems = pictures.take(9)  //  [优化] 最多显示9张
+            val columns = when {
+                displayItems.size <= 4 -> 2
+                else -> 3
+            }
             
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (row in 0 until rows) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        for (col in 0 until columns) {
-                            val index = row * columns + col
-                            if (index < pictures.size) {
-                                var imageRect by remember { mutableStateOf<Rect?>(null) }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {  //  [优化] 增加间距 4dp → 6dp
+                displayItems.chunked(columns).forEachIndexed { rowIndex, row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEachIndexed { colIndex, pic ->
+                            val globalIndex = rowIndex * columns + colIndex
+                            var imageRect by remember { mutableStateOf<Rect?>(null) }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(85.dp)  //  [优化] 增大尺寸 80dp → 85dp
+                                    .clip(RoundedCornerShape(10.dp))  //  [优化] 更大圆角 6dp → 10dp
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .onGloballyPositioned { coordinates ->
+                                        imageRect = coordinates.boundsInWindow()
+                                    }
+                                    .clickable { onImageClick(imageUrls, globalIndex, imageRect) },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
-                                        .data(imageUrls[index])
+                                        .data(imageUrls[globalIndex])
                                         .size(coil.size.Size.ORIGINAL)  //  强制加载原图，避免模糊
                                         .addHeader("Referer", "https://www.bilibili.com/")  //  必需
                                         .crossfade(true)
@@ -682,15 +708,25 @@ fun CommentPictures(
                                     contentDescription = null,
                                     imageLoader = gifImageLoader,  //  支持 GIF
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .onGloballyPositioned { coordinates ->
-                                            imageRect = coordinates.boundsInWindow()
-                                        }
-                                        .clickable { onImageClick(imageUrls, index, imageRect) }
+                                    modifier = Modifier.fillMaxSize()
                                 )
+                                
+                                //  [新增] 最后一张图片显示多图角标（如 +3）
+                                if (globalIndex == displayItems.size - 1 && totalCount > 9) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.5f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "+${totalCount - 9}",
+                                            color = Color.White,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

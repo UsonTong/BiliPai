@@ -79,7 +79,46 @@ fun ForwardedContent(
         
         // 原图片
         content?.major?.draw?.let { draw ->
-            DrawGridV2(items = draw.items.take(4), gifImageLoader = gifImageLoader)
+            DrawGridV2(
+                items = draw.items.take(4),
+                gifImageLoader = gifImageLoader,
+                onImageClick = { _, _ -> }  // 转发内容暂不支持图片预览
+            )
+        }
+        
+        //  [新增] 原 Opus 图文动态
+        content?.major?.opus?.let { opus ->
+            // 显示文字摘要 (如果 desc 为空)
+            if (content.desc?.text.isNullOrEmpty()) {
+                opus.summary?.let { summary ->
+                    if (summary.text.isNotEmpty()) {
+                        RichTextContent(
+                            desc = DynamicDesc(
+                                text = summary.text,
+                                rich_text_nodes = summary.rich_text_nodes
+                            ),
+                            onUserClick = onUserClick
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+            // 显示图片
+            if (opus.pics.isNotEmpty()) {
+                val drawItems = opus.pics.take(4).map { pic ->
+                    com.android.purebilibili.data.model.response.DrawItem(
+                        src = pic.url,
+                        width = pic.width,
+                        height = pic.height
+                    )
+                }
+                DrawGridV2(
+                    items = drawItems,
+                    gifImageLoader = gifImageLoader,
+                    onImageClick = { _, _ -> }  // 转发内容暂不支持图片预览
+                )
+            }
         }
     }
 }
+

@@ -313,25 +313,18 @@ fun AppNavigation(
                 navArgument("fullscreen") { type = NavType.BoolType; defaultValue = false }
             ),
             //  进入动画：当卡片过渡开启时用淡入（配合共享元素），关闭时用滑入
+            //  进入动画：基于位置的扩散展开 (Scale + Fade)
+            //  进入动画：基于位置的扩散展开 (Scale + Fade)
             enterTransition = { 
+                // [Hero Animation] 如果启用了卡片过渡，使用简单的淡入，让 SharedElement 成为主角
                 if (cardTransitionEnabled) {
-                    // 🔧 [修复] 使用简单淡入，避免与 sharedBounds 共享元素动画冲突
-                    // 原来使用 scaleIn + fadeIn 会导致与 VideoCard 的 sharedBounds 产生双重动画闪烁
                     fadeIn(animationSpec = tween(300))
                 } else {
-                    //  位置感知滑入动画
-                    if (CardPositionManager.isSingleColumnCard) {
-                        //  单列卡片（故事卡片）：从下往上滑入
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration))
-                    } else {
-                        //  双列卡片：左边卡片从左滑入，右边卡片从右滑入
-                        val isCardOnLeft = (CardPositionManager.lastClickedCardCenter?.x ?: 0.5f) < 0.5f
-                        if (isCardOnLeft) {
-                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration))
-                        } else {
-                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration))
-                        }
-                    }
+                    // 未启用卡片过渡时，使用常规的推入动画
+                    slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(300)
+                    )
                 }
             },
             //  返回动画：当卡片过渡开启时用淡出（配合共享元素），关闭时用滑出

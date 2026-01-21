@@ -12,11 +12,17 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
@@ -28,12 +34,13 @@ import androidx.compose.ui.unit.sp
 /**
  *  图片九宫格V2（支持GIF + 点击预览）
  *  🎨 [优化] 更大圆角、单图大尺寸、多图角标
+ *  📍 [新增] 支持返回图片位置用于展开动画
  */
 @Composable
 fun DrawGridV2(
     items: List<DrawItem>,
     gifImageLoader: ImageLoader,
-    onImageClick: (Int) -> Unit = {}  //  图片点击回调
+    onImageClick: (Int, Rect?) -> Unit = { _, _ -> }  //  [修改] 图片点击回调，新增 Rect 参数
 ) {
     if (items.isEmpty()) return
     
@@ -83,12 +90,18 @@ fun DrawGridV2(
                         Modifier.weight(1f)
                     }
                     
+                    //  [新增] 存储图片位置
+                    var imageRect by remember { mutableStateOf<Rect?>(null) }
+                    
                     Box(
                         modifier = imageModifier
                             .aspectRatio(aspectRatio)
                             .clip(RoundedCornerShape(12.dp))  //  [优化] 更大圆角 8dp → 12dp
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onImageClick(currentIndex) },  //  点击预览
+                            .onGloballyPositioned { coordinates ->
+                                imageRect = coordinates.boundsInWindow()
+                            }
+                            .clickable { onImageClick(currentIndex, imageRect) },  //  [修改] 传递位置信息
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUrl.isNotEmpty()) {
@@ -137,4 +150,5 @@ fun DrawGridV2(
         }
     }
 }
+
 

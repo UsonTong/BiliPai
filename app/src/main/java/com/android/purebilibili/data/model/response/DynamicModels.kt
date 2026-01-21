@@ -105,13 +105,37 @@ data class EmojiInfo(
     val text: String = ""
 )
 
-// --- 主要内容 (视频/图片/直播) ---
+// --- 主要内容 (视频/图片/直播/图文) ---
 @Serializable
 data class DynamicMajor(
-    val type: String = "", // MAJOR_TYPE_ARCHIVE, MAJOR_TYPE_DRAW, MAJOR_TYPE_LIVE_RCMD, MAJOR_TYPE_NONE
+    val type: String = "", // MAJOR_TYPE_ARCHIVE, MAJOR_TYPE_DRAW, MAJOR_TYPE_LIVE_RCMD, MAJOR_TYPE_OPUS, MAJOR_TYPE_NONE
     val archive: ArchiveMajor? = null, // 视频
     val draw: DrawMajor? = null, // 图片
-    val live_rcmd: LiveRcmdMajor? = null //  直播
+    val live_rcmd: LiveRcmdMajor? = null, //  直播
+    val opus: OpusMajor? = null //  [新增] 图文动态 (新版格式)
+)
+
+//  [新增] 图文动态 (MAJOR_TYPE_OPUS) - B站新版图文格式
+@Serializable
+data class OpusMajor(
+    val jump_url: String = "",
+    val pics: List<OpusPic> = emptyList(), // 图片列表
+    val summary: OpusSummary? = null, // 文字摘要
+    val title: String? = null // 标题 (可选)
+)
+
+@Serializable
+data class OpusPic(
+    val url: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
+    val size: Double = 0.0
+)
+
+@Serializable
+data class OpusSummary(
+    val text: String = "",
+    val rich_text_nodes: List<RichTextNode> = emptyList()
 )
 
 //  直播推荐
@@ -172,6 +196,7 @@ enum class DynamicType(val apiValue: String) {
     WORD("DYNAMIC_TYPE_WORD"),
     FORWARD("DYNAMIC_TYPE_FORWARD"),
     LIVE("DYNAMIC_TYPE_LIVE_RCMD"),
+    OPUS("DYNAMIC_TYPE_DRAW"),  //  [新增] 图文动态 (使用 DRAW 类型，但 major 为 opus)
     UNKNOWN("UNKNOWN");
     
     companion object {
