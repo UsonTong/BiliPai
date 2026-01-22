@@ -61,8 +61,10 @@ fun iOSHomeHeader(
     hazeState: HazeState? = null,  // 保留参数兼容性，但不用于模糊
     onStatusBarDoubleTap: () -> Unit = {},
     //  [新增] 下拉刷新状态
+    //  [新增] 下拉刷新状态
     isRefreshing: Boolean = false,
-    pullProgress: Float = 0f  // 0.0 ~ 1.0+ 下拉进度
+    pullProgress: Float = 0f,  // 0.0 ~ 1.0+ 下拉进度
+    pagerState: androidx.compose.foundation.pager.PagerState? = null // [New] PagerState for sync
 ) {
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -222,7 +224,8 @@ fun iOSHomeHeader(
             CategoryTabRow(
                 selectedIndex = categoryIndex,
                 onCategorySelected = onCategorySelected,
-                onPartitionClick = onPartitionClick
+                onPartitionClick = onPartitionClick,
+                pagerState = pagerState
             )
         }
     }

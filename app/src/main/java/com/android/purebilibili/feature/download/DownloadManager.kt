@@ -47,13 +47,15 @@ object DownloadManager {
      */
     fun init(context: Context) {
         appContext = context.applicationContext
-        // 默认路径
-        downloadDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
-        tasksFile = File(context.filesDir, "download_tasks.json")
-        loadTasks()
         
-        // 监听路径变化
+        // [Optim] Perform file IO on background thread
         scope.launch {
+            // 默认路径
+            downloadDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
+            tasksFile = File(context.filesDir, "download_tasks.json")
+            loadTasks()
+            
+            // 监听路径变化
             com.android.purebilibili.core.store.SettingsManager.getDownloadPath(context)
                 .collect { customPath ->
                     downloadDir = if (customPath != null) {

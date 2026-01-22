@@ -1,6 +1,9 @@
 // 文件路径: feature/home/components/TopBar.kt
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -13,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,6 +49,13 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.home.UserState
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.flow.map
+import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
+import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 
 /**
  * Q弹点击效果
@@ -194,11 +205,15 @@ fun CategoryTabRow(
     categories: List<String> = listOf("推荐", "关注", "热门", "直播", "追番", "影视", "游戏", "知识", "科技"),
     selectedIndex: Int = 0,
     onCategorySelected: (Int) -> Unit = {},
-    onPartitionClick: () -> Unit = {}
+    onPartitionClick: () -> Unit = {},
+    pagerState: androidx.compose.foundation.pager.PagerState? = null // [New] PagerState for sync
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-    
+
+    //  [交互优化] 触觉反馈
+    val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
+
     // [Refactor] 回退到 Row 布局，增加间距以避免"露半字"的尴尬截断
     Row(
         modifier = Modifier
@@ -207,13 +222,9 @@ fun CategoryTabRow(
             .padding(horizontal = 4.dp), // Minimal horizontal padding
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val listState = rememberLazyListState()
+        // [New] Scroll state for the row
+        val scrollState = rememberScrollState()
         
-        // 自动滚动到选中项
-        LaunchedEffect(selectedIndex) {
-            listState.animateScrollToItem(selectedIndex)
-        }
-
         // [Refactor] 使用 BoxWithConstraints 动态计算宽度，实现"固定显示5个"
         BoxWithConstraints(
             modifier = Modifier
@@ -222,24 +233,86 @@ fun CategoryTabRow(
         ) {
             // 计算每个 Tab 的宽度：可用宽度 / 5
             val tabWidth = maxWidth / 5
+            
+            // [限制] 可见标签数量为 5，指示器只能在这 5 个标签内移动
+            val visibleTabCount = 5
+            
+            // [恢复] 阻尼拖拽状态
+            val coroutineScope = rememberCoroutineScope()
+            val dampedDragState = rememberDampedDragAnimationState(
+                initialIndex = selectedIndex.coerceIn(0, visibleTabCount - 1), // 限制在可见范围
+                itemCount = visibleTabCount, // [关键] 只允许 5 个位置
+                onIndexChanged = { index ->
+                    // 当拖拽结束并吸附到索引时，同步 Pager
+                    if (pagerState != null && pagerState.currentPage != index) {
+                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                    }
+                    onCategorySelected(index)
+                }
+            )
+            
+            // [Sync] Pager -> DragState
+            val isPagerDragging by pagerState?.interactionSource?.collectIsDraggedAsState() ?: remember { mutableStateOf(false) }
+            
+            LaunchedEffect(pagerState?.currentPage, pagerState?.currentPageOffsetFraction, isPagerDragging) {
+                if (pagerState == null || dampedDragState.isDragging) return@LaunchedEffect
+                
+                // [限制] 只同步前 5 个标签的位置
+                val page = pagerState.currentPage.coerceIn(0, visibleTabCount - 1)
+                val offset = if (pagerState.currentPage < visibleTabCount - 1) 
+                    pagerState.currentPageOffsetFraction.coerceIn(-1f, 1f) 
+                else 
+                    pagerState.currentPageOffsetFraction.coerceAtMost(0f) // 最后一个标签不允许向右超出
+                
+                if (isPagerDragging) {
+                    dampedDragState.snapTo((page + offset).coerceIn(0f, (visibleTabCount - 1).toFloat()))
+                } else {
+                    if (pagerState.isScrollInProgress) {
+                        dampedDragState.updateIndex(pagerState.targetPage.coerceIn(0, visibleTabCount - 1))
+                    }
+                }
+            }
 
-            LazyRow(
-                modifier = Modifier.fillMaxSize(),
-                state = listState,
-                verticalAlignment = Alignment.CenterVertically
+            // Source of truth: DampedDragState (限制在可见范围)
+            val currentPosition by remember(dampedDragState) {
+                derivedStateOf { dampedDragState.value }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .horizontalDragGesture(dampedDragState, with(LocalDensity.current) { tabWidth.toPx() })
             ) {
-                itemsIndexed(categories) { index, category ->
-                    Box(
-                        modifier = Modifier.width(tabWidth),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CategoryTabItem(
-                            category = category,
-                            isSelected = index == selectedIndex,
-                            primaryColor = primaryColor,
-                            unselectedColor = unselectedColor,
-                            onClick = { onCategorySelected(index) }
-                        )
+                 // 1. [Layer] Background Liquid Indicator
+                com.android.purebilibili.feature.home.components.SimpleLiquidIndicator(
+                    positionState = remember { derivedStateOf { currentPosition } },
+                    itemWidth = tabWidth,
+                    isDragging = dampedDragState.isDragging || (pagerState?.isScrollInProgress == true),
+                    modifier = Modifier.align(Alignment.CenterStart)
+                 )
+
+                 
+                 // 2. [Layer] Content Tabs (仍然显示全部 categories 供点击)
+                Row(
+                   modifier = Modifier.height(48.dp),
+                   verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 只渲染可见的 5 个标签
+                    categories.take(visibleTabCount).forEachIndexed { index, category ->
+                        Box(
+                            modifier = Modifier.width(tabWidth),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CategoryTabItem(
+                                category = category,
+                                index = index,
+                                selectedIndex = selectedIndex,
+                                currentPositionState = remember { derivedStateOf { currentPosition } },
+                                primaryColor = primaryColor,
+                                unselectedColor = unselectedColor,
+                                onClick = { onCategorySelected(index); haptic(com.android.purebilibili.core.util.HapticType.LIGHT) }
+                            )
+                        }
                     }
                 }
             }
@@ -274,44 +347,55 @@ fun CategoryTabRow(
 @Composable
 fun CategoryTabItem(
     category: String,
-    isSelected: Boolean,
+    index: Int,
+    selectedIndex: Int,
+    currentPositionState: State<Float>,
     primaryColor: Color,
     unselectedColor: Color,
     onClick: () -> Unit
 ) {
-     // 文字颜色动画
-     val textColor by animateColorAsState(
-         targetValue = if (isSelected) primaryColor else unselectedColor,
-         animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
-         label = "textColor"
-     )
-     
-     // [新增] 背景动画 (替代 Indicator)
-     // 选中时显示半透明背景，未选中透明
-     val backgroundColor by animateColorAsState(
-         targetValue = if (isSelected) primaryColor.copy(alpha = 0.12f) else Color.Transparent,
-         animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
-         label = "bgColor"
-     )
+     // [Optimized] Calculate fraction from the passed state inside derivedStateOf
+     val selectionFraction by remember {
+         derivedStateOf {
+             val distance = kotlin.math.abs(currentPositionState.value - index)
+             (1f - distance).coerceIn(0f, 1f)
+         }
+     }
 
-     val fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+     // Text Color Interpolation
+     val targetTextColor = androidx.compose.ui.graphics.lerp(unselectedColor, primaryColor, selectionFraction)
+     
+     // [Updated] Louder Scale Effect
+     // Use a non-linear curve to make the scale change appear "faster" or more obvious as you approach the center.
+     // selectionFraction is 0..1. Let's start scaling up earlier.
+     val smoothFraction = androidx.compose.animation.core.FastOutSlowInEasing.transform(selectionFraction)
+     val targetScale = androidx.compose.ui.util.lerp(1.0f, 1.25f, smoothFraction)
+     
+     // Use purely state-driven values for immediate response, or add small smoothing if needed.
+     // Direct usage is usually best for swiping.
+
+     val fontWeight = if (selectionFraction > 0.6f) FontWeight.SemiBold else FontWeight.Medium
 
      Box(
          modifier = Modifier
-             .clip(RoundedCornerShape(16.dp)) // 圆角适配 Dock
-             .background(backgroundColor) // 应用背景
+             .clip(RoundedCornerShape(16.dp)) 
              .clickable(
                  interactionSource = remember { MutableInteractionSource() },
                  indication = null
              ) { onClick() }
-             .padding(horizontal = 10.dp, vertical = 6.dp), // 调整内边距适应 1/5 宽度
+             .padding(horizontal = 10.dp, vertical = 6.dp), 
          contentAlignment = Alignment.Center
      ) {
          Text(
              text = category,
-             color = textColor,
-             fontSize = if (isSelected) 16.sp else 15.sp,
-             fontWeight = fontWeight
+             color = targetTextColor, // Still triggers recomposition if color changes, but calculation is deferred
+             fontSize = 15.sp, 
+             fontWeight = fontWeight,
+             modifier = Modifier.graphicsLayer {
+                 scaleX = targetScale
+                 scaleY = targetScale
+                 transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
+             }
          )
      }
 }

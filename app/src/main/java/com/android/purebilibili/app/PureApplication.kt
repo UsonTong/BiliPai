@@ -79,31 +79,6 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         NetworkModule.init(this)
         TokenManager.init(this)
         BackgroundManager.init(this)  // 📱 后台状态管理
-        com.android.purebilibili.feature.download.DownloadManager.init(this)  //  下载管理器
-        
-        //  插件系统初始化
-        PluginManager.initialize(this)
-        PluginManager.register(SponsorBlockPlugin())
-        PluginManager.register(AdFilterPlugin())
-        PluginManager.register(DanmakuEnhancePlugin())
-        PluginManager.register(EyeProtectionPlugin())
-        Logger.d(TAG, " Plugin system initialized with 4 built-in plugins")
-        
-        //  JSON 规则插件系统初始化
-        com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
-        Logger.d(TAG, " JSON plugin system initialized")
-        
-        //  [修复] 同步SettingsManager中的空降助手开关到PluginStore
-        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-            val sponsorBlockEnabled = com.android.purebilibili.core.store.SettingsManager
-                .getSponsorBlockEnabled(this@PureApplication)
-                .first()
-            PluginManager.setEnabled("sponsor_block", sponsorBlockEnabled)
-            Logger.d(TAG, " SponsorBlock plugin synced: enabled=$sponsorBlockEnabled")
-            
-            SettingsManager.forceDanmakuDefaults(this@PureApplication)
-            Logger.d(TAG, " Danmaku defaults forced to recommended values")
-        }
         
         createNotificationChannel()
         
@@ -113,8 +88,34 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         //  初始化 Firebase Analytics
         initAnalytics()
         
-        //  [冷启动优化] 延迟非关键初始化到主线程空闲时
-        Handler(Looper.getMainLooper()).post {
+        //  [冷启动优化] 延迟非关键初始化到主线程空闲时 (IdleHandler 确保首帧绘制后再执行)
+        Looper.myQueue().addIdleHandler {
+            // [Moved] 插件系统初始化
+            PluginManager.initialize(this)
+            PluginManager.register(SponsorBlockPlugin())
+            PluginManager.register(AdFilterPlugin())
+            PluginManager.register(DanmakuEnhancePlugin())
+            PluginManager.register(EyeProtectionPlugin())
+            Logger.d(TAG, " Plugin system initialized with 4 built-in plugins")
+
+            // [Moved] JSON 规则插件系统初始化
+            com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
+            Logger.d(TAG, " JSON plugin system initialized")
+            
+            // [Moved] 下载管理器 initialization (IO heavy)
+            com.android.purebilibili.feature.download.DownloadManager.init(this)
+            
+            // [Moved] 同步配置
+            CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+                val sponsorBlockEnabled = com.android.purebilibili.core.store.SettingsManager
+                    .getSponsorBlockEnabled(this@PureApplication)
+                    .first()
+                PluginManager.setEnabled("sponsor_block", sponsorBlockEnabled)
+                Logger.d(TAG, " SponsorBlock plugin synced: enabled=$sponsorBlockEnabled")
+                
+                SettingsManager.forceDanmakuDefaults(this@PureApplication)
+            }
+
             //  恢复 WBI 密钥缓存
             WbiKeyManager.restoreFromStorage(this)
             
@@ -130,6 +131,8 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                     android.util.Log.w(TAG, " WBI Keys preload failed: ${e.message}")
                 }
             }
+            
+            false // 返回 false 表示只执行一次
         }
     }
     
@@ -267,107 +270,108 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
      * 修复：重装后检测 icon 偏好与 Manifest 默认状态冲突，自动重置为默认图标。
      */
     private fun syncAppIconState() {
-        try {
-            val pm = packageManager
-            val packageName = this.packageName
-            
-            // 读取用户保存的图标偏好
-            val currentIcon = runBlocking {
-                SettingsManager.getAppIcon(this@PureApplication).first()
-            }
-            
-            // alias 映射 - 必须与 AndroidManifest.xml 中声明的完全一致
-            val allAliases = listOf(
-                // 默认系列
-                "default" to "${packageName}.MainActivityAliasYuki", // 默认使用 Yuki (兼容旧逻辑 if "default" passed)
-                "icon_3d" to "${packageName}.MainActivityAlias3D",
-                "icon_blue" to "${packageName}.MainActivityAliasBlue",
-                "icon_neon" to "${packageName}.MainActivityAliasNeon",
-                "icon_retro" to "${packageName}.MainActivityAliasRetro",
-                // 特色系列
-                "icon_anime" to "${packageName}.MainActivityAliasAnime",
-                "icon_flat" to "${packageName}.MainActivityAliasFlat",
-                "icon_telegram_blue" to "${packageName}.MainActivityAliasTelegramBlue",
-                "icon_telegram_green" to "${packageName}.MainActivityAliasGreen",
-                "icon_telegram_pink" to "${packageName}.MainActivityAliasTelegramPink",
-                "icon_telegram_purple" to "${packageName}.MainActivityAliasTelegramPurple",
-                "icon_telegram_dark" to "${packageName}.MainActivityAliasTelegramDark",
+        // [Optim] Use IO dispatcher to prevent ANR during startup (PackageManager is heavy)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val pm = packageManager
+                val packageName = this@PureApplication.packageName
                 
-                // 兼容旧键名 (向后兼容)
-                "Yuki" to "${packageName}.MainActivityAliasYuki",
-                "Anime" to "${packageName}.MainActivityAliasAnime",
-                "Tv" to "${packageName}.MainActivityAliasTv",
-                "Headphone" to "${packageName}.MainActivityAliasHeadphone",
-                "3D" to "${packageName}.MainActivityAlias3D",
-                "Blue" to "${packageName}.MainActivityAliasBlue",
-                "Retro" to "${packageName}.MainActivityAliasRetro",
-                "Flat" to "${packageName}.MainActivityAliasFlat",
-                "Neon" to "${packageName}.MainActivityAliasNeon"
-            )
-            
-            //  [重装检测] 检查目标alias是否可用
-            // 找到需要启用的 alias
-            val targetAlias = allAliases.find { it.first == currentIcon }?.second
-                ?: "${packageName}.MainActivityAlias3D" // 默认改用 3D 图标
-            
-            val targetAliasComponent = android.content.ComponentName(packageName, targetAlias)
-            val targetState = pm.getComponentEnabledSetting(targetAliasComponent)
-            
-            // 如果目标alias是disabled（说明之前被禁用了，可能是重装），强制重置为默认(icon_3d)
-            if (currentIcon != "icon_3d" && targetState == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
-                Logger.d(TAG, " Detected reinstall: target icon '$currentIcon' is disabled, resetting to 'icon_3d'")
-                runBlocking {
-                    SettingsManager.setAppIcon(this@PureApplication, "icon_3d")
-                }
-                // 确保 3D 图标被启用
-                val aliasDefault = android.content.ComponentName(packageName, "${packageName}.MainActivityAlias3D")
-                pm.setComponentEnabledSetting(
-                    aliasDefault,
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
+                // 读取用户保存的图标偏好
+                val currentIcon = SettingsManager.getAppIcon(this@PureApplication).first()
+                
+                // alias 映射 - 必须与 AndroidManifest.xml 中声明的完全一致
+                val allAliases = listOf(
+                    // 默认系列
+                    "default" to "${packageName}.MainActivityAliasYuki", // 默认使用 Yuki (兼容旧逻辑 if "default" passed)
+                    "icon_3d" to "${packageName}.MainActivityAlias3D",
+                    "icon_blue" to "${packageName}.MainActivityAliasBlue",
+                    "icon_neon" to "${packageName}.MainActivityAliasNeon",
+                    "icon_retro" to "${packageName}.MainActivityAliasRetro",
+                    // 特色系列
+                    "icon_anime" to "${packageName}.MainActivityAliasAnime",
+                    "icon_flat" to "${packageName}.MainActivityAliasFlat",
+                    "icon_telegram_blue" to "${packageName}.MainActivityAliasTelegramBlue",
+                    "icon_telegram_green" to "${packageName}.MainActivityAliasGreen",
+                    "icon_telegram_pink" to "${packageName}.MainActivityAliasTelegramPink",
+                    "icon_telegram_purple" to "${packageName}.MainActivityAliasTelegramPurple",
+                    "icon_telegram_dark" to "${packageName}.MainActivityAliasTelegramDark",
+                    
+                    // 兼容旧键名 (向后兼容)
+                    "Yuki" to "${packageName}.MainActivityAliasYuki",
+                    "Anime" to "${packageName}.MainActivityAliasAnime",
+                    "Tv" to "${packageName}.MainActivityAliasTv",
+                    "Headphone" to "${packageName}.MainActivityAliasHeadphone",
+                    "3D" to "${packageName}.MainActivityAlias3D",
+                    "Blue" to "${packageName}.MainActivityAliasBlue",
+                    "Retro" to "${packageName}.MainActivityAliasRetro",
+                    "Flat" to "${packageName}.MainActivityAliasFlat",
+                    "Neon" to "${packageName}.MainActivityAliasNeon"
                 )
-                // 禁用其他所有alias
-                allAliases.filter { it.second != "${packageName}.MainActivityAlias3D" }.forEach { (_, aliasFullName) ->
+                
+                //  [重装检测] 检查目标alias是否可用
+                // 找到需要启用的 alias
+                val targetAlias = allAliases.find { it.first == currentIcon }?.second
+                    ?: "${packageName}.MainActivityAlias3D" // 默认改用 3D 图标
+                
+                val targetAliasComponent = android.content.ComponentName(packageName, targetAlias)
+                val targetState = pm.getComponentEnabledSetting(targetAliasComponent)
+                
+                // 如果目标alias是disabled（说明之前被禁用了，可能是重装），强制重置为默认(icon_3d)
+                if (currentIcon != "icon_3d" && targetState == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
+                    Logger.d(TAG, " Detected reinstall: target icon '$currentIcon' is disabled, resetting to 'icon_3d'")
+                    
+                    SettingsManager.setAppIcon(this@PureApplication, "icon_3d")
+                    
+                    // 确保 3D 图标被启用
+                    val aliasDefault = android.content.ComponentName(packageName, "${packageName}.MainActivityAlias3D")
                     pm.setComponentEnabledSetting(
-                        android.content.ComponentName(packageName, aliasFullName),
-                        android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        aliasDefault,
+                        android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                         android.content.pm.PackageManager.DONT_KILL_APP
                     )
-                }
-                Logger.d(TAG, " Reset to default 3D icon")
-                return
-            }
-            
-            // 同步所有 alias 状态：只有目标启用，其他禁用
-            allAliases.forEach { (_, aliasFullName) ->
-                try {
-                    val currentState = pm.getComponentEnabledSetting(
-                        android.content.ComponentName(packageName, aliasFullName)
-                    )
-                    val shouldBeEnabled = aliasFullName == targetAlias
-                    val targetState = if (shouldBeEnabled) {
-                        android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                    } else {
-                        android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                    }
-                    
-                    // 只在状态不一致时修改，减少不必要的操作
-                    if (currentState != targetState) {
+                    // 禁用其他所有alias
+                    allAliases.filter { it.second != "${packageName}.MainActivityAlias3D" }.forEach { (_, aliasFullName) ->
                         pm.setComponentEnabledSetting(
                             android.content.ComponentName(packageName, aliasFullName),
-                            targetState,
+                            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                             android.content.pm.PackageManager.DONT_KILL_APP
                         )
                     }
-                } catch (e: Exception) {
-                    //  [容错] 忽略不存在的组件，防止崩溃
-                    Logger.d(TAG, "⚠️ Component $aliasFullName not found, skipping")
+                    Logger.d(TAG, " Reset to default 3D icon")
+                    return@launch
                 }
+                
+                // 同步所有 alias 状态：只有目标启用，其他禁用
+                allAliases.forEach { (_, aliasFullName) ->
+                    try {
+                        val currentState = pm.getComponentEnabledSetting(
+                            android.content.ComponentName(packageName, aliasFullName)
+                        )
+                        val shouldBeEnabled = aliasFullName == targetAlias
+                        val targetState = if (shouldBeEnabled) {
+                            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                        } else {
+                            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                        }
+                        
+                        // 只在状态不一致时修改，减少不必要的操作
+                        if (currentState != targetState) {
+                            pm.setComponentEnabledSetting(
+                                android.content.ComponentName(packageName, aliasFullName),
+                                targetState,
+                                android.content.pm.PackageManager.DONT_KILL_APP
+                            )
+                        }
+                    } catch (e: Exception) {
+                        //  [容错] 忽略不存在的组件，防止崩溃
+                        Logger.d(TAG, "⚠️ Component $aliasFullName not found, skipping")
+                    }
+                }
+                
+                Logger.d(TAG, " Synced app icon state: $currentIcon")
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to sync app icon state", e)
             }
-            
-            Logger.d(TAG, " Synced app icon state: $currentIcon")
-        } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to sync app icon state", e)
         }
     }
 }

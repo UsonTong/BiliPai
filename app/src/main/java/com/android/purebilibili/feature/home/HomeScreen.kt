@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.foundation.ExperimentalFoundationApi //  Added
+import androidx.compose.foundation.LocalOverscrollFactory // [Fix] Import for disabling overscroll (New API)
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -108,6 +109,11 @@ fun HomeScreen(
     val staggeredGridState = rememberLazyStaggeredGridState()  // 🌊 瀑布流状态
     val hazeState = remember { HazeState() }
     val coroutineScope = rememberCoroutineScope()  //  用于双击回顶动画
+
+    // [Refactor] Hoist PagerState to be available for both Content and Header
+    // 确保 pagerState 在所有作用域均可见，以便传给 iOSHomeHeader
+    val initialPage = HomeCategory.entries.indexOf(state.currentCategory).coerceAtLeast(0)
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage) { HomeCategory.entries.size }
     
     // [修复] 刷新时自动滚回顶部，防止下拉用力过猛导致内容偏移
     LaunchedEffect(isRefreshing) {
@@ -826,8 +832,8 @@ fun HomeScreen(
                 // 新：直接渲染，分类切换瞬间完成
                 
                 // [重构] 使用 HorizontalPager 实现真正的 Tab 切换
-                val initialPage = HomeCategory.entries.indexOf(state.currentCategory).coerceAtLeast(0)
-                val pagerState = rememberPagerState(initialPage = initialPage) { HomeCategory.entries.size }
+                // val initialPage ... (Hoisted)
+                // val pagerState ... (Hoisted)
                 
                 //  联动 Pager 和 ViewModel category
                 LaunchedEffect(pagerState.currentPage) {
@@ -847,15 +853,16 @@ fun HomeScreen(
                     }
                 }
                 
-                //  Header 区域 - 固定在顶部 (Sticky Header)
                 //  [Refactor] Use Box to allow overlay and proper blur nesting
                 Box(modifier = Modifier.fillMaxSize()) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .hazeSource(state = hazeState) // [Fix] Apply hazeSource to content
-                    ) { page ->
+                    // [Fix] Disable default overscroll (stretch) effect which causes screen shrinking
+                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeSource(state = hazeState) // [Fix] Apply hazeSource to content
+                        ) { page ->
                         val category = HomeCategory.entries[page]
                         val categoryState = state.categoryStates[category] ?: com.android.purebilibili.feature.home.CategoryContent()
                         
@@ -952,6 +959,7 @@ fun HomeScreen(
                              } // Close Box wrapper
                         }
                     }
+                    } // Ends CompositionLocalProvider
                 }
             } // 关闭 PullToRefreshBox
             }  // [Fix] Add missing brace for else block
@@ -990,7 +998,8 @@ fun HomeScreen(
                     }
                 },
                 isRefreshing = isRefreshing,
-                pullProgress = pullRefreshState.distanceFraction
+                pullProgress = pullRefreshState.distanceFraction,
+                pagerState = pagerState
             )
         }
     }  // 关闭外层 Box

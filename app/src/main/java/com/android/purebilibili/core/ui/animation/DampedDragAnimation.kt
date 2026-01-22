@@ -47,6 +47,9 @@ class DampedDragAnimationState(
     /** 目标索引（释放后吸附的目标） */
     private var targetIndex = initialIndex
     
+    /** 动画是否正在运行 */
+    val isRunning: Boolean get() = animatable.isRunning
+
     /**
      * 处理拖拽事件
      * @param dragAmountPx 拖拽像素距离
@@ -61,9 +64,10 @@ class DampedDragAnimationState(
         val currentValue = animatable.value
         val isOverscrolling = currentValue < 0f || currentValue > (itemCount - 1).toFloat()
         
-        // 如果越界，阻尼系数降低 (例如 0.2f)，否则为 1.0f (跟手)
-        // 可以根据越界距离进一步衰减，但固定 0.2f 也是常见的简单实现
-        val dragResistance = if (isOverscrolling) 0.2f else 1.0f
+        // [调整] 提升灵敏度系数 (0.6 -> 1.0) 确保完全跟手
+        // 如果越界，阻尼系数降低 (0.3)
+        val baseResistance = 1.0f 
+        val dragResistance = if (isOverscrolling) 0.3f else baseResistance
         
         val deltaIndex = (dragAmountPx / itemWidthPx) * dragResistance
         
@@ -76,6 +80,18 @@ class DampedDragAnimationState(
         }
     }
     
+    /**
+     * 立即跳转到指定位置（无动画）
+     * 用于与外部状态（如 Pager）同步
+     */
+    fun snapTo(targetValue: Float) {
+        // 更新目标索引以防止 offset 累积误差
+        targetIndex = targetValue.roundToInt().coerceIn(0, itemCount - 1)
+        scope.launch {
+            animatable.snapTo(targetValue)
+        }
+    }
+
     /**
      * 处理拖拽结束
      */

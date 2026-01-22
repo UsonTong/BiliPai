@@ -104,42 +104,44 @@ fun LiquidIndicator(
  */
 @Composable
 fun SimpleLiquidIndicator(
-    position: Float,
+    positionState: State<Float>, // [Optimized] Pass State to defer reading
     itemWidth: Dp,
     isDragging: Boolean,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     
-    val indicatorWidth = itemWidth - 8.dp
-    val indicatorHeight = 48.dp
+    // [Updated] Shrink size slightly as requested
+    val indicatorWidth = itemWidth
+    val indicatorHeight = 36.dp
     
-    val offsetX = with(density) {
-        (position * itemWidth.toPx()).toDp()
+    // [Optimized] Defer calculation to avoiding recomposing parent
+    val offsetX by remember {
+        derivedStateOf {
+            with(density) {
+                (positionState.value * itemWidth.toPx()).toDp()
+            }
+        }
     }
     
     val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.08f else 1f,
+        targetValue = if (isDragging) 1.05f else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "scale"
     )
     
-    val indicatorColor = if (isDarkTheme) {
-        Color.White.copy(alpha = 0.12f)
-    } else {
-        Color.Black.copy(alpha = 0.08f)
-    }
+    // [Updated] Match BottomBar style: Primary color with alpha
+    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
     
     Box(
         modifier = modifier
-            .offset(x = offsetX + 4.dp, y = 0.dp)
+            .offset(x = offsetX, y = 0.dp)
             .graphicsLayer {
                 this.scaleX = scale
                 this.scaleY = scale
             }
             .size(indicatorWidth, indicatorHeight)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(18.dp)) // Half of 36dp
             .background(indicatorColor)
     )
 }
