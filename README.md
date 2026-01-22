@@ -436,18 +436,6 @@ cd BiliPai
 - ❌ 不得用于商业目的
 - ❌ 不得移除原作者信息
 
----
-
-## ☕️ 支持作者
-
-如果这个应用对您有帮助，欢迎请我喝杯咖啡 ☕️
-
-<p align="center">
-  <img src="docs/images/donate_qr.jpg" alt="Donate" width="300">
-</p>
-
----
-
 ## ⭐ Star History
 
 如果这个项目对你有帮助，欢迎点个 Star ⭐
