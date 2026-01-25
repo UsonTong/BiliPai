@@ -513,24 +513,25 @@ fun rememberVideoPlayerState(
                 // 🔋 注意: ON_STOP/ON_START 的视频轨道禁用/恢复由 MiniPlayerManager 通过 BackgroundManager 统一处理
                 // 避免重复处理导致 savedTrackParams 被覆盖
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
-                    //  [修复] 后台音频模式恢复时不 seek，因为播放器一直在播放
-                    // 只有在非后台音频模式（即播放暂停了）才恢复位置
-                    val shouldRestorePlayback = savedPosition >= 0 
-                        && !miniPlayerManager.isMiniMode 
-                        && !miniPlayerManager.shouldEnterPip()
-                        && !wasBackgroundAudio  //  [关键修复] 后台音频模式不恢复旧位置
+                    //  [修复] 恢复前台时，只在确实暂停了的情况下恢复播放
+                    //  如果是在 PiP 或后台音频模式下，播放器一直在运行，不需要干预
+                    val isRunning = player.isPlaying
+                    val shouldResume = wasPlaying && !isRunning
                     
-                    if (shouldRestorePlayback) {
-                        player.seekTo(savedPosition)
-                        if (wasPlaying) {
-                            player.play()
+                    if (shouldResume) {
+                        // 只有当完全暂停时才检查是否需要恢复
+                        // 移除 seekTo(savedPosition)，因为 player.currentPosition 才是最新的（即使暂停了也还在该位置）
+                        // 且 seekTo 会导致 PiP 返回时回退到进入 PiP 前的旧位置
+                        if (!miniPlayerManager.isMiniMode && !miniPlayerManager.shouldEnterPip()) {
+                             player.play()
+                             com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_RESUME: Resuming playback")
                         }
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_RESUME: restored pos=$savedPosition, playing=$wasPlaying")
-                    } else if (wasBackgroundAudio) {
-                        //  [修复] 后台音频模式恢复：不 seek，播放器继续当前位置
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "🎵 ON_RESUME: 后台音频恢复，当前位置=${player.currentPosition}，不 seek 回 $savedPosition")
-                        wasBackgroundAudio = false  // 重置标志
+                    } else {
+                        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " ON_RESUME: Player already running or was not playing, skipping resume")
                     }
+                    
+                    // 重置标志
+                    wasBackgroundAudio = false
                 }
                 else -> {}
             }

@@ -345,11 +345,10 @@ class MainActivity : ComponentActivity() {
         val currentMode = miniPlayerManager.getCurrentMode()
         val isActuallyPlaying = miniPlayerManager.isPlaying || (miniPlayerManager.player?.isPlaying == true)
         
-        //  [修复] 必须同时满足：
-        // 1. 在视频详情页 或 小窗播放中
-        // 2. 设置允许进入PiP
-        // 3. 视频正在播放（关键：避免在首页按Home进入PiP）
-        val shouldTriggerPip = (isInVideoDetail || miniPlayerManager.isMiniMode) 
+        //  🔧 [修复] PiP 只应在视频详情页触发，小窗模式下不应触发系统 PiP
+        // 原因：小窗模式意味着用户已离开视频详情页（在首页等其他页面），
+        // 此时从其他页面返回桌面不应进入 PiP
+        val shouldTriggerPip = isInVideoDetail 
             && shouldEnterPip 
             && isActuallyPlaying
         

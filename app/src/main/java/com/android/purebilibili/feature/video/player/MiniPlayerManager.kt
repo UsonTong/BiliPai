@@ -365,17 +365,19 @@ class MiniPlayerManager private constructor(private val context: Context) :
     
     /**
      * 🎯 标记通过导航离开（在返回按钮点击时调用）
-     *  [修复] 在默认模式下立即暂停播放，解决生命周期时序问题
+     *  [修复] 在默认模式和画中画模式下立即暂停播放，解决生命周期时序问题
      */
     fun markLeavingByNavigation() {
         isLeavingByNavigation = true
         Logger.d(TAG, "🎯 markLeavingByNavigation: isLeavingByNavigation=true")
         
-        //  [修复] 默认模式下，通过导航离开时应立即停止播放
+        //  [修复] 默认模式和画中画模式下，通过导航离开时应立即停止播放
         // 原因：ON_PAUSE 事件可能在此标志设置之前触发，导致音频继续播放
+        // 画中画模式说明："切到桌面进入系统画中画"，返回主页时应停止
         val mode = getCurrentMode()
-        if (mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF) {
-            Logger.d(TAG, "🔇 默认模式：立即停止播放")
+        if (mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF ||
+            mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
+            Logger.d(TAG, "🔇 ${mode.label}：通过导航离开，立即停止播放")
             // 停止所有播放器（外部和内部）
             _externalPlayer?.pause()
             _player?.pause()

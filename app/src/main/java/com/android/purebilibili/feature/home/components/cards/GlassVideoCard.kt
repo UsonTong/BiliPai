@@ -143,7 +143,11 @@ fun GlassVideoCard(
             .fillMaxWidth()
             .padding(6.dp)
             //  [修复] 进场动画 - 使用 Unit 作为 key，避免分类切换时重新动画
-            .animateEnter(index = index, key = Unit, animationEnabled = animationEnabled)
+            .animateEnter(
+                index = index, 
+                key = Unit, 
+                animationEnabled = animationEnabled && !CardPositionManager.isReturningFromDetail && !CardPositionManager.isSwitchingCategory
+            )
             //  [新增] 记录卡片位置
             .onGloballyPositioned { coordinates ->
                 cardBounds = coordinates.boundsInRoot()

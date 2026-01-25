@@ -110,28 +110,12 @@ fun Modifier.animateEnter(
     initialOffsetY: Float = 60f,  // 🚀 [优化] 减少位移距离
     animationEnabled: Boolean = true
 ): Modifier = composed {
+
     // 🚀 [优化] 如果动画被禁用，直接返回无动画效果
     if (!animationEnabled) {
         return@composed this
     }
-    
-    // 🚀 [优化] 检查是否从详情页返回，跳过动画
-    if (CardPositionManager.isReturningFromDetail) {
-        LaunchedEffect(Unit) {
-            delay(100)
-            CardPositionManager.clearReturning()
-        }
-        return@composed this
-    }
-    
-    //  [修复] 检查是否正在切换分类，跳过动画避免收缩效果
-    if (CardPositionManager.isSwitchingCategory) {
-        LaunchedEffect(Unit) {
-            delay(300)  // 等待分类切换完成
-            CardPositionManager.isSwitchingCategory = false
-        }
-        return@composed this
-    }
+
     
     // 🚀 [性能优化] 使用单一进度值驱动所有动画属性
     // 替代原来的 3 个 Animatable 对象，减少内存分配和协程开销

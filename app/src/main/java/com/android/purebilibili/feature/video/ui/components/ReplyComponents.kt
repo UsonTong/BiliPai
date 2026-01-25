@@ -282,38 +282,27 @@ fun ReplyItemView(
                                 map
                             }
                             
-                            Row(
-                                modifier = Modifier.padding(vertical = 3.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Text(
-                                    buildAnnotatedString {
-                                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))) {
-                                            append(subReply.member.uname)
-                                        }
-                                        if (subReply.member.mid == upMid.toString()) {
-                                            append(" ") // Space for badge if we had inline badge, but text distinction is enough for sub-replies usually
-                                        }
-                                    },
-                                    fontSize = 13.sp,
-                                )
-                                Text(
-                                    text = ": ",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                // We might need a streamlined version of RichCommentText for sub-replies to avoid overhead or layout issues, 
-                                // but reusing RichCommentText is fine if it works inline. 
-                                // To make it inline accurately with the name is hard in Compose without a single Text block.
-                                // For now, let's keep name and content separate but close.
+                            //  [修复] 将子评论改为行内显示 (用户名: 内容)
+                            val prefix = buildAnnotatedString {
+                                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))) {
+                                    append(subReply.member.uname)
+                                }
+                                if (subReply.member.mid == upMid.toString()) {
+                                    append(" ") 
+                                }
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                    append(": ")
+                                }
                             }
+                            
                             RichCommentText(
                                 text = subReply.content.message,
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 emoteMap = subEmoteMap,
-                                maxLines = 2,
-                                onTimestampClick = onTimestampClick
+                                maxLines = 3,  // Increase max lines for inline text
+                                onTimestampClick = onTimestampClick,
+                                prefix = prefix
                             )
                         }
                         
@@ -354,7 +343,8 @@ fun RichCommentText(
     color: Color = MaterialTheme.colorScheme.onSurface,
     emoteMap: Map<String, String>,
     maxLines: Int = Int.MAX_VALUE,
-    onTimestampClick: ((Long) -> Unit)? = null
+    onTimestampClick: ((Long) -> Unit)? = null,
+    prefix: AnnotatedString? = null
 ) {
     val timestampColor = MaterialTheme.colorScheme.primary
     
@@ -362,6 +352,11 @@ fun RichCommentText(
     val timestampPattern = """(?<!\d)(\d{1,2}):(\d{2})(?::(\d{2}))?(?!\d)""".toRegex()
     
     val annotatedString = buildAnnotatedString {
+        // [新增] 添加前缀 (如用户名)
+        if (prefix != null) {
+            append(prefix)
+        }
+
         // 高亮 "回复 @某人 :"
         val replyPattern = "^回复 @(.*?) :".toRegex()
         val replyMatch = replyPattern.find(text)

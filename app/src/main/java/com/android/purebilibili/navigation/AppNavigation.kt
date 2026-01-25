@@ -1003,8 +1003,16 @@ fun AppNavigation(
                 ) {
                     AnimatedVisibility(
                         visible = finalBottomBarVisible,
-                        enter = slideInVertically { it },
-                        exit = slideOutVertically { it }
+                        enter = slideInVertically(
+                            // [UX优化] 物理弹簧进场 (Spring Entrance)
+                            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                            initialOffsetY = { it }
+                        ) + fadeIn(animationSpec = tween(300)),
+                        exit = slideOutVertically(
+                            // [UX优化] 物理弹簧出场 (Spring Exit)
+                            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                            targetOffsetY = { it }
+                        ) + fadeOut(animationSpec = tween(200))
                     ) {
                        if (isBottomBarFloating) {
                             // 悬浮式底栏

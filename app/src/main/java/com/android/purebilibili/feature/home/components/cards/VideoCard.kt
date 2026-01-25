@@ -104,10 +104,10 @@ fun ElegantVideoCard(
     //  [交互优化] 按压缩放动画状态
     var isPressed by remember { mutableStateOf(false) }
     val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
+        targetValue = if (isPressed) 0.95f else 1f, // [UX优化] 更明显的缩放反馈 (0.96 -> 0.95)
         animationSpec = androidx.compose.animation.core.spring(
             dampingRatio = 0.6f,
-            stiffness = 400f
+            stiffness = 500f // [UX优化] 更快的响应速度 (400 -> 500)
         ),
         label = "cardScale"
     )
@@ -118,7 +118,11 @@ fun ElegantVideoCard(
             .scale(scale)  //  应用全局缩放
             //  [修复] 进场动画 - 使用 Unit 作为 key，只在首次挂载时播放
             // 原问题：使用 video.bvid 作为 key，分类切换时所有卡片重新触发动画（缩放收缩效果）
-            .animateEnter(index = index, key = Unit, animationEnabled = animationEnabled)
+            .animateEnter(
+                index = index, 
+                key = Unit, 
+                animationEnabled = animationEnabled && !CardPositionManager.isReturningFromDetail && !CardPositionManager.isSwitchingCategory
+            )
             //  [新增] 记录卡片位置
             .onGloballyPositioned { coordinates ->
                 cardBounds = coordinates.boundsInRoot()

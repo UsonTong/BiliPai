@@ -58,6 +58,8 @@ import kotlinx.coroutines.flow.map
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import androidx.compose.foundation.combinedClickable // [Added]
+import com.android.purebilibili.core.ui.animation.horizontalDragGesture
+import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 
 /**
  * Q弹点击效果
@@ -215,38 +217,34 @@ fun CategoryTabRow(
 
     //  [交互优化] 触觉反馈
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
-    val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current // [Added]
+    val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
 
-    // [Refactor] 回退到 Row 布局，增加间距以避免"露半字"的尴尬截断
+    // [Restored] Re-enable custom Damped Drag for better touch feel
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp) // Maintain height
-            .padding(horizontal = 4.dp), // Minimal horizontal padding
+            .height(48.dp)
+            .padding(horizontal = 4.dp), 
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // [New] Scroll state for the row
-        val scrollState = rememberScrollState()
-        
-        // [Refactor] 使用 BoxWithConstraints 动态计算宽度，实现"固定显示5个"
+        // [Refactor] 使用 BoxWithConstraints 动态计算宽度
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
         ) {
-            // 计算每个 Tab 的宽度：可用宽度 / 5
-            val tabWidth = maxWidth / 5
-            
-            // [限制] 可见标签数量为 5，指示器只能在这 5 个标签内移动
+            // 计算每个 Tab 的宽度
             val visibleTabCount = 5
+            val tabWidth = maxWidth / visibleTabCount
             
-            // [恢复] 阻尼拖拽状态
+            // [Restored] 阻尼拖拽状态
             val coroutineScope = rememberCoroutineScope()
+            // 使用 DampedDragAnimationState 管理内部状态
             val dampedDragState = rememberDampedDragAnimationState(
-                initialIndex = selectedIndex.coerceIn(0, visibleTabCount - 1), // 限制在可见范围
-                itemCount = visibleTabCount, // [关键] 只允许 5 个位置
+                initialIndex = selectedIndex.coerceIn(0, visibleTabCount - 1),
+                itemCount = visibleTabCount,
                 onIndexChanged = { index ->
-                    // 当拖拽结束并吸附到索引时，同步 Pager
+                    // 当 Tab 内部拖拽结束时，同步到 Pager
                     if (pagerState != null && pagerState.currentPage != index) {
                         coroutineScope.launch { pagerState.animateScrollToPage(index) }
                     }
@@ -254,48 +252,63 @@ fun CategoryTabRow(
                 }
             )
             
-            // [Sync] Pager -> DragState
+            // [Restored] Sync Pager -> DragState
+            // 当 Pager 被外部（滑动内容区）滚动时，同步更新 DragState
             val isPagerDragging by pagerState?.interactionSource?.collectIsDraggedAsState() ?: remember { mutableStateOf(false) }
             
+            // 监听 Pager 变化，更新 DampedState
+            // 关键：只有当 DampedState NOT Dragging 时才同步，避免冲突
             LaunchedEffect(pagerState?.currentPage, pagerState?.currentPageOffsetFraction, isPagerDragging) {
-                if (pagerState == null || dampedDragState.isDragging) return@LaunchedEffect
+                if (pagerState == null) return@LaunchedEffect
+                if (dampedDragState.isDragging) return@LaunchedEffect // 如果正在拖拽 Tab，忽略 Pager 同步
                 
-                // [限制] 只同步前 5 个标签的位置
+                // 限制索引在可见范围内
                 val page = pagerState.currentPage.coerceIn(0, visibleTabCount - 1)
+                // 计算 offset
                 val offset = if (pagerState.currentPage < visibleTabCount - 1) 
                     pagerState.currentPageOffsetFraction.coerceIn(-1f, 1f) 
                 else 
-                    pagerState.currentPageOffsetFraction.coerceAtMost(0f) // 最后一个标签不允许向右超出
+                    pagerState.currentPageOffsetFraction.coerceAtMost(0f)
+                
+                // 目标位置
+                val targetPosition = (page + offset).coerceIn(0f, (visibleTabCount - 1).toFloat())
                 
                 if (isPagerDragging) {
-                    dampedDragState.snapTo((page + offset).coerceIn(0f, (visibleTabCount - 1).toFloat()))
+                    // Pager 拖拽中 -> 实时 Snap
+                    dampedDragState.snapTo(targetPosition)
+                } else if (pagerState.isScrollInProgress) {
+                    // Pager 惯性滚动中 -> 实时 Snap (保持紧密同步)
+                     dampedDragState.snapTo(targetPosition)
                 } else {
-                    if (pagerState.isScrollInProgress) {
-                        dampedDragState.updateIndex(pagerState.targetPage.coerceIn(0, visibleTabCount - 1))
-                    }
+                    // Pager 静止 -> 确保对齐
+                    dampedDragState.updateIndex(page)
                 }
             }
 
-            // Source of truth: DampedDragState (限制在可见范围)
-            val currentPosition by remember(dampedDragState) {
+            // Source of truth: DampedDragState
+            val currentPositionState = remember(dampedDragState) {
                 derivedStateOf { dampedDragState.value }
             }
 
+            // Tabs Container
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .horizontalDragGesture(dampedDragState, with(LocalDensity.current) { tabWidth.toPx() })
+                    // [Restored] Apply gesture to the bar itself
+                    .horizontalDragGesture(
+                        dragState = dampedDragState, 
+                        itemWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
+                    )
             ) {
                  // 1. [Layer] Background Liquid Indicator
-                com.android.purebilibili.feature.home.components.SimpleLiquidIndicator(
-                    positionState = remember { derivedStateOf { currentPosition } },
+                 com.android.purebilibili.feature.home.components.SimpleLiquidIndicator(
+                    positionState = currentPositionState,
                     itemWidth = tabWidth,
                     isDragging = dampedDragState.isDragging || (pagerState?.isScrollInProgress == true),
                     modifier = Modifier.align(Alignment.CenterStart)
                  )
 
-                 
-                 // 2. [Layer] Content Tabs (仍然显示全部 categories 供点击)
+                 // 2. [Layer] Content Tabs
                 Row(
                    modifier = Modifier.height(48.dp),
                    verticalAlignment = Alignment.CenterVertically
@@ -310,12 +323,15 @@ fun CategoryTabRow(
                                 category = category,
                                 index = index,
                                 selectedIndex = selectedIndex,
-                                currentPositionState = remember { derivedStateOf { currentPosition } },
+                                currentPositionState = currentPositionState,
                                 primaryColor = primaryColor,
                                 unselectedColor = unselectedColor,
-                                onClick = { onCategorySelected(index); haptic(com.android.purebilibili.core.util.HapticType.LIGHT) },
+                                onClick = { 
+                                    onCategorySelected(index)
+                                    haptic(com.android.purebilibili.core.util.HapticType.LIGHT)
+                                    // Click usually triggers Pager scroll via onCategorySelected -> ViewModel -> HomeScreen LaunchedEffect
+                                },
                                 onDoubleTap = {
-                                    // [新增] 双击回顶
                                     if (selectedIndex == index) {
                                         scrollChannel?.trySend(Unit)
                                     }

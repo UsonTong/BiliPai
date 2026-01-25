@@ -403,12 +403,12 @@ fun HomeScreen(
                 val isScrollingDown = when {
                     firstVisibleItem > lastFirstVisibleItem -> true
                     firstVisibleItem < lastFirstVisibleItem -> false
-                    else -> scrollOffset > lastScrollOffset + 30 // 阈值30px
+                    else -> scrollOffset > lastScrollOffset + 200 // [UX优化] 增大迟滞阈值 (30 -> 200) 防止微小抖动
                 }
                 val isScrollingUp = when {
                     firstVisibleItem < lastFirstVisibleItem -> true
                     firstVisibleItem > lastFirstVisibleItem -> false
-                    else -> scrollOffset < lastScrollOffset - 30
+                    else -> scrollOffset < lastScrollOffset - 200 // [UX优化] 增大迟滞阈值
                 }
                 
                 if (isScrollingDown) setBottomBarVisible(false)
@@ -594,27 +594,6 @@ fun HomeScreen(
         viewModel.switchCategory(HomeCategory.RECOMMEND)
     }
     
-    //  记录滑动方向用于动画 (true = 向右/上一个分类, false = 向左/下一个分类)
-    var swipeDirection by remember { mutableStateOf(true) }
-    
-    //  [改进] 水平滑动过渡动画状态 - 使用动画实现平滑过渡
-    var targetDragOffset by remember { mutableFloatStateOf(0f) }  // 目标偏移量
-    var isDragging by remember { mutableStateOf(false) }  // 是否正在拖拽
-    
-    //  [优化] 使用 spring 动画实现平滑跟手效果
-    // 拖拽时使用较高刚度实现即时响应，释放时使用较低刚度实现柔和弹回
-    val animatedDragOffset by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = targetDragOffset,
-        animationSpec = androidx.compose.animation.core.spring(
-            dampingRatio = if (isDragging) 1f else 0.8f,    // 拖拽时无弹性，释放时轻微弹性
-            stiffness = if (isDragging) 1500f else 350f    // [优化] 拖拽响应更平滑(1500)，释放更柔和(350)
-        ),
-        label = "dragOffset"
-    )
-    
-    var isAnimatingTransition by remember { mutableStateOf(false) }  // 是否正在动画过渡
-    var transitionDirection by remember { mutableIntStateOf(0) }  // -1=左滑进入, 1=右滑进入, 0=无
-    
     //  [新增] 下拉回弹物理动画状态
     val targetPullOffset = if (pullRefreshState.distanceFraction > 0) {
         val fraction = pullRefreshState.distanceFraction.coerceAtMost(2f)
@@ -644,56 +623,6 @@ fun HomeScreen(
     
     // 指示器位置逻辑也移入 graphicsLayer
     
-    //  [修复] 特殊分类列表（有独立页面，不在首页显示内容）
-    
-    //  [修复] 特殊分类列表（有独立页面，不在首页显示内容）
-    val specialCategories = listOf(
-        HomeCategory.ANIME, 
-        HomeCategory.MOVIE, 
-        HomeCategory.GAME, 
-        HomeCategory.KNOWLEDGE, 
-        HomeCategory.TECH
-    )
-    
-    //  水平滑动切换分类的回调
-    val switchToPreviousCategory: () -> Unit = remember(displayedTabIndex) {
-        {
-            swipeDirection = true  // 右滑
-            //  [修复] 使用 ViewModel 中的标签页索引
-            if (displayedTabIndex > 0) {
-                val prevIndex = displayedTabIndex - 1
-                val prevCategory = HomeCategory.entries[prevIndex]
-                // Update label position and switch category content
-                viewModel.updateDisplayedTabIndex(prevIndex)
-                // [Modified] Special handling: Only Anime(13) and Movie(181) go to separate pages
-                when (prevCategory) {
-                    HomeCategory.ANIME -> onBangumiClick(1)
-                    HomeCategory.MOVIE -> onBangumiClick(2)
-                    else -> viewModel.switchCategory(prevCategory)
-                }
-            }
-        }
-    }
-    
-    val switchToNextCategory: () -> Unit = remember(displayedTabIndex) {
-        {
-            swipeDirection = false  // 左滑
-            //  [修复] 使用 ViewModel 中的标签页索引
-            if (displayedTabIndex < HomeCategory.entries.size - 1) {
-                val nextIndex = displayedTabIndex + 1
-                val nextCategory = HomeCategory.entries[nextIndex]
-                // Update label position and switch category content
-                viewModel.updateDisplayedTabIndex(nextIndex)
-                // [Modified] Special handling: Only Anime(13) and Movie(181) go to separate pages
-                when (nextCategory) {
-                    HomeCategory.ANIME -> onBangumiClick(1)
-                    HomeCategory.MOVIE -> onBangumiClick(2)
-                    else -> viewModel.switchCategory(nextCategory)
-                }
-            }
-        }
-    }
-
     val scaffoldContent: @Composable () -> Unit = {
     Scaffold(
         //  [新增] JSON 插件过滤提示
@@ -875,14 +804,15 @@ fun HomeScreen(
                 // val initialPage ... (Hoisted)
                 // val pagerState ... (Hoisted)
                 
-                //  联动 Pager 和 ViewModel category
-                LaunchedEffect(pagerState.currentPage) {
-                    val category = HomeCategory.entries[pagerState.currentPage]
-                    if (state.currentCategory != category) {
-                         //如果是 ANIME 或 MOVIE，可能需要特殊处理，但如果在Pager中，应当显示内容
-                         // 这里的逻辑：滑动总是切换分类显示。点击 TabHeader 的逻辑在 iOSHomeHeader 中处理
-                         viewModel.switchCategory(category)
-                    }
+                //  联动 Pager 和 ViewModel category: 仅在页面滑动停止（settled）后触发重逻辑切换
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.settledPage }
+                        .collect { page ->
+                            val category = HomeCategory.entries[page]
+                            if (state.currentCategory != category) {
+                                viewModel.switchCategory(category)
+                            }
+                        }
                 }
                 
                 //  当 ViewModel 外部改变 category 时 (例如点击 Tab), 滚动 Pager
@@ -901,10 +831,13 @@ fun HomeScreen(
                             state = pagerState,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .hazeSource(state = hazeState) // [Fix] Apply hazeSource to content
+                                .hazeSource(state = hazeState) // [Restored] Always apply hazeSource for consistent blur
                         ) { page ->
                         val category = HomeCategory.entries[page]
                         val categoryState = state.categoryStates[category] ?: com.android.purebilibili.feature.home.CategoryContent()
+                        
+                        //  [Fix] 独立的 PullToRefreshState，避免所有页面共享一个状态导致冲突
+                        val pullRefreshState = rememberPullToRefreshState()
                         
                         //  每个页面独立的 GridState
                         //  使用 saveable 记住滚动位置

@@ -439,8 +439,8 @@ private fun BottomBarContent(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = rowPadding)
-            .then(dragModifier),
+            .then(dragModifier)
+            .padding(horizontal = rowPadding),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -597,13 +597,16 @@ private fun BottomBarItem(
                         indication = null,
                         onClick = {
                             debounceClick(item) {
-                                isPending = true
+                                // 1. 立即响应点击 (Immediate Navigation)
+                                onClick()
                                 haptic(HapticType.LIGHT)
+                                
+                                // 2. 视觉反馈 (Visual Feedback)
+                                isPending = true
                                 kotlinx.coroutines.MainScope().launch {
-                                    kotlinx.coroutines.delay(100)
+                                    // 晃动动画与导航并行执行
                                     wobbleAngle = 15f
-                                    kotlinx.coroutines.delay(150)
-                                    onClick()
+                                    kotlinx.coroutines.delay(200) // 等待动画完成
                                     isPending = false
                                 }
                             }
@@ -619,13 +622,16 @@ private fun BottomBarItem(
                         indication = null
                     ) { 
                         debounceClick(item) {
-                            isPending = true
+                            // 1. 立即响应点击 (Immediate Navigation)
+                            onClick()
                             haptic(HapticType.LIGHT)
+                            
+                            // 2. 视觉反馈 (Visual Feedback)
+                            isPending = true
                             kotlinx.coroutines.MainScope().launch {
-                                kotlinx.coroutines.delay(100)
+                                // 晃动动画与导航并行执行
                                 wobbleAngle = 15f
-                                kotlinx.coroutines.delay(150)
-                                onClick()
+                                kotlinx.coroutines.delay(200) // 等待动画完成
                                 isPending = false
                             }
                         }

@@ -233,15 +233,15 @@ fun BottomControlBar(
                 Surface(
                     onClick = onToggleFullscreen,
                     color = if (!isFullscreen) MaterialTheme.colorScheme.primary.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.size(40.dp)
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
                             if (isFullscreen) CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft else CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
                             contentDescription = if (isFullscreen) "退出全屏" else "全屏",
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }

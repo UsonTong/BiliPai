@@ -4,6 +4,7 @@ package com.android.purebilibili.feature.home.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -93,7 +94,13 @@ fun iOSHomeHeader(
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
 
     //  [优化] 使用 blurIntensity 对应的背景透明度实现毛玻璃质感
-    val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) backgroundAlpha else 1f)
+    val targetHeaderColor = MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) backgroundAlpha else 1f)
+    // [UX优化] 平滑过渡顶部栏背景色 (Smooth Header Color Transition)
+    val animatedHeaderColor by animateColorAsState(
+        targetValue = targetHeaderColor,
+        animationSpec = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(300),
+        label = "headerColor"
+    )
     
     // Unified Header Container (Status Bar + Search Bar + Tabs)
     Column(
@@ -101,7 +108,7 @@ fun iOSHomeHeader(
             .fillMaxWidth()
             .zIndex(10f) // Ensure high z-index for the whole header
             .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
-            .background(headerColor)
+            .background(animatedHeaderColor)
             .padding(bottom = 8.dp) // Add some bottom padding for breathing room
     ) {
         // 1. Status Bar Placeholder

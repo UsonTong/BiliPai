@@ -277,6 +277,28 @@ fun VideoDetailScreen(
             //  [安全网] 确保状态栏被恢复（以防 handleBack 未被调用，如系统返回）
             restoreStatusBar()
 
+            // 🔧 [修复] 退出视频页时重置 PiP 参数，防止其他页面自动进入 PiP
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                activity?.let { act ->
+                    try {
+                        val pipParams = android.app.PictureInPictureParams.Builder()
+                            .setAutoEnterEnabled(false)  // 关闭自动进入 PiP
+                            .build()
+                        act.setPictureInPictureParams(pipParams)
+                        com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", 
+                            "🔧 退出页面：重置 PiP autoEnterEnabled=false")
+                    } catch (e: Exception) {
+                        com.android.purebilibili.core.util.Logger.e("VideoDetailScreen", 
+                            "重置 PiP 参数失败", e)
+                    }
+                }
+            }
+            
+            // 🔕 [修复] 退出视频页时取消媒体通知（防止状态不同步）
+            val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) 
+                as android.app.NotificationManager
+            notificationManager.cancel(1001)  // NOTIFICATION_ID from VideoPlayerState
+            
             // 恢复屏幕方向
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
@@ -402,7 +424,7 @@ fun VideoDetailScreen(
             val info = (uiState as PlayerUiState.Success).info
             val success = uiState as PlayerUiState.Success
             
-            // 初始化评论（传入 UP 主 mid 用于筛选）
+            // 初始化评论（传入 UP 主 mid 用于筛选）- 保持在主线程
             commentViewModel.init(info.aid, info.owner.mid)
             
             playerState.updateMediaMetadata(
@@ -417,21 +439,32 @@ fun VideoDetailScreen(
             }
             
             //  同步视频信息到小窗管理器（为小窗模式做准备）
-            com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", " miniPlayerManager=${if (miniPlayerManager != null) "存在" else "null"}, bvid=$bvid")
+            //  🚀 [性能优化] 将繁重的序列化和缓存操作移至后台线程，防止主线程卡顿
             if (miniPlayerManager != null) {
-                com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", " 调用 setVideoInfo: title=${info.title}")
-                miniPlayerManager.setVideoInfo(
-                    bvid = bvid,
-                    title = info.title,
-                    cover = info.pic,
-                    owner = info.owner.name,
-                    cid = info.cid,  //  传递 cid 用于弹幕加载
-                    externalPlayer = playerState.player,
-                    fromLeft = com.android.purebilibili.core.util.CardPositionManager.isCardOnLeft  //  传递入场方向
-                )
-                //  [新增] 缓存完整 UI 状态，用于从小窗返回时恢复
-                miniPlayerManager.cacheUiState(success)
-                com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", " setVideoInfo + cacheUiState 调用完成")
+                launch(Dispatchers.Default) {
+                    com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", "🔄 [Background] Preparing MiniPlayer info...")
+                    
+                    // 准备数据
+                    // 注意：这里访问外部变量需要确保线程安全，但在 Compose 中读取 State 是安全的
+                    // setVideoInfo 只是设置数据，通常是线程安全的或者内部做了处理
+                    // cacheUiState 涉及序列化，必须在后台
+                    
+                    withContext(Dispatchers.Main) {
+                        miniPlayerManager.setVideoInfo(
+                            bvid = bvid,
+                            title = info.title,
+                            cover = info.pic,
+                            owner = info.owner.name,
+                            cid = info.cid,  //  传递 cid 用于弹幕加载
+                            externalPlayer = playerState.player,
+                            fromLeft = com.android.purebilibili.core.util.CardPositionManager.isCardOnLeft  //  传递入场方向
+                        )
+                    }
+                    
+                    // 序列化缓存 (Heavy Operation)
+                    miniPlayerManager.cacheUiState(success)
+                    com.android.purebilibili.core.util.Logger.d("VideoDetailScreen", "✅ [Background] MiniPlayer info cached")
+                }
             } else {
                 android.util.Log.w("VideoDetailScreen", " miniPlayerManager 是 null!")
             }
