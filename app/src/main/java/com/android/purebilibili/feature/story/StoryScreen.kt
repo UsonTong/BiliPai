@@ -291,7 +291,7 @@ private fun StoryPageContent(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(100.dp),
-                tint = Color.Red
+                tint = com.android.purebilibili.core.theme.BiliPink
             )
         }
         
@@ -355,7 +355,7 @@ private fun RightActionBar(
                     .offset(y = 8.dp)
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFFF6699))
+                    .background(com.android.purebilibili.core.theme.BiliPink)
                     .clickable {
                         haptic(com.android.purebilibili.core.util.HapticType.MEDIUM)
                         // TODO: 关注 UP 主
@@ -378,7 +378,7 @@ private fun RightActionBar(
         ActionButton(
             icon = Icons.Filled.Favorite,
             count = formatCount(likeCount),
-            tint = if (isLiked) Color.Red else Color.White,
+            tint = if (isLiked) com.android.purebilibili.core.theme.BiliPink else Color.White,
             onClick = {
                 haptic(com.android.purebilibili.core.util.HapticType.LIGHT)
                 val newLiked = !isLiked
@@ -419,7 +419,7 @@ private fun RightActionBar(
         ActionButton(
             icon = Icons.Filled.Star,
             count = formatCount(favoriteCount),
-            tint = if (isFavorited) Color(0xFFFFC107) else Color.White,
+            tint = if (isFavorited) com.android.purebilibili.core.theme.iOSYellow else Color.White,
             onClick = {
                 haptic(com.android.purebilibili.core.util.HapticType.LIGHT)
                 isFavorited = !isFavorited
@@ -509,7 +509,7 @@ private fun BottomInfoBar(
                     Icon(
                         Icons.Filled.Verified,
                         contentDescription = null,
-                        tint = Color(0xFF00AEEC),
+                        tint = com.android.purebilibili.core.theme.iOSBlue,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -532,7 +532,7 @@ private fun BottomInfoBar(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "#$tagName",
-                        color = Color(0xFF00AEEC),
+                        color = com.android.purebilibili.core.theme.iOSBlue,
                         fontSize = 12.sp,
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))

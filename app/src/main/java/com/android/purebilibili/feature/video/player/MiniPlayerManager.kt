@@ -214,6 +214,10 @@ class MiniPlayerManager private constructor(private val context: Context) :
     //  [新增] 小窗入场方向：true=从左边进入，false=从右边进入
     var entryFromLeft by mutableStateOf(false)
         private set
+
+    // [新增] 保存当前通知实例，供 PlaybackService 使用
+    var currentNotification: android.app.Notification? = null
+        private set
     
     //  [新增] 缓存 UI 状态
     fun cacheUiState(state: PlayerUiState.Success) {
@@ -572,6 +576,16 @@ class MiniPlayerManager private constructor(private val context: Context) :
         // 清除通知
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
+
+        // 停止前台服务
+        try {
+            val serviceIntent = Intent(context, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_STOP_FOREGROUND
+            }
+            context.startService(serviceIntent)
+        } catch (e: Exception) {
+            Logger.e(TAG, "Failed to stop playback service", e)
+        }
     }
 
     /**
@@ -870,9 +884,20 @@ class MiniPlayerManager private constructor(private val context: Context) :
         )
 
         try {
-            notificationManager.notify(NOTIFICATION_ID, builder.build())
-        } catch (e: SecurityException) {
+            val notification = builder.build()
+            currentNotification = notification
+            
+            // 启动前台服务以提升通知优先级
+            if (isActive) {
+                val serviceIntent = Intent(context, PlaybackService::class.java).apply {
+                    action = PlaybackService.ACTION_START_FOREGROUND
+                }
+                androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
+            }
+            
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
             com.android.purebilibili.core.util.Logger.e(TAG, "Failed to show notification", e)
         }
-    }
+}
 }

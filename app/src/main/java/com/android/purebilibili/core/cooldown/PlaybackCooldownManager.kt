@@ -19,14 +19,14 @@ object PlaybackCooldownManager {
     
     // ========== 配置 ==========
     
-    /** 单视频冷却时长：30分钟 */
-    private const val SINGLE_VIDEO_COOLDOWN_MS = 30 * 60 * 1000L
+    /** 单视频冷却时长：5分钟 (原30分钟，放宽) */
+    private const val SINGLE_VIDEO_COOLDOWN_MS = 5 * 60 * 1000L
     
-    /** 全局冷却触发阈值：连续失败次数 */
-    private const val GLOBAL_FAILURE_THRESHOLD = 3
+    /** 全局冷却触发阈值：连续失败次数 (原3次，放宽到8次) */
+    private const val GLOBAL_FAILURE_THRESHOLD = 8
     
-    /** 全局冷却时长：5分钟 */
-    private const val GLOBAL_COOLDOWN_MS = 5 * 60 * 1000L
+    /** 全局冷却时长：2分钟 (原5分钟，放宽) */
+    private const val GLOBAL_COOLDOWN_MS = 2 * 60 * 1000L
     
     /** 最大缓存失败视频数量（避免内存泄漏） */
     private const val MAX_FAILED_VIDEOS_CACHE = 50

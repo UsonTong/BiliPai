@@ -551,12 +551,22 @@ fun VideoPlayerSection(
         
         //  [修复] 使用 LifecycleOwner 监听真正的 Activity 生命周期
         // DisposableEffect(Unit) 会在横竖屏切换时触发，导致 player 引用被清除
+        //  [关键修复] 添加 ON_RESUME 事件，确保从其他视频返回后重新绑定弹幕播放器
         val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-        DisposableEffect(lifecycleOwner) {
+        DisposableEffect(lifecycleOwner, playerState.player) {
             val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                if (event == androidx.lifecycle.Lifecycle.Event.ON_DESTROY) {
-                    android.util.Log.d("VideoPlayerSection", " ON_DESTROY: Clearing danmaku references")
-                    danmakuManager.clearViewReference()
+                when (event) {
+                    androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                        //  [关键修复] 返回页面时重新绑定弹幕播放器
+                        // 解决导航到其他视频后返回，弹幕暂停失效的问题
+                        android.util.Log.d("VideoPlayerSection", " ON_RESUME: Re-attaching danmaku player")
+                        danmakuManager.attachPlayer(playerState.player)
+                    }
+                    androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
+                        android.util.Log.d("VideoPlayerSection", " ON_DESTROY: Clearing danmaku references")
+                        danmakuManager.clearViewReference()
+                    }
+                    else -> {}
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
@@ -648,12 +658,8 @@ fun VideoPlayerSection(
     // 优先使用 PlayerUiState.Success 中的高清封面 (pic)，否则使用传入的 coverUrl
     var rawCoverUrl = if (uiState is PlayerUiState.Success) uiState.info.pic else coverUrl
     
-    // [Fix] 强制使用 HTTPS，避免 cleartext traffic 限制导致图片无法加载
-    val currentCoverUrl = if (rawCoverUrl.startsWith("http://")) {
-        rawCoverUrl.replace("http://", "https://")
-    } else {
-        rawCoverUrl
-    }
+    // [Fix] 使用 FormatUtils 统一处理 URL (支持无协议头 URL)
+    val currentCoverUrl = FormatUtils.fixImageUrl(rawCoverUrl)
     
     // [修改] 只要第一帧未渲染，就显示封面
     // 增加额外检查：如果 buffering 且位置 > 1000ms，说明是中途缓冲，不需要显示封面(保持最后一帧)
@@ -674,6 +680,9 @@ fun VideoPlayerSection(
         AsyncImage(
             model = coil.request.ImageRequest.Builder(LocalContext.current)
                 .data(currentCoverUrl)
+                // [关键] 尝试使用首页卡片的缓存 Key 作为占位，实现无缝过渡
+                // 假设首页卡片使用的是普通模式 ("n")
+                .placeholderMemoryCacheKey("cover_${bvid}_n")
                 .listener(
                     onStart = { android.util.Log.d("VideoPlayerCover", "🖼️ Image loading started: $currentCoverUrl") },
                     onSuccess = { _, _ -> android.util.Log.d("VideoPlayerCover", "🖼️ Image loaded successfully") },
@@ -743,36 +752,66 @@ fun VideoPlayerSection(
             }
         }
 
+        // 🖼️ [修复] 手势指示器 - Seek 模式使用缩略图预览
         if (isGestureVisible && !isInPipMode) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(120.dp)
-                    .background(Color.Black.copy(0.7f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (gestureMode == VideoGestureMode.Seek) {
-                        val durationSeconds = (playerState.player.duration / 1000).coerceAtLeast(1)
-                        val targetSeconds = (seekTargetTime / 1000).toInt()
-
-                        Text(
-                            text = "${FormatUtils.formatDuration(targetSeconds)} / ${FormatUtils.formatDuration(durationSeconds.toInt())}",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+            if (gestureMode == VideoGestureMode.Seek) {
+                // 🖼️ Seek 模式：显示带缩略图的预览气泡
+                Box(
+                    modifier = Modifier.align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (videoshotData != null && videoshotData.isValid) {
+                        // 🖼️ 有缩略图：显示完整预览
+                        com.android.purebilibili.feature.video.ui.components.SeekPreviewBubble(
+                            videoshotData = videoshotData,
+                            targetPositionMs = seekTargetTime,
+                            currentPositionMs = startPosition,
+                            durationMs = playerState.player.duration,
+                            offsetX = 80f,  // 居中偏移（气泡宽度的一半）
+                            containerWidth = 160f  // 与气泡宽度匹配
                         )
-
-                        val deltaSeconds = (seekTargetTime - startPosition) / 1000
-                        val sign = if (deltaSeconds > 0) "+" else ""
-                        if (deltaSeconds != 0L) {
-                            Text(
-                                text = "($sign${deltaSeconds}s)",
-                                color = if (deltaSeconds > 0) Color.Green else Color.Red,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
                     } else {
+                        // 无缩略图：使用原有样式
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(Color.Black.copy(0.7f), RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                val durationSeconds = (playerState.player.duration / 1000).coerceAtLeast(1)
+                                val targetSeconds = (seekTargetTime / 1000).toInt()
+
+                                Text(
+                                    text = "${FormatUtils.formatDuration(targetSeconds)} / ${FormatUtils.formatDuration(durationSeconds.toInt())}",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                val deltaSeconds = (seekTargetTime - startPosition) / 1000
+                                val sign = if (deltaSeconds > 0) "+" else ""
+                                if (deltaSeconds != 0L) {
+                                    Text(
+                                        text = "($sign${deltaSeconds}s)",
+                                        color = if (deltaSeconds > 0) com.android.purebilibili.core.theme.iOSGreen else com.android.purebilibili.core.theme.iOSRed,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 亮度/音量模式：保持原有样式
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(120.dp)
+                        .background(Color.Black.copy(0.7f), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = gestureIcon ?: CupertinoIcons.Default.SunMax,
                             contentDescription = null,
@@ -815,7 +854,7 @@ fun VideoPlayerSection(
             ) {
                 Text(
                     text = seekFeedbackText ?: "",
-                    color = if (seekFeedbackText?.startsWith("+") == true) Color.Green else Color.Red,
+                    color = if (seekFeedbackText?.startsWith("+") == true) com.android.purebilibili.core.theme.iOSGreen else com.android.purebilibili.core.theme.iOSRed,
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold
                     )

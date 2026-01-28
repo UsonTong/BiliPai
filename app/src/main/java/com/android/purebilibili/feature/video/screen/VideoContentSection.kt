@@ -107,7 +107,9 @@ fun VideoContentSection(
     // [新增] 点赞回调
     onCommentLike: (Long) -> Unit = {},
     // [新增] 已点赞的评论 ID 集合
-    likedComments: Set<Long> = emptySet()
+    likedComments: Set<Long> = emptySet(),
+    // 🔗 [新增] 共享元素过渡开关
+    transitionEnabled: Boolean = false
 ) {
     val tabs = listOf("简介", "评论 $replyCount")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -203,7 +205,8 @@ fun VideoContentSection(
                     onOpenCollectionSheet = { showCollectionSheet = true },
                     onDownloadClick = onDownloadClick,
                     onWatchLaterClick = onWatchLaterClick,
-                    contentPadding = PaddingValues(bottom = 84.dp) // 适配底部输入栏
+                    contentPadding = PaddingValues(bottom = 84.dp), // 适配底部输入栏
+                    transitionEnabled = transitionEnabled  // 🔗 传递共享元素开关
                 )
                 1 -> VideoCommentTab(
                     listState = commentListState,
@@ -273,7 +276,8 @@ private fun VideoIntroTab(
     onOpenCollectionSheet: () -> Unit,
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    transitionEnabled: Boolean = false  // 🔗 共享元素过渡开关
 ) {
     LazyColumn(
         state = listState,
@@ -321,6 +325,7 @@ private fun VideoIntroTab(
             RelatedVideoItem(
                 video = video,
                 isFollowed = video.owner.mid in followingMids,
+                transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
                 onClick = { onRelatedVideoClick(video.bvid) }
             )
         }

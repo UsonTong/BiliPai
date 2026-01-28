@@ -232,7 +232,7 @@ private fun DownloadTaskItem(
                                 Text("已暂停", color = Color.White, fontSize = 12.sp)
                             }
                             DownloadStatus.FAILED -> {
-                                Text("失败", color = Color.Red, fontSize = 12.sp)
+                                Text("失败", color = com.android.purebilibili.core.theme.iOSRed, fontSize = 12.sp)
                             }
                             else -> {}
                         }
@@ -297,7 +297,7 @@ private fun DownloadTaskItem(
                     fontSize = 11.sp,
                     color = when (task.status) {
                         DownloadStatus.COMPLETED -> Color(0xFF4CAF50)
-                        DownloadStatus.FAILED -> Color.Red
+                        DownloadStatus.FAILED -> com.android.purebilibili.core.theme.iOSRed
                         else -> MaterialTheme.colorScheme.primary
                     }
                 )

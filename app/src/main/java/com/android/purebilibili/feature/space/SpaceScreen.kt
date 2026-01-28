@@ -654,7 +654,7 @@ private fun SpaceHeader(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .size(20.dp)
-                            .background(Color.Red, CircleShape),
+                            .background(com.android.purebilibili.core.theme.iOSRed, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

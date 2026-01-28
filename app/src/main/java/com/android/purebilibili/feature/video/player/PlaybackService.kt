@@ -1,89 +1,74 @@
-// 文件路径: feature/video/player/PlaybackService.kt
 package com.android.purebilibili.feature.video.player
 
-import android.app.PendingIntent
+import android.app.Notification
+import android.app.Service
+import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.annotation.OptIn
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
-import com.android.purebilibili.core.network.NetworkModule
-import com.android.purebilibili.feature.video.VideoActivity
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.ServiceCompat
+import com.android.purebilibili.core.util.Logger
 
-// 这是一个标准的 MediaSessionService 实现
-// 目前你的 VideoPlayerState 主要使用本地 Player，这个 Service 暂时作为占位或未来后台播放升级使用
-class PlaybackService : MediaSessionService() {
-    private var mediaSession: MediaSession? = null
-    private var player: ExoPlayer? = null
+/**
+ * 这是一个 Foreground Service，用于将 MiniPlayerManager 构建的通知提升为前台通知。
+ * 这样可以确保在后台播放时，系统媒体控制中心（下拉通知栏）能够正常显示。
+ */
+class PlaybackService : Service() {
 
-    @OptIn(UnstableApi::class)
-    override fun onCreate() {
-        super.onCreate()
-
-        // 1. 初始化播放器 (与 Activity 中类似)
-        val headers = mapOf(
-            "Referer" to "https://www.bilibili.com",
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        )
-        val dataSourceFactory = OkHttpDataSource.Factory(NetworkModule.okHttpClient)
-            .setDefaultRequestProperties(headers)
-
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-            .build()
-
-        player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
-            .setAudioAttributes(audioAttributes, true)
-            .setHandleAudioBecomingNoisy(true)
-            .build()
-
-        // 2. 初始化 Session
-        // 注意：点击跳转 Activity，使用 MainActivity Deep Link
-        val intent = Intent(this, com.android.purebilibili.MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            // 注意：Service 不知道 bvid，这里只能跳转首页或不做处理
-            // 实际上这个 Service 当前主要作为 MediaSessionService 的空壳
-            // 真实的 Session 是在 VideoPlayerState 中创建的
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        mediaSession = MediaSession.Builder(this, player!!)
-            .setSessionActivity(pendingIntent)
-            .build()
+    companion object {
+        private const val TAG = "PlaybackService"
+        const val ACTION_START_FOREGROUND = "com.android.purebilibili.action.START_FOREGROUND"
+        const val ACTION_STOP_FOREGROUND = "com.android.purebilibili.action.STOP_FOREGROUND"
+        const val NOTIFICATION_ID = 1002 // 必须与 MiniPlayerManager 中的 ID 一致
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
-        return mediaSession
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        val player = player
-        if (player != null && !player.playWhenReady) {
-            stopSelf()
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action
+        Logger.d(TAG, "onStartCommand: action=$action")
+
+        when (action) {
+            ACTION_START_FOREGROUND -> {
+                try {
+                    // 获取 MiniPlayerManager 中构建好的通知
+                    val notification = MiniPlayerManager.getInstance(applicationContext).currentNotification
+                    if (notification != null) {
+                        Logger.d(TAG, "Starting foreground service with notification")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ServiceCompat.startForeground(
+                                this,
+                                NOTIFICATION_ID,
+                                notification,
+                                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                            )
+                        } else {
+                            startForeground(NOTIFICATION_ID, notification)
+                        }
+                    } else {
+                        Logger.w(TAG, "Notification is null, cannot start foreground")
+                        stopSelf()
+                    }
+                } catch (e: Exception) {
+                    Logger.e(TAG, "Failed to start foreground service", e)
+                    stopSelf()
+                }
+            }
+            ACTION_STOP_FOREGROUND -> {
+                Logger.d(TAG, "Stopping foreground service")
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }
+
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        mediaSession?.run {
-            player.release()
-            release()
-            mediaSession = null
-        }
         super.onDestroy()
+        Logger.d(TAG, "onDestroy")
     }
 }

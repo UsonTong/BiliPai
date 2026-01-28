@@ -438,7 +438,7 @@ fun MiniPlayerOverlay(
                             onClick = { miniPlayerManager.dismiss() },
                             modifier = Modifier.size(24.dp),
                             shape = CircleShape,
-                            color = Color.Red.copy(alpha = 0.7f)
+                            color = com.android.purebilibili.core.theme.iOSRed.copy(alpha = 0.7f)
                         ) {
                             Icon(
                                 imageVector = CupertinoIcons.Default.Xmark,

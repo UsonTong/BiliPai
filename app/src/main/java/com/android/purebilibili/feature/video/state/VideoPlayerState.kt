@@ -597,10 +597,23 @@ fun rememberVideoPlayerState(
         // 1️⃣ 首先绑定 player
         viewModel.attachPlayer(player)
         
-        // 2️⃣ 总是调用 loadVideo（loadVideo 内部会处理进度恢复）
-        // 不再使用 restoreFromCache，因为它不设置媒体源
-        com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " Calling loadVideo: $bvid")
-        viewModel.loadVideo(bvid)
+        // 2️⃣ 尝试从缓存恢复 UI 状态 (仅当复用播放器时)
+        // 解决从小窗/后台返回时的网络请求错误问题
+        var restored = false
+        if (reuseFromMiniPlayer) {
+            val cachedState = miniPlayerManager.consumeCachedUiState()
+            if (cachedState != null && cachedState.info.bvid == bvid) {
+                com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "♻️ Restoring cached UI state for $bvid")
+                viewModel.restoreUiState(cachedState)
+                restored = true
+            }
+        }
+        
+        // 3️⃣ 如果没有恢复成功，则调用 loadVideo
+        if (!restored) {
+            com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " Calling loadVideo: $bvid")
+            viewModel.loadVideo(bvid)
+        }
     }
 
     return holder

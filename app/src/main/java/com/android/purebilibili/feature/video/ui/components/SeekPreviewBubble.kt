@@ -45,7 +45,12 @@ fun SeekPreviewBubble(
     val halfBubble = bubbleWidthPx / 2
     
     // 限制气泡水平位置在容器内
-    val clampedOffsetX = offsetX.coerceIn(halfBubble, containerWidth - halfBubble)
+    // [修复] 当 containerWidth 小于 bubbleWidth 时（居中显示场景），跳过位置限制
+    val clampedOffsetX = if (containerWidth > bubbleWidthPx) {
+        offsetX.coerceIn(halfBubble, containerWidth - halfBubble)
+    } else {
+        halfBubble // 居中显示时，直接使用半宽偏移
+    }
     
     val context = LocalContext.current
     val previewInfo = remember(videoshotData, targetPositionMs, durationMs) {
@@ -99,7 +104,7 @@ fun SeekPreviewBubble(
                 },
                 error = {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("×", color = Color.Red, fontSize = 16.sp)
+                        Text("×", color = com.android.purebilibili.core.theme.iOSRed, fontSize = 16.sp)
                     }
                 }
             )

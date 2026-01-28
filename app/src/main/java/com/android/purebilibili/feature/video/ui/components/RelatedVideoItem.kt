@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.video.ui.components
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +30,8 @@ import com.android.purebilibili.core.theme.iosCard
 import com.android.purebilibili.core.theme.iOSSystemGray3
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSSystemGray
+import com.android.purebilibili.core.ui.LocalSharedTransitionScope
+import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 
 /**
  * Related Video Components
@@ -65,13 +69,24 @@ fun RelatedVideosHeader() {
 
 /**
  * Related Video Item (iOS style optimized)
+ * 
+ * @param video 相关视频数据
+ * @param isFollowed 是否已关注
+ * @param transitionEnabled 🔗 是否启用共享元素过渡动画
+ * @param onClick 点击回调
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RelatedVideoItem(
     video: RelatedVideo, 
     isFollowed: Boolean = false,
+    transitionEnabled: Boolean = false,  // 🔗 [新增] 共享元素过渡开关
     onClick: () -> Unit
 ) {
+    // 🔗 获取共享元素作用域 (用于过渡动画)
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    
     // Top-level container acts as the button/card
     // Using simple Row structure but with IOS touch physics manually or via wrapper
     // Since we want the whole row to be clickable and scale:
@@ -93,9 +108,31 @@ fun RelatedVideoItem(
                 .fillMaxWidth()
                 .padding(10.dp) // Internal padding
         ) {
+            // 🔗 [共享元素] 为封面添加共享元素标记
+            val coverModifier = if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                spring(
+                                    dampingRatio = 0.8f,   // 高阻尼，平滑过渡
+                                    stiffness = 200f       // 低刚度，与首页卡片一致
+                                )
+                            },
+                            clipInOverlayDuringTransition = OverlayClip(
+                                RoundedCornerShape(8.dp)  // 保持封面圆角
+                            )
+                        )
+                }
+            } else {
+                Modifier
+            }
+            
             // Video cover
             Box(
-                modifier = Modifier
+                modifier = coverModifier
                     .width(130.dp)  // Slightly smaller to give text breathing room
                     .height(82.dp)  // maintain 16:9ish ratio
                     .clip(RoundedCornerShape(8.dp))

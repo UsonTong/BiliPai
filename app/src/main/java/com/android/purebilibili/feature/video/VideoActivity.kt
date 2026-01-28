@@ -112,6 +112,9 @@ class VideoActivity : ComponentActivity() {
                     onNavigateToAudioMode = {
                         viewModel.setAudioMode(true)
                     },
+                    onVideoClick = { vid ->
+                        VideoActivity.start(this, vid)
+                    }
                     // We don't need to pass external player here as VideoDetailScreen manages it via VideoPlayerState
                     // But if we wanted to support smooth transition from notification (which might be playing), 
                     // VideoPlayerState's reuse logic handles checking MiniPlayerManager if applicable.

@@ -82,7 +82,8 @@ fun TabletVideoLayout(
     onCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
-    transitionEnabled: Boolean = false //  卡片过渡动画开关
+    transitionEnabled: Boolean = false, //  卡片过渡动画开关
+    onRelatedVideoClick: (String) -> Unit
 ) {
     val splitRatio = rememberSplitLayoutRatio()
     
@@ -201,7 +202,7 @@ fun TabletVideoLayout(
                         onUpClick = onUpClick,
                         onDownloadClick = { viewModel.openDownloadDialog() },
                         onWatchLaterClick = { viewModel.toggleWatchLater() },
-                        onRelatedVideoClick = { viewModel.loadVideo(it) },
+                        onRelatedVideoClick = onRelatedVideoClick,
                         modifier = Modifier
                             .fillMaxSize()
                             .weight(1f)
@@ -220,7 +221,8 @@ fun TabletVideoLayout(
                     commentViewModel = commentViewModel,
                     viewModel = viewModel,
                     playerState = playerState,
-                    onUpClick = onUpClick
+                    onUpClick = onUpClick,
+                    onRelatedVideoClick = onRelatedVideoClick
                 )
             }
         },
@@ -238,7 +240,8 @@ private fun TabletSecondaryContent(
     commentViewModel: VideoCommentViewModel,
     viewModel: PlayerViewModel,
     playerState: VideoPlayerState,
-    onUpClick: (Long) -> Unit
+    onUpClick: (Long) -> Unit,
+    onRelatedVideoClick: (String) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("评论 ${if (commentState.replyCount > 0) "(${commentState.replyCount})" else ""}", "相关推荐")
@@ -413,7 +416,7 @@ private fun TabletSecondaryContent(
                         RelatedVideoItem(
                             video = video,
                             isFollowed = video.owner.mid in success.followingMids,
-                            onClick = { viewModel.loadVideo(video.bvid) }
+                            onClick = { onRelatedVideoClick(video.bvid) }
                         )
                     }
                 }

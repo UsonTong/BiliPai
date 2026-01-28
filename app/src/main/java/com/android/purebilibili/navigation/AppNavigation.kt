@@ -102,7 +102,7 @@ fun AppNavigation(
     //  读取卡片过渡动画设置（在 Composable 作用域内）
     val context = androidx.compose.ui.platform.LocalContext.current
     val cardTransitionEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getCardTransitionEnabled(context).collectAsState(initial = false)
+        .getCardTransitionEnabled(context).collectAsState(initial = true)
 
     // 🔒 [防抖] 全局导航防抖机制 - 防止快速点击导致页面重复加载
     val lastNavigationTime = androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
@@ -373,6 +373,10 @@ fun AppNavigation(
             //  进入视频详情页时通知 MainActivity
             //  [修复] 使用 Activity 引用检测配置变化（如旋转）
             val activity = context as? android.app.Activity
+            
+            //  [修复] 追踪是否导航到音频模式
+            var isNavigatingToAudioMode by remember { mutableStateOf(false) }
+
             DisposableEffect(Unit) {
                 //  [修复] 重置导航标志，允许小窗在返回时显示
                 miniPlayerManager?.isNavigatingToVideo = false
@@ -385,7 +389,9 @@ fun AppNavigation(
                     // 配置变化（如旋转）不应触发小窗模式
                     //  [新增] 进入音频模式时也不应触发小窗（检查目标路由）
                     val currentDestination = navController.currentDestination?.route
-                    val isNavigatingToAudioMode = currentDestination == ScreenRoutes.AudioMode.route
+                    // Update: use the state variable as a more reliable indicator
+                    // val isNavigatingToAudioMode = currentDestination == ScreenRoutes.AudioMode.route
+                    
                     if (activity?.isChangingConfigurations != true && !isNavigatingToAudioMode) {
                         //  [修复] 只有在"应用内小窗"模式下才进入小窗
                         // 后台模式只播放音频，不显示小窗
@@ -400,6 +406,8 @@ fun AppNavigation(
                 VideoDetailScreen(
                     bvid = bvid,
                     coverUrl = coverUrl,
+                    // 传递 cid 参数
+                    cid = backStackEntry.arguments?.getLong("cid") ?: 0L,
                     onUpClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },  //  点击UP跳转空间
                     miniPlayerManager = miniPlayerManager,
                     isInPipMode = isInPipMode,
@@ -416,7 +424,12 @@ fun AppNavigation(
                     },
                     //  [新增] 导航到音频模式
                     onNavigateToAudioMode = { 
+                        isNavigatingToAudioMode = true
                         navController.navigate(ScreenRoutes.AudioMode.route)
+                    },
+                    // [修复] 传递视频点击导航回调
+                    onVideoClick = { vid -> 
+                        navigateToVideo(vid, 0L, "")
                     }
                 )
             }

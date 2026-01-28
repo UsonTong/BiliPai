@@ -116,17 +116,19 @@ import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
 @Composable
 fun VideoDetailScreen(
     bvid: String,
-    coverUrl: String,
+    cid: Long = 0L,
+    coverUrl: String = "",
+    startInFullscreen: Boolean = false,
+    transitionEnabled: Boolean = false,
     onBack: () -> Unit,
-    onUpClick: (Long) -> Unit = {},  //  点击 UP 主头像
-    onNavigateToAudioMode: () -> Unit = {}, //  [新增] 导航到音频模式
+    onNavigateToAudioMode: () -> Unit = {},
+    onVideoClick: (String) -> Unit,
+    onUpClick: (Long) -> Unit = {},
     miniPlayerManager: MiniPlayerManager? = null,
     isInPipMode: Boolean = false,
     isVisible: Boolean = true,
-    startInFullscreen: Boolean = false,  //  从小窗展开时自动进入全屏
-    transitionEnabled: Boolean = false,  //  卡片过渡动画开关
     viewModel: PlayerViewModel = viewModel(),
-    commentViewModel: VideoCommentViewModel = viewModel() // 
+    commentViewModel: VideoCommentViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -253,6 +255,9 @@ fun VideoDetailScreen(
     }
     
     // 退出重置亮度 +  屏幕常亮管理 + 状态栏恢复（作为安全网）
+    // 追踪是否正在导航到音频模式（防止取消通知）
+    var isNavigatingToAudioMode by remember { mutableStateOf(false) }
+
     DisposableEffect(Unit) {
         //  [沉浸式] 启用边到边显示，让内容延伸到状态栏下方
         if (window != null) {
@@ -268,7 +273,14 @@ fun VideoDetailScreen(
             
             // 🎯 [修复] 通知小窗管理器这是导航离开（用于控制后台音频）
             // 移动到这里以支持预测性返回手势（原来在 BackHandler 中会阻止手势动画）
-            miniPlayerManager?.markLeavingByNavigation()
+            // [修复] 如果是导航到音频模式，不要标记为离开（否则会触发自动暂停）
+            if (!isNavigatingToAudioMode) {
+                miniPlayerManager?.markLeavingByNavigation()
+            }
+            
+            // 🎯 [新增] 标记正在返回，跳过首页卡片入场动画
+            // 这确保共享元素返回动画正常播放（不被卡片入场动画干扰）
+            com.android.purebilibili.core.util.CardPositionManager.markReturning()
             
             val layoutParams = window?.attributes
             layoutParams?.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -298,9 +310,12 @@ fun VideoDetailScreen(
             }
             
             // 🔕 [修复] 退出视频页时取消媒体通知（防止状态不同步）
-            val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) 
-                as android.app.NotificationManager
-            notificationManager.cancel(1001)  // NOTIFICATION_ID from VideoPlayerState
+            //  [关键修复] 如果是导航到音频模式，则保留通知！
+            if (!isNavigatingToAudioMode) {
+                val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) 
+                    as android.app.NotificationManager
+                notificationManager.cancel(1001)  // NOTIFICATION_ID from VideoPlayerState
+            }
             
             // 恢复屏幕方向
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -536,8 +551,11 @@ fun VideoDetailScreen(
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 
-    // 🎯 [修复] 移除了原来的 "catch-all" BackHandler
-    // 这样可以启用 Android 14+ 的预测性返回手势动画
+    // 🎯 [移除] 以下 BackHandler 会阻止 Compose Navigation 的预测性返回手势动画
+    // CardPositionManager.markReturning() 已在 onDispose 中处理（见下方修改）
+    // BackHandler(enabled = !isFullscreenMode && !isPortraitFullscreen, onBack = handleBack)
+    
+    
     // 清理逻辑（markLeavingByNavigation、restoreStatusBar）已移至 DisposableEffect.onDispose
 
     // 沉浸式状态栏控制
@@ -604,6 +622,7 @@ fun VideoDetailScreen(
                 isAudioOnly = false, // 全屏模式只有视频
                 onAudioOnlyToggle = { 
                     viewModel.setAudioMode(true)
+                    isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
                     onNavigateToAudioMode()
                 },
                 
@@ -668,7 +687,10 @@ fun VideoDetailScreen(
                             }
                         },
                         onUpClick = onUpClick,
-                        onNavigateToAudioMode = onNavigateToAudioMode,
+                        onNavigateToAudioMode = {
+                            isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
+                            onNavigateToAudioMode()
+                        },
                         onToggleFullscreen = { toggleFullscreen() },  // 📺 平板全屏切换
                         isInPipMode = isPipMode,
                         onPipClick = handlePipClick,
@@ -679,7 +701,8 @@ fun VideoDetailScreen(
                         currentCodec = codecPreference,
                         onCodecChange = { viewModel.setVideoCodec(it) },
                         currentAudioQuality = audioQualityPreference,
-                        onAudioQualityChange = { viewModel.setAudioQuality(it) }
+                        onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                        onRelatedVideoClick = onVideoClick
                     )
                 } else {
                     // 📱 手机竖屏：原有单列布局
@@ -783,6 +806,7 @@ fun VideoDetailScreen(
                                 isAudioOnly = false,
                                 onAudioOnlyToggle = { 
                                     viewModel.setAudioMode(true)
+                                    isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
                                     onNavigateToAudioMode()
                                 },
                                 
@@ -919,7 +943,7 @@ fun VideoDetailScreen(
                                                 onTripleClick = { viewModel.doTripleAction() },
                                                 onPageSelect = { viewModel.switchPage(it) },
                                                 onUpClick = onUpClick,
-                                                onRelatedVideoClick = { vid -> viewModel.loadVideo(vid) },
+                                                onRelatedVideoClick = onVideoClick,
                                                 onSubReplyClick = { commentViewModel.openSubReply(it) },
                                                 onLoadMoreReplies = { commentViewModel.loadComments() },
                                                 onDownloadClick = { viewModel.openDownloadDialog() },
@@ -933,7 +957,9 @@ fun VideoDetailScreen(
                                                 onDanmakuSendClick = {
                                                     android.util.Log.d("VideoDetailScreen", "📤 Danmaku send clicked!")
                                                     viewModel.showDanmakuSendDialog()
-                                                }
+                                                },
+                                                // 🔗 [新增] 传递共享元素过渡开关
+                                                transitionEnabled = transitionEnabled
                                             )
                                         }
 
@@ -1122,12 +1148,21 @@ fun VideoDetailScreen(
             }
 
             // 使用 LifecycleOwner 在 Activity 销毁时清理引用
+            //  [关键修复] 添加 ON_RESUME 事件，确保从其他视频返回后重新绑定弹幕播放器
             val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner) {
+            DisposableEffect(lifecycleOwner, playerState.player) {
                 val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                    if (event == androidx.lifecycle.Lifecycle.Event.ON_DESTROY) {
-                        com.android.purebilibili.core.util.Logger.d("PortraitDanmaku", " ON_DESTROY: Clearing danmaku references")
-                        danmakuManager.clearViewReference()
+                    when (event) {
+                        androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                            //  [关键修复] 返回页面时重新绑定弹幕播放器
+                            com.android.purebilibili.core.util.Logger.d("PortraitDanmaku", " ON_RESUME: Re-attaching danmaku player")
+                            danmakuManager.attachPlayer(playerState.player)
+                        }
+                        androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
+                            com.android.purebilibili.core.util.Logger.d("PortraitDanmaku", " ON_DESTROY: Clearing danmaku references")
+                            danmakuManager.clearViewReference()
+                        }
+                        else -> {}
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
@@ -1276,36 +1311,44 @@ fun VideoDetailScreen(
                             scope.launch {
                                 if (isSwipeUp) {
                                     // 上滑 -> 下一个视频
-                                    verticalOffset.animateTo(
-                                        targetValue = -screenHeightPx,
-                                        animationSpec = androidx.compose.animation.core.tween(300)
-                                    )
-                                    viewModel.playNextRecommended()
-                                    // 从下方滑入
-                                    verticalOffset.snapTo(screenHeightPx)
-                                    verticalOffset.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                    val nextVid = viewModel.getNextVideoId()
+                                    if (nextVid != null) {
+                                        verticalOffset.animateTo(
+                                            targetValue = -screenHeightPx,
+                                            animationSpec = androidx.compose.animation.core.tween(300)
                                         )
-                                    )
+                                        onVideoClick(nextVid)
+                                        // 重置偏移量 (为了返回时状态正常)
+                                        verticalOffset.snapTo(0f)
+                                    } else {
+                                        // 回弹
+                                        verticalOffset.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = androidx.compose.animation.core.spring(
+                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                            )
+                                        )
+                                    }
                                 } else if (isSwipeDown) {
                                     // 下滑 -> 上一个视频
-                                    verticalOffset.animateTo(
-                                        targetValue = screenHeightPx,
-                                        animationSpec = androidx.compose.animation.core.tween(300)
-                                    )
-                                    viewModel.playPreviousRecommended()
-                                    // 从上方滑入
-                                    verticalOffset.snapTo(-screenHeightPx)
-                                    verticalOffset.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                    val prevVid = viewModel.getPreviousVideoId()
+                                    if (prevVid != null) {
+                                        verticalOffset.animateTo(
+                                            targetValue = screenHeightPx,
+                                            animationSpec = androidx.compose.animation.core.tween(300)
                                         )
-                                    )
+                                        onVideoClick(prevVid)
+                                        // 重置偏移量
+                                        verticalOffset.snapTo(0f)
+                                    } else {
+                                        // 回弹
+                                        verticalOffset.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = androidx.compose.animation.core.spring(
+                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                            )
+                                        )
+                                    }
                                 } else {
                                     // 回弹
                                     verticalOffset.animateTo(

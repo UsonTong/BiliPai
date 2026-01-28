@@ -280,6 +280,24 @@ class PlayerViewModel : ViewModel() {
     }
     
     /**
+     * 获取下一个视频的 BVID (用于导航)
+     * Side effect: Updates PlaylistManager index
+     */
+    fun getNextVideoId(): String? {
+        val nextItem = PlaylistManager.playNext()
+        return nextItem?.bvid
+    }
+
+    /**
+     * 获取上一个视频的 BVID (用于导航)
+     * Side effect: Updates PlaylistManager index
+     */
+    fun getPreviousVideoId(): String? {
+        val prevItem = PlaylistManager.playPrevious()
+        return prevItem?.bvid
+    }
+
+    /**
      *  [新增] 自动播放推荐视频（使用 PlaylistManager）
      */
     fun playNextRecommended() {
@@ -770,6 +788,33 @@ class PlayerViewModel : ViewModel() {
         }
     }
     
+    // ========== State Restoration ==========
+    
+    /**
+     * [修复] 从缓存恢复 UI 状态，避免在返回前台时重复请求网络导致错误
+     */
+    fun restoreUiState(state: PlayerUiState.Success) {
+        // 只有当前是非成功状态，或者虽然是成功状态但 BVID 不同时，才允许恢复
+        // 这样可以避免覆盖当前可能更新的状态
+        if (_uiState.value !is PlayerUiState.Success || 
+            (_uiState.value as? PlayerUiState.Success)?.info?.bvid != state.info.bvid) {
+            
+            Logger.d("PlayerVM", "♻️ Restoring UI state from cache: ${state.info.title}")
+            _uiState.value = state
+            currentBvid = state.info.bvid
+            currentCid = state.info.cid
+            
+            // 恢复播放器引用
+            // 注意：restoreUiState 通常伴随着 setVideoInfo/MiniPlayerManager 的恢复
+            // 这里主要负责 UI 数据的恢复
+            
+            // 重新绑定监听器等（如果是全新的 ViewModel）
+            // ...
+        } else {
+            Logger.d("PlayerVM", "♻️ Skipping state restoration, already has valid state")
+        }
+    }
+
     // ========== Interaction ==========
     
     fun toggleFollow() {

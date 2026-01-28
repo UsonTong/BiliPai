@@ -366,12 +366,23 @@ class DanmakuManager private constructor(
     
     /**
      * 绑定 ExoPlayer
+     * 
+     * [修复] 添加同一播放器实例检查，避免重复绑定
+     * 当从其他视频返回时，需要重新绑定当前播放器
      */
     fun attachPlayer(exoPlayer: ExoPlayer) {
-        Log.d(TAG, " attachPlayer")
+        Log.d(TAG, " attachPlayer: new=${exoPlayer.hashCode()}, old=${player?.hashCode()}")
         
-        // 移除旧监听器
-        playerListener?.let { player?.removeListener(it) }
+        // [修复] 移除"同一播放器跳过"的逻辑
+        // 原因：在 Navigation 切换视频后返回时，虽然 player 实例相同，
+        // 但 DanmakuManager 的 playerListener 可能已被其他页面的 player 替换。
+        // 必须重新绑定以确保当前 player 的事件能被正确处理。
+        
+        // 移除旧监听器（无论是同一播放器还是不同播放器）
+        playerListener?.let { 
+            player?.removeListener(it)
+            Log.d(TAG, " Removed old listener from player ${player?.hashCode()}")
+        }
         
         player = exoPlayer
         

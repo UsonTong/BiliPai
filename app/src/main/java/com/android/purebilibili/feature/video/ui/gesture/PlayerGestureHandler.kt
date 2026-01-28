@@ -188,6 +188,7 @@ fun rememberPlayerGestureState(): PlayerGestureState {
  * Gesture Indicator
  * 
  * Displays current gesture mode and value
+ * 🖼️ [修复] 添加 videoshotData 支持，在 Seek 模式下显示视频缩略图
  */
 @Composable
 fun GestureIndicator(
@@ -195,30 +196,94 @@ fun GestureIndicator(
     value: Float,
     seekTime: Long?,
     duration: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // 🖼️ [新增] 视频预览数据
+    videoshotData: com.android.purebilibili.data.model.response.VideoshotData? = null,
+    currentPositionMs: Long = 0L
 ) {
     if (mode == GestureMode.None) return
     
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Black.copy(alpha = 0.8f)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
-        ) {
-            when (mode) {
-                GestureMode.Brightness -> {
-                    //  亮度图标：CupertinoIcons SunMax (iOS SF Symbols 风格)
+    when (mode) {
+        GestureMode.Seek -> {
+            // 🖼️ Seek 模式：显示带缩略图的预览气泡（居中显示）
+            val targetPositionMs = seekTime ?: 0L
+            
+            Box(
+                modifier = modifier,
+                contentAlignment = Alignment.Center
+            ) {
+                if (videoshotData != null && videoshotData.isValid) {
+                    // 🖼️ 有缩略图：显示完整预览
+                    com.android.purebilibili.feature.video.ui.components.SeekPreviewBubble(
+                        videoshotData = videoshotData,
+                        targetPositionMs = targetPositionMs,
+                        currentPositionMs = currentPositionMs,
+                        durationMs = duration,
+                        offsetX = 80f,  // 居中偏移（气泡宽度的一半）
+                        containerWidth = 160f  // 与气泡宽度匹配
+                    )
+                } else {
+                    // 无缩略图：显示简化版
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Black.copy(alpha = 0.8f)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Text(
+                                "${FormatUtils.formatDuration((targetPositionMs / 1000).toInt())} / ${FormatUtils.formatDuration((duration / 1000).toInt())}",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            // 显示时间差
+                            val deltaSeconds = (targetPositionMs - currentPositionMs) / 1000
+                            if (deltaSeconds != 0L) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (deltaSeconds > 0) "+${deltaSeconds}s" else "${deltaSeconds}s",
+                                    color = if (deltaSeconds > 0) Color(0xFF81C784) else Color(0xFFE57373),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        GestureMode.Brightness -> {
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.8f)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    // 亮度图标：CupertinoIcons SunMax (iOS SF Symbols 风格)
                     Icon(CupertinoIcons.Default.SunMax, null, tint = Color.White, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(8.dp))
                     Text("亮度", color = Color.White, fontSize = 14.sp)
                     Spacer(Modifier.height(4.dp))
                     Text("${(value * 100).toInt()}%", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
-                GestureMode.Volume -> {
-                    //  动态音量图标：3 级
+            }
+        }
+        GestureMode.Volume -> {
+            Surface(
+                modifier = modifier,
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.8f)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    // 动态音量图标：3 级
                     val volumeIcon = when {
                         value < 0.01f -> CupertinoIcons.Default.SpeakerSlash
                         value < 0.5f -> CupertinoIcons.Default.Speaker
@@ -230,17 +295,9 @@ fun GestureIndicator(
                     Spacer(Modifier.height(4.dp))
                     Text("${(value * 100).toInt()}%", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
-                GestureMode.Seek -> {
-                    Text(
-                        "${FormatUtils.formatDuration(((seekTime ?: 0) / 1000).toInt())} / ${FormatUtils.formatDuration((duration / 1000).toInt())}",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                else -> {}
             }
         }
+        else -> {}
     }
 }
 
