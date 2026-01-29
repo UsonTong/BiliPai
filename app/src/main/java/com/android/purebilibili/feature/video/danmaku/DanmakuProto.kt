@@ -33,6 +33,9 @@ object DanmakuProto {
     /**
      * 弹幕元素数据类
      */
+    /**
+     * 弹幕元素数据类
+     */
     data class DanmakuElem(
         val id: Long = 0,
         val progress: Int = 0,      // 时间戳 (毫秒)
@@ -43,6 +46,205 @@ object DanmakuProto {
         val weight: Int = 0,        // 权重 (AI过滤)
         val pool: Int = 0           // 弹幕池: 0普通, 1字幕, 2特殊
     )
+
+    /**
+     * 弹幕元数据响应 (x/v2/dm/web/view)
+     */
+    data class DmWebViewReply(
+        val state: Int = 0,
+        val textSide: String = "",
+        val dmSge: DmSegConfig? = null,
+        val flag: DanmakuFlagConfig? = null,
+        val specialDms: List<String> = emptyList(), // 高级弹幕/特殊弹幕 URL 列表
+        val checkBox: Boolean = true,
+        val count: Long = 0,
+        val commandDms: List<CommandDm> = emptyList(), // 互动弹幕指令
+        val dmSetting: DmSetting? = null
+    )
+
+    data class DmSegConfig(
+        val pageSize: Long = 0,
+        val total: Long = 0
+    )
+
+    data class DanmakuFlagConfig(
+        val recFlag: Int = 0,
+        val recText: String = "",
+        val recSwitch: Int = 0
+    )
+
+    /**
+     * 互动弹幕指令
+     */
+    data class CommandDm(
+        val id: Long = 0,
+        val oid: Long = 0,
+        val mid: String = "", // midHash
+        val command: String = "",
+        val content: String = "",
+        val progress: Int = 0,
+        val ctime: String = "",
+        val mtime: String = "",
+        val extra: String = "",
+        val idStr: String = ""
+    )
+
+    data class DmSetting(
+        val dmSwitch: Boolean = true,
+        val aiSwitch: Boolean = true,
+        val aiLevel: Int = 0,
+        val blocktop: Boolean = false,
+        val blockscroll: Boolean = false,
+        val blockbottom: Boolean = false,
+        val blockfunction: Boolean = false,
+        val blockspecial: Boolean = false,
+        val preventeshading: Boolean = false,
+        val dmask: Boolean = false,
+        val opacity: Float = 1.0f,
+        val dmarea: Int = 0,
+        val speedplus: Float = 1.0f,
+        val fontsize: Float = 1.0f,
+        val screensync: Boolean = false,
+        val speedsync: Boolean = false,
+        val fontfamily: String = "",
+        val bold: Boolean = false,
+        val fontborder: Int = 0,
+        val drawType: String = ""
+    )
+    
+    /**
+     * 解析 DmWebViewReply 消息
+     */
+    fun parseWebViewReply(data: ByteArray): DmWebViewReply {
+        if (data.isEmpty()) return DmWebViewReply()
+        
+        var state = 0
+        var textSide = ""
+        var dmSge: DmSegConfig? = null
+        var flag: DanmakuFlagConfig? = null
+        val specialDms = mutableListOf<String>()
+        var checkBox = true
+        var count = 0L
+        val commandDms = mutableListOf<CommandDm>()
+        var dmSetting: DmSetting? = null
+
+        try {
+            val input = ProtoInput(data)
+            while (!input.isAtEnd()) {
+                val tag = input.readTag()
+                val fieldNumber = tag ushr 3
+                val wireType = tag and 0x07
+
+                when (fieldNumber) {
+                    1 -> state = input.readVarint().toInt()
+                    2 -> textSide = input.readString()
+                    3 -> { // dmSge
+                         val bytes = input.readBytes()
+                         dmSge = parseDmSegConfig(bytes)
+                    }
+                    4 -> { // flag
+                        val bytes = input.readBytes()
+                        flag = parseDanmakuFlagConfig(bytes)
+                    }
+                    5 -> specialDms.add(input.readString())
+                    6 -> checkBox = input.readVarint() != 0L
+                    7 -> count = input.readVarint()
+                    8 -> { // commandDms
+                        val bytes = input.readBytes()
+                        parseCommandDm(bytes)?.let { commandDms.add(it) }
+                    }
+                    9 -> { // dmSetting
+                        val bytes = input.readBytes()
+                        dmSetting = parseDmSetting(bytes)
+                    }
+                    else -> input.skipField(wireType)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, " Parse DmWebViewReply error: \${e.message}", e)
+        }
+
+        return DmWebViewReply(state, textSide, dmSge, flag, specialDms, checkBox, count, commandDms, dmSetting)
+    }
+
+    private fun parseDmSegConfig(data: ByteArray): DmSegConfig {
+        var pageSize = 0L
+        var total = 0L
+        try {
+            val input = ProtoInput(data)
+            while (!input.isAtEnd()) {
+                val tag = input.readTag()
+                val fieldNumber = tag ushr 3
+                val wireType = tag and 0x07
+                when(fieldNumber) {
+                    1 -> pageSize = input.readVarint()
+                    2 -> total = input.readVarint()
+                    else -> input.skipField(wireType)
+                }
+            }
+        } catch (e: Exception) {}
+        return DmSegConfig(pageSize, total)
+    }
+
+    private fun parseDanmakuFlagConfig(data: ByteArray): DanmakuFlagConfig {
+        var recFlag = 0
+        var recText = ""
+        var recSwitch = 0
+        try {
+            val input = ProtoInput(data)
+            while (!input.isAtEnd()) {
+                val tag = input.readTag()
+                val wireType = tag and 0x07
+                when(tag ushr 3) {
+                    1 -> recFlag = input.readVarint().toInt()
+                    2 -> recText = input.readString()
+                    3 -> recSwitch = input.readVarint().toInt()
+                    else -> input.skipField(wireType)
+                }
+            }
+        } catch (e: Exception) {}
+        return DanmakuFlagConfig(recFlag, recText, recSwitch)
+    }
+
+    private fun parseCommandDm(data: ByteArray): CommandDm? {
+        if (data.isEmpty()) return null
+        var id = 0L
+        var oid = 0L
+        var mid = ""
+        var command = ""
+        var content = ""
+        var progress = 0
+        var ctime = ""
+        var mtime = ""
+        var extra = ""
+        var idStr = ""
+        try {
+           val input = ProtoInput(data)
+           while(!input.isAtEnd()) {
+               val tag = input.readTag()
+               val wireType = tag and 0x07
+               when(tag ushr 3) {
+                   1 -> id = input.readVarint()
+                   2 -> oid = input.readVarint()
+                   3 -> mid = input.readString()
+                   4 -> command = input.readString()
+                   5 -> content = input.readString()
+                   6 -> progress = input.readVarint().toInt()
+                   7 -> ctime = input.readString()
+                   8 -> mtime = input.readString()
+                   9 -> extra = input.readString()
+                   10 -> idStr = input.readString()
+                   else -> input.skipField(wireType)
+               }
+           }
+        } catch(e: Exception) { return null }
+        return CommandDm(id, oid, mid, command, content, progress, ctime, mtime, extra, idStr)
+    }
+
+    private fun parseDmSetting(data: ByteArray): DmSetting {
+        // 简化解析，暂不实现所有字段，后续按需添加
+        return DmSetting()
+    }
     
     /**
      * 解析 DmSegMobileReply 消息

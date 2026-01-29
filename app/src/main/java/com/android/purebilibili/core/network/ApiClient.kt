@@ -297,6 +297,15 @@ interface BilibiliApi {
         @Query("segment_index") segmentIndex: Int  // 分段索引 (从 1 开始)
     ): ResponseBody
     
+    // [新增] 弹幕元数据 API (x/v2/dm/web/view)
+    // 返回 DmWebViewReply Protobuf 数据，包含高级弹幕、代码弹幕 URL、互动指令等
+    @GET("https://api.bilibili.com/x/v2/dm/web/view")
+    suspend fun getDanmakuView(
+        @Query("type") type: Int = 1,
+        @Query("oid") oid: Long,
+        @Query("pid") pid: Long
+    ): ResponseBody
+    
     // [新增] 发送弹幕
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/v2/dm/post")

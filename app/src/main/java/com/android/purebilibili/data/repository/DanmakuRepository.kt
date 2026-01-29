@@ -142,6 +142,27 @@ object DanmakuRepository {
     }
     
     /**
+     * 获取弹幕元数据 (High-Energy, Command Dms, etc.)
+     */
+    suspend fun getDanmakuView(cid: Long, aid: Long): com.android.purebilibili.feature.video.danmaku.DanmakuProto.DmWebViewReply? = withContext(Dispatchers.IO) {
+        try {
+             com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "🎯 getDanmakuView: cid=$cid, aid=$aid")
+             val responseBody = api.getDanmakuView(oid = cid, pid = aid)
+             val bytes = responseBody.bytes()
+             if (bytes.isNotEmpty()) {
+                 val result = com.android.purebilibili.feature.video.danmaku.DanmakuParser.parseWebViewReply(bytes)
+                 com.android.purebilibili.core.util.Logger.d("DanmakuRepo", " Metadata parsed: count=${result.count}, special=${result.specialDms.size}, command=${result.commandDms.size}")
+                 result
+             } else {
+                 null
+             }
+        } catch (e: Exception) {
+             android.util.Log.e("DanmakuRepo", " getDanmakuView failed: ${e.message}")
+             null
+        }
+    }
+    
+    /**
      * 获取 Protobuf 格式弹幕 (分段加载)
      * 
      * @param cid 视频 cid

@@ -101,6 +101,8 @@ class VideoPlaybackUseCase(
         defaultQuality: Int = 64,
         audioQualityPreference: Int = -1,
         videoCodecPreference: String = "hev1",
+
+        playWhenReady: Boolean = true,  // [Added] Control auto-play
         onProgress: (String) -> Unit = {}
     ): VideoLoadResult {
         try {
@@ -351,7 +353,7 @@ class VideoPlaybackUseCase(
      * Play video with DASH format
      */
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    fun playDashVideo(videoUrl: String, audioUrl: String?, seekTo: Long = 0L) {
+    fun playDashVideo(videoUrl: String, audioUrl: String?, seekTo: Long = 0L, playWhenReady: Boolean = true) {
         val player = exoPlayer ?: return
         player.volume = 1.0f
         
@@ -378,13 +380,13 @@ class VideoPlaybackUseCase(
         if (seekTo > 0) {
             player.seekTo(seekTo)
         }
-        player.playWhenReady = true
+        player.playWhenReady = playWhenReady
     }
     
     /**
      * Play simple video URL
      */
-    fun playVideo(url: String, seekTo: Long = 0L) {
+    fun playVideo(url: String, seekTo: Long = 0L, playWhenReady: Boolean = true) {
         val player = exoPlayer ?: return
         player.volume = 1.0f
         
@@ -394,7 +396,7 @@ class VideoPlaybackUseCase(
         if (seekTo > 0) {
             player.seekTo(seekTo)
         }
-        player.playWhenReady = true
+        player.playWhenReady = playWhenReady
     }
     
     /**
@@ -443,7 +445,7 @@ class VideoPlaybackUseCase(
              
             val audioUrl = dashAudio?.getValidUrl()
             if (videoUrl.isNotEmpty()) {
-                playDashVideo(videoUrl, audioUrl, currentPos)
+                playDashVideo(videoUrl, audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
                 return QualitySwitchResult(
                     videoUrl = videoUrl,
                     audioUrl = audioUrl,
@@ -499,9 +501,9 @@ class VideoPlaybackUseCase(
         }
         
         if (dashVideo != null) {
-            playDashVideo(videoUrl, audioUrl, currentPos)
+            playDashVideo(videoUrl, audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
         } else {
-            playVideo(videoUrl, currentPos)
+            playVideo(videoUrl, currentPos, playWhenReady = true)
         }
         
         val actualQuality = dashVideo?.id ?: playUrlData.quality ?: qualityId

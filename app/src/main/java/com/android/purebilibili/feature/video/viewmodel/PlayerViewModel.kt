@@ -308,8 +308,8 @@ class PlayerViewModel : ViewModel() {
             viewModelScope.launch {
                 toast("正在播放: ${nextItem.title}")
             }
-            // 加载新视频
-            loadVideo(nextItem.bvid)
+            // 加载新视频 (Auto-play next always forces true)
+            loadVideo(nextItem.bvid, autoPlay = true)
         } else {
             // 根据播放模式显示不同提示
             val mode = PlaylistManager.playMode.value
@@ -366,7 +366,7 @@ class PlayerViewModel : ViewModel() {
                 viewModelScope.launch {
                     toast("播放合集下一集: ${nextEpisode.title}")
                 }
-                loadVideo(nextEpisode.bvid)
+                loadVideo(nextEpisode.bvid, autoPlay = true)
                 return
             }
             // 合集已播放完成
@@ -390,7 +390,7 @@ class PlayerViewModel : ViewModel() {
                 toast("正在播放: ${prevItem.title}")
             }
             // 加载新视频
-            loadVideo(prevItem.bvid)
+            loadVideo(prevItem.bvid, autoPlay = true)
         } else {
             toast("没有上一个视频")
         }
@@ -408,7 +408,7 @@ class PlayerViewModel : ViewModel() {
 
         Logger.d("PlayerVM", "🔄 Reloading video (forced)...")
         // 设置标志位，确保 loadVideo 不会跳过
-        loadVideo(bvid, force = true)
+        loadVideo(bvid, force = true, autoPlay = true)
         
         // 如果之前有进度，尝试恢复
         // 注意：loadVideo 是异步的，这里只是一个兜底，主要还是靠 loadVideo 内部读取 cachedPosition
@@ -423,7 +423,8 @@ class PlayerViewModel : ViewModel() {
     }
     
     // [修复] 添加 aid 参数支持，用于移动端推荐流（可能只返回 aid）
-    fun loadVideo(bvid: String, aid: Long = 0, force: Boolean = false) {
+    // [Added] autoPlay override: null = use settings, true/false = force
+    fun loadVideo(bvid: String, aid: Long = 0, force: Boolean = false, autoPlay: Boolean? = null) {
         if (bvid.isBlank()) return
         
         //  防止重复加载：只有在正在加载同一视频时才跳过
@@ -486,6 +487,14 @@ class PlayerViewModel : ViewModel() {
                 val videoCodecPreference = appContext?.let { 
                     com.android.purebilibili.core.store.SettingsManager.getVideoCodecSync(it) 
                 } ?: "hev1"
+                
+                // [Added] Determine auto-play behavior
+                // If autoPlay arg is present, use it. Otherwise reset to "Click to Play" setting
+                val shouldAutoPlay = autoPlay ?: appContext?.let {
+                    com.android.purebilibili.core.store.SettingsManager.getClickToPlaySync(it)
+                } ?: true
+                
+                Logger.d("PlayerViewModel", "⏯️ AutoPlay Decision: arg=$autoPlay, setting=${shouldAutoPlay}, Final=$shouldAutoPlay")
             
             // 📉 [省流量] 省流量模式逻辑：
             // - ALWAYS: 任何网络都限制 480P
@@ -515,8 +524,9 @@ class PlayerViewModel : ViewModel() {
                         bvid, 
                         aid, 
                         finalQuality, 
-                        audioQualityPreference, 
-                        videoCodecPreference
+                        audioQualityPreference,
+                        videoCodecPreference,
+                        shouldAutoPlay  // Pass to UseCase (even if unused there)
                     )
                 }
 
@@ -527,9 +537,9 @@ class PlayerViewModel : ViewModel() {
                         // Play video
                         if (!shouldSkipPlayerPrepare) {
                             if (result.audioUrl != null) {
-                                playbackUseCase.playDashVideo(result.playUrl, result.audioUrl, cachedPosition)
+                                playbackUseCase.playDashVideo(result.playUrl, result.audioUrl, cachedPosition, playWhenReady = shouldAutoPlay)
                             } else {
-                                playbackUseCase.playVideo(result.playUrl, cachedPosition)
+                                playbackUseCase.playVideo(result.playUrl, cachedPosition, playWhenReady = shouldAutoPlay)
                             }
                         } else {
                              // 🎯 Skip preparing player, but ensure it's playing if needed
@@ -745,7 +755,7 @@ class PlayerViewModel : ViewModel() {
         
         PlayUrlCache.invalidate(bvid, currentCid)
         currentBvid = ""
-        loadVideo(bvid)
+        loadVideo(bvid, autoPlay = true) // Retry should auto-play
     }
     
     /**

@@ -13,6 +13,12 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.scaleIn
@@ -432,6 +438,7 @@ fun VideoDetailScreen(
                 cover = info?.info?.pic ?: "",
                 owner = info?.info?.owner?.name ?: "",
                 cid = info?.info?.cid ?: 0L,
+                aid = info?.info?.aid ?: 0L,
                 externalPlayer = playerState.player
             )
 
@@ -493,6 +500,7 @@ fun VideoDetailScreen(
                             cover = info.pic,
                             owner = info.owner.name,
                             cid = info.cid,  //  传递 cid 用于弹幕加载
+                            aid = info.aid,
                             externalPlayer = playerState.player,
                             fromLeft = com.android.purebilibili.core.util.CardPositionManager.isCardOnLeft  //  传递入场方向
                         )
@@ -725,18 +733,66 @@ fun VideoDetailScreen(
                     )
                 } else {
                     // 📱 手机竖屏：原有单列布局
-                Column(modifier = Modifier.fillMaxSize()) {
-                    //  [沉浸式] 获取状态栏高度
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val screenWidthDp = configuration.screenWidthDp.dp
                     val videoHeight = screenWidthDp * 9f / 16f  // 16:9 比例
-                    
+
                     //  读取上滑隐藏播放器设置
                     val swipeHidePlayerEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getSwipeHidePlayerEnabled(context).collectAsState(initial = false)
                     
-                    //  播放器隐藏状态（用于动画） - [已禁用] 始终显示
-                    val animatedPlayerHeight = videoHeight + statusBarHeight
+                    // 📏 [Collapsing Player] 上滑隐藏播放器逻辑
+                    val videoHeightPx = with(LocalDensity.current) { videoHeight.toPx() }
+                    var playerHeightOffsetPx by remember { mutableFloatStateOf(0f) }
+                    
+                    // 当设置关闭时，重置高度
+                    LaunchedEffect(swipeHidePlayerEnabled) {
+                        if (!swipeHidePlayerEnabled) playerHeightOffsetPx = 0f
+                    }
+
+                    val nestedScrollConnection = remember(swipeHidePlayerEnabled) {
+                        object : NestedScrollConnection {
+                            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                if (!swipeHidePlayerEnabled) return Offset.Zero
+                                
+                                val delta = available.y
+                                // 上滑 (delta < 0)：隐藏播放器，消费滚动
+                                if (delta < 0) {
+                                    val newOffset = playerHeightOffsetPx + delta
+                                    val coercedOffset = newOffset.coerceIn(-videoHeightPx, 0f)
+                                    val consumed = coercedOffset - playerHeightOffsetPx
+                                    playerHeightOffsetPx = coercedOffset
+                                    return Offset(0f, consumed)
+                                }
+                                return Offset.Zero
+                            }
+
+                            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                                if (!swipeHidePlayerEnabled) return Offset.Zero
+                                
+                                val delta = available.y
+                                // 下滑 (delta > 0)：显示播放器 (且 available > 0 说明内容已滚到顶)
+                                if (delta > 0) {
+                                     val newOffset = playerHeightOffsetPx + delta
+                                     val coercedOffset = newOffset.coerceIn(-videoHeightPx, 0f)
+                                     val consumedDelta = coercedOffset - playerHeightOffsetPx
+                                     playerHeightOffsetPx = coercedOffset
+                                     return Offset(0f, consumedDelta)
+                                }
+                                return Offset.Zero
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(nestedScrollConnection)
+                    ) {
+                    
+                    //  播放器隐藏状态（用于动画）
+                    //  当 playerHeightOffsetPx 为 -videoHeightPx 时，高度只剩 statusBarHeight
+                    val animatedPlayerHeight = videoHeight + statusBarHeight + with(LocalDensity.current) { playerHeightOffsetPx.toDp() }
                     
                     //  注意：移除了状态栏黑色 Spacer
                     // 播放器将延伸到状态栏下方，共享元素过渡更流畅

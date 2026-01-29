@@ -17,6 +17,10 @@ import java.util.regex.Pattern
 
 /**
  * 创建支持表情的 BitmapDanmaku
+ * 
+ * 修复记录:
+ * - 添加 Bitmap 最大尺寸限制 (2048px) 防止 OOM
+ * - 添加 try-catch 异常处理
  */
 fun createBitmapDanmaku(
     context: Context,
@@ -52,15 +56,32 @@ fun createBitmapDanmaku(
         }
     }
     
-    // 3. 创建 Bitmap
-    val widthInt = totalWidth.toInt().coerceAtLeast(1)
-    val heightInt = (contentHeight * 1.2f).toInt().coerceAtLeast(1) // 留点余量
+    // 3. 创建 Bitmap (添加尺寸限制防止 OOM)
+    val maxWidth = 2048 // 最大宽度限制
+    val widthInt = totalWidth.toInt().coerceIn(1, maxWidth)
+    val heightInt = (contentHeight * 1.2f).toInt().coerceIn(1, 256) // 高度也加限制
     
-    val bitmap = Bitmap.createBitmap(widthInt, heightInt, Bitmap.Config.ARGB_8888)
+    // 如果文本被截断，记录日志
+    if (totalWidth > maxWidth) {
+        android.util.Log.w("Probe", "⚠️ Danmaku bitmap truncated: ${totalWidth.toInt()} -> $maxWidth")
+    }
+    
+    val bitmap: Bitmap = try {
+        Bitmap.createBitmap(widthInt, heightInt, Bitmap.Config.ARGB_8888)
+    } catch (e: OutOfMemoryError) {
+        android.util.Log.e("Probe", "❌ OOM creating bitmap, using fallback")
+        // 返回一个极小的占位 Bitmap
+        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+    }
+    
     val canvas = Canvas(bitmap)
     
     // 4. 绘制内容
-    drawContent(context, canvas, segments, paint, iconSize, heightInt, onUpdate, bitmap)
+    try {
+        drawContent(context, canvas, segments, paint, iconSize, heightInt, onUpdate, bitmap)
+    } catch (e: Exception) {
+        android.util.Log.e("Probe", "❌ Draw content failed: ${e.message}")
+    }
     
     // 5. 创建 BitmapData
     return BitmapData().apply {

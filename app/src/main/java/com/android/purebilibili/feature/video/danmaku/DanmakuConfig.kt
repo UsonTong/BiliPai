@@ -31,6 +31,9 @@ class DanmakuConfig {
     var strokeEnabled = true  // 默认开启描边
     var strokeWidth = 3f  // 描边宽度（像素）
     
+    // [新增] 合并重复弹幕
+    var mergeDuplicates = true
+    
     // 顶部边距（像素）
     var topMarginPx = 0
     

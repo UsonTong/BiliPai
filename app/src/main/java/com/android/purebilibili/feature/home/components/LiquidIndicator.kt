@@ -1,9 +1,10 @@
 // 文件路径: feature/home/components/LiquidIndicator.kt
 package com.android.purebilibili.feature.home.components
 
+
+
 import android.os.Build
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,9 +55,12 @@ fun LiquidIndicator(
     val indicatorWidth =85.dp
     val indicatorHeight = 48.dp
     
-    // 计算位置 (OFFSET 模式)
-    val itemStartOffset = with(density) { (position * itemWidth.toPx()).toDp() }
-    val currentOffset = startPadding + itemStartOffset + (itemWidth / 2) - (indicatorWidth / 2)
+    // [优化] 使用 graphicsLayer 进行位移，避免 Layout 重排
+    // 计算位置 (Px)
+    val itemWidthPx = with(density) { itemWidth.toPx() }
+    val startPaddingPx = with(density) { startPadding.toPx() }
+    // 居中偏移：(Item宽度 - 指示器宽度) / 2
+    val centerOffsetPx = with(density) { (itemWidth.toPx() - indicatorWidth.toPx()) / 2 }
     
     // 速度形变
     val velocityFraction = (velocity / 3000f).coerceIn(-1f, 1f)
@@ -84,13 +88,16 @@ fun LiquidIndicator(
     ) {
          Box(
             modifier = Modifier
-                .offset(x = currentOffset)
-                .size(indicatorWidth, indicatorHeight)
                 .graphicsLayer {
+                    // [核心优化] 在绘制阶段计算位移
+                    val currentItemPx = position * itemWidthPx
+                    translationX = startPaddingPx + currentItemPx + centerOffsetPx
+                    
                     this.scaleX = finalScaleX
                     this.scaleY = finalScaleY
                     shadowElevation = 0f
                 }
+                .size(indicatorWidth, indicatorHeight)
                 .clip(shape)
                 .background(indicatorColor)
         )
@@ -115,14 +122,9 @@ fun SimpleLiquidIndicator(
     val indicatorWidth = itemWidth
     val indicatorHeight = 36.dp
     
-    // [Optimized] Defer calculation to avoiding recomposing parent
-    val offsetX by remember {
-        derivedStateOf {
-            with(density) {
-                (positionState.value * itemWidth.toPx()).toDp()
-            }
-        }
-    }
+    // [Optimized] Use graphicsLayer for translation to avoid Layout phases
+    // We calculate the pixel offset directly in the drawing phase
+    val itemWidthPx = with(density) { itemWidth.toPx() }
     
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.05f else 1f,
@@ -135,8 +137,11 @@ fun SimpleLiquidIndicator(
     
     Box(
         modifier = modifier
-            .offset(x = offsetX, y = 0.dp)
+            // [Optimized] Replaced offset with graphicsLayer translation
             .graphicsLayer {
+                val currentPosition = positionState.value
+                translationX = currentPosition * itemWidthPx
+                
                 this.scaleX = scale
                 this.scaleY = scale
             }

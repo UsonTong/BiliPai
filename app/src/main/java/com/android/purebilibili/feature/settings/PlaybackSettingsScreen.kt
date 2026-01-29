@@ -437,6 +437,24 @@ fun PlaybackSettingsContent(
                         .getAutoPlay(context).collectAsState(initial = true)
                     
                     IOSGroup {
+                        // --- Click to Play ---
+                        val clickToPlayEnabled by com.android.purebilibili.core.store.SettingsManager
+                            .getClickToPlay(context).collectAsState(initial = true)
+
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Play,
+                            title = "点击视频直接播放",
+                            subtitle = "进入视频详情页时自动开始播放",
+                            checked = clickToPlayEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setClickToPlay(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        Divider()
                         //  [新增] 自动播放下一个视频
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ForwardEnd,

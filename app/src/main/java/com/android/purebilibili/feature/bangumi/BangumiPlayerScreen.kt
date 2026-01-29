@@ -158,11 +158,12 @@ fun BangumiPlayerScreen(
     
     // 获取当前剧集 cid
     val currentCid = (uiState as? BangumiPlayerState.Success)?.currentEpisode?.cid ?: 0L
+    val currentAid = (uiState as? BangumiPlayerState.Success)?.currentEpisode?.aid ?: 0L
     
     // 加载弹幕 - 在父级组件管理
     //  [修复] 等待播放器 duration 可用后再加载弹幕，启用 Protobuf API
     LaunchedEffect(currentCid, danmakuEnabled) {
-        android.util.Log.d("BangumiPlayer", "🎯 Parent Danmaku LaunchedEffect: cid=$currentCid, enabled=$danmakuEnabled")
+        android.util.Log.d("BangumiPlayer", "🎯 Parent Danmaku LaunchedEffect: cid=$currentCid, aid=$currentAid, enabled=$danmakuEnabled")
         if (currentCid > 0 && danmakuEnabled) {
             danmakuManager.isEnabled = true
             
@@ -177,8 +178,8 @@ fun BangumiPlayerScreen(
                 }
             }
             
-            android.util.Log.d("BangumiPlayer", "🎯 Loading danmaku for cid=$currentCid, duration=${durationMs}ms (after $retries retries)")
-            danmakuManager.loadDanmaku(currentCid, durationMs)  //  传入时长启用 Protobuf API
+            android.util.Log.d("BangumiPlayer", "🎯 Loading danmaku for cid=$currentCid, aid=$currentAid, duration=${durationMs}ms (after $retries retries)")
+            danmakuManager.loadDanmaku(currentCid, currentAid, durationMs)  //  传入时长启用 Protobuf API
         } else {
             danmakuManager.isEnabled = false
         }

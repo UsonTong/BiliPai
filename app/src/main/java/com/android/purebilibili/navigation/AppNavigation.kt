@@ -193,7 +193,7 @@ fun AppNavigation(
         val settingsRoutes = listOf(
             ScreenRoutes.Settings.route,
             // ScreenRoutes.AppearanceSettings.route, // [Modified] Hide bottom bar on Appearance Settings
-            ScreenRoutes.PlaybackSettings.route,
+            // ScreenRoutes.PlaybackSettings.route, // [Modified] Hide bottom bar on Playback Settings
             ScreenRoutes.IconSettings.route,
             ScreenRoutes.AnimationSettings.route,
             ScreenRoutes.PermissionSettings.route,

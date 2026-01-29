@@ -46,11 +46,18 @@ fun LiveChatSection(
     
     LaunchedEffect(danmakuFlow) {
         danmakuFlow.collect { item ->
-            messages.add(item)
-            if (messages.size > 200) messages.removeFirst()
-            // 只有当用户在大约底部时才自动滚动
-            if (!listState.isScrollInProgress) {
-                listState.animateScrollToItem(messages.size - 1)
+            // 确保列表操作在主线程执行 (Compose 状态修改必须在主线程)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+                try {
+                    messages.add(item)
+                    if (messages.size > 200) messages.removeFirst()
+                    // 只有当用户没有滚动时才自动滚动
+                    if (!listState.isScrollInProgress && messages.isNotEmpty()) {
+                        listState.animateScrollToItem(messages.size - 1)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("LiveChatSection", "❌ Message add error: ${e.message}")
+                }
             }
         }
     }

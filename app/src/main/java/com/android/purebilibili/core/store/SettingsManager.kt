@@ -138,7 +138,25 @@ object SettingsManager {
         }
     }
 
-    // --- Auto Play ---
+    // --- Auto Play on Enter (Click to Play) ---
+    private val KEY_CLICK_TO_PLAY = booleanPreferencesKey("click_to_play")
+
+    fun getClickToPlay(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_CLICK_TO_PLAY] ?: true }
+
+    suspend fun setClickToPlay(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_CLICK_TO_PLAY] = value }
+        // Sync to SharedPreferences for synchronous access
+        context.getSharedPreferences("auto_play_cache", Context.MODE_PRIVATE)
+            .edit().putBoolean("click_to_play_enabled", value).apply()
+    }
+
+    fun getClickToPlaySync(context: Context): Boolean {
+        return context.getSharedPreferences("auto_play_cache", Context.MODE_PRIVATE)
+            .getBoolean("click_to_play_enabled", true)
+    }
+
+    // --- Auto Play Next ---
     fun getAutoPlay(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_AUTO_PLAY] ?: true }
 
@@ -509,6 +527,18 @@ object SettingsManager {
     suspend fun setDanmakuArea(context: Context, value: Float) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_DANMAKU_AREA] = value.coerceIn(0.25f, 1.0f)
+        }
+    }
+    
+    // --- 弹幕合并重复 (默认开启) ---
+    private val KEY_DANMAKU_MERGE_DUPLICATES = booleanPreferencesKey("danmaku_merge_duplicates")
+    
+    fun getDanmakuMergeDuplicates(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_DANMAKU_MERGE_DUPLICATES] ?: true }
+        
+    suspend fun setDanmakuMergeDuplicates(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> 
+            preferences[KEY_DANMAKU_MERGE_DUPLICATES] = value
         }
     }
     

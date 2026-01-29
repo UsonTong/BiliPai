@@ -3,7 +3,6 @@ package com.android.purebilibili.feature.video.ui.overlay
 import android.graphics.Color as AndroidColor
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -17,17 +16,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.bytedance.danmaku.render.engine.control.DanmakuController
 import com.bytedance.danmaku.render.engine.data.DanmakuData
-import com.bytedance.danmaku.render.engine.render.draw.text.TextData
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_BOTTOM_CENTER
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_SCROLL
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_TOP_CENTER
 import com.bytedance.danmaku.render.engine.DanmakuView
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
  * 直播弹幕图层
  * 使用 ByteDance DanmakuRenderEngine 渲染
+ * 
+ * 修复记录:
+ * - 使用 mutableStateOf 替代 object 管理状态
+ * - 添加 isActive 检查防止协程泄漏
+ * - 添加 try-catch 防止崩溃
  */
 @Composable
 fun LiveDanmakuOverlay(
@@ -36,61 +40,68 @@ fun LiveDanmakuOverlay(
 ) {
     val context = LocalContext.current
     
-    // 使用 remember 保持 DanmakuView 和相关状态的稳定性
-    val danmakuViewState = remember {
-        object {
-            var view: DanmakuView? = null
-            var controller: DanmakuController? = null
-            var startTime: Long = 0L
-            val danmakuList = mutableListOf<DanmakuData>()
-            var isStarted = false
-        }
-    }
+    // 使用稳定的状态管理
+    var controller by remember { mutableStateOf<DanmakuController?>(null) }
+    var startTime by remember { mutableStateOf(0L) }
+    var isStarted by remember { mutableStateOf(false) }
+    val danmakuList = remember { mutableListOf<DanmakuData>() }
 
     AndroidView(
         factory = { ctx ->
             DanmakuView(ctx).apply {
-                // 设置透明背景
-                setBackgroundColor(AndroidColor.TRANSPARENT)
-                
-                // 设置布局参数
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                
-                // 保存引用
-                danmakuViewState.view = this
-                danmakuViewState.controller = this.controller
-                danmakuViewState.startTime = System.currentTimeMillis()
-                
-                android.util.Log.d("LiveDanmakuOverlay", "🟢 DanmakuView created, starting controller")
-                
-                // 启动渲染引擎
-                this.controller.start(0)
-                danmakuViewState.isStarted = true
+                try {
+                    // 设置透明背景
+                    setBackgroundColor(AndroidColor.TRANSPARENT)
+                    
+                    // 设置布局参数
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    
+                    // 保存引用
+                    controller = this.controller
+                    startTime = System.currentTimeMillis()
+                    
+                    android.util.Log.d("LiveDanmakuOverlay", "🟢 DanmakuView created, starting controller")
+                    
+                    // 启动渲染引擎
+                    this.controller.start(0)
+                    isStarted = true
+                } catch (e: Exception) {
+                    android.util.Log.e("LiveDanmakuOverlay", "❌ DanmakuView init failed: ${e.message}")
+                }
             }
         },
         modifier = modifier.fillMaxSize(),
         update = { view ->
-            // 确保控制器正在运行
-            if (!danmakuViewState.isStarted) {
-                android.util.Log.d("LiveDanmakuOverlay", "🟡 Controller not started, starting...")
-                val currentTime = System.currentTimeMillis() - danmakuViewState.startTime
-                view.controller.start(currentTime)
-                danmakuViewState.isStarted = true
+            try {
+                // 确保控制器正在运行
+                val ctrl = controller
+                if (ctrl != null && !isStarted) {
+                    android.util.Log.d("LiveDanmakuOverlay", "🟡 Controller not started, starting...")
+                    val currentTime = System.currentTimeMillis() - startTime
+                    ctrl.start(currentTime)
+                    isStarted = true
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("LiveDanmakuOverlay", "❌ Update failed: ${e.message}")
             }
         }
     )
 
     // 持续驱动播放时间更新 - 每帧调用 start() 来推进渲染
     LaunchedEffect(Unit) {
-        while (true) {
-            val ctrl = danmakuViewState.controller
-            if (ctrl != null && danmakuViewState.isStarted) {
-                val currentTime = System.currentTimeMillis() - danmakuViewState.startTime
-                // 定期调用 start() 更新播放进度
-                ctrl.start(currentTime)
+        while (isActive) { // 使用 isActive 检查，协程取消时自动退出
+            try {
+                val ctrl = controller
+                if (ctrl != null && isStarted) {
+                    val currentTime = System.currentTimeMillis() - startTime
+                    // 定期调用 start() 更新播放进度
+                    ctrl.start(currentTime)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("LiveDanmakuOverlay", "❌ Render loop error: ${e.message}")
             }
             delay(50) // ~20fps 足够流畅
         }
@@ -99,27 +110,32 @@ fun LiveDanmakuOverlay(
     // 监听弹幕流
     LaunchedEffect(danmakuFlow) {
         danmakuFlow.collect { item ->
-            val ctrl = danmakuViewState.controller
-            if (ctrl != null) {
+            try {
+                val ctrl = controller ?: return@collect
+                if (!isStarted) return@collect
+                
                 android.util.Log.d("LiveDanmakuOverlay", "🔴 Received: ${item.text}")
                 
                 // 计算当前相对时间
-                val currentTime = System.currentTimeMillis() - danmakuViewState.startTime
+                val currentTime = System.currentTimeMillis() - startTime
                 val danmakuData = createDanmakuData(item, currentTime, context, ctrl)
                 
-                // 添加到列表
-                val list = danmakuViewState.danmakuList
-                // 移除过期弹幕 (20秒前)
-                list.removeAll { it.showAtTime < currentTime - 20_000 }
-                list.add(danmakuData)
-                // 排序
-                list.sortBy { it.showAtTime }
-                
-                android.util.Log.d("LiveDanmakuOverlay", "🔴 setData: size=${list.size}, time=$currentTime")
-                
-                // 更新数据
-                ctrl.setData(list.toList(), currentTime)
+                // 添加到列表 (同步操作，避免并发问题)
+                synchronized(danmakuList) {
+                    // 移除过期弹幕 (20秒前)
+                    danmakuList.removeAll { it.showAtTime < currentTime - 20_000 }
+                    danmakuList.add(danmakuData)
+                    // 排序
+                    danmakuList.sortBy { it.showAtTime }
+                    
+                    android.util.Log.d("LiveDanmakuOverlay", "🔴 setData: size=${danmakuList.size}, time=$currentTime")
+                    
+                    // 更新数据
+                    ctrl.setData(danmakuList.toList(), currentTime)
+                }
                 ctrl.invalidateView()
+            } catch (e: Exception) {
+                android.util.Log.e("LiveDanmakuOverlay", "❌ Danmaku collect error: ${e.message}")
             }
         }
     }
@@ -128,9 +144,16 @@ fun LiveDanmakuOverlay(
     DisposableEffect(Unit) {
         onDispose {
             android.util.Log.d("LiveDanmakuOverlay", "🔴 Disposing DanmakuView")
-            danmakuViewState.controller?.stop()
-            danmakuViewState.danmakuList.clear()
-            danmakuViewState.isStarted = false
+            try {
+                controller?.stop()
+                synchronized(danmakuList) {
+                    danmakuList.clear()
+                }
+                isStarted = false
+                controller = null
+            } catch (e: Exception) {
+                android.util.Log.e("LiveDanmakuOverlay", "❌ Dispose error: ${e.message}")
+            }
         }
     }
 }

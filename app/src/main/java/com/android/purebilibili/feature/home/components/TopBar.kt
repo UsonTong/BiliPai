@@ -402,6 +402,7 @@ fun CategoryTabItem(
     onDoubleTap: () -> Unit = {}
 ) {
      // [Optimized] Calculate fraction from the passed state inside derivedStateOf
+     // Defer reading state until drawing phase where possible
      val selectionFraction by remember {
          derivedStateOf {
              val distance = kotlin.math.abs(currentPositionState.value - index)
@@ -409,18 +410,15 @@ fun CategoryTabItem(
          }
      }
 
-     // Text Color Interpolation
-     val targetTextColor = androidx.compose.ui.graphics.lerp(unselectedColor, primaryColor, selectionFraction)
+     // [Optimized] Removed Color Interpolation to avoid Recomposition
+     // val targetTextColor = androidx.compose.ui.graphics.lerp(unselectedColor, primaryColor, selectionFraction)
      
      // [Updated] Louder Scale Effect
-     // Use a non-linear curve to make the scale change appear "faster" or more obvious as you approach the center.
-     // selectionFraction is 0..1. Let's start scaling up earlier.
      val smoothFraction = androidx.compose.animation.core.FastOutSlowInEasing.transform(selectionFraction)
      val targetScale = androidx.compose.ui.util.lerp(1.0f, 1.25f, smoothFraction)
      
-     // Use purely state-driven values for immediate response, or add small smoothing if needed.
-     // Direct usage is usually best for swiping.
-
+     // Font weight change still triggers relayout, but it's discrete (only happens at 0.6 threshold)
+     // This is acceptable as it doesn't happen every frame.
      val fontWeight = if (selectionFraction > 0.6f) FontWeight.SemiBold else FontWeight.Medium
 
      val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
@@ -428,7 +426,6 @@ fun CategoryTabItem(
      Box(
          modifier = Modifier
              .clip(RoundedCornerShape(16.dp)) 
-             // [Modified] Use combinedClickable for double tap detection
              .combinedClickable(
                  interactionSource = remember { MutableInteractionSource() },
                  indication = null,
@@ -438,14 +435,32 @@ fun CategoryTabItem(
              .padding(horizontal = 10.dp, vertical = 6.dp), 
          contentAlignment = Alignment.Center
      ) {
+         // [Optimization] Double Text Layer with Alpha Cross-fade
+         // This avoids creating a new TextLayoutResult every frame due to color change.
+         // Layer 1: Unselected Text (Base)
          Text(
              text = category,
-             color = targetTextColor, // Still triggers recomposition if color changes, but calculation is deferred
-             fontSize = 15.sp, 
+             color = unselectedColor,
+             fontSize = 15.sp,
              fontWeight = fontWeight,
              modifier = Modifier.graphicsLayer {
                  scaleX = targetScale
                  scaleY = targetScale
+                 alpha = 1f - selectionFraction // Fade out as selected
+                 transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
+             }
+         )
+         
+         // Layer 2: Selected Text (Overlay)
+         Text(
+             text = category,
+             color = primaryColor,
+             fontSize = 15.sp,
+             fontWeight = fontWeight,
+             modifier = Modifier.graphicsLayer {
+                 scaleX = targetScale
+                 scaleY = targetScale
+                 alpha = selectionFraction // Fade in as selected
                  transformOrigin = androidx.compose.ui.graphics.TransformOrigin.Center
              }
          )

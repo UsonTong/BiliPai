@@ -49,10 +49,12 @@ fun DanmakuSettingsPanel(
     fontScale: Float,
     speed: Float,
     displayArea: Float = 0.5f,
+    mergeDuplicates: Boolean = true,
     onOpacityChange: (Float) -> Unit,
     onFontScaleChange: (Float) -> Unit,
     onSpeedChange: (Float) -> Unit,
     onDisplayAreaChange: (Float) -> Unit = {},
+    onMergeDuplicatesChange: (Boolean) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     // 使用 Box + 手势检测来实现：点击面板外部关闭，面板内部正常交互
@@ -165,6 +167,50 @@ fun DanmakuSettingsPanel(
                     currentArea = displayArea,
                     onAreaChange = onDisplayAreaChange
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Merge Duplicates Switch
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = CardBackground,
+                    shape = RoundedCornerShape(16.dp),
+                    onClick = { onMergeDuplicatesChange(!mergeDuplicates) }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "合并重复弹幕",
+                                color = Color.White,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "减少刷屏干扰，将重复内容合并显示",
+                                color = Color.White.copy(0.5f),
+                                fontSize = 11.sp
+                            )
+                        }
+                        
+                        Switch(
+                            checked = mergeDuplicates,
+                            onCheckedChange = onMergeDuplicatesChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.White.copy(0.1f)
+                            )
+                        )
+                    }
+                }
             }
         }
     }

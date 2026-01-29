@@ -214,6 +214,10 @@ class MiniPlayerManager private constructor(private val context: Context) :
     //  [新增] 当前视频的 cid，用于弹幕加载
     var currentCid by mutableLongStateOf(0L)
         private set
+
+    //  [新增] 当前视频的 aid，用于弹幕元数据加载
+    var currentAid by mutableLongStateOf(0L)
+        private set
     
     //  [新增] 缓存的视频详情页 UI 状态，用于从小窗返回时恢复
     var cachedUiState: PlayerUiState.Success? = null
@@ -596,6 +600,8 @@ class MiniPlayerManager private constructor(private val context: Context) :
         }
     }
 
+
+
     /**
      *  设置视频信息并关联外部播放器（用于小窗模式）
      * 这个方法不创建新播放器，而是使用 VideoDetailScreen 的播放器
@@ -607,15 +613,17 @@ class MiniPlayerManager private constructor(private val context: Context) :
         cover: String,
         owner: String,
         cid: Long,  //  [新增] cid 用于弹幕加载
+        aid: Long = 0, // [新增] aid
         externalPlayer: ExoPlayer,
         fromLeft: Boolean = false  //  [新增] 入场方向
     ) {
-        Logger.d(TAG, "setVideoInfo: bvid=$bvid, title=$title, cid=$cid, fromLeft=$fromLeft")
+        Logger.d(TAG, "setVideoInfo: bvid=$bvid, title=$title, cid=$cid, aid=$aid, fromLeft=$fromLeft")
         currentBvid = bvid
         currentTitle = title
         currentCover = cover
         currentOwner = owner
         currentCid = cid  //  保存 cid
+        currentAid = aid  //  保存 aid
         entryFromLeft = fromLeft  //  保存入场方向
         
         // 🛑 [修复] 如果存在旧的外部播放器且不同于新的（切换视频场景），必须释放旧的防止泄漏/重音

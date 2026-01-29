@@ -353,11 +353,9 @@ fun rememberVideoPlayerState(
                 .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                 .build()
 
-            //  [性能优化] 同步读取硬件解码设置，避免 runBlocking 阻塞主线程
-            // DataStore 会将数据存储在 datastore/settings 文件中，使用 preferences key
-            // 为了同步读取，我们使用 SharedPreferences 作为快速缓存，默认开启硬件解码
-            val hwDecodePrefs = context.getSharedPreferences("hw_decode_cache", Context.MODE_PRIVATE)
-            val hwDecodeEnabled = hwDecodePrefs.getBoolean("hw_decode_enabled", true)
+            //  [性能优化] 使用 PlayerSettingsCache 直接从内存读取，避免 I/O
+            val hwDecodeEnabled = com.android.purebilibili.core.store.PlayerSettingsCache.isHwDecodeEnabled(context)
+            val seekFastEnabled = com.android.purebilibili.core.store.PlayerSettingsCache.isSeekFastEnabled(context)
 
             //  根据设置选择 RenderersFactory
             val renderersFactory = if (hwDecodeEnabled) {
@@ -385,6 +383,14 @@ fun rememberVideoPlayerState(
                         )
                         .setPrioritizeTimeOverSizeThresholds(true)  // 优先保证播放时长
                         .build()
+                )
+                //  [性能优化] 快速 Seek：跳转到最近的关键帧而非精确位置
+                .setSeekParameters(
+                    if (seekFastEnabled) {
+                        androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC
+                    } else {
+                        androidx.media3.exoplayer.SeekParameters.DEFAULT
+                    }
                 )
                 .setAudioAttributes(audioAttributes, true)
                 .setHandleAudioBecomingNoisy(true)
@@ -544,23 +550,45 @@ fun rememberVideoPlayerState(
     }
 
 
-    //  [修复3] 监听播放器错误，智能重试（网络错误最多重试 3 次）
-    val retryCountRef = remember { object { var count = 0 } }
+    //  [修复3] 监听播放器错误，智能重试（网络错误 → CDN 切换 → 重试）
+    val retryCountRef = remember { object { 
+        var count = 0 
+        var cdnSwitchCount = 0  // 📡 [新增] CDN 切换计数
+    } }
     val maxRetries = 3
+    val maxCdnSwitches = 2  // 📡 [新增] 最多尝试切换 2 次 CDN
     
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 android.util.Log.e("VideoPlayerState", " Player error: ${error.message}, code=${error.errorCode}")
                 
-                //  判断是否为网络相关错误
+                //  判断是否为网络/IO 相关错误（可能是 CDN 问题）
                 val isNetworkError = error.errorCode in listOf(
                     androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                     androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,  // 📡 [新增] HTTP 错误也尝试切换
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND   // 📡 [新增] 404 也可能是 CDN 问题
                 )
                 
-                if (isNetworkError && retryCountRef.count < maxRetries) {
+                // 📡 [新增] 检查是否有多个 CDN 可用
+                val currentState = viewModel.uiState.value
+                val hasCdnAlternatives = currentState is com.android.purebilibili.feature.video.viewmodel.PlayerUiState.Success 
+                    && currentState.cdnCount > 1
+                    && retryCountRef.cdnSwitchCount < maxCdnSwitches
+                
+                if (isNetworkError && hasCdnAlternatives) {
+                    // 📡 [策略1] 网络错误 + 有备用 CDN → 先切换 CDN
+                    retryCountRef.cdnSwitchCount++
+                    com.android.purebilibili.core.util.Logger.d("VideoPlayerState", "📡 Network error, switching CDN (${retryCountRef.cdnSwitchCount}/$maxCdnSwitches)")
+                    
+                    scope.launch {
+                        kotlinx.coroutines.delay(500) // 短暂延迟避免请求过快
+                        viewModel.switchCdn()
+                    }
+                } else if (isNetworkError && retryCountRef.count < maxRetries) {
+                    // 🔄 [策略2] 网络错误 + 无备用 CDN / 已切换完 → 重试
                     retryCountRef.count++
                     // 🔧 [优化] 指数退避：1s, 2s, 4s（更快首次重试）
                     val delayMs = (1000L * (1 shl (retryCountRef.count - 1))).coerceAtMost(8000L)
@@ -581,8 +609,9 @@ fun rememberVideoPlayerState(
             
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
-                    // 播放成功，重置重试计数
+                    // 播放成功，重置所有计数
                     retryCountRef.count = 0
+                    retryCountRef.cdnSwitchCount = 0
                 }
             }
         }

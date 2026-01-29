@@ -58,3 +58,6 @@ app/release/
 *.ai.md
 *.txt
 bilipai_log_*.txt
+
+# Bilibili API files
+bilibili-API-collect/

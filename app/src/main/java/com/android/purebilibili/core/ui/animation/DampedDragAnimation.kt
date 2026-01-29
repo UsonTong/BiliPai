@@ -133,8 +133,8 @@ class DampedDragAnimationState(
             animatable.animateTo(
                 targetValue = targetIndex.toFloat(),
                 animationSpec = spring(
-                    dampingRatio = 0.6f,   // [增强] 更低阻尼 = 更强回弹
-                    stiffness = 350f       // [增强] 配合速度感
+                    dampingRatio = 0.7f,   // [调整] 增加阻尼减少回弹
+                    stiffness = 500f       // [调整] 增加刚度提升响应速度
                 ),
                 initialVelocity = velocityItems // 传递同向速度
                 // Animatable velocity 是 float/unit. input 是 px/s. 
@@ -165,8 +165,8 @@ class DampedDragAnimationState(
             animatable.animateTo(
                 targetValue = index.toFloat(),
                 animationSpec = spring(
-                    dampingRatio = 0.6f, 
-                    stiffness = 350f
+                    dampingRatio = 0.7f, 
+                    stiffness = 500f
                 )
             )
         }

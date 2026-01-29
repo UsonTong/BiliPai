@@ -464,11 +464,12 @@ fun HomeScreen(
                     //  关键修复：只在底栏当前隐藏时才恢复可见
                     if (!bottomBarVisible && isVideoNavigating) {
                         //  [同步动画] 延迟后再显示底栏，让进入动画与卡片返回动画同步
+                        //  [优化] 将延迟增加到 360ms (略大于转场动画 350ms)，防止在动画过程中修改 Padding 导致列表重排卡顿
                         bottomBarRestoreJob = kotlinx.coroutines.MainScope().launch {
-                            kotlinx.coroutines.delay(100)  // 等待返回动画开始
+                            kotlinx.coroutines.delay(360)  // 等待返回动画结束
                             setBottomBarVisible(true)
                             // 延迟重置导航状态，确保进入动画完成
-                            kotlinx.coroutines.delay(400)
+                            kotlinx.coroutines.delay(200)
                             isVideoNavigating = false
                         }
                     } else if (!bottomBarVisible && !isVideoNavigating) {

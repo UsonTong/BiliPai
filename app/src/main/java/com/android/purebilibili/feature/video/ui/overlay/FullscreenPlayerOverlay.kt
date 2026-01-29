@@ -346,6 +346,9 @@ fun FullscreenPlayerOverlay(
         val danmakuDisplayArea by SettingsManager
             .getDanmakuArea(context)
             .collectAsState(initial = 0.5f)
+        val danmakuMergeDuplicates by SettingsManager
+            .getDanmakuMergeDuplicates(context)
+            .collectAsState(initial = true)
         
         //  获取当前 cid 并加载弹幕
         val currentCid = miniPlayerManager.currentCid
@@ -362,7 +365,7 @@ fun FullscreenPlayerOverlay(
                     retries++
                 }
                 
-                danmakuManager.loadDanmaku(currentCid, durationMs)
+                danmakuManager.loadDanmaku(currentCid, miniPlayerManager.currentAid, durationMs)
             } else {
                 danmakuManager.isEnabled = false
             }
@@ -374,7 +377,8 @@ fun FullscreenPlayerOverlay(
                 opacity = danmakuOpacity,
                 fontScale = danmakuFontScale,
                 speed = danmakuSpeed,
-                displayArea = danmakuDisplayArea
+                displayArea = danmakuDisplayArea,
+                mergeDuplicates = danmakuMergeDuplicates
             )
         }
         
@@ -627,12 +631,14 @@ fun FullscreenPlayerOverlay(
             var localFontScale by remember(danmakuFontScale) { mutableFloatStateOf(danmakuFontScale) }
             var localSpeed by remember(danmakuSpeed) { mutableFloatStateOf(danmakuSpeed) }
             var localDisplayArea by remember(danmakuDisplayArea) { mutableFloatStateOf(danmakuDisplayArea) }
+            var localMergeDuplicates by remember(danmakuMergeDuplicates) { mutableStateOf(danmakuMergeDuplicates) }
             
             DanmakuSettingsPanel(
                 opacity = localOpacity,
                 fontScale = localFontScale,
                 speed = localSpeed,
                 displayArea = localDisplayArea,
+                mergeDuplicates = localMergeDuplicates,
                 onOpacityChange = { 
                     localOpacity = it
                     danmakuManager.opacity = it
@@ -652,6 +658,12 @@ fun FullscreenPlayerOverlay(
                     localDisplayArea = it
                     danmakuManager.displayArea = it
                     scope.launch { SettingsManager.setDanmakuArea(context, it) }
+                },
+                onMergeDuplicatesChange = {
+                    localMergeDuplicates = it
+                    // 需要在 Manager 中添加临时变量或直接持久化
+                    // 对于 Switch 这种立即生效的 Prefernce，直接存就行
+                    scope.launch { SettingsManager.setDanmakuMergeDuplicates(context, it) }
                 },
                 onDismiss = { showDanmakuSettings = false }
             )

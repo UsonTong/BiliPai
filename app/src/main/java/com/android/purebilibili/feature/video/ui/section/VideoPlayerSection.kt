@@ -512,6 +512,7 @@ fun VideoPlayerSection(
         
         //  当视频加载成功时加载弹幕（不再依赖 isFullscreen，单例会保持弹幕）
         val cid = (uiState as? PlayerUiState.Success)?.info?.cid ?: 0L
+        val aid = (uiState as? PlayerUiState.Success)?.info?.aid ?: 0L
         //  监听 player 状态，等待 duration 可用后加载弹幕
         LaunchedEffect(cid) {
             if (cid > 0) {
@@ -528,8 +529,8 @@ fun VideoPlayerSection(
                     }
                 }
                 
-                android.util.Log.d("VideoPlayerSection", "🎯 Loading danmaku for cid=$cid, duration=${durationMs}ms (after $retries retries)")
-                danmakuManager.loadDanmaku(cid, durationMs)  //  传入时长启用 Protobuf API
+                android.util.Log.d("VideoPlayerSection", "🎯 Loading danmaku for cid=$cid, aid=$aid, duration=${durationMs}ms (after $retries retries)")
+                danmakuManager.loadDanmaku(cid, aid, durationMs)  //  传入时长启用 Protobuf API
             }
         }
         
@@ -763,6 +764,23 @@ fun VideoPlayerSection(
                             danmakuManager.attachView(view)
                         }
                     },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        
+        // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
+        val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsState()
+        
+        if (!isInPipMode && danmakuEnabled && advancedDanmakuList.isNotEmpty()) {
+             Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clipToBounds()
+            ) {
+                com.android.purebilibili.feature.video.ui.overlay.AdvancedDanmakuOverlay(
+                    danmakuList = advancedDanmakuList,
+                    player = playerState.player,
                     modifier = Modifier.fillMaxSize()
                 )
             }

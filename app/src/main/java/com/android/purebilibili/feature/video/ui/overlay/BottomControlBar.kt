@@ -325,12 +325,12 @@ fun VideoProgressBar(
                 )
             }
     ) {
-        // 🖼️ 拖动时显示预览气泡
+        // 🖼️ 拖动时显示预览气泡（放在进度条上方）
         if (isDragging) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(bottom = 8.dp)
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 30.dp)  // 📐 预览气泡在进度条上方 30dp
             ) {
                 if (videoshotData != null && videoshotData.isValid) {
                     com.android.purebilibili.feature.video.ui.components.SeekPreviewBubble(

@@ -526,78 +526,104 @@ class LivePlayerViewModel : ViewModel() {
 
     /**
      * 处理弹幕包
+     * 
+     * 修复记录:
+     * - 使用 optXXX 替代 getXXX 避免数组越界
+     * - 添加完善的异常处理
      */
     private fun handleDanmakuPacket(packet: DanmakuProtocol.Packet) {
-        if (packet.operation == DanmakuProtocol.OP_MESSAGE) {
-            try {
-                // Body 是 JSON (Brotli/Zlib 解压后)
-                val jsonStr = String(packet.body, Charsets.UTF_8)
-                val json = JSONObject(jsonStr)
-                val cmd = json.optString("cmd")
-                
-                if (cmd.startsWith("DANMU_MSG")) { // 可能有 "DANMU_MSG:4:0:2:2:2:0" 这种格式
-                    val info = json.getJSONArray("info")
-                    
-                    // 解析基本信息
-                    val meta = info.getJSONArray(0)
-                    val text = info.getString(1)
-                    val user = info.getJSONArray(2)
-                    
-                    val mode = meta.getInt(1)
-                    val color = meta.getInt(3)
-                    val uid = user.getLong(0)
-                    val uname = user.getString(1)
-                    
-                    // 解析表情包 (位于 info[0][13])
-                    val emoticonUrl = if (meta.length() > 13) {
-                        meta.optJSONObject(13)?.optString("url")
-                    } else null
-                    
-                    // 过滤非法弹幕
-                    if (text.isNotEmpty()) {
-                        // [去重] 检查是否是自己刚发送的弹幕的回传
-                        // 条件：uid 匹配 + 文本匹配 + 10秒内发送
-                        val myMid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
-                        val isRecentlyMySent = uid == myMid 
-                            && text == recentSentDanmaku 
-                            && (System.currentTimeMillis() - recentSentTime) < 10_000L
-                        
-                        if (isRecentlyMySent) {
-                            // 清除记录，避免后续相同文本的弹幕被误过滤
-                            recentSentDanmaku = null
-                            android.util.Log.d("LivePlayer", "🔄 Skipped duplicate self-sent danmaku: $text")
-                            return
-                        }
-                        
-                        val item = LiveDanmakuItem(
-                            text = text,
-                            color = color,
-                            mode = mode,
-                            uid = uid,
-                            uname = uname,
-                            isSelf = uid == myMid, // 使用缓存的 mid 而不是 currentUid
-                            emoticonUrl = emoticonUrl,
-                            // [新增] 粉丝牌信息 info[3]
-                            // [level, name, anchor_name, room_id, color, ...]
-                            medalLevel = if (info.length() > 3 && !info.isNull(3) && info.getJSONArray(3).length() > 0) info.getJSONArray(3).getInt(0) else 0,
-                            medalName = if (info.length() > 3 && !info.isNull(3) && info.getJSONArray(3).length() > 1) info.getJSONArray(3).getString(1) else "",
-                            medalColor = if (info.length() > 3 && !info.isNull(3) && info.getJSONArray(3).length() > 4) info.getJSONArray(3).getInt(4) else 0,
-                            
-                            // [新增] 用户等级 info[4][0]
-                            userLevel = if (info.length() > 4 && !info.isNull(4) && info.getJSONArray(4).length() > 0) info.getJSONArray(4).getInt(0) else 0,
-                            
-                            // [新增] 身份标识
-                            isAdmin = if (user.length() > 2) user.getInt(2) == 1 else false,
-                            guardLevel = if (info.length() > 7) info.getInt(7) else 0 // 1=总督 2=提督 3=舰长
-                        )
-                        _danmakuFlow.tryEmit(item)
-                    }
-                }
-                // TODO: 处理 SendGift, SystemMsg 等其他消息
-                
-            } catch (e: Exception) {
-                // JSON 解析失败忽略
+        if (packet.operation != DanmakuProtocol.OP_MESSAGE) return
+        
+        try {
+            // Body 是 JSON (Brotli/Zlib 解压后)
+            val jsonStr = String(packet.body, Charsets.UTF_8)
+            val json = JSONObject(jsonStr)
+            val cmd = json.optString("cmd", "")
+            
+            if (!cmd.startsWith("DANMU_MSG")) return // 可能有 "DANMU_MSG:4:0:2:2:2:0" 这种格式
+            
+            val info = json.optJSONArray("info") ?: return
+            if (info.length() < 3) return // 至少需要 meta, text, user
+            
+            // 解析基本信息 (使用 optXXX 安全访问)
+            val meta = info.optJSONArray(0) ?: return
+            val text = info.optString(1, "") 
+            val user = info.optJSONArray(2) ?: return
+            
+            // 过滤空弹幕
+            if (text.isEmpty()) return
+            
+            val mode = meta.optInt(1, 1)
+            val color = meta.optInt(3, 16777215)
+            val uid = user.optLong(0, 0L)
+            val uname = user.optString(1, "")
+            
+            // 解析表情包 (位于 info[0][13])
+            val emoticonUrl = if (meta.length() > 13) {
+                meta.optJSONObject(13)?.optString("url")
+            } else null
+            
+            // [去重] 检查是否是自己刚发送的弹幕的回传
+            val myMid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
+            val isRecentlyMySent = uid == myMid 
+                && text == recentSentDanmaku 
+                && (System.currentTimeMillis() - recentSentTime) < 10_000L
+            
+            if (isRecentlyMySent) {
+                // 清除记录，避免后续相同文本的弹幕被误过滤
+                recentSentDanmaku = null
+                android.util.Log.d("LivePlayer", "🔄 Skipped duplicate self-sent danmaku: $text")
+                return
             }
+            
+            // 安全解析粉丝牌信息 info[3] - [level, name, anchor_name, room_id, color, ...]
+            var medalLevel = 0
+            var medalName = ""
+            var medalColor = 0
+            if (info.length() > 3 && !info.isNull(3)) {
+                val medalArray = info.optJSONArray(3)
+                if (medalArray != null && medalArray.length() > 0) {
+                    medalLevel = medalArray.optInt(0, 0)
+                    if (medalArray.length() > 1) medalName = medalArray.optString(1, "")
+                    if (medalArray.length() > 4) medalColor = medalArray.optInt(4, 0)
+                }
+            }
+            
+            // 安全解析用户等级 info[4][0]
+            var userLevel = 0
+            if (info.length() > 4 && !info.isNull(4)) {
+                val levelArray = info.optJSONArray(4)
+                if (levelArray != null && levelArray.length() > 0) {
+                    userLevel = levelArray.optInt(0, 0)
+                }
+            }
+            
+            // 安全解析身份标识
+            val isAdmin = if (user.length() > 2) user.optInt(2, 0) == 1 else false
+            val guardLevel = if (info.length() > 7) info.optInt(7, 0) else 0 // 1=总督 2=提督 3=舰长
+            
+            val item = LiveDanmakuItem(
+                text = text,
+                color = color,
+                mode = mode,
+                uid = uid,
+                uname = uname,
+                isSelf = uid == myMid,
+                emoticonUrl = emoticonUrl,
+                medalLevel = medalLevel,
+                medalName = medalName,
+                medalColor = medalColor,
+                userLevel = userLevel,
+                isAdmin = isAdmin,
+                guardLevel = guardLevel
+            )
+            _danmakuFlow.tryEmit(item)
+            
+            // TODO: 处理 SendGift, SystemMsg 等其他消息
+            
+        } catch (e: Exception) {
+            // JSON 解析失败，记录日志但不崩溃
+            android.util.Log.e("LivePlayer", "❌ Danmaku parse error: ${e.message}")
         }
     }
     

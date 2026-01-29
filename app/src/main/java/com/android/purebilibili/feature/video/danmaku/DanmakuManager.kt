@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
  import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * 弹幕管理器（单例模式）
@@ -86,6 +88,10 @@ class DanmakuManager private constructor(
     
     // 缓存解析后的弹幕数据（横竖屏切换时复用）
     private var cachedDanmakuList: List<DanmakuData>? = null
+    private var rawDanmakuList: List<DanmakuData>? = null
+    // [新增] 高级弹幕数据流
+    private val _advancedDanmakuFlow = kotlinx.coroutines.flow.MutableStateFlow<List<AdvancedDanmakuData>>(emptyList())
+    val advancedDanmakuFlow: kotlinx.coroutines.flow.StateFlow<List<AdvancedDanmakuData>> = _advancedDanmakuFlow.asStateFlow()
     private var cachedCid: Long = 0L
     
     //  [新增] 记录原始弹幕滚动时间（用于倍速同步）
@@ -131,6 +137,8 @@ class DanmakuManager private constructor(
             applyConfigToController("displayArea")
         }
     
+
+
     /**
      *  批量更新弹幕设置（实时生效）
      */
@@ -138,13 +146,22 @@ class DanmakuManager private constructor(
         opacity: Float = this.opacity,
         fontScale: Float = this.fontScale,
         speed: Float = this.speedFactor,
-        displayArea: Float = this.displayArea
+        displayArea: Float = this.displayArea,
+        mergeDuplicates: Boolean = config.mergeDuplicates
     ) {
+        val mergeChanged = config.mergeDuplicates != mergeDuplicates
+        
         config.opacity = opacity
         config.fontScale = fontScale
         config.speedFactor = speed
         config.displayAreaRatio = displayArea
-        applyConfigToController("batch")
+        config.mergeDuplicates = mergeDuplicates
+        
+        if (mergeChanged) {
+            applyConfigToController("merge_changed")
+        } else {
+            applyConfigToController("batch")
+        }
     }
 
     /**
@@ -166,7 +183,36 @@ class DanmakuManager private constructor(
 
             //  [关键修复] fontScale/displayArea/viewHeight 改变时，需要重新设置弹幕数据
             // 因为引擎的 config.text.size 只对新弹幕生效，已显示的弹幕不会更新
-            if (reason == "fontScale" || reason == "displayArea" || reason == "batch" || reason == "resize") {
+            if (reason == "fontScale" || reason == "displayArea" || reason == "batch" || reason == "resize" || reason == "merge_changed") {
+                // 如果是合并状态改变，需要重新计算 cachedList
+                if (reason == "merge_changed") {
+                   rawDanmakuList?.let { raw ->
+                       if (config.mergeDuplicates) {
+                           val (mergedStandard, mergedAdvanced) = DanmakuMerger.merge(raw)
+                           cachedDanmakuList = mergedStandard
+                           
+                           // 注意：这里我们只能拿到最新的 rawAdvanced 吗?
+                           // 如果我们没有缓存 rawAdvancedList，那么每次切换都要重新解析是不现实的
+                           // 但这里我们假设 advancedDanmakuFlow.value 包含了 *基础* 高级弹幕
+                           // 问题：如果不保留 rawAdvancedList，我们无法区分哪些是基础的，哪些是合并产生的
+                           
+                           // 修正策略：我们需要缓存 rawAdvancedDanmakuList
+                           // 暂时简化：假设 advancedDanmakuFlow 目前只包含基础的 (如果没有触发合并)
+                           // 或者我们需要在 Manager 中新增字段 rawAdvancedDanmakuList
+                           
+                           // 临时回退方案：从 _advancedDanmakuFlow.value 中过滤掉 ID 以 "merged_" 开头的
+                           val currentAdvanced = _advancedDanmakuFlow.value.filter { !it.id.startsWith("merged_") }
+                           _advancedDanmakuFlow.value = currentAdvanced + mergedAdvanced
+                       } else {
+                           cachedDanmakuList = raw
+                           // 移除所有合并产生的高级弹幕
+                           val currentAdvanced = _advancedDanmakuFlow.value.filter { !it.id.startsWith("merged_") }
+                           _advancedDanmakuFlow.value = currentAdvanced
+                       }
+                       Log.w(TAG, " Merge setting changed: Standard size=${cachedDanmakuList?.size}")
+                   }
+                }
+            
                 cachedDanmakuList?.let { list ->
                     val currentPos = player?.currentPosition ?: 0L
                     Log.w(TAG, " Re-applying danmaku data after $reason change at ${currentPos}ms")
@@ -513,10 +559,11 @@ class DanmakuManager private constructor(
      * 加载弹幕数据
      * 
      * @param cid 视频 cid
+     * @param aid 视频 aid (用于获取弹幕高级元数据)
      * @param durationMs 视频时长 (毫秒)，用于计算 Protobuf 分段数。如果为 0，则回退到 XML API
      */
-    fun loadDanmaku(cid: Long, durationMs: Long = 0L) {
-        Log.w(TAG, "========== loadDanmaku CALLED cid=$cid, duration=${durationMs}ms ==========")
+    fun loadDanmaku(cid: Long, aid: Long, durationMs: Long = 0L) {
+        Log.w(TAG, "========== loadDanmaku CALLED cid=$cid, aid=$aid, duration=${durationMs}ms ==========")
         Log.w(TAG, " loadDanmaku: cid=$cid, cached=$cachedCid, isLoading=$isLoading, controller=${controller != null}")
         
         // 如果正在加载，优先处理新 cid
@@ -566,12 +613,45 @@ class DanmakuManager private constructor(
         loadJob?.cancel()
         loadJob = scope.launch {
             try {
+                // 1. 获取弹幕元数据 (High-Energy, Command Dms)
+                var commandDmList: List<AdvancedDanmakuData> = emptyList()
+                val viewReply = if (aid > 0) {
+                     com.android.purebilibili.data.repository.DanmakuRepository.getDanmakuView(cid, aid)
+                } else null
+                
+                if (viewReply != null) {
+                    Log.w(TAG, " Got Danmaku Metadata: count=${viewReply.count}, segments=${viewReply.dmSge?.total ?: "N/A"}")
+                    
+                    // 处理 Command Dms (如高能进度条提示, 互动弹幕)
+                    if (viewReply.commandDms.isNotEmpty()) {
+                        commandDmList = viewReply.commandDms.map { cmd ->
+                            AdvancedDanmakuData(
+                                id = "cmd_${cmd.id}",
+                                content = cmd.content,
+                                startTimeMs = cmd.progress.toLong(),
+                                durationMs = 5000, // 默认 5 秒
+                                startX = 0.5f,     // 默认居中顶部
+                                startY = 0.1f,
+                                fontSize = 20f,
+                                color = 0xFFD700,  // 金色
+                                alpha = 0.9f
+                            )
+                        }
+                        Log.w(TAG, " Converted ${commandDmList.size} Command Dms to AdvancedDanmakuData")
+                    }
+                    
+                    // TODO: specialDms 通常是 URL 列表，需要额外下载解析，暂跳过
+                }
+                
                 val (segments, rawData) = withContext(Dispatchers.IO) {
                     var segmentList: List<ByteArray>? = null
                     var xmlData: ByteArray? = null
                     
                     //  [新增] 优先使用 Protobuf API (seg.so)
-                    if (durationMs > 0) {
+                    // 如果元数据中有分段信息，可以使用它，否则使用 durationMs 估算
+                    val totalSegments = viewReply?.dmSge?.total ?: ((durationMs + 360000L - 1) / 360000L)
+                    
+                    if (durationMs > 0 || viewReply != null) {
                         Log.w(TAG, " Trying Protobuf API (seg.so)...")
                         try {
                             val fetched = com.android.purebilibili.data.repository.DanmakuRepository.getDanmakuSegments(cid, durationMs)
@@ -592,23 +672,23 @@ class DanmakuManager private constructor(
                     Pair(segmentList, xmlData)
                 }
                 
-                val danmakuList = withContext(Dispatchers.Default) {
+                val parsedResult = withContext(Dispatchers.Default) {
                     when {
                         !segments.isNullOrEmpty() -> {
                             val parsed = DanmakuParser.parseProtobuf(segments)
-                            Log.w(TAG, " Protobuf parsed ${parsed.size} danmakus")
+                            Log.w(TAG, " Protobuf parsed: Standard=${parsed.standardList.size}, Advanced=${parsed.advancedList.size}")
                             parsed
                         }
                         rawData != null && rawData.isNotEmpty() -> {
                             val parsed = DanmakuParser.parse(rawData)
-                            Log.w(TAG, " XML parsed ${parsed.size} danmakus")
+                            Log.w(TAG, " XML parsed: Standard=${parsed.standardList.size}, Advanced=${parsed.advancedList.size}")
                             parsed
                         }
-                        else -> emptyList()
+                        else -> ParsedDanmaku(emptyList(), emptyList())
                     }
                 }
                 
-                if (danmakuList.isEmpty()) {
+                if (parsedResult.standardList.isEmpty() && parsedResult.advancedList.isEmpty()) {
                     Log.w(TAG, " No danmaku data available for cid=$cid")
                     withContext(Dispatchers.Main) {
                         isLoading = false
@@ -616,8 +696,29 @@ class DanmakuManager private constructor(
                     return@launch
                 }
                 
-                cachedDanmakuList = danmakuList
-                Log.w(TAG, " Final: ${danmakuList.size} danmakus for cid=$cid")
+                // 缓存高级弹幕 (基础解析结果 + Command Dms)
+                val baseAdvancedList = parsedResult.advancedList + commandDmList
+                
+                val danmakuList = parsedResult.standardList
+                // 恢复原始数据引用，用于合并功能切换
+                rawDanmakuList = danmakuList
+                
+                if (config.mergeDuplicates) {
+                    // 执行合并，现在返回 Pair(标准剩余, 高级合并项)
+                    val (mergedStandard, mergedAdvanced) = DanmakuMerger.merge(danmakuList)
+                    
+                    cachedDanmakuList = mergedStandard
+                    
+                    // 将合并产生的高级弹幕添加到总高级弹幕列表中
+                    // 注意：这里需要创建一个新的列表以合并两者
+                    val totalAdvanced = baseAdvancedList + mergedAdvanced
+                    _advancedDanmakuFlow.value = totalAdvanced
+                    
+                    Log.w(TAG, " Merged: Standard ${danmakuList.size}->${mergedStandard.size}, Advanced ${baseAdvancedList.size}->${totalAdvanced.size} (added ${mergedAdvanced.size} merged)")
+                } else {
+                    cachedDanmakuList = danmakuList
+                    _advancedDanmakuFlow.value = baseAdvancedList
+                }
                 
                 withContext(Dispatchers.Main) {
                     isLoading = false

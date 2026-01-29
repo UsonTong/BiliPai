@@ -14,8 +14,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
@@ -53,10 +55,22 @@ fun SeekPreviewBubble(
     }
     
     val context = LocalContext.current
-    val previewInfo = remember(videoshotData, targetPositionMs, durationMs) {
+    
+    // 🔧 [修复] 计算当前帧的预览信息
+    // 这个值会随着拖动更新，但我们只在图片URL或偏移变化时才重新加载图片
+    val currentPreviewInfo = remember(videoshotData, targetPositionMs, durationMs) {
         videoshotData?.getPreviewInfo(targetPositionMs, durationMs)
     }
     
+    // 使用 previewInfo 的内容（URL+偏移）作为稳定 key
+    // 这样相同的帧不会重复触发图片加载
+    val stableImageKey = remember(currentPreviewInfo) {
+        currentPreviewInfo?.let { (url, x, y) ->
+            "$url-$x-$y"
+        }
+    }
+    
+
     Box(
         modifier = modifier
             .offset { IntOffset((clampedOffsetX - halfBubble).toInt(), 0) }
@@ -67,8 +81,8 @@ fun SeekPreviewBubble(
             .background(Color.Black)
     ) {
         // 1. 视频缩略图 (底层)
-        if (previewInfo != null && videoshotData != null) {
-            val (rawImageUrl, spriteOffsetX, spriteOffsetY) = previewInfo
+        if (currentPreviewInfo != null && videoshotData != null) {
+            val (rawImageUrl, spriteOffsetX, spriteOffsetY) = currentPreviewInfo
             
             // 🔧 修复：B站 URL 可能以 // 开头，需要补全 https:
             val imageUrl = if (rawImageUrl.startsWith("//")) {
@@ -80,45 +94,89 @@ fun SeekPreviewBubble(
             val thumbWidthPx = videoshotData.img_x_size
             val thumbHeightPx = videoshotData.img_y_size
             
-            SubcomposeAsyncImage(
+            // 🔧 [关键修复] 使用 rememberAsyncImagePainter
+            // 这个 painter 会在 stableImageKey 变化时才重新加载
+            // 🔧 [最终修复] 性能优化方案
+            // 1. Coil 只负责加载整张雪碧图 (只加载一次，缓存 key 只跟 URL 有关)
+            val painter = coil.compose.rememberAsyncImagePainter(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
-                    .size(coil.size.Size.ORIGINAL)
-                    .transformations(
-                        SpriteCropTransformation(
-                            offsetX = spriteOffsetX,
-                            offsetY = spriteOffsetY,
-                            cropWidth = thumbWidthPx,
-                            cropHeight = thumbHeightPx
+                    .size(coil.size.Size.ORIGINAL) // 加载原图
+                    .crossfade(false)
+                    .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .build()
+            )
+            
+            // 2. 加载状态处理
+            val painterState = painter.state
+            if (painterState is coil.compose.AsyncImagePainter.State.Loading) {
+                 Box(Modifier.fillMaxSize().background(Color.DarkGray), contentAlignment = Alignment.Center) {
+                    Text("...", color = Color.White, fontSize = 12.sp)
+                }
+            } else if (painterState is coil.compose.AsyncImagePainter.State.Error) {
+                Box(Modifier.fillMaxSize().background(Color.Red), contentAlignment = Alignment.Center) {
+                    Text("×", color = Color.White, fontSize = 16.sp)
+                }
+            } else if (painterState is coil.compose.AsyncImagePainter.State.Success) {
+                // 3. 使用 drawWithContent 手动裁剪绘制
+                // 这样即使 offset 变化，也不需要重新加载图片，只是重绘 Canvas
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val drawable = painterState.result.drawable
+                    val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                    
+                    if (bitmap != null) {
+                        val inputWidth = bitmap.width
+                        val inputHeight = bitmap.height
+                        
+                         // 预期总宽高
+                        val expectedWidth = thumbWidthPx * videoshotData.img_x_len
+                        val expectedHeight = thumbHeightPx * videoshotData.img_y_len
+                        
+                        // 计算缩放比例 (实际 / 预期)
+                        val scaleX = inputWidth.toFloat() / expectedWidth.toFloat()
+                        val scaleY = inputHeight.toFloat() / expectedHeight.toFloat()
+                        
+                        // 计算实际裁剪区域
+                        val realOffsetX = (spriteOffsetX * scaleX).toInt()
+                        val realOffsetY = (spriteOffsetY * scaleY).toInt()
+                        val realCropWidth = (thumbWidthPx * scaleX).toInt()
+                        val realCropHeight = (thumbHeightPx * scaleY).toInt()
+                        
+                        // 源矩形 (裁剪区域)
+                        val srcRect = android.graphics.Rect(
+                            realOffsetX, 
+                            realOffsetY, 
+                            realOffsetX + realCropWidth, 
+                            realOffsetY + realCropHeight
                         )
-                    )
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "seek_preview",
-                contentScale = ContentScale.Crop, // 确保图片填满
-                modifier = Modifier.fillMaxSize(),
-                loading = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("...", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-                    }
-                },
-                error = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("×", color = com.android.purebilibili.core.theme.iOSRed, fontSize = 16.sp)
+                        
+                        // 目标矩形 (View 大小)
+                        val dstOffset = IntOffset.Zero
+                        val dstSize = IntSize(size.width.toInt(), size.height.toInt())
+                        
+                        // 绘制
+                        drawImage(
+                            image = bitmap.asImageBitmap(), // 需要 import androidx.compose.ui.graphics.asImageBitmap
+                            srcOffset = IntOffset(realOffsetX, realOffsetY),
+                            srcSize = IntSize(realCropWidth, realCropHeight),
+                            dstOffset = dstOffset,
+                            dstSize = dstSize
+                        )
                     }
                 }
-            )
+            }
         } else {
-            // 无预览图时显示占位
+            // Loading 状态
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.DarkGray),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "预览加载中...",
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp
                 )
             }
@@ -229,36 +287,6 @@ fun SeekPreviewBubbleSimple(
                     fontSize = 12.sp
                 )
             }
-        }
-    }
-}
-
-/**
- * 自定义 Coil Transformation - 裁剪雪碧图的特定区域
- */
-class SpriteCropTransformation(
-    private val offsetX: Int,
-    private val offsetY: Int,
-    private val cropWidth: Int,
-    private val cropHeight: Int
-) : coil.transform.Transformation {
-    
-    override val cacheKey: String
-        get() = "sprite_crop_${offsetX}_${offsetY}_${cropWidth}_${cropHeight}"
-    
-    override suspend fun transform(input: android.graphics.Bitmap, size: coil.size.Size): android.graphics.Bitmap {
-        // 确保裁剪区域在图片范围内
-        val safeX = offsetX.coerceIn(0, (input.width - cropWidth).coerceAtLeast(0))
-        val safeY = offsetY.coerceIn(0, (input.height - cropHeight).coerceAtLeast(0))
-        val safeWidth = cropWidth.coerceAtMost(input.width - safeX)
-        val safeHeight = cropHeight.coerceAtMost(input.height - safeY)
-        
-        android.util.Log.d("SpriteCrop", "🔪 Cropping: input=${input.width}x${input.height}, crop=($safeX,$safeY,$safeWidth,$safeHeight)")
-        
-        return if (safeWidth > 0 && safeHeight > 0) {
-            android.graphics.Bitmap.createBitmap(input, safeX, safeY, safeWidth, safeHeight)
-        } else {
-            input
         }
     }
 }

@@ -239,7 +239,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             playDashVideo(videoUrl, audioUrl, referer = referer)
             
             //  [重构] 使用基类方法加载弹幕
-            loadDanmaku(episode.cid)
+            //  UI 层 (BangumiPlayerScreen) 已经通过 DanmakuManager 加载了弹幕，此处无需重复加载
+            // loadDanmaku(episode.cid)
             
             //  [重构] 使用基类方法加载空降片段
             episode.bvid?.let { loadSponsorSegments(it) }

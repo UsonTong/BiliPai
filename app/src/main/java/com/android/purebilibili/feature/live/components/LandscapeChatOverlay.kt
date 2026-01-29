@@ -40,10 +40,17 @@ fun LandscapeChatOverlay(
     
     LaunchedEffect(danmakuFlow) {
         danmakuFlow.collect { item ->
-            messages.add(item)
-            if (messages.size > 50) messages.removeFirst() // 横屏模式只保留最近50条
-            if (!listState.isScrollInProgress) {
-                listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+            // 确保列表操作在主线程执行 (Compose 状态修改必须在主线程)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+                try {
+                    messages.add(item)
+                    if (messages.size > 50) messages.removeFirst() // 横屏模式只保留最近50条
+                    if (!listState.isScrollInProgress && messages.isNotEmpty()) {
+                        listState.animateScrollToItem((messages.size - 1).coerceAtLeast(0))
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("LandscapeChatOverlay", "❌ Message add error: ${e.message}")
+                }
             }
         }
     }

@@ -80,6 +80,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         TokenManager.init(this)
         com.android.purebilibili.data.repository.VideoRepository.init(this) //  [新增] 初始化 VideoRepo
         BackgroundManager.init(this)  // 📱 后台状态管理
+        com.android.purebilibili.core.store.PlayerSettingsCache.init(this) // 🎬 [新增] 播放器设置缓存
         
         createNotificationChannel()
         
