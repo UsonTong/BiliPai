@@ -424,7 +424,7 @@ object SettingsManager {
     
     //  [新增] --- 底栏模糊效果 ---
     fun getBottomBarBlurEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true }
+        .map { preferences -> preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: false }
 
     suspend fun setBottomBarBlurEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] = value }

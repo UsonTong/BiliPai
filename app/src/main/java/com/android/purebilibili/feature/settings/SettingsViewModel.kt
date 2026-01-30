@@ -414,7 +414,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     //  [新增] 模糊效果开关
     fun toggleHeaderBlur(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderBlurEnabled(context, value) } }
-    fun toggleBottomBarBlur(value: Boolean) { viewModelScope.launch { SettingsManager.setBottomBarBlurEnabled(context, value) } }
+    fun toggleBottomBarBlur(value: Boolean) { 
+        viewModelScope.launch { 
+            SettingsManager.setBottomBarBlurEnabled(context, value)
+            if (value) {
+                // 开启磨砂效果时，自动关闭液态玻璃，仅保留一个效果
+                SettingsManager.setLiquidGlassEnabled(context, false)
+            }
+        } 
+    }
     fun setBlurIntensity(intensity: BlurIntensity) { viewModelScope.launch { SettingsManager.setBlurIntensity(context, intensity) } }  //  模糊强度设置
     
     //  [新增] 卡片进场动画开关
