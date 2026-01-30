@@ -397,6 +397,12 @@ class MiniPlayerManager private constructor(private val context: Context) :
             // 停止所有播放器（外部和内部）
             _externalPlayer?.pause()
             _player?.pause()
+            
+            // 🔧 [修复] 标记非活跃状态，允许 VideoPlayerState.onDispose 正确释放资源
+            // 解决音频泄漏问题：返回首页后音频仍继续播放
+            isActive = false
+            _externalPlayer = null
+            Logger.d(TAG, "🔧 标记 isActive=false，清除外部播放器引用")
         }
     }
     

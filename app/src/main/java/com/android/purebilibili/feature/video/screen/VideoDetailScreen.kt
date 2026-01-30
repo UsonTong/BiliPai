@@ -117,7 +117,7 @@ import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun VideoDetailScreen(
@@ -662,8 +662,11 @@ fun VideoDetailScreen(
                     
                     // 📖 [新增] 视频章节数据
                     viewPoints = viewPoints,
-                    isPortraitFullscreen = isPortraitFullscreen
-                )
+                isPortraitFullscreen = isPortraitFullscreen,
+                // [New Actions]
+                onSaveCover = { viewModel.saveCover(context) },
+                onDownloadAudio = { viewModel.downloadAudio(context) }
+            )
         } else {
                 //  沉浸式布局：视频延伸到状态栏 + 内容区域
                 //  📐 [大屏适配] 仅 Expanded 使用分栏布局
@@ -906,7 +909,10 @@ fun VideoDetailScreen(
                                 currentCodec = codecPreference,
                                 onCodecChange = { viewModel.setVideoCodec(it) },
                                 currentAudioQuality = audioQualityPreference,
-                                onAudioQualityChange = { viewModel.setAudioQuality(it) }
+                                onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                                // [New Actions]
+                                onSaveCover = { viewModel.saveCover(context) },
+                                onDownloadAudio = { viewModel.downloadAudio(context) }
                                 //  空降助手 - 已由插件系统自动处理
                                 // sponsorSegment = sponsorSegment,
                                 // showSponsorSkipButton = showSponsorSkipButton,
@@ -1754,28 +1760,194 @@ fun VideoDetailScreen(
             }
         )
         
-        //  [新增] 下载画质选择对话框
+        //  [新增] 下载选项菜单 & 画质选择
         val showDownloadDialog by viewModel.showDownloadDialog.collectAsState()
         val successForDownload = uiState as? PlayerUiState.Success
+        
+        // 本地状态控制画质选择弹窗
+        var showQualitySelection by remember { mutableStateOf(false) }
+
         if (showDownloadDialog && successForDownload != null) {
-            //  按画质从高到低排序（qualityId 越大画质越高）
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.closeDownloadDialog() },
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = "下载选项",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                    
+                    // 1. 缓存视频
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                // 检查任务状态
+                                val existingTask = com.android.purebilibili.feature.download.DownloadManager.getTask(successForDownload.info.bvid, successForDownload.info.cid)
+                                if (existingTask != null && !existingTask.isFailed) {
+                                    if (existingTask.isComplete) viewModel.toast("视频已缓存")
+                                    else viewModel.toast("正在下载中...")
+                                    viewModel.closeDownloadDialog()
+                                } else {
+                                    // 打开画质选择
+                                    showQualitySelection = true
+                                    viewModel.closeDownloadDialog()
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.ArrowDown, // 假设已有此图标或使用 Icons.Rounded.Download
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "缓存视频",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "选择画质缓存当前视频",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // 2. 下载音频
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val task = com.android.purebilibili.feature.download.DownloadTask(
+                                    bvid = successForDownload.info.bvid,
+                                    cid = successForDownload.info.cid,
+                                    title = successForDownload.info.title,
+                                    cover = successForDownload.info.pic,
+                                    ownerName = successForDownload.info.owner.name,
+                                    ownerFace = successForDownload.info.owner.face,
+                                    duration = 0, // 音频不需要 duration?
+                                    quality = 0,
+                                    qualityDesc = "音频",
+                                    videoUrl = "",
+                                    audioUrl = successForDownload.audioUrl ?: "",
+                                    isAudioOnly = true
+                                )
+                                if (task.audioUrl.isNotEmpty()) {
+                                    val started = com.android.purebilibili.feature.download.DownloadManager.addTask(task)
+                                    if (started) viewModel.toast("已开始下载音频")
+                                    else viewModel.toast("该任务已在下载中或已完成")
+                                } else {
+                                    viewModel.toast("无法获取音频地址")
+                                }
+                                viewModel.closeDownloadDialog()
+                            }
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "下载音频",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "仅保存音频文件",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // 3. 保存封面
+                    val scope = rememberCoroutineScope()
+                    val context = LocalContext.current // 获取 Context
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val coverUrl = successForDownload.info.pic
+                                val title = successForDownload.info.title
+                                if (coverUrl.isNotEmpty()) {
+                                    scope.launch {
+                                        val success = com.android.purebilibili.feature.download.DownloadManager.saveImageToGallery(
+                                            context, 
+                                            coverUrl, 
+                                            title
+                                        )
+                                        // Toast 已经在 saveImageToGallery 内部或者需要外部调用? 
+                                        // VideoPlayerOverlay 是自己调用的。
+                                        // context 是必要的。
+                                        if (success) viewModel.toast("封面已保存到相册")
+                                        else viewModel.toast("保存失败")
+                                    }
+                                } else {
+                                    viewModel.toast("无法获取封面地址")
+                                }
+                                viewModel.closeDownloadDialog()
+                            }
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.Photo,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "保存封面",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "保存当前视频封面到相册",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 缓存视频 - 画质选择弹窗 (当 showQualitySelection 为 true 时显示)
+        if (showQualitySelection && successForDownload != null) {
             val sortedQualityOptions = successForDownload.qualityIds
                 .zip(successForDownload.qualityLabels)
                 .sortedByDescending { it.first }
-            //  默认选中最高画质
             val highestQuality = sortedQualityOptions.firstOrNull()?.first ?: successForDownload.currentQuality
-            
             val defaultPath = remember { com.android.purebilibili.feature.download.DownloadManager.getDownloadDir().absolutePath }
             
             com.android.purebilibili.feature.download.DownloadQualityDialog(
                 title = successForDownload.info.title,
                 qualityOptions = sortedQualityOptions,
-                currentQuality = highestQuality,  // 默认选中最高画质
+                currentQuality = highestQuality,
                 defaultPath = defaultPath,
                 onQualitySelected = { quality, path -> 
                     viewModel.downloadWithQuality(quality, path) 
+                    showQualitySelection = false
                 },
-                onDismiss = { viewModel.closeDownloadDialog() }
+                onDismiss = { showQualitySelection = false }
             )
         }
         

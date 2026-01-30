@@ -41,6 +41,9 @@ import com.android.purebilibili.data.model.response.ViewPoint
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 import androidx.compose.ui.platform.LocalContext
 import com.android.purebilibili.core.util.ShareUtils
@@ -58,8 +61,18 @@ fun VideoPlayerOverlay(
     qualityIds: List<Int> = emptyList(),
     isLoggedIn: Boolean = false,
     onQualitySelected: (Int) -> Unit,
+
     onBack: () -> Unit,
     onToggleFullscreen: () -> Unit,
+    // [New] Player Data for Download
+    bvid: String = "",
+    cid: Long = 0L,
+    videoOwnerName: String = "",
+    videoOwnerFace: String = "",
+    videoDuration: Int = 0,
+    videoTitle: String = "",
+    currentVideoUrl: String = "",
+    currentAudioUrl: String = "", 
     // 🔒 [新增] 屏幕锁定
     isScreenLocked: Boolean = false,
     onLockToggle: () -> Unit = {},
@@ -87,9 +100,10 @@ fun VideoPlayerOverlay(
     //  视频比例调节
     currentAspectRatio: VideoAspectRatio = VideoAspectRatio.FIT,
     onAspectRatioChange: (VideoAspectRatio) -> Unit = {},
-    // 🔗 [新增] 分享功能
-    bvid: String = "",
+    // 🔗 [新增] 分享功能 (Moved bvid to top)
     onShare: (() -> Unit)? = null,
+    // [New] Cover URL for Download
+    coverUrl: String = "",
     //  [新增] 视频设置面板回调
     onReloadVideo: () -> Unit = {},
     sleepTimerMinutes: Int? = null,
@@ -124,7 +138,10 @@ fun VideoPlayerOverlay(
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
     // 👀 [新增] 在线观看人数
-    onlineCount: String = ""
+    onlineCount: String = "",
+    // [New Actions]
+    onSaveCover: () -> Unit = {},
+    onDownloadAudio: () -> Unit = {}
 ) {
     var showQualityMenu by remember { mutableStateOf(false) }
     var showSpeedMenu by remember { mutableStateOf(false) }
@@ -135,6 +152,9 @@ fun VideoPlayerOverlay(
     var currentSpeed by remember { mutableFloatStateOf(1.0f) }
     //  使用传入的比例状态
     var isPlaying by remember { mutableStateOf(player.isPlaying) }
+    
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     //  双击检测状态
     var lastTapTime by remember { mutableLongStateOf(0L) }
@@ -556,6 +576,16 @@ fun VideoPlayerOverlay(
                 onAudioQualityChange = { quality ->
                     onAudioQualityChange(quality)
                     showVideoSettings = false
+                },
+
+                onSaveCover = {
+                    onSaveCover()
+                    // Disimss moved to VideoSettingsPanel internal or caller responsibility?
+                    // VideoSettingsPanel calls onSaveCover then onDismiss.
+                    // We just invoke the callback.
+                },
+                onDownloadAudio = {
+                    onDownloadAudio()
                 },
                 onDismiss = { showVideoSettings = false }
             )

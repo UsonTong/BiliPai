@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
 import kotlinx.coroutines.delay
+import android.os.Build
 
 /**
  *  动画与效果设置二级页面
@@ -120,16 +121,29 @@ fun AnimationSettingsContent(
                 }
             }
             
-            // ✨ 磨砂效果
-            // ✨ 磨砂效果
+            // ✨ 视觉效果
             item {
                 Box(modifier = Modifier.staggeredEntrance(2, isVisible)) {
-                    IOSSectionTitle("磨砂效果")
+                    IOSSectionTitle("视觉效果")
                 }
             }
             item {
                 Box(modifier = Modifier.staggeredEntrance(3, isVisible)) {
                     IOSGroup {
+                        // Android 13+ 显示液态玻璃
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                             IOSSwitchItem(
+                                icon = CupertinoIcons.Default.Drop, 
+                                title = "液态玻璃", 
+                                subtitle = "底栏指示器的实时折射效果",
+                                checked = state.isLiquidGlassEnabled, 
+                                onCheckedChange = { viewModel.toggleLiquidGlass(it) },
+                                iconTint = iOSBlue
+                            )
+                            Divider()
+                        }
+
+                        // 磨砂效果 (始终显示)
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.Sparkles,
                             title = "底栏磨砂",

@@ -74,6 +74,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 // [新增] 全局回顶事件通道
 val LocalHomeScrollChannel = compositionLocalOf<Channel<Unit>?> { null }
 
+// [New] Global Scroll Offset for Liquid Glass Effect
+// Used to pass scroll position from HomeScreen to BottomBar without causing recomposition
+val LocalHomeScrollOffset = compositionLocalOf { androidx.compose.runtime.mutableFloatStateOf(0f) }
+
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -170,6 +174,20 @@ fun HomeScreen(
             categoryName = state.currentCategory.label,
             categoryId = state.currentCategory.tid
         )
+    }
+
+    // [New] Broadcast Scroll Offset for Liquid Glass Effect
+    val globalScrollOffset = LocalHomeScrollOffset.current
+    LaunchedEffect(state.currentCategory, gridStates) { // Re-launch when category changes
+        // Use a simple timer loop or snapshotFlow to poll scroll state to avoid heavy recomposition
+        // We only need rough updates for the shader wave effect
+        val gridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
+        snapshotFlow { 
+            // Calculate an approximate absolute scroll pixel value
+            gridState.firstVisibleItemIndex * 500f + gridState.firstVisibleItemScrollOffset
+        }.collect { offset ->
+            globalScrollOffset.floatValue = offset
+        }
     }
     
     //  [彩蛋] 彩蛋开关设置

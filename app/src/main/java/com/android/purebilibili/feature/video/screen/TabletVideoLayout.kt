@@ -172,7 +172,10 @@ fun TabletVideoLayout(
                         currentCodec = currentCodec,
                         onCodecChange = onCodecChange,
                         currentAudioQuality = currentAudioQuality,
-                        onAudioQualityChange = onAudioQualityChange
+                        onAudioQualityChange = onAudioQualityChange,
+                        // [New Actions]
+                        onSaveCover = { viewModel.saveCover(context) },
+                        onDownloadAudio = { viewModel.downloadAudio(context) }
                     )
                 }
                 

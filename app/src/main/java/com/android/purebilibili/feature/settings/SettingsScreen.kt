@@ -80,24 +80,14 @@ fun SettingsScreen(
     var showPathDialog by remember { mutableStateOf(false) }
     // [新增] 权限引导弹窗状态
     var showPermissionDialog by remember { mutableStateOf(false) }
+    // [新增] 目录选择对话框状态
+    var showDirectoryPicker by remember { mutableStateOf(false) }
     
     // Haze State for this screen
     val activeHazeState = mainHazeState ?: remember { dev.chrisbanes.haze.HazeState() }
 
-    // Directory Picker Logic
+    // Directory Picker - 使用文件系统 API
     val defaultPath = remember { SettingsManager.getDefaultDownloadPath(context) }
-    val directoryPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let { selectedUri ->
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(selectedUri, takeFlags)
-            scope.launch {
-                SettingsManager.setDownloadPath(context, selectedUri.toString())
-            }
-            Toast.makeText(context, "下载路径已更新", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     // Callbacks
     val onClearCacheAction = { showCacheDialog = true }
@@ -210,7 +200,7 @@ fun SettingsScreen(
                         showPermissionDialog = true
                     } else {
                         showPathDialog = false
-                        directoryPicker.launch(null)
+                        showDirectoryPicker = true  // [修复] 使用 DirectorySelectionDialog
                     }
                 }) { Text("选择自定义目录") }
             },
@@ -253,6 +243,19 @@ fun SettingsScreen(
             dismissButton = {
                 com.android.purebilibili.core.ui.IOSDialogAction(onClick = { showPermissionDialog = false }) { Text("取消") }
             }
+        )
+    }
+    
+    // [新增] 目录选择对话框（使用 File API）
+    if (showDirectoryPicker) {
+        com.android.purebilibili.feature.download.DirectorySelectionDialog(
+            initialPath = android.os.Environment.getExternalStorageDirectory().absolutePath,
+            onPathSelected = { path ->
+                scope.launch { SettingsManager.setDownloadPath(context, path) }
+                Toast.makeText(context, "下载路径已更新: $path", Toast.LENGTH_SHORT).show()
+                showDirectoryPicker = false
+            },
+            onDismiss = { showDirectoryPicker = false }
         )
     }
     

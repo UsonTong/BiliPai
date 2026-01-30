@@ -113,7 +113,10 @@ fun VideoPlayerSection(
     currentCodec: String = "hev1", 
     onCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
-    onAudioQualityChange: (Int) -> Unit = {}
+    onAudioQualityChange: (Int) -> Unit = {},
+    // [New Actions]
+    onSaveCover: () -> Unit = {},
+    onDownloadAudio: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -1029,10 +1032,19 @@ fun VideoPlayerSection(
                     }
                 },
                 //  视频比例调节
+
                 currentAspectRatio = currentAspectRatio,
                 onAspectRatioChange = { currentAspectRatio = it },
                 // 🕺 [新增] 分享功能
                 bvid = bvid,
+                cid = uiState.info.cid,
+                videoOwnerName = uiState.info.owner.name,
+                videoOwnerFace = uiState.info.owner.face,
+                videoDuration = playerState.player.duration.toInt().coerceAtLeast(0),
+                videoTitle = uiState.info.title,
+                currentVideoUrl = uiState.playUrl,
+                currentAudioUrl = uiState.audioUrl ?: "",
+                coverUrl = uiState.info.pic,
                 //  [新增] 视频设置面板回调
                 onReloadVideo = onReloadVideo,
                 isFlippedHorizontal = isFlippedHorizontal,
@@ -1077,7 +1089,10 @@ fun VideoPlayerSection(
                 currentAudioQuality = currentAudioQuality,
                 onAudioQualityChange = onAudioQualityChange,
                 // 👀 [新增] 在线观看人数
-                onlineCount = uiState.onlineCount
+                onlineCount = uiState.onlineCount,
+                // [New]
+                onSaveCover = onSaveCover,
+                onDownloadAudio = onDownloadAudio
             )
         }
         

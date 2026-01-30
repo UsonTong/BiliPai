@@ -1299,6 +1299,58 @@ class PlayerViewModel : ViewModel() {
     }
     
     //  异步加载视频标签
+    /**
+     *  保存封面到相册
+     */
+    fun saveCover(context: android.content.Context) {
+        val current = _uiState.value as? PlayerUiState.Success
+        val coverUrl = current?.info?.pic ?: return
+        val title = current.info.title
+        
+        viewModelScope.launch {
+            val success = com.android.purebilibili.feature.download.DownloadManager.saveImageToGallery(context, coverUrl, title)
+            if (success) toast("封面已保存到相册")
+            else toast("保存失败")
+        }
+    }
+
+    /**
+     *  下载音频
+     */
+    fun downloadAudio(context: android.content.Context) {
+        val current = _uiState.value as? PlayerUiState.Success ?: run {
+            toast("无法获取视频信息")
+            return
+        }
+        val audioUrl = current.audioUrl
+        if (audioUrl.isNullOrEmpty()) {
+            toast("无法获取音频地址")
+            return
+        }
+        
+        val task = com.android.purebilibili.feature.download.DownloadTask(
+            bvid = current.info.bvid,
+            cid = current.info.cid,
+            title = current.info.title,
+            cover = current.info.pic,
+            ownerName = current.info.owner.name,
+            ownerFace = current.info.owner.face,
+            duration = exoPlayer?.duration?.toInt()?.div(1000) ?: 0,
+            quality = 0,
+            qualityDesc = "音频",
+            videoUrl = "",
+            audioUrl = audioUrl,
+            isAudioOnly = true
+        )
+        
+        val started = com.android.purebilibili.feature.download.DownloadManager.addTask(task)
+        if (started) {
+            toast("已开始下载音频")
+        } else {
+            toast("该任务已在下载中或已完成")
+        }
+    }
+
     private fun loadVideoTags(bvid: String) {
         viewModelScope.launch {
             try {
@@ -1446,20 +1498,6 @@ class PlayerViewModel : ViewModel() {
     
     fun openDownloadDialog() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
-        
-        // 检查是否已下载
-        val existingTask = com.android.purebilibili.feature.download.DownloadManager.getTask(currentBvid, currentCid)
-        if (existingTask != null) {
-            if (existingTask.isComplete) {
-                toast("视频已缓存")
-                return
-            }
-            if (existingTask.isDownloading) {
-                toast("正在下载中...")
-                return
-            }
-        }
-        
         _showDownloadDialog.value = true
     }
     

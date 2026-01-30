@@ -51,6 +51,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.CompositionLocalProvider
+// [LayerBackdrop] AndroidLiquidGlass for real background refraction
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.android.purebilibili.core.ui.LocalSetBottomBarVisible
 import com.android.purebilibili.core.ui.LocalBottomBarVisible
 import androidx.compose.ui.platform.LocalConfiguration // [新增]
@@ -178,6 +181,9 @@ fun AppNavigation(
         }
         
         val bottomBarItemColors by SettingsManager.getBottomBarItemColors(context).collectAsState(initial = emptyMap<String, Int>())
+        
+        // [新增] 获取首页设置 (包含 Liquid Glass 等视觉配置)
+        val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(initial = com.android.purebilibili.core.store.HomeSettings())
 
         // 平板侧边栏模式 (替代 WindowSizeClass)
         val configuration = LocalConfiguration.current
@@ -235,18 +241,27 @@ fun AppNavigation(
 
         // [新增] 首页回顶事件通道 (Channel based event bus)
         val homeScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
+        // [New] Global Scroll Offset State
+        val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+
+        // [LayerBackdrop] Create backdrop for bottom bar refraction effect
+        // This captures the NavHost content and allows the bottom bar to refract it
+        val bottomBarBackdrop = rememberLayerBackdrop()
 
         CompositionLocalProvider(
             LocalSetBottomBarVisible provides setBottomBarVisible,
             LocalBottomBarVisible provides finalBottomBarVisible,
-            com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel  // [新增] 提供回顶通道
+            com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel,
+            com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
         ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // ===== 内容层 (hazeSource) =====
             // 这个 Box 包裹所有 NavHost 内容，作为底栏模糊的源
+            // [LayerBackdrop] Apply layerBackdrop to capture content for bottom bar refraction
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(bottomBarBackdrop)
             ) {
                 NavHost(
             navController = navController,
@@ -1089,7 +1104,9 @@ fun AppNavigation(
                                     isFloating = true,
                                     labelMode = bottomBarLabelMode,
                                     visibleItems = visibleBottomBarItems,
-                                    itemColorIndices = bottomBarItemColors
+                                    itemColorIndices = bottomBarItemColors,
+                                    homeSettings = homeSettings,
+                                    backdrop = bottomBarBackdrop // [LayerBackdrop] Real background refraction
                                 )
                             }
                         } else {
@@ -1102,7 +1119,9 @@ fun AppNavigation(
                                 isFloating = false,
                                 labelMode = bottomBarLabelMode,
                                 visibleItems = visibleBottomBarItems,
-                                itemColorIndices = bottomBarItemColors
+                                itemColorIndices = bottomBarItemColors,
+                                homeSettings = homeSettings,
+                                backdrop = bottomBarBackdrop // [LayerBackdrop] Real background refraction
                             )
                         }
                     }

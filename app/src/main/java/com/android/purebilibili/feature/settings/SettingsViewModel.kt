@@ -42,7 +42,9 @@ data class SettingsUiState(
     val sponsorBlockEnabled: Boolean = false,
     val sponsorBlockAutoSkip: Boolean = true,
     // [新增] 触感反馈
-    val hapticFeedbackEnabled: Boolean = true
+    val hapticFeedbackEnabled: Boolean = true,
+    // [New]
+    val isLiquidGlassEnabled: Boolean = true
 )
 
 // 内部数据类，用于分批合并流
@@ -65,7 +67,8 @@ data class ExtraSettings(
     val displayMode: Int,
     val cardAnimationEnabled: Boolean,
     val cardTransitionEnabled: Boolean,
-    val hapticFeedbackEnabled: Boolean // [新增]
+    val hapticFeedbackEnabled: Boolean, // [新增]
+    val isLiquidGlassEnabled: Boolean // [New]
 )
 
 
@@ -96,7 +99,8 @@ private data class BaseSettings(
     val displayMode: Int, //  新增
     val cardAnimationEnabled: Boolean, //  卡片进场动画
     val cardTransitionEnabled: Boolean, //  卡片过渡动画
-    val hapticFeedbackEnabled: Boolean // [新增]
+    val hapticFeedbackEnabled: Boolean, // [新增]
+    val isLiquidGlassEnabled: Boolean // [New]
 )
 
 
@@ -133,7 +137,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getDisplayMode(context),
         SettingsManager.getCardAnimationEnabled(context), // [Restored]
         SettingsManager.getCardTransitionEnabled(context),
-        SettingsManager.getHapticFeedbackEnabled(context) // [新增]
+        SettingsManager.getHapticFeedbackEnabled(context), // [新增]
+        SettingsManager.getLiquidGlassEnabled(context) // [New]
     ) { values ->
         val isBottomBarFloating = values[0] as Boolean
         val labelMode = values[1] as Int
@@ -141,7 +146,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val cardAnimation = values[3] as Boolean
         val cardTransition = values[4] as Boolean
         val hapticFeedback = values[5] as Boolean
-        listOf(isBottomBarFloating, labelMode, displayMode, cardAnimation, cardTransition, hapticFeedback)
+        val liquidGlass = values[6] as Boolean
+        listOf(isBottomBarFloating, labelMode, displayMode, cardAnimation, cardTransition, hapticFeedback, liquidGlass)
     }
 
     // 合并所有 UI 设置
@@ -158,6 +164,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimationEnabled = ui2[3] as Boolean,
             cardTransitionEnabled = ui2[4] as Boolean,
             hapticFeedbackEnabled = ui2[5] as Boolean, // [新增]
+            isLiquidGlassEnabled = ui2[6] as Boolean, // [New]
             headerBlurEnabled = false, // 暂存，将在下一步合并
             bottomBarBlurEnabled = false, // 暂存
             blurIntensity = BlurIntensity.THIN // 暂存
@@ -219,7 +226,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             displayMode = extra.displayMode,
             cardAnimationEnabled = extra.cardAnimationEnabled,
             cardTransitionEnabled = extra.cardTransitionEnabled,
-            hapticFeedbackEnabled = extra.hapticFeedbackEnabled // [新增]
+            hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
+            isLiquidGlassEnabled = extra.isLiquidGlassEnabled // [New]
         )
 
     }
@@ -251,6 +259,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimationEnabled = settings.cardAnimationEnabled,
             cardTransitionEnabled = settings.cardTransitionEnabled,
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
+            isLiquidGlassEnabled = settings.isLiquidGlassEnabled, // [New]
 
             cacheSize = cache.first,
             cacheBreakdown = cache.second,  //  详细缓存统计
@@ -448,6 +457,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     // [New] 触感反馈
     fun toggleHapticFeedback(value: Boolean) { viewModelScope.launch { SettingsManager.setHapticFeedbackEnabled(context, value) } }
+    
+    // [New] Liquid Glass
+    fun toggleLiquidGlass(value: Boolean) { 
+        viewModelScope.launch { 
+            SettingsManager.setLiquidGlassEnabled(context, value)
+            if (value) {
+                // 开启液态玻璃时，自动关闭磨砂效果，仅保留一个效果
+                SettingsManager.setBottomBarBlurEnabled(context, false)
+            }
+        } 
+    }
     
 
 }

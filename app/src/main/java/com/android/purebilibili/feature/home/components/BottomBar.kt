@@ -13,6 +13,7 @@ import androidx.compose.foundation.combinedClickable  // [新增] 组合点击�
 import androidx.compose.foundation.ExperimentalFoundationApi // [新增]
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -57,11 +58,18 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
-import com.android.purebilibili.feature.home.components.LiquidIndicator
-import com.android.purebilibili.feature.home.components.SimpleLiquidIndicator
-// [Removed] internal import for rememberLayerBackdrop
+import dev.chrisbanes.haze.hazeEffect // [New]
+import dev.chrisbanes.haze.HazeStyle   // [New]
+import com.android.purebilibili.core.ui.effect.liquidGlassBackground // [New]
+// [LayerBackdrop] AndroidLiquidGlass library for real background refraction
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.lens
+import androidx.compose.foundation.shape.RoundedCornerShape as RoundedCornerShapeAlias
 import androidx.compose.ui.Modifier.Companion.then
 import dev.chrisbanes.haze.hazeSource
+import com.android.purebilibili.core.ui.effect.liquidGlass
+import androidx.compose.foundation.isSystemInDarkTheme // [New] Theme detection for adaptive readability
 
 /**
  * 底部导航项枚举 -  使用 iOS SF Symbols 风格图标
@@ -146,22 +154,25 @@ fun FrostedBottomBar(
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
     isFloating: Boolean = true,
-    labelMode: Int = 1,  //  0=图标+文字, 1=仅图标, 2=仅文字
-    onHomeDoubleTap: () -> Unit = {},  //  双击首页回到顶部
-    visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),  //  [新增] 可配置的可见项目
-    itemColorIndices: Map<String, Int> = emptyMap(),  //  [新增] 项目颜色索引映射
-    onToggleSidebar: (() -> Unit)? = null  // 📱 [平板适配] 切换到侧边栏
+    labelMode: Int = 1,
+    homeSettings: com.android.purebilibili.core.store.HomeSettings = com.android.purebilibili.core.store.HomeSettings(),
+    onHomeDoubleTap: () -> Unit = {},
+    visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
+    itemColorIndices: Map<String, Int> = emptyMap(),
+    onToggleSidebar: (() -> Unit)? = null,
+    // [NEW] Scroll offset for liquid glass refraction effect
+    scrollOffset: Float = 0f,
+    // [NEW] LayerBackdrop for real background refraction (captures content behind the bar)
+    backdrop: LayerBackdrop? = null
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f
     val haptic = rememberHapticFeedback()
-    // [Removed duplicate isTablet declaration]
     
-    // 🔒 [防抖] 防止快速点击导致页面重复加载
+    // 🔒 [防抖]
     var lastClickTime by remember { mutableStateOf(0L) }
     val debounceClick: (BottomNavItem, () -> Unit) -> Unit = remember {
         { item, action ->
             val currentTime = System.currentTimeMillis()
-            // 200ms 防抖
             if (currentTime - lastClickTime > 200) {
                 lastClickTime = currentTime
                 action()
@@ -169,238 +180,365 @@ fun FrostedBottomBar(
         }
     }
     
-    // 📐 [平板适配] 检测屏幕尺寸
+    // 📐 [平板适配]
     val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
     val isTablet = windowSizeClass.isTablet
     
-    //  读取当前模糊强度以确定背景透明度
+    // 背景颜色
     val context = androidx.compose.ui.platform.LocalContext.current
     val blurIntensity by com.android.purebilibili.core.store.SettingsManager.getBlurIntensity(context)
         .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
-    val barColor = resolveBottomBarSurfaceColor(
-        surfaceColor = MaterialTheme.colorScheme.surface,
-        blurEnabled = hazeState != null,
-        blurIntensity = blurIntensity
-    )
+    
+    // [Fix] Background Color for Legibility
+    // 使用半透明背景以保证文字在视频上的可读性，同时保留毛玻璃效果
+    val barColor = if (homeSettings.isLiquidGlassEnabled) {
+        // [Fix] 40% opacity to allow video cover colors to show through blur
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.1f) 
+    } else {
+        resolveBottomBarSurfaceColor(
+            surfaceColor = MaterialTheme.colorScheme.surface,
+            blurEnabled = hazeState != null,
+            blurIntensity = blurIntensity
+        )
+    }
 
-    // 📐 [平板适配] 根据 labelMode 和屏幕尺寸动态计算高度
+    // 📐 高度计算
     val floatingHeight = when (labelMode) {
-        0 -> if (isTablet) 76.dp else 70.dp   // 图标+文字 (加大: 64->70)
-        2 -> if (isTablet) 56.dp else 54.dp   // 仅文字 (加大: 48->54)
-        else -> if (isTablet) 68.dp else 62.dp // 仅图标 (加大: 56->62)
+        0 -> if (isTablet) 76.dp else 70.dp
+        2 -> if (isTablet) 56.dp else 54.dp
+        else -> if (isTablet) 68.dp else 62.dp
     }
     val dockedHeight = when (labelMode) {
-        0 -> if (isTablet) 72.dp else 72.dp   // 图标+文字 (66 -> 72)
-        2 -> if (isTablet) 52.dp else 56.dp   // 仅文字 (50 -> 56)
-        else -> if (isTablet) 64.dp else 64.dp // 仅图标 (58 -> 64)
+        0 -> if (isTablet) 72.dp else 72.dp
+        2 -> if (isTablet) 52.dp else 56.dp
+        else -> if (isTablet) 64.dp else 64.dp
     }
     
-    // 📐 [平板适配] 图标大小
-    val iconSize = if (isTablet) 30.dp else 26.dp
-    val iconWithTextSize = if (isTablet) 28.dp else 24.dp
-    
-    //  根据样式计算垂直偏移以确保视觉居中
-    //  正值向下偏移，负值向上偏移
-    val contentVerticalOffset = when {
-        isFloating && labelMode == 0 -> 0.dp   // 悬浮+图标文字：完全居中 (3->0)
-        isFloating && labelMode == 1 -> 2.dp   // 悬浮+仅图标：向下偏移
-        isFloating && labelMode == 2 -> 2.dp   // 悬浮+仅文字：向下偏移
-        !isFloating && labelMode == 0 -> 2.dp  // 贴边+图标文字：微调偏移 (4->2)
-        !isFloating && labelMode == 1 -> 0.dp  // 贴边+仅图标：完全居中 (3->0)
-        !isFloating && labelMode == 2 -> 0.dp  // 贴边+仅文字：完全居中 (2->0)
-        else -> 0.dp
-    }
-    
-    // 📐 [平板适配] 水平间距
-    val barHorizontalPadding = if (isFloating) (if (isTablet) 40.dp else 24.dp) else 0.dp
-    val barBottomPadding = if (isFloating) (if (isTablet) 20.dp else 16.dp) else 0.dp
-    // [新增] 获取圆角缩放比例
-    val cornerRadiusScale = LocalCornerRadiusScale.current
-    val floatingCornerRadius = iOSCornerRadius.Floating * cornerRadiusScale  // 28.dp * scale + 8
-    val barShape = if (isFloating) RoundedCornerShape(floatingCornerRadius + 8.dp) else androidx.compose.ui.graphics.RectangleShape  // iOS 风格动态圆角
-
-    // [Restore] 内部 backdropState，用于折射底栏自身内容（文字/图标）
-    // [修改] 使用外部传入的 backdrop （全屏内容折射源）
-    
-    Box(
+    // 📐 这里把 BoxWithConstraints 提到顶层，以便计算 itemWidth 和 indicator 参数
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
+    ) {
+        val totalWidth = maxWidth
+        // 📐 下边距
+        val barBottomPadding = if (isFloating) (if (isTablet) 20.dp else 16.dp) else 0.dp
+        val barHorizontalPadding = if (isFloating) (if (isTablet) 40.dp else 24.dp) else 0.dp
+        
+        // 内容宽度需减去 padding
+        // 注意：isFloating 时 padding 在 Box 上，docked 时无 padding
+        // 但这里我们是在 BoxWithConstraints 内部计算，TotalWidth 是包含 padding 的吗？
+        // Modifier 传给了 BottomBar，BoxWithConstraints 用了 modifier。
+        // 如果 modifier 有 padding，maxWidth 会减小。
+        // 原逻辑是在 internal Box 计算 padding。
+        
+        // 重新计算可用宽度
+        val availableWidth = if (isFloating) {
+             totalWidth - (barHorizontalPadding * 2)
+        } else {
+             totalWidth
+        }
+        
+        val rowPadding = 20.dp
+        val itemCount = visibleItems.size
+        // itemWidth calculation
+        val contentWidth = availableWidth - (rowPadding * 2)
+        // 限制最大宽度 (平板适配)
+        val maxContentWidth = if (isFloating && availableWidth > 640.dp) 640.dp - (rowPadding * 2) else contentWidth
+        val finalContentWidth = if (maxContentWidth > contentWidth) contentWidth else maxContentWidth
+        
+        val itemWidth = finalContentWidth / itemCount
+        
+        // 📐 状态提升：DampedDragAnimationState
+        val selectedIndex = visibleItems.indexOf(currentItem)
+        val dampedDragState = rememberDampedDragAnimationState(
+            initialIndex = if (selectedIndex >= 0) selectedIndex else 0,
+            itemCount = itemCount,
+            onIndexChanged = { index -> 
+                if (index in visibleItems.indices) {
+                    onItemClick(visibleItems[index])
+                }
+            }
+        )
+        
+        val isValidSelection = selectedIndex >= 0
+        val indicatorAlpha by animateFloatAsState(
+            targetValue = if (isValidSelection) 1f else 0f,
+            label = "indicatorAlpha"
+        )
+        
+        LaunchedEffect(selectedIndex) {
+            if (isValidSelection) {
+                dampedDragState.updateIndex(selectedIndex)
+            }
+        }
+        
+        // 📐 计算指示器位置和变形参数 (用于 Shader)
+        val density = LocalDensity.current
+        val indicatorWidthPx = with(density) { 90.dp.toPx() }  // Synced with LiquidIndicator
+        val indicatorHeightPx = with(density) { 52.dp.toPx() } // Synced with LiquidIndicator
+        val itemWidthPx = with(density) { itemWidth.toPx() }
+        val startPaddingPx = with(density) { rowPadding.toPx() }
+        
+        // CenterX: padding + (currentPos * width) + half_width
+        // 但这里还需要考虑 Row 的 offset。Row 是居中的。
+        // 如果 widthIn(max=640) 生效，content 居中，indicator 坐标也需要偏移?
+        // 简化起见，我们假设 LiquidGlass 应用于 "Container Box"，该 Box 与 Content 是一一对应的尺寸。
+        // 下面的 UI 结构中，Haze Box 是 widthIn(max=640)，居中。
+        // 因此 Shader 坐标系应该是以 Haze Box 为准。
+        
+        val indicatorCenterX = startPaddingPx + dampedDragState.value * itemWidthPx + (itemWidthPx / 2f)
+        val indicatorCenterY = with(density) { (if(isFloating) floatingHeight else dockedHeight).toPx() / 2f }
+        
+        // 变形逻辑
+        val velocity = dampedDragState.velocity
+        val velocityFraction = (velocity / 3000f).coerceIn(-1f, 1f)
+        val deformation = abs(velocityFraction) * 0.4f
+        val targetScaleX = 1f + deformation
+        val targetScaleY = 1f - (deformation * 0.6f)
+        
+        // Animate scales with High Viscosity (Slower response, less bounce)
+        val scaleX by animateFloatAsState(targetValue = targetScaleX, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f), label = "scaleX")
+        val scaleY by animateFloatAsState(targetValue = targetScaleY, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f), label = "scaleY")
+        val dragScale by animateFloatAsState(targetValue = if (dampedDragState.isDragging) 1.0f else 1f, animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f), label = "dragScale")
+
+        val finalScaleX = scaleX * dragScale
+        val finalScaleY = scaleY * dragScale
+        
+        // [Fix] Dynamic Refraction & Aberration Intensity
+        // Only refract when moving. Static = 0 intensity.
+        val isMoving = dampedDragState.isDragging || abs(dampedDragState.velocity) > 50f
+        val isDarkTheme = isSystemInDarkTheme()
+        // [Restored] Full intensity for both themes - readability handled via text color
+        val targetIntensity = if (isMoving) 0.85f else 0f
+        val animatedIntensity by animateFloatAsState(
+            targetValue = targetIntensity, 
+            animationSpec = spring(dampingRatio = 1f, stiffness = 400f), 
+            label = "intensity"
+        )
+        
+        // [New] Dynamic Chromatic Aberration (RGB Split)
+        // Intensity increases with speed, simulating stress on glass
+        // [Adaptive] Reduced in light mode for cleaner look
+        val aberrationStrength = if (isDarkTheme) {
+            (abs(velocityFraction) * 0.025f).coerceIn(0f, 0.05f)
+        } else {
+            (abs(velocityFraction) * 0.012f).coerceIn(0f, 0.02f) // Light: subtle aberration
+        }
+        val animatedAberration by animateFloatAsState(
+            targetValue = if (isMoving) aberrationStrength else 0f,
+            animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+            label = "aberration"
+        )
+        
+        // 圆角
+        val cornerRadiusScale = com.android.purebilibili.core.theme.LocalCornerRadiusScale.current
+        val floatingCornerRadius = com.android.purebilibili.core.theme.iOSCornerRadius.Floating * cornerRadiusScale
+        val barShape = if (isFloating) RoundedCornerShape(floatingCornerRadius + 8.dp) else androidx.compose.ui.graphics.RectangleShape
+        
+        // 垂直偏移
+        val contentVerticalOffset = when {
+            isFloating && labelMode == 0 -> 0.dp
+            isFloating && labelMode == 1 -> 2.dp
+            isFloating && labelMode == 2 -> 2.dp
+            !isFloating && labelMode == 0 -> 2.dp
+            !isFloating && labelMode == 1 -> 0.dp
+            !isFloating && labelMode == 2 -> 0.dp
+            else -> 0.dp
+        }
+
+    // [Fix] 确保指示器互斥显示的最终逻辑
+    val showGlassEffect = homeSettings.isLiquidGlassEnabled
+    
+    // 🟢 最外层容器
+    Box(
+        modifier = Modifier // 使用传入的 constraint modifier (已经有了 fillMaxWidth)
             .padding(horizontal = barHorizontalPadding)
             .padding(bottom = barBottomPadding)
             .then(if (isFloating) Modifier.navigationBarsPadding() else Modifier),
-        contentAlignment = Alignment.BottomCenter // 确保内容居中
+        contentAlignment = Alignment.BottomCenter
     ) {
-        //  [修复] hazeEffect 应用于外层 Box，绘制模糊背景
-        //  Surface 保持透明作为内容容器，这样模糊效果不会被遮盖
+        // 🟢 Haze 背景容器 (也是 Liquid Glass 的应用目标)
+        // 这里的 Modifier 顺序很重要
         Box(
             modifier = Modifier
                 .then(
                     if (isFloating) {
                          Modifier
-                            .widthIn(max = 640.dp) // [平板适配] 限制最大宽度
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = barShape,
-                                ambientColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                                spotColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                            )
+                            .widthIn(max = 640.dp)
+                            .shadow(8.dp, barShape, ambientColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), spotColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                             .height(floatingHeight)
                     } else {
-                        Modifier // Docked 高度由内容撑开
+                        Modifier
                     }
                 )
                 .fillMaxWidth()
                 .clip(barShape)
-                .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
-                .background(barColor)
+                // [Visual] Add white border for better visibility as requested by user
+                // [Visual] Add glass lighting border effect
+                .border(
+                    width = 0.8.dp, // Thinner for elegance
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = if (isSystemInDarkTheme()) {
+                            // Dark Mode: Bright top highlight, subtle fade
+                            listOf(
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.05f)
+                            )
+                        } else {
+                            // Light Mode: Subtle white highlight (against potentially light blurry background)
+                            // Since background interacts, we keep it white but softer
+                            listOf(
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f),
+                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)
+                            )
+                        }
+                    ),
+                    shape = barShape
+                )
+                // [Refactor] Removed background modifiers from here to separate layers
         ) {
+            // [Layer 1] Glass Background Layer
+            // Uses LayerBackdrop to capture and refract background content
+            // This creates real refraction of video covers/text when scrolling
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .run {
+                        val isSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                        val scrollState = com.android.purebilibili.feature.home.LocalHomeScrollOffset.current
+                        
+                        if (showGlassEffect && isSupported && backdrop != null) {
+                            // [LayerBackdrop Mode] Real background refraction using captured layer
+                            val scrollValue = scrollState.floatValue
+                            val isDark = isSystemInDarkTheme()
+                            
+                                    // [Visual Tuning] Glass Effect Parameters
+                                    // 1. Refraction: Stronger lens effect for "thick glass" feel
+                                    val dynamicRefractionAmount = 35f + (scrollValue * 0.02f).coerceIn(0f, 30f)
+                                    
+                                    this.drawBackdrop(
+                                        backdrop = backdrop,
+                                        shape = { barShape },
+                                        effects = {
+                                            lens(
+                                                refractionHeight = 120f, // Wider lens area
+                                                refractionAmount = dynamicRefractionAmount,
+                                                depthEffect = true,
+                                                chromaticAberration = true // Enable for both themes for "premium" feel
+                                            )
+                                        },
+                                        onDrawSurface = {
+                                            // [Visual Tuning] Translucency & Readability
+                                            // Light Mode: Needs "Milky Glass" (White tint) to support BLACK text over potential dark video
+                                            // Dark Mode: Needs "Smoked Glass" (Dark tint) to support WHITE text over potential light video
+                                            val baseAlpha = if (isDark) 0.15f else 0.35f 
+                                            val scrollImpact = (scrollValue * 0.0005f).coerceIn(0f, 0.2f)
+                                            val overlayAlpha = baseAlpha + scrollImpact
+                                            
+                                            drawRect(barColor.copy(alpha = overlayAlpha))
+                                        }
+                                    )
+                        } else if (showGlassEffect && isSupported && hazeState != null) {
+                            // [Haze Fallback] Use Haze blur when no backdrop available
+                            this
+                                .hazeEffect(
+                                     state = hazeState,
+                                     style = HazeStyle(
+                                         tint = null,
+                                         blurRadius = 0.1.dp, // Minimal radius for clear glass look
+                                         noiseFactor = 0f
+                                     )
+                                 )
+                                .liquidGlassBackground(
+                                    refractIntensity = 0.6f,
+                                    scrollOffsetProvider = { scrollState.floatValue },
+                                    backgroundColor = barColor.copy(alpha = 0.1f)
+                                )
+                        } else {
+                            // Standard Fallback: Solid Background + Blur
+                            this
+                                .background(barColor)
+                                .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
+                        }
+                    }
+            )
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                //  Surface 透明，让外层 Box 的 hazeEffect 显示
                 color = Color.Transparent,
                 shape = barShape,
                 shadowElevation = 0.dp,
                 border = if (hazeState != null) {
-                    //  iOS 风格边框
                     if (!isFloating) {
-                        androidx.compose.foundation.BorderStroke(
-                            width = 0.5.dp,
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
+                        androidx.compose.foundation.BorderStroke(0.5.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent)))
                     } else {
-                        androidx.compose.foundation.BorderStroke(
-                            width = 0.5.dp,
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.35f),
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                )
-                            )
-                        )
+                        androidx.compose.foundation.BorderStroke(0.5.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))))
                     }
                 } else {
-                    androidx.compose.foundation.BorderStroke(
-                        width = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                    )
+                    androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 }
             ) {
-            //  Telegram 风格滑动指示器
-            val itemCount = visibleItems.size  //  [修改] 使用可见项目数
-            val selectedIndex = visibleItems.indexOf(currentItem)  //  [修改] 使用可见项目索引
-            
-            //  iOS 风格：内容区固定高度，导航栏区域作为 padding 包含在 Surface 内
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // [已移除] 移除 layerBackdrop 防止循环依赖和渲染闪烁
-                    // .layerBackdrop(backdropState)
-            ) {
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (isFloating) Modifier.fillMaxHeight()
-                            else Modifier.height(dockedHeight)
-                        )
-                ) {
-                //  考虑 Row 的 padding 后的实际可用宽度
-                //  [调整] 增加 padding 以防止指示器贴边 (12dp -> 20dp)
-                //  指示器溢出宽度为 12dp (24dp/2), 所以 20dp padding 会留下 8dp 的间隙
-                val rowPadding = 20.dp
-                val actualContentWidth = maxWidth - (rowPadding * 2)
-                val itemWidth = actualContentWidth / itemCount
-                
-                //  Telegram 风格滑动指示器
-                //  [新增] 阻尼拖拽动画状态
-                val dampedDragState = rememberDampedDragAnimationState(
-                    initialIndex = if (selectedIndex >= 0) selectedIndex else 0,
-                    itemCount = itemCount,
-                    onIndexChanged = { index -> 
-                        if (index in visibleItems.indices) {
-                            onItemClick(visibleItems[index])
-                        }
-                    }
-                )
-                
-                // [修复] 当选中项不在底栏中时（如设置页面），隐藏指示器
-                val isValidSelection = selectedIndex >= 0
-                val indicatorAlpha by animateFloatAsState(
-                    targetValue = if (isValidSelection) 1f else 0f,
-                    label = "indicatorAlpha"
-                )
-                
-                //  同步外部状态变化 (点击切换时)
-                LaunchedEffect(selectedIndex) {
-                    if (isValidSelection) {
-                        dampedDragState.updateIndex(selectedIndex)
-                    }
-                }
-
-                //  [重构] 布局结构：
-                //  1. 内容层 (Row) -> 标记为 backdrop 源 (放在底层)
-                //  2. 滤镜层 (LiquidIndicator) -> 使用 backdrop 源进行折射 (放在顶层)
-                
-                // [新增] 恢复 Backdrop 状态
-                
-                // [修改] 移除 Haze/Backdrop，使用普通的层级叠加，指示器使用 Primary 颜色半透明
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // 1. [底层] 内容层
-                    BottomBarContent(
-                        visibleItems = visibleItems,
-                        selectedIndex = selectedIndex,
-                        itemColorIndices = itemColorIndices,
-                        onItemClick = onItemClick,
-                        onToggleSidebar = onToggleSidebar,
-                        isTablet = isTablet,
-                        labelMode = labelMode,
-                        hazeState = hazeState,
-                        haptic = haptic,
-                        debounceClick = debounceClick,
-                        onHomeDoubleTap = onHomeDoubleTap,
-                        itemWidth = itemWidth,
-                        rowPadding = rowPadding,
-                        contentVerticalOffset = contentVerticalOffset,
-                        isInteractive = true,
-                        currentPosition = dampedDragState.value,
-                        dragModifier = Modifier.horizontalDragGesture(
-                            dragState = dampedDragState,
-                            itemWidthPx = with(LocalDensity.current) { itemWidth.toPx() }
-                        )
-                   )
-
-                    // 2. [顶层] 液态指示器 (无折射)
-                    LiquidIndicator(
-                        position = dampedDragState.value,
-                        itemWidth = itemWidth,
-                        itemCount = itemCount,
-                        isDragging = dampedDragState.isDragging,
-                        velocity = dampedDragState.velocity,
-                        startPadding = rowPadding,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .offset(y = contentVerticalOffset) 
-                            .alpha(indicatorAlpha),
-                    )
-                }
-            } // BoxWithConstraints 闭合
-                
-                //  iOS 风格：非悬浮模式时，导航栏区域作为 Spacer 包含在 Surface 内
-                if (!isFloating) {
-                    Spacer(
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // 内容容器 (用于占位高度) - 应用 liquidGlass 效果在这里
+                    val isSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                    )
+                            .then(if (isFloating) Modifier.fillMaxHeight() else Modifier.height(dockedHeight))
+                            // liquidGlass refracts the icons/text around indicator during horizontal swipe
+                            // liquidGlass removed: Refraction now handled by LiquidIndicator using LayerBackdrop
+                    ) {
+                        // 实体指示器背景 - 始终显示，提供选中项的背景色
+                        // liquidGlass 仅提供折射效果，指示器背景由 LiquidIndicator 提供
+                         LiquidIndicator(
+                                 position = dampedDragState.value,
+                                 itemWidth = itemWidth,
+                                 itemCount = itemCount,
+                                 isDragging = dampedDragState.isDragging,
+                                 velocity = dampedDragState.velocity,
+                                 startPadding = rowPadding,
+                                 modifier = Modifier
+                                     .fillMaxSize()
+                                     .offset(y = contentVerticalOffset)
+                                     .alpha(indicatorAlpha),
+                                     isLiquidGlassEnabled = showGlassEffect,
+                                     backdrop = backdrop, // [New] Pass backdrop for lens refraction
+                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                 )
+
+                         BottomBarContent(
+                            visibleItems = visibleItems,
+                            selectedIndex = selectedIndex,
+                            itemColorIndices = itemColorIndices,
+                            onItemClick = onItemClick,
+                            onToggleSidebar = onToggleSidebar,
+                            isTablet = isTablet,
+                            labelMode = labelMode,
+                            hazeState = hazeState,
+                            haptic = haptic,
+                            debounceClick = debounceClick,
+                            onHomeDoubleTap = onHomeDoubleTap,
+                            itemWidth = itemWidth,
+                            rowPadding = rowPadding,
+                            contentVerticalOffset = contentVerticalOffset,
+                            isInteractive = true,
+                            currentPosition = dampedDragState.value,
+                            dragModifier = Modifier.horizontalDragGesture(
+                                dragState = dampedDragState,
+                                itemWidthPx = with(LocalDensity.current) { itemWidth.toPx() }
+                            )
+                       )
+                    }
+                        
+                        if (!isFloating) {
+                             Spacer(modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars))
+                        }
+                    }
                 }
-            }  //  Column 闭合
+            }
         }
-    }
     }
 }
 
@@ -528,12 +666,16 @@ private fun BottomBarItem(
     isTablet: Boolean
 ) {
     var isPending by remember { mutableStateOf(false) }
+    val isDarkTheme = isSystemInDarkTheme()
     
     val primaryColor = MaterialTheme.colorScheme.primary
-    val unselectedColor = if (hazeState != null) {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    // [Adaptive] High Contrast Scheme for Glass Readability
+    // Light Mode: Black text/icons (to stand out against white-ish glass)
+    // Dark Mode: White text/icons (to stand out against dark glass)
+    val unselectedColor = if (isDarkTheme) {
+        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
     } else {
-        BottomBarColors.UNSELECTED
+        androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f)
     }
     
     // [修改] 颜色插值：根据 selectionFraction 在 unselected 和 selected 之间混合

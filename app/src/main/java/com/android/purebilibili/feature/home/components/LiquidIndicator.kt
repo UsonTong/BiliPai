@@ -22,6 +22,11 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.CornerRadius
 import kotlin.math.abs
+import com.android.purebilibili.core.ui.effect.liquidGlass
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.lens
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 
 /**
  * 🌊 液态玻璃选中指示器
@@ -47,13 +52,16 @@ fun LiquidIndicator(
     isDragging: Boolean,
     velocity: Float = 0f,
     startPadding: Dp = 0.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+    isLiquidGlassEnabled: Boolean = false,
+    backdrop: LayerBackdrop? = null // [New] Backdrop for refraction
 ) {
     val density = LocalDensity.current
     
-    // 指示器尺寸
-    val indicatorWidth =85.dp
-    val indicatorHeight = 48.dp
+    // 指示器尺寸 - 增大指示器
+    val indicatorWidth = 90.dp
+    val indicatorHeight = 52.dp
     
     // [优化] 使用 graphicsLayer 进行位移，避免 Layout 重排
     // 计算位置 (Px)
@@ -79,9 +87,6 @@ fun LiquidIndicator(
     // 指示器形状
     val shape = RoundedCornerShape(indicatorHeight / 2)
     
-    // [修改] 颜色：使用 Primary 色调，去除去折射/模糊
-    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.CenterStart
@@ -99,13 +104,42 @@ fun LiquidIndicator(
                 }
                 .size(indicatorWidth, indicatorHeight)
                 .clip(shape)
-                .background(indicatorColor)
+                .run {
+                    if (isLiquidGlassEnabled && backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        // [Effect] Strong refraction for the indicator (Magnifying Glass effect)
+                        this.drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { shape },
+                            effects = {
+                                lens(
+                                    refractionHeight = 40f, // Stronger bulge
+                                    refractionAmount = 30f, // Strong distortion
+                                    depthEffect = true,
+                                    chromaticAberration = true // Always aberrate for "magic" feel
+                                )
+                            },
+                            onDrawSurface = {
+                                // Subtle tint for the indicator
+                                drawRect(color.copy(alpha = 0.15f))
+                            }
+                        )
+                    } else {
+                        // Fallback
+                         this.background(color)
+                    }
+                }
         )
     }
 }
 
+
 /**
  * 简化版液态指示器（不依赖 Backdrop）
+ * 
+ * 使用标准 Compose 动画实现类似效果
+ */
+/**
+ * 简化版液态指示器（适用于 TabRow 等变长场景）
  * 
  * 使用标准 Compose 动画实现类似效果
  */

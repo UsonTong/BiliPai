@@ -180,19 +180,37 @@ object DownloadManager {
             com.android.purebilibili.core.util.Logger.w("DownloadManager", "⚠️ Cover download failed, will use network URL", e)
         }
         
-        // 1. 下载视频流
-        downloadFile(task.videoUrl, videoFile, task.id) { progress ->
-            updateTask(task.id) { it.copy(videoProgress = progress, progress = (progress + it.audioProgress) / 2) }
+        // 1. 下载视频流 (如果不是仅音频模式)
+        if (!task.isAudioOnly) {
+            downloadFile(task.videoUrl, videoFile, task.id) { progress ->
+                // 如果不仅音频，总进度 = (video + audio) / 2
+                updateTask(task.id) { it.copy(videoProgress = progress, progress = (progress + it.audioProgress) / 2) }
+            }
+        } else {
+             updateTask(task.id) { it.copy(videoProgress = 1f) }
         }
         
         // 2. 下载音频流
         downloadFile(task.audioUrl, audioFile, task.id) { progress ->
-            updateTask(task.id) { it.copy(audioProgress = progress, progress = (it.videoProgress + progress) / 2) }
+            updateTask(task.id) {
+                val totalProgress = if (task.isAudioOnly) progress else (it.videoProgress + progress) / 2
+                it.copy(audioProgress = progress, progress = totalProgress)
+            }
         }
         
-        // 3. 合并音视频
+        // 3. 合并音视频 (或直接处理音频)
         updateTask(task.id) { it.copy(status = DownloadStatus.MERGING, progress = 0.95f) }
-        mergeVideoAudio(videoFile, audioFile, outputFile)
+        
+        if (task.isAudioOnly) {
+            // 仅音频模式：直接将音频文件作为输出（或者是转换为 m4a/mp3，这里直接用音频流）
+            // B站音频流通常是 m4s (AAC) 或 m4a。直接改名或复制。
+            // 为了兼容性，封装进 MP4 容器（即使只有音频轨）通常更安全，或者直接复制。
+            // 简单起见，尝试直接复制。注意后缀名问题。现在 outputFile 是 .mp4。
+            // 使用 MediaMuxer 仅封装音频轨也是一种方法，能保证 metadata 正确。
+            mergeVideoAudio(null, audioFile, outputFile)
+        } else {
+            mergeVideoAudio(videoFile, audioFile, outputFile)
+        }
         
         // 4. 清理临时文件
         videoFile.delete()
@@ -208,7 +226,7 @@ object DownloadManager {
             ) 
         }
         
-        com.android.purebilibili.core.util.Logger.d("DownloadManager", "✅ Download completed: ${task.title}")
+        com.android.purebilibili.core.util.Logger.d("DownloadManager", "✅ Download completed: ${task.title} (AudioOnly: ${task.isAudioOnly})")
     }
     
     /**
@@ -398,7 +416,7 @@ object DownloadManager {
      * 将分离的视频流和音频流合并为完整的 MP4 文件
      */
     @android.annotation.SuppressLint("WrongConstant")
-    private suspend fun mergeVideoAudio(video: File, audio: File, output: File) = withContext(Dispatchers.IO) {
+    private suspend fun mergeVideoAudio(video: File?, audio: File, output: File) = withContext(Dispatchers.IO) {
         try {
             com.android.purebilibili.core.util.Logger.d("DownloadManager", " Starting MediaMuxer merge...")
             
@@ -409,8 +427,11 @@ object DownloadManager {
             )
             
             // 提取视频轨道
+            // 提取视频轨道 (仅当 video 不为空时)
             val videoExtractor = android.media.MediaExtractor()
-            videoExtractor.setDataSource(video.absolutePath)
+            if (video != null) {
+                videoExtractor.setDataSource(video.absolutePath)
+            }
             var videoTrackIndex = -1
             var videoMuxerTrackIndex = -1
             
@@ -423,6 +444,11 @@ object DownloadManager {
                     videoTrackIndex = i
                     break
                 }
+            }
+            
+            // 如果仅音频且 video 为空，跳过视频轨检查
+            if (video != null && videoTrackIndex == -1) {
+                 // Video file exists but no track found?
             }
             
             // 提取音频轨道
@@ -442,10 +468,10 @@ object DownloadManager {
                 }
             }
             
-            if (videoTrackIndex == -1 || audioTrackIndex == -1) {
+            if ((video != null && videoTrackIndex == -1) || audioTrackIndex == -1) {
                 com.android.purebilibili.core.util.Logger.e("DownloadManager", " Failed to find video or audio track")
                 // 降级：直接复制视频
-                video.copyTo(output, overwrite = true)
+                if (video != null) video.copyTo(output, overwrite = true)
                 videoExtractor.release()
                 audioExtractor.release()
                 return@withContext
@@ -457,18 +483,20 @@ object DownloadManager {
             val buffer = java.nio.ByteBuffer.allocate(1024 * 1024)  // 1MB buffer
             val bufferInfo = android.media.MediaCodec.BufferInfo()
             
-            // 写入视频数据
-            while (true) {
-                val sampleSize = videoExtractor.readSampleData(buffer, 0)
-                if (sampleSize < 0) break
-                
-                bufferInfo.offset = 0
-                bufferInfo.size = sampleSize
-                bufferInfo.presentationTimeUs = videoExtractor.sampleTime
-                bufferInfo.flags = videoExtractor.sampleFlags
-                
-                muxer.writeSampleData(videoMuxerTrackIndex, buffer, bufferInfo)
-                videoExtractor.advance()
+            // 写入视频数据 (如果有)
+            if (video != null && videoTrackIndex != -1 && videoMuxerTrackIndex != -1) {
+                while (true) {
+                    val sampleSize = videoExtractor.readSampleData(buffer, 0)
+                    if (sampleSize < 0) break
+                    
+                    bufferInfo.offset = 0
+                    bufferInfo.size = sampleSize
+                    bufferInfo.presentationTimeUs = videoExtractor.sampleTime
+                    bufferInfo.flags = videoExtractor.sampleFlags
+                    
+                    muxer.writeSampleData(videoMuxerTrackIndex, buffer, bufferInfo)
+                    videoExtractor.advance()
+                }
             }
             
             // 写入音频数据
@@ -496,7 +524,7 @@ object DownloadManager {
         } catch (e: Exception) {
             com.android.purebilibili.core.util.Logger.e("DownloadManager", " MediaMuxer merge failed", e)
             // 降级：直接复制视频
-            video.copyTo(output, overwrite = true)
+            video?.copyTo(output, overwrite = true)
         }
     }
     
@@ -510,7 +538,11 @@ object DownloadManager {
 
     private fun getVideoFile(taskId: String) = File(getTaskDir(taskId), "${taskId}_video.m4s")
     private fun getAudioFile(taskId: String) = File(getTaskDir(taskId), "${taskId}_audio.m4s")
-    private fun getOutputFile(taskId: String) = File(getTaskDir(taskId), "${taskId}.mp4")
+    private fun getOutputFile(taskId: String): File {
+        val task = _tasks.value[taskId]
+        val extension = if (task?.isAudioOnly == true) "m4a" else "mp4"
+        return File(getTaskDir(taskId), "${taskId}.$extension")
+    }
     private fun getCoverFile(taskId: String) = File(getTaskDir(taskId), "${taskId}_cover.jpg")
     
     /**
@@ -590,6 +622,51 @@ object DownloadManager {
         } catch (e: Exception) {
             com.android.purebilibili.core.util.Logger.e("DownloadManager", "❌ Failed to resolve custom path: $customPath", e)
             defaultDir
+        }
+    }
+    
+    /**
+     * 🖼️ [新增] 保存图片到相册
+     */
+    suspend fun saveImageToGallery(context: Context, url: String, title: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // 1. 下载图片
+             val request = Request.Builder()
+                .url(url.replace("http://", "https://"))
+                .build()
+            
+            val response = client.newCall(request).execute()
+            val body = response.body ?: return@withContext false
+            val bytes = body.bytes()
+            
+            // 2. 插入 MediaStore
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$title.jpg")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BiliPai")
+                }
+            }
+            
+            val resolver = context.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) 
+                ?: return@withContext false
+                
+            resolver.openOutputStream(uri)?.use { output ->
+                output.write(bytes)
+            }
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                values.clear()
+                values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            }
+            
+            return@withContext true
+        } catch (e: Exception) {
+            com.android.purebilibili.core.util.Logger.e("DownloadManager", "Failed to save image", e)
+            return@withContext false
         }
     }
 }

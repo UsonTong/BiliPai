@@ -655,8 +655,10 @@ fun AppearanceSettingsContent(
                     }
                 }
             }
-        }
+        
+
     }
+}
 
 
 /**

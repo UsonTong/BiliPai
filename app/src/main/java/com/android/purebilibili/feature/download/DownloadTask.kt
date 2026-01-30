@@ -41,13 +41,15 @@ data class DownloadTask(
     val createdAt: Long = System.currentTimeMillis(),
     val errorMessage: String? = null,
     val localCoverPath: String? = null, // 🖼️ [新增] 本地缓存的封面路径
-    val customSaveDir: String? = null   // 📂 [新增] 自定义保存目录（单视频独立路径）
+    val customSaveDir: String? = null,   // 📂 [新增] 自定义保存目录（单视频独立路径）
+    val isAudioOnly: Boolean = false     // 🎵 [新增] 仅下载音频
 ) {
-    val id: String get() = "${bvid}_${cid}_$quality"
+    val id: String get() = if (isAudioOnly) "${bvid}_${cid}_audio" else "${bvid}_${cid}_$quality"
     
     val isComplete: Boolean get() = status == DownloadStatus.COMPLETED
     val isDownloading: Boolean get() = status == DownloadStatus.DOWNLOADING || status == DownloadStatus.MERGING
     val canResume: Boolean get() = status == DownloadStatus.PAUSED || status == DownloadStatus.FAILED
+    val isFailed: Boolean get() = status == DownloadStatus.FAILED
 }
 
 /**

@@ -395,8 +395,8 @@ fun OfflineVideoPlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // 2. 封面图（播放前显示）
-        val showCover = !player.isPlaying && player.playbackState == Player.STATE_IDLE
+        // 2. 封面图（播放前显示，或是纯音频模式常驻显示）
+        val showCover = (!player.isPlaying && player.playbackState == Player.STATE_IDLE) || task.isAudioOnly
         AnimatedVisibility(visible = showCover, enter = fadeIn(), exit = fadeOut()) {
             val localCoverFile = task.localCoverPath?.let { File(it) }
             AsyncImage(

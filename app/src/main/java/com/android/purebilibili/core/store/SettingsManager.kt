@@ -27,8 +27,9 @@ data class HomeSettings(
     val bottomBarLabelMode: Int = 0,       // (0=图标+文字, 1=仅图标, 2=仅文字)
     val isHeaderBlurEnabled: Boolean = true,
     val isBottomBarBlurEnabled: Boolean = true,
+    val isLiquidGlassEnabled: Boolean = true, // [New]
     val cardAnimationEnabled: Boolean = false,    //  卡片进场动画（默认关闭）
-    val cardTransitionEnabled: Boolean = true,   //  卡片过渡动画（默认开启）
+    val cardTransitionEnabled: Boolean = true,    //  卡片过渡动画（默认开启）
     //  [修复] 默认值改为 true，避免在 Flow 加载实际值之前错误触发弹窗
     // 当 Flow 加载完成后，如果实际值是 false，LaunchedEffect 会再次触发并显示弹窗
     val crashTrackingConsentShown: Boolean = true
@@ -57,7 +58,6 @@ object SettingsManager {
     //  [新增] 底部栏样式 (true=悬浮, false=贴底)
     private val KEY_BOTTOM_BAR_FLOATING = booleanPreferencesKey("bottom_bar_floating")
     //  [新增] 底栏显示模式 (0=图标+文字, 1=仅图标, 2=仅文字)
-    //  [新增] 底栏显示模式 (0=图标+文字, 1=仅图标, 2=仅文字)
     private val KEY_BOTTOM_BAR_LABEL_MODE = intPreferencesKey("bottom_bar_label_mode")
     
     //  [新增] 开屏壁纸
@@ -76,6 +76,8 @@ object SettingsManager {
     //  [新增] 模糊效果开关
     private val KEY_HEADER_BLUR_ENABLED = booleanPreferencesKey("header_blur_enabled")
     private val KEY_BOTTOM_BAR_BLUR_ENABLED = booleanPreferencesKey("bottom_bar_blur_enabled")
+    //  [New] Liquid Glass Effect Toggle (Default On)
+    private val KEY_LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
     //  [新增] 模糊强度 (ULTRA_THIN, THIN, THICK)
     private val KEY_BLUR_INTENSITY = stringPreferencesKey("blur_intensity")
     //  [合并] 首页展示模式 (0=Grid, 1=Story, 2=Glass)
@@ -101,27 +103,29 @@ object SettingsManager {
         val bottomBarLabelModeFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_LABEL_MODE] ?: 0 }  // 默认图标+文字
         val headerBlurFlow = context.settingsDataStore.data.map { it[KEY_HEADER_BLUR_ENABLED] ?: true }
         val bottomBarBlurFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true }
+        val liquidGlassFlow = context.settingsDataStore.data.map { it[KEY_LIQUID_GLASS_ENABLED] ?: true } // [New]
         val crashConsentFlow = context.settingsDataStore.data.map { it[KEY_CRASH_TRACKING_CONSENT_SHOWN] ?: false }
         val cardAnimationFlow = context.settingsDataStore.data.map { it[KEY_CARD_ANIMATION_ENABLED] ?: false }
         val cardTransitionFlow = context.settingsDataStore.data.map { it[KEY_CARD_TRANSITION_ENABLED] ?: true }  // 默认开启
         
-        // 🔧 Kotlin combine() 最多支持 5 个参数，使用嵌套 combine
-        val firstFiveFlow = combine(
-            displayModeFlow,
-            bottomBarFloatingFlow,
-            bottomBarLabelModeFlow,
-            headerBlurFlow,
-            bottomBarBlurFlow
-        ) { displayMode, floating, labelMode, headerBlur, bottomBlur ->
-            HomeSettings(
-                displayMode = displayMode,
-                isBottomBarFloating = floating,
-                bottomBarLabelMode = labelMode,
-                isHeaderBlurEnabled = headerBlur,
-                isBottomBarBlurEnabled = bottomBlur,
-                cardAnimationEnabled = false, // 临时占位
-                cardTransitionEnabled = false, // 临时占位
-                crashTrackingConsentShown = false // 临时占位
+        // 🔧 Kotlin combine() 最多支持 5 个参数，这里我们满了，需要重组 flow 或者使用 combine 的 list 重载
+        // Since we added liquidGlassFlow, we have 6 flows in total now for 'firstFive'.
+        // Let's grouping: (Display, Floating, Label) + (HeaderBlur, BottomBlur, LiquidGlass)
+        
+        val layoutSettingsFlow = combine(displayModeFlow, bottomBarFloatingFlow, bottomBarLabelModeFlow) { d, f, l -> Triple(d, f, l) }
+        val visualSettingsFlow = combine(headerBlurFlow, bottomBarBlurFlow, liquidGlassFlow) { h, b, l -> Triple(h, b, l) }
+        
+        val coreSettingsFlow = combine(layoutSettingsFlow, visualSettingsFlow) { layout, visual ->
+             HomeSettings(
+                displayMode = layout.first,
+                isBottomBarFloating = layout.second,
+                bottomBarLabelMode = layout.third,
+                isHeaderBlurEnabled = visual.first,
+                isBottomBarBlurEnabled = visual.second,
+                isLiquidGlassEnabled = visual.third, // [New]
+                cardAnimationEnabled = false, // placeholder
+                cardTransitionEnabled = false,
+                crashTrackingConsentShown = false
             )
         }
         
@@ -129,7 +133,7 @@ object SettingsManager {
             Triple(consent, cardAnim, cardTransition)
         }
         
-        return combine(firstFiveFlow, extraFlow) { settings, extra ->
+        return combine(coreSettingsFlow, extraFlow) { settings, extra ->
             settings.copy(
                 crashTrackingConsentShown = extra.first,
                 cardAnimationEnabled = extra.second,
@@ -424,6 +428,14 @@ object SettingsManager {
 
     suspend fun setBottomBarBlurEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] = value }
+    }
+    
+    //  [New] --- Liquid Glass Effect ---
+    fun getLiquidGlassEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_LIQUID_GLASS_ENABLED] ?: true }
+
+    suspend fun setLiquidGlassEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_LIQUID_GLASS_ENABLED] = value }
     }
     
     //  [修复] --- 模糊强度 (THIN, THICK, APPLE_DOCK) ---
