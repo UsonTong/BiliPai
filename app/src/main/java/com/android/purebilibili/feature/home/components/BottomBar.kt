@@ -333,7 +333,7 @@ fun FrostedBottomBar(
         // 圆角
         val cornerRadiusScale = com.android.purebilibili.core.theme.LocalCornerRadiusScale.current
         val floatingCornerRadius = com.android.purebilibili.core.theme.iOSCornerRadius.Floating * cornerRadiusScale
-        val barShape = if (isFloating) RoundedCornerShape(floatingCornerRadius + 8.dp) else androidx.compose.ui.graphics.RectangleShape
+        val barShape = if (isFloating) RoundedCornerShape(floatingCornerRadius + 8.dp) else RoundedCornerShape(0.dp)
         
         // 垂直偏移
         val contentVerticalOffset = when {
@@ -375,27 +375,31 @@ fun FrostedBottomBar(
                 .clip(barShape)
                 // [Visual] Add white border for better visibility as requested by user
                 // [Visual] Add glass lighting border effect
-                .border(
-                    width = 0.8.dp, // Thinner for elegance
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = if (isSystemInDarkTheme()) {
-                            // Dark Mode: Bright top highlight, subtle fade
-                            listOf(
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.05f)
-                            )
-                        } else {
-                            // Light Mode: Subtle white highlight (against potentially light blurry background)
-                            // Since background interacts, we keep it white but softer
-                            listOf(
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f),
-                                androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)
-                            )
-                        }
-                    ),
-                    shape = barShape
+                .then(
+                    if (isFloating) {
+                        Modifier.border(
+                            width = 0.8.dp, // Thinner for elegance
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = if (isSystemInDarkTheme()) {
+                                    // Dark Mode: Bright top highlight, subtle fade
+                                    listOf(
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.05f)
+                                    )
+                                } else {
+                                    // Light Mode: Subtle white highlight (against potentially light blurry background)
+                                    // Since background interacts, we keep it white but softer
+                                    listOf(
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.4f),
+                                        androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)
+                                    )
+                                }
+                            ),
+                            shape = barShape
+                        )
+                    } else Modifier
                 )
                 // [Refactor] Removed background modifiers from here to separate layers
         ) {
@@ -425,7 +429,7 @@ fun FrostedBottomBar(
                                             lens(
                                                 refractionHeight = 120f, // Wider lens area
                                                 refractionAmount = dynamicRefractionAmount,
-                                                depthEffect = true,
+                                                depthEffect = isFloating, // [Fix] Only show 3D rim/depth when floating, flat when docked
                                                 chromaticAberration = true // Enable for both themes for "premium" feel
                                             )
                                         },
@@ -472,12 +476,13 @@ fun FrostedBottomBar(
                 shadowElevation = 0.dp,
                 border = if (hazeState != null) {
                     if (!isFloating) {
-                        androidx.compose.foundation.BorderStroke(0.5.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent)))
+                        // [Visual] No border when docked to prevent "surrounding white edge"
+                        null
                     } else {
                         androidx.compose.foundation.BorderStroke(0.5.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))))
                     }
                 } else {
-                    androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    if (!isFloating) null else androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 }
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
