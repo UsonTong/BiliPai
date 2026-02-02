@@ -46,15 +46,21 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.core.spring
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun SpaceScreen(
     mid: Long,
     onBack: () -> Unit,
     onVideoClick: (String) -> Unit,
     onViewAllClick: (String, Long, Long, String) -> Unit = { _, _, _, _ -> }, // type, id, mid, title
-    viewModel: SpaceViewModel = viewModel()
+    viewModel: SpaceViewModel = viewModel(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
@@ -137,7 +143,10 @@ fun SpaceScreen(
                         onViewAllClick = onViewAllClick,
                         // [Blur] Pass content padding to handle list top spacing
                         contentPadding = padding,
-                        onFollowClick = { viewModel.toggleFollow() }
+
+                        onFollowClick = { viewModel.toggleFollow() },
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = animatedVisibilityScope
                     )
                 }
             }
@@ -156,9 +165,12 @@ private fun SpaceContent(
     onLoadDynamic: () -> Unit,  //  加载动态数据
     onLoadMoreDynamic: () -> Unit,  //  加载更多动态
     onSubTabSelected: (SpaceSubTab) -> Unit,  // Uploads Sub-tab selection
+
     onViewAllClick: (String, Long, Long, String) -> Unit,
     contentPadding: PaddingValues, // [Blur] Receive padding from Scaffold
-    onFollowClick: () -> Unit
+    onFollowClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     val context = LocalContext.current
     //  当前选中的 Tab（目前只实现投稿页）
@@ -195,10 +207,13 @@ private fun SpaceContent(
         // 用户头部信息 (跨满列)
         item(span = { GridItemSpan(maxLineSpan) }) {
             SpaceHeader(
+
                 userInfo = state.userInfo,
                 relationStat = state.relationStat,
                 upStat = state.upStat,
-                onFollowClick = onFollowClick
+                onFollowClick = onFollowClick,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope
             )
         }
         
@@ -298,9 +313,12 @@ private fun SpaceContent(
                         // 视频列表 - 列表样式（非网格）
                         state.videos.forEach { video ->
                             item(key = "video_${video.bvid}", span = { GridItemSpan(maxLineSpan) }) {
+
                                 SpaceVideoListItem(
                                     video = video,
-                                    onClick = { onVideoClick(video.bvid) }
+                                    onClick = { onVideoClick(video.bvid) },
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope
                                 )
                             }
                         }
@@ -585,10 +603,13 @@ private fun SpaceContent(
 
 @Composable
 private fun SpaceHeader(
+
     userInfo: SpaceUserInfo,
     relationStat: RelationStatData?,
     upStat: UpStatData?,
-    onFollowClick: () -> Unit
+    onFollowClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     Column(
         modifier = Modifier
@@ -637,6 +658,16 @@ private fun SpaceHeader(
         ) {
             // 头像（带边框）
             Box {
+                val avatarModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                    with(sharedTransitionScope) {
+                        Modifier.sharedBounds(
+                            rememberSharedContentState(key = "up_avatar_${userInfo.mid}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            clipInOverlayDuringTransition = OverlayClip(CircleShape)
+                        )
+                    }
+                } else Modifier
+
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(FormatUtils.fixImageUrl(userInfo.face))
@@ -644,6 +675,7 @@ private fun SpaceHeader(
                         .build(),
                     contentDescription = null,
                     modifier = Modifier
+                        .then(avatarModifier)
                         .size(72.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surface)
@@ -930,7 +962,9 @@ private fun SpaceVideoItem(video: SpaceVideoItem, onClick: () -> Unit) {
 @Composable
 private fun SpaceVideoListItem(
     video: SpaceVideoItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     Row(
         modifier = Modifier
@@ -946,6 +980,16 @@ private fun SpaceVideoListItem(
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
+            val coverModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedBounds(
+                        rememberSharedContentState(key = "video_cover_${video.bvid}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(8.dp))
+                    )
+                }
+            } else Modifier
+
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(FormatUtils.fixImageUrl(video.pic))
@@ -953,7 +997,9 @@ private fun SpaceVideoListItem(
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(coverModifier)
             )
             
             // 时长标签
@@ -983,6 +1029,19 @@ private fun SpaceVideoListItem(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // 标题
+            var titleModifier = Modifier.fillMaxWidth()
+            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    titleModifier = titleModifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ ->
+                            spring(dampingRatio = 0.8f, stiffness = 200f)
+                        }
+                    )
+                }
+            }
+
             Text(
                 text = video.title,
                 fontSize = 14.sp,
@@ -990,7 +1049,8 @@ private fun SpaceVideoListItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = titleModifier
             )
             
             // 底部信息行
@@ -1006,33 +1066,71 @@ private fun SpaceVideoListItem(
                 
                 // 播放和评论数
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        CupertinoIcons.Default.Play,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = FormatUtils.formatStat(video.play.toLong()),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(start = 2.dp)
-                    )
+                    // 🔗 [共享元素] 播放量
+                    var viewsModifier = Modifier.wrapContentSize()
+                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            viewsModifier = viewsModifier.sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ ->
+                                    spring(dampingRatio = 0.8f, stiffness = 200f)
+                                },
+                                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(4.dp))
+                            )
+                        }
+                    }
                     
+                    Box(modifier = viewsModifier) {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                CupertinoIcons.Default.Play,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                text = FormatUtils.formatStat(video.play.toLong()),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                        }
+                    }
+                   
                     Spacer(Modifier.width(12.dp))
                     
-                    Icon(
-                        CupertinoIcons.Default.Message,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = FormatUtils.formatStat(video.comment.toLong()),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(start = 2.dp)
-                    )
+                    // 🔗 [共享元素] 评论数 (映射到详情页的弹幕数位置)
+                    var danmakuModifier = Modifier.wrapContentSize()
+                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            danmakuModifier = danmakuModifier.sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ ->
+                                    spring(dampingRatio = 0.8f, stiffness = 200f)
+                                },
+                                clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(4.dp))
+                            )
+                        }
+                    }
+
+                    Box(modifier = danmakuModifier) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                             Icon(
+                                CupertinoIcons.Default.Message,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                text = FormatUtils.formatStat(video.comment.toLong()),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

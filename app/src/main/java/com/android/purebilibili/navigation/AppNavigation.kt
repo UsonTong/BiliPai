@@ -40,6 +40,7 @@ import com.android.purebilibili.feature.dynamic.DynamicScreen
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.ui.ProvideAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.SharedTransitionProvider
+import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
@@ -101,6 +102,7 @@ fun AppNavigation(
     mainHazeState: dev.chrisbanes.haze.HazeState? = null //  全局 Haze 状态
 ) {
     val homeViewModel: HomeViewModel = viewModel()
+    val coroutineScope = rememberCoroutineScope()
     
     //  读取卡片过渡动画设置（在 Composable 作用域内）
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -768,8 +770,20 @@ fun AppNavigation(
                 onPermissionClick = { navController.navigate(ScreenRoutes.PermissionSettings.route) },
                 onPluginsClick = { navController.navigate(ScreenRoutes.PluginsSettings.route) },
                 onNavigateToBottomBarSettings = { navController.navigate(ScreenRoutes.BottomBarSettings.route) },
+                onTipsClick = { navController.navigate(ScreenRoutes.TipsSettings.route) }, // [Feature] Tips
                 onReplayOnboardingClick = { navController.navigate(ScreenRoutes.Onboarding.route) },
                 mainHazeState = mainHazeState //  传递全局 Haze 状态
+            )
+        }
+        
+        // [Feature] Tips Screen
+        composable(
+            route = ScreenRoutes.TipsSettings.route,
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+        ) {
+            com.android.purebilibili.feature.settings.TipsSettingsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -890,14 +904,19 @@ fun AppNavigation(
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) { backStackEntry ->
             val mid = backStackEntry.arguments?.getLong("mid") ?: 0L
-            com.android.purebilibili.feature.space.SpaceScreen(
-                mid = mid,
-                onBack = { navController.popBackStack() },
-                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
-                onViewAllClick = { type, id, mid, title ->
-                    navController.navigate(ScreenRoutes.SeasonSeriesDetail.createRoute(type, id, mid, title))
-                }
-            )
+            
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                com.android.purebilibili.feature.space.SpaceScreen(
+                    mid = mid,
+                    onBack = { navController.popBackStack() },
+                    onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
+                    onViewAllClick = { type, id, mid, title ->
+                        navController.navigate(ScreenRoutes.SeasonSeriesDetail.createRoute(type, id, mid, title))
+                    },
+                    sharedTransitionScope = LocalSharedTransitionScope.current,
+                    animatedVisibilityScope = this
+                )
+            }
         }
 
         // --- 9.1 [新增] 合集/系列详情页面 ---
@@ -1109,7 +1128,13 @@ fun AppNavigation(
                                     visibleItems = visibleBottomBarItems,
                                     itemColorIndices = bottomBarItemColors,
                                     homeSettings = homeSettings,
-                                    backdrop = bottomBarBackdrop // [LayerBackdrop] Real background refraction
+                                    backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
+                                    onToggleSidebar = {
+                                        // [Tablet] Toggle sidebar mode
+                                        coroutineScope.launch {
+                                            SettingsManager.setTabletUseSidebar(context, true)
+                                        }
+                                    }
                                 )
                             }
                         } else {
@@ -1124,7 +1149,13 @@ fun AppNavigation(
                                 visibleItems = visibleBottomBarItems,
                                 itemColorIndices = bottomBarItemColors,
                                 homeSettings = homeSettings,
-                                backdrop = bottomBarBackdrop // [LayerBackdrop] Real background refraction
+                                backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
+                                onToggleSidebar = {
+                                    // [Tablet] Toggle sidebar mode
+                                    coroutineScope.launch {
+                                        SettingsManager.setTabletUseSidebar(context, true)
+                                    }
+                                }
                             )
                         }
                     }

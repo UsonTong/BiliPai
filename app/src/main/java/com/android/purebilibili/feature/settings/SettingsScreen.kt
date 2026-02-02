@@ -60,6 +60,7 @@ fun SettingsScreen(
     onPermissionClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
     onNavigateToBottomBarSettings: () -> Unit = {},
+    onTipsClick: () -> Unit = {}, // [Feature] Tips
     onReplayOnboardingClick: () -> Unit = {},
     mainHazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
@@ -317,6 +318,7 @@ fun SettingsScreen(
                 onGithubClick = onGithubClick,
                 onVersionClick = onVersionClickAction,
                 onReplayOnboardingClick = onReplayOnboardingClick,
+                onTipsClick = onTipsClick, // [Feature]
                 onTelegramClick = onTelegramClick,
                 onTwitterClick = onTwitterClick,
                 onDownloadPathClick = onDownloadPathAction,
@@ -333,7 +335,8 @@ fun SettingsScreen(
                 pluginCount = PluginManager.getEnabledCount(),
                 versionName = com.android.purebilibili.BuildConfig.VERSION_NAME,
                 easterEggEnabled = easterEggEnabled,
-                onDonateClick = { showDonateDialog = true }
+                onDonateClick = { showDonateDialog = true },
+                onOpenLinksClick = onOpenLinksAction // [Fix] Pass missing parameter
             )
         } else {
             MobileSettingsLayout(
@@ -347,6 +350,7 @@ fun SettingsScreen(
                 onLicenseClick = onOpenSourceLicensesClick,
                 onGithubClick = onGithubClick,
                 onVersionClick = onVersionClickAction,
+                onTipsClick = onTipsClick, // [Feature]
                 onReplayOnboardingClick = onReplayOnboardingClick,
                 onTelegramClick = onTelegramClick,
                 onTwitterClick = onTwitterClick,
@@ -394,6 +398,7 @@ private fun MobileSettingsLayout(
     onPlaybackClick: () -> Unit,
     onPermissionClick: () -> Unit,
     onNavigateToBottomBarSettings: () -> Unit,
+    onTipsClick: () -> Unit, // [Feature]
     onPluginsClick: () -> Unit,
     onExportLogsClick: () -> Unit,
     onLicenseClick: () -> Unit,
@@ -484,6 +489,7 @@ private fun MobileSettingsLayout(
                         onAppearanceClick = onAppearanceClick,
                         onPlaybackClick = onPlaybackClick,
                         onBottomBarClick = onNavigateToBottomBarSettings,
+                        onTipsClick = onTipsClick, // [Feature]
                         onOpenLinksClick = onOpenLinksClick // [New]
                     )
                 }

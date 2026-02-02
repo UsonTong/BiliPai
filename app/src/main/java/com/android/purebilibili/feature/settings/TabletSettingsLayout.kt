@@ -62,6 +62,8 @@ fun TabletSettingsLayout(
     onDownloadPathClick: () -> Unit,
     onClearCacheClick: () -> Unit,
     onDonateClick: () -> Unit,
+    onTipsClick: () -> Unit, // [Feature]
+    onOpenLinksClick: () -> Unit, // [New]
     
     // Logic Callbacks
     onPrivacyModeChange: (Boolean) -> Unit,
@@ -337,7 +339,9 @@ fun TabletSettingsLayout(
                                 SettingsCategory.GENERAL -> GeneralSection(
                                     onAppearanceClick = { activeDetail = SettingsDetail.APPEARANCE },
                                     onPlaybackClick = { activeDetail = SettingsDetail.PLAYBACK },
-                                    onBottomBarClick = { activeDetail = SettingsDetail.BOTTOM_BAR }
+                                    onBottomBarClick = { activeDetail = SettingsDetail.BOTTOM_BAR },
+                                    onTipsClick = onTipsClick,
+                                    onOpenLinksClick = onOpenLinksClick
                                 )
                                 SettingsCategory.PRIVACY -> PrivacySection(
                                     privacyModeEnabled = privacyModeEnabled,

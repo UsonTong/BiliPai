@@ -39,6 +39,7 @@ fun HomeCategoryPageContent(
     onDismissVideo: (String) -> Unit,
     onWatchLater: (String, Long) -> Unit,
     onDissolveComplete: (String) -> Unit,
+    longPressCallback: (VideoItem) -> Unit, // [Feature] Long Press
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -176,7 +177,8 @@ fun HomeCategoryPageContent(
                                     transitionEnabled = cardTransitionEnabled,
                                     isDataSaverActive = isDataSaverActive,
                                     onDismiss = { onDismissVideo(video.bvid) },
-                                    onWatchLater = { onWatchLater(video.bvid, video.id) }, 
+                                    onWatchLater = { onWatchLater(video.bvid, video.id) },
+                                    onLongClick = { longPressCallback(video) }, // [Feature] Long Press
                                     onClick = { bvid, cid -> onVideoClick(bvid, cid, video.pic) }
                                 )
                             }

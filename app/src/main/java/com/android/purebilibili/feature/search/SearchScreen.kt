@@ -2,6 +2,11 @@
 package com.android.purebilibili.feature.search
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import com.android.purebilibili.core.ui.LocalSharedTransitionScope
+import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -66,7 +71,7 @@ import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.data.model.response.HotItem
 
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = viewModel(),
@@ -1250,7 +1255,11 @@ fun UpSearchResultCard(
     upItem: com.android.purebilibili.data.model.response.SearchUpItem,
     onClick: () -> Unit
 ) {
+
     val cleanedItem = remember(upItem.mid) { upItem.cleanupFields() }
+    
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
     
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1266,6 +1275,16 @@ fun UpSearchResultCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 头像
+            val avatarModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedBounds(
+                        rememberSharedContentState(key = "up_avatar_${cleanedItem.mid}"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        clipInOverlayDuringTransition = OverlayClip(CircleShape)
+                    )
+                }
+            } else Modifier
+
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(cleanedItem.upic)
@@ -1273,6 +1292,7 @@ fun UpSearchResultCard(
                     .build(),
                 contentDescription = cleanedItem.uname,
                 modifier = Modifier
+                    .then(avatarModifier)
                     .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant),

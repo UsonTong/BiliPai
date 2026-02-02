@@ -38,6 +38,7 @@ data class HomeSettings(
     val isBottomBarBlurEnabled: Boolean = true,
     val isLiquidGlassEnabled: Boolean = true, // [New]
     val liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
+    val isHeaderCollapseEnabled: Boolean = true, // [New] 首页顶部栏自动收缩开关
     val cardAnimationEnabled: Boolean = false,    //  卡片进场动画（默认关闭）
     val cardTransitionEnabled: Boolean = true,    //  卡片过渡动画（默认开启）
     //  [修复] 默认值改为 true，避免在 Flow 加载实际值之前错误触发弹窗
@@ -85,6 +86,8 @@ object SettingsManager {
     }
     //  [新增] 模糊效果开关
     private val KEY_HEADER_BLUR_ENABLED = booleanPreferencesKey("header_blur_enabled")
+    //  [新增] 首页顶部栏自动收缩 (Shrink)
+    private val KEY_HEADER_COLLAPSE_ENABLED = booleanPreferencesKey("header_collapse_enabled")
     private val KEY_BOTTOM_BAR_BLUR_ENABLED = booleanPreferencesKey("bottom_bar_blur_enabled")
     //  [New] Liquid Glass Effect Toggle (Default On)
     private val KEY_LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
@@ -117,6 +120,7 @@ object SettingsManager {
         val bottomBarFloatingFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_FLOATING] ?: true }
         val bottomBarLabelModeFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_LABEL_MODE] ?: 0 }  // 默认图标+文字
         val headerBlurFlow = context.settingsDataStore.data.map { it[KEY_HEADER_BLUR_ENABLED] ?: true }
+        val headerCollapseFlow = context.settingsDataStore.data.map { it[KEY_HEADER_COLLAPSE_ENABLED] ?: true } // [New]
         val bottomBarBlurFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true }
         val liquidGlassFlow = context.settingsDataStore.data.map { it[KEY_LIQUID_GLASS_ENABLED] ?: true } // [New]
         // Resolve KEY_LIQUID_GLASS_STYLE here since it is defined below
@@ -133,9 +137,9 @@ object SettingsManager {
         // Let's grouping: (Display, Floating, Label) + (HeaderBlur, BottomBlur, LiquidGlass, Style)
         
         val layoutSettingsFlow = combine(displayModeFlow, bottomBarFloatingFlow, bottomBarLabelModeFlow) { d, f, l -> Triple(d, f, l) }
-        val visualSettingsFlow = combine(headerBlurFlow, bottomBarBlurFlow, liquidGlassFlow, liquidGlassStyleFlow) { h, b, l, s -> 
-            data class Visual(val h: Boolean, val b: Boolean, val l: Boolean, val s: LiquidGlassStyle)
-            Visual(h, b, l, s)
+        val visualSettingsFlow = combine(headerBlurFlow, headerCollapseFlow, bottomBarBlurFlow, liquidGlassFlow, liquidGlassStyleFlow) { h, c, b, l, s -> 
+            data class Visual(val h: Boolean, val c: Boolean, val b: Boolean, val l: Boolean, val s: LiquidGlassStyle)
+            Visual(h, c, b, l, s)
         }
         
         val coreSettingsFlow = combine(layoutSettingsFlow, visualSettingsFlow) { layout, visual ->
@@ -144,6 +148,7 @@ object SettingsManager {
                 isBottomBarFloating = layout.second,
                 bottomBarLabelMode = layout.third,
                 isHeaderBlurEnabled = visual.h,
+                isHeaderCollapseEnabled = visual.c, // [New]
                 isBottomBarBlurEnabled = visual.b,
                 isLiquidGlassEnabled = visual.l, // [New]
                 liquidGlassStyle = visual.s, // [New]
@@ -444,6 +449,14 @@ object SettingsManager {
 
     suspend fun setHeaderBlurEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_HEADER_BLUR_ENABLED] = value }
+    }
+    
+    //  [新增] --- 首页顶部栏自动收缩 ---
+    fun getHeaderCollapseEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HEADER_COLLAPSE_ENABLED] ?: true }
+
+    suspend fun setHeaderCollapseEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_HEADER_COLLAPSE_ENABLED] = value }
     }
     
     //  [新增] --- 底栏模糊效果 ---

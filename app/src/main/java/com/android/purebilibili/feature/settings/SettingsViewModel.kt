@@ -46,7 +46,10 @@ data class SettingsUiState(
     // [New]
     // [New]
     val isLiquidGlassEnabled: Boolean = true,
-    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC // [New]
+    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC, // [New]
+    // [New] 平板导航模式
+    val tabletUseSidebar: Boolean = false,
+    val isHeaderCollapseEnabled: Boolean = true // [New]
 )
 
 // 内部数据类，用于分批合并流
@@ -71,7 +74,9 @@ data class ExtraSettings(
     val cardTransitionEnabled: Boolean,
     val hapticFeedbackEnabled: Boolean, // [Restored]
     val isLiquidGlassEnabled: Boolean = true, // [New]
-    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle // [New]
+    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
+    val tabletUseSidebar: Boolean, // [New]
+    val isHeaderCollapseEnabled: Boolean // [New]
 )
 
 
@@ -104,7 +109,9 @@ private data class BaseSettings(
     val cardTransitionEnabled: Boolean, //  卡片过渡动画
     val hapticFeedbackEnabled: Boolean, // [新增]
     val isLiquidGlassEnabled: Boolean, // [New]
-    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle // [New]
+    val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
+    val tabletUseSidebar: Boolean, // [New]
+    val isHeaderCollapseEnabled: Boolean // [New]
 )
 
 
@@ -143,7 +150,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getCardTransitionEnabled(context),
         SettingsManager.getHapticFeedbackEnabled(context), // [新增]
         SettingsManager.getLiquidGlassEnabled(context), // [New]
-        SettingsManager.getLiquidGlassStyle(context) // [New]
+        SettingsManager.getLiquidGlassStyle(context), // [New]
+        SettingsManager.getTabletUseSidebar(context), // [New]
+        SettingsManager.getHeaderCollapseEnabled(context) // [New]
     ) { values ->
         val isBottomBarFloating = values[0] as Boolean
         val labelMode = values[1] as Int
@@ -153,9 +162,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val hapticFeedback = values[5] as Boolean
         val liquidGlass = values[6] as Boolean
         val liquidGlassStyle = values[7] as com.android.purebilibili.core.store.LiquidGlassStyle
+        val tabletUseSidebar = values[8] as Boolean
+        val headerCollapse = values[9] as Boolean
         
-        data class Ui2(val f: Boolean, val l: Int, val d: Int, val ca: Boolean, val ct: Boolean, val h: Boolean, val lg: Boolean, val lgs: com.android.purebilibili.core.store.LiquidGlassStyle)
-        Ui2(isBottomBarFloating, labelMode, displayMode, cardAnimation, cardTransition, hapticFeedback, liquidGlass, liquidGlassStyle)
+        data class Ui2(val f: Boolean, val l: Int, val d: Int, val ca: Boolean, val ct: Boolean, val h: Boolean, val lg: Boolean, val lgs: com.android.purebilibili.core.store.LiquidGlassStyle, val tus: Boolean, val hc: Boolean)
+        Ui2(isBottomBarFloating, labelMode, displayMode, cardAnimation, cardTransition, hapticFeedback, liquidGlass, liquidGlassStyle, tabletUseSidebar, headerCollapse)
     }
 
     // 合并所有 UI 设置
@@ -174,6 +185,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = ui2.h, // [新增]
             isLiquidGlassEnabled = ui2.lg, // [New]
             liquidGlassStyle = ui2.lgs, // [New]
+            tabletUseSidebar = ui2.tus, // [New]
+            isHeaderCollapseEnabled = ui2.hc, // [New]
             headerBlurEnabled = false, // 暂存，将在下一步合并
             bottomBarBlurEnabled = false, // 暂存
             blurIntensity = BlurIntensity.THIN // 暂存
@@ -237,7 +250,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardTransitionEnabled = extra.cardTransitionEnabled,
             hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = extra.isLiquidGlassEnabled, // [New]
-            liquidGlassStyle = extra.liquidGlassStyle // [New]
+            liquidGlassStyle = extra.liquidGlassStyle, // [New]
+            tabletUseSidebar = extra.tabletUseSidebar, // [New]
+            isHeaderCollapseEnabled = extra.isHeaderCollapseEnabled // [New]
         )
 
     }
@@ -271,6 +286,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = settings.isLiquidGlassEnabled, // [New]
             liquidGlassStyle = settings.liquidGlassStyle, // [New]
+            tabletUseSidebar = settings.tabletUseSidebar, // [New]
+            isHeaderCollapseEnabled = settings.isHeaderCollapseEnabled, // [New]
 
             cacheSize = cache.first,
             cacheBreakdown = cache.second,  //  详细缓存统计
@@ -425,6 +442,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     //  [新增] 模糊效果开关
     fun toggleHeaderBlur(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderBlurEnabled(context, value) } }
+    fun toggleHeaderCollapse(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderCollapseEnabled(context, value) } }
     fun toggleBottomBarBlur(value: Boolean) { 
         viewModelScope.launch { 
             SettingsManager.setBottomBarBlurEnabled(context, value)
@@ -491,6 +509,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setLiquidGlassStyle(style: com.android.purebilibili.core.store.LiquidGlassStyle) {
         viewModelScope.launch {
             SettingsManager.setLiquidGlassStyle(context, style)
+        }
+    }
+
+    // [New] 平板导航模式
+    fun toggleTabletUseSidebar(value: Boolean) {
+        viewModelScope.launch {
+            SettingsManager.setTabletUseSidebar(context, value)
         }
     }
     

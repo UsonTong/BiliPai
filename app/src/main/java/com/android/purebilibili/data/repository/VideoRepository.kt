@@ -552,6 +552,17 @@ object VideoRepository {
         android.util.Log.e("VideoRepo", " [LoggedIn] All attempts failed for bvid=$bvid")
         return null
     }
+
+    /**
+     * [新增] 获取预览视频地址 (简单 MP4 URL)
+     * 用于首页长按预览播放，优先尝试获取低画质 MP4
+     */
+    suspend fun getPreviewVideoUrl(bvid: String, cid: Long): String? {
+        // 复用 fetchAsGuestFallback 逻辑获取简单 MP4
+        val data = fetchAsGuestFallback(bvid, cid)
+        // 返回第一个 durl 的 url
+        return data?.durl?.firstOrNull()?.url
+    }
     
     //  [新增] 以游客身份获取视频（忽略登录凭证）
     //  [修复] 使用 guestApi 确保不携带 SESSDATA/bili_jct

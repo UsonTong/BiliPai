@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.view.Window
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -143,6 +144,17 @@ fun VideoDetailScreen(
     val configuration = LocalConfiguration.current
     val uiState by viewModel.uiState.collectAsState()
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    
+    // 🎭 [性能优化] 转场动画完成状态
+    // 延迟加载重型组件（如评论区），确保转场动画流畅无卡顿
+    var isTransitionFinished by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        // 等待转场动画结束 (350ms + small buffer)
+        // 配合 AppNavigation 中的 enterTransition duration
+        kotlinx.coroutines.delay(400) 
+        isTransitionFinished = true
+    }
     
     // 🔄 [Seamless Playback] Internal BVID state to support seamless switching in portrait mode
     var currentBvid by remember(bvid) { mutableStateOf(bvid) }
@@ -1037,108 +1049,117 @@ fun VideoDetailScreen(
                                                 .fillMaxSize()
                                                 .hazeSource(hazeState)
                                         ) {
-                                            VideoContentSection(
-                                                info = success.info,
-                                                relatedVideos = success.related,
-                                                replies = commentState.replies,
-                                                replyCount = commentState.replyCount,
-                                                emoteMap = success.emoteMap,
-                                                isRepliesLoading = commentState.isRepliesLoading,
-                                                isRepliesEnd = commentState.isRepliesEnd,
-                                                // [新增] 传递删除相关参数
-                                                currentMid = commentState.currentMid,
-                                                dissolvingIds = commentState.dissolvingIds,
-                                                // [新增] 删除评论
-                                                onDeleteComment = { rpid ->
-                                                    commentViewModel.deleteComment(rpid)
-                                                },
-                                                onDissolveStart = { rpid ->
-                                                    commentViewModel.startDissolve(rpid)
-                                                },
-                                                // [新增] 点赞
-                                                onCommentLike = commentViewModel::likeComment,
-                                                likedComments = commentState.likedComments,
-                                                isFollowing = success.isFollowing,
-                                                isFavorited = success.isFavorited,
-                                                isLiked = success.isLiked,
-                                                coinCount = success.coinCount,
-                                                currentPageIndex = currentPageIndex,
-                                                downloadProgress = downloadProgress,
-                                                isInWatchLater = success.isInWatchLater,
-                                                followingMids = success.followingMids,
-                                                videoTags = success.videoTags,
-                                                //  [新增] 评论排序/筛选参数
-                                                sortMode = commentState.sortMode,
-                                                upOnlyFilter = commentState.upOnlyFilter,
-                                                onSortModeChange = { commentViewModel.setSortMode(it) },
-                                                onUpOnlyToggle = { commentViewModel.toggleUpOnly() },
-                                                onFollowClick = { viewModel.toggleFollow() },
-                                                onFavoriteClick = { viewModel.showFavoriteFolderDialog() }, // [修改] 单击直接打开收藏夹选择
-                                                onLikeClick = { viewModel.toggleLike() },
-                                                onCoinClick = { viewModel.openCoinDialog() },
-                                                onTripleClick = { viewModel.doTripleAction() },
-                                                onPageSelect = { viewModel.switchPage(it) },
-                                                onUpClick = onUpClick,
-                                                onRelatedVideoClick = onVideoClick,
-                                                onSubReplyClick = { commentViewModel.openSubReply(it) },
-                                                onLoadMoreReplies = { commentViewModel.loadComments() },
-                                                onDownloadClick = { viewModel.openDownloadDialog() },
-                                                onWatchLaterClick = { viewModel.toggleWatchLater() },
-                                                //  [新增] 时间戳点击跳转
-                                                onTimestampClick = { positionMs ->
-                                                    playerState.player.seekTo(positionMs)
-                                                    playerState.player.play()
-                                                },
-                                                //  [新增] 弹幕发送
-                                                onDanmakuSendClick = {
-                                                    android.util.Log.d("VideoDetailScreen", "📤 Danmaku send clicked!")
-                                                    viewModel.showDanmakuSendDialog()
-                                                },
-                                                // 🔗 [新增] 传递共享元素过渡开关
-                                                transitionEnabled = transitionEnabled,
-                                                
-                                                // [新增] 收藏夹相关
-                                                favoriteFolderDialogVisible = viewModel.favoriteFolderDialogVisible.collectAsState().value,
-                                                favoriteFolders = viewModel.favoriteFolders.collectAsState().value,
-                                                isFavoriteFoldersLoading = viewModel.isFavoriteFoldersLoading.collectAsState().value,
-                                                onFavoriteLongClick = { viewModel.showFavoriteFolderDialog() },
-                                                onFavoriteFolderClick = { folder -> viewModel.addToFavoriteFolder(folder) },
-                                                onDismissFavoriteFolderDialog = { viewModel.dismissFavoriteFolderDialog() },
-                                                onCreateFavoriteFolder = { title, intro, isPrivate -> 
-                                                    viewModel.createFavoriteFolder(title, intro, isPrivate) 
-                                                }
-                                            )
-                                        }
+                                            // [性能优化] 延迟显示下方内容，优先保证进场动画流畅
+                                            // 配合 isTransitionFinished 状态
+                                            androidx.compose.animation.AnimatedVisibility(
+                                                visible = isTransitionFinished,
+                                                enter = fadeIn(tween(300))
+                                            ) {
+                                                Box(modifier = Modifier.fillMaxSize()) {
+                                                    VideoContentSection(
+                                                        info = success.info,
+                                                        relatedVideos = success.related,
+                                                        replies = commentState.replies,
+                                                        replyCount = commentState.replyCount,
+                                                        emoteMap = success.emoteMap,
+                                                        isRepliesLoading = commentState.isRepliesLoading,
+                                                        isRepliesEnd = commentState.isRepliesEnd,
+                                                        // [新增] 传递删除相关参数
+                                                        currentMid = commentState.currentMid,
+                                                        dissolvingIds = commentState.dissolvingIds,
+                                                        // [新增] 删除评论
+                                                        onDeleteComment = { rpid ->
+                                                            commentViewModel.deleteComment(rpid)
+                                                        },
+                                                        onDissolveStart = { rpid ->
+                                                            commentViewModel.startDissolve(rpid)
+                                                        },
+                                                        // [新增] 点赞
+                                                        onCommentLike = commentViewModel::likeComment,
+                                                        likedComments = commentState.likedComments,
+                                                        isFollowing = success.isFollowing,
+                                                        isFavorited = success.isFavorited,
+                                                        isLiked = success.isLiked,
+                                                        coinCount = success.coinCount,
+                                                        currentPageIndex = currentPageIndex,
+                                                        downloadProgress = downloadProgress,
+                                                        isInWatchLater = success.isInWatchLater,
+                                                        followingMids = success.followingMids,
+                                                        videoTags = success.videoTags,
+                                                        //  [新增] 评论排序/筛选参数
+                                                        sortMode = commentState.sortMode,
+                                                        upOnlyFilter = commentState.upOnlyFilter,
+                                                        onSortModeChange = { commentViewModel.setSortMode(it) },
+                                                        onUpOnlyToggle = { commentViewModel.toggleUpOnly() },
+                                                        onFollowClick = { viewModel.toggleFollow() },
+                                                        onFavoriteClick = { viewModel.showFavoriteFolderDialog() }, // [修改] 单击直接打开收藏夹选择
+                                                        onLikeClick = { viewModel.toggleLike() },
+                                                        onCoinClick = { viewModel.openCoinDialog() },
+                                                        onTripleClick = { viewModel.doTripleAction() },
+                                                        onPageSelect = { viewModel.switchPage(it) },
+                                                        onUpClick = onUpClick,
+                                                        onRelatedVideoClick = onVideoClick,
+                                                        onSubReplyClick = { commentViewModel.openSubReply(it) },
+                                                        onLoadMoreReplies = { commentViewModel.loadComments() },
+                                                        onDownloadClick = { viewModel.openDownloadDialog() },
+                                                        onWatchLaterClick = { viewModel.toggleWatchLater() },
+                                                        //  [新增] 时间戳点击跳转
+                                                        onTimestampClick = { positionMs ->
+                                                            playerState.player.seekTo(positionMs)
+                                                            playerState.player.play()
+                                                        },
+                                                        //  [新增] 弹幕发送
+                                                        onDanmakuSendClick = {
+                                                            android.util.Log.d("VideoDetailScreen", "📤 Danmaku send clicked!")
+                                                            viewModel.showDanmakuSendDialog()
+                                                        },
+                                                        // 🔗 [新增] 传递共享元素过渡开关
+                                                        transitionEnabled = transitionEnabled,
+                                                        
+                                                        // [新增] 收藏夹相关
+                                                        favoriteFolderDialogVisible = viewModel.favoriteFolderDialogVisible.collectAsState().value,
+                                                        favoriteFolders = viewModel.favoriteFolders.collectAsState().value,
+                                                        isFavoriteFoldersLoading = viewModel.isFavoriteFoldersLoading.collectAsState().value,
+                                                        onFavoriteLongClick = { viewModel.showFavoriteFolderDialog() },
+                                                        onFavoriteFolderClick = { folder -> viewModel.addToFavoriteFolder(folder) },
+                                                        onDismissFavoriteFolderDialog = { viewModel.dismissFavoriteFolderDialog() },
+                                                        onCreateFavoriteFolder = { title, intro, isPrivate -> 
+                                                            viewModel.createFavoriteFolder(title, intro, isPrivate) 
+                                                        }
+                                                    )
 
-                                        // 底部输入栏 (覆盖在内容之上)
-                                        BottomInputBar(
-                                            modifier = Modifier.align(Alignment.BottomCenter),
-                                            isLiked = success.isLiked,
-                                            isFavorited = success.isFavorited,
-                                            isCoined = success.coinCount > 0,
-                                            onLikeClick = { viewModel.toggleLike() },
-                                            onFavoriteClick = { viewModel.toggleFavorite() },
-                                            onCoinClick = { viewModel.openCoinDialog() },
-                                            onShareClick = {
-                                                val shareText = "【${success.info.title}】\nhttps://www.bilibili.com/video/${success.info.bvid}"
-                                                val sendIntent = android.content.Intent().apply {
-                                                    action = android.content.Intent.ACTION_SEND
-                                                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                                    type = "text/plain"
+                                                    // 底部输入栏 (覆盖在内容之上)
+                                                    BottomInputBar(
+                                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                                        isLiked = success.isLiked,
+                                                        isFavorited = success.isFavorited,
+                                                        isCoined = success.coinCount > 0,
+                                                        onLikeClick = { viewModel.toggleLike() },
+                                                        onFavoriteClick = { viewModel.toggleFavorite() },
+                                                        onCoinClick = { viewModel.openCoinDialog() },
+                                                        onShareClick = {
+                                                            val shareText = "【${success.info.title}】\nhttps://www.bilibili.com/video/${success.info.bvid}"
+                                                            val sendIntent = android.content.Intent().apply {
+                                                                action = android.content.Intent.ACTION_SEND
+                                                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                                                type = "text/plain"
+                                                            }
+                                                            val shareIntent = android.content.Intent.createChooser(sendIntent, "分享视频到")
+                                                            context.startActivity(shareIntent)
+                                                        },
+                                                        onCommentClick = { 
+                                                            android.util.Log.d("VideoDetailScreen", "📝 Comment input clicked!")
+                                                            viewModel.showCommentInputDialog()
+                                                        },
+                                                        hazeState = hazeState
+                                                    )
                                                 }
-                                                val shareIntent = android.content.Intent.createChooser(sendIntent, "分享视频到")
-                                                context.startActivity(shareIntent)
-                                            },
-                                            onCommentClick = { 
-                                                android.util.Log.d("VideoDetailScreen", "📝 Comment input clicked!")
-                                                viewModel.showCommentInputDialog()
-                                            },
-                                            hazeState = hazeState
-                                        )
+                                            }
                                     }
                                 }
                             }
-                        }
+                            } // End of AnimatedContent
+                        } // End of Success block
 
                             is PlayerUiState.Error -> {
                                 val errorState = uiState as PlayerUiState.Error

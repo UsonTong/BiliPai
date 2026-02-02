@@ -35,6 +35,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.luminance  //  状态栏亮度计算
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.theme.BiliPink
@@ -71,6 +74,8 @@ import com.android.purebilibili.core.ui.LocalBottomBarVisible
 
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import com.android.purebilibili.data.model.response.VideoItem // [Fix] Import VideoItem
+import com.android.purebilibili.feature.home.components.VideoPreviewDialog // [Fix] Import VideoPreviewDialog
 
 // [新增] 全局回顶事件通道
 val LocalHomeScrollChannel = compositionLocalOf<Channel<Unit>?> { null }
@@ -113,18 +118,22 @@ fun HomeScreen(
 // val pullRefreshState = rememberPullToRefreshState() // [Removed] Moved inside HorizontalPager
     val context = LocalContext.current
     //  [Refactor] Use a map of grid states for each category to support HorizontalPager
+    // [Refactor] Use a map of grid states for each category to support HorizontalPager
     val gridStates = remember { mutableMapOf<HomeCategory, LazyGridState>() }
     HomeCategory.entries.forEach { category ->
         gridStates[category] = rememberLazyGridState()
     }
-    val staggeredGridState = rememberLazyStaggeredGridState()  // 🌊 瀑布流状态
+    val staggeredGridState = rememberLazyStaggeredGridState() // 🌊 瀑布流状态
     val hazeState = remember { HazeState() }
-    
+
+
+    // [Feature] Video Preview State (Global Scope)
+    val targetVideoItemState = remember { mutableStateOf<VideoItem?>(null) }
     // [Revert] Background capture removed for performance
     // val homeBackdrop = com.kyant.backdrop.backdrops.rememberLayerBackdrop()
-    
-    val coroutineScope = rememberCoroutineScope()  //  用于双击回顶动画
-    
+
+    val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
+
     // [新增] 监听全局回顶事件
     val scrollChannel = LocalHomeScrollChannel.current
     LaunchedEffect(scrollChannel) {
@@ -136,6 +145,13 @@ fun HomeScreen(
                 if (isAtTop) {
                     viewModel.refresh()
                 } else {
+                    // [性能优化] 长列表回顶性能优化
+                    // 如果列表滚得太远（>12个），直接平滑滚动会因为measure太多item导致卡顿
+                    // 解决方案：通过 scrollToItem 先"瞬移"到第12个位置，再从那里平滑滚回顶部
+                    // 这样既保留了回顶的动效，又避免了大量计算
+                    if ((gridState?.firstVisibleItemIndex ?: 0) > 12) {
+                        gridState?.scrollToItem(12)
+                    }
                     gridState?.animateScrollToItem(0)
                 }
             }
@@ -317,10 +333,10 @@ fun HomeScreen(
     }
     
     
-    //  � [平板导航切换] 用户偏好设置
+    //   [平板导航切换] 用户偏好设置
     val tabletUseSidebar by SettingsManager.getTabletUseSidebar(context).collectAsState(initial = false)
     
-    //  �📐 [大屏适配] 平板导航模式：根据用户偏好决定
+    //  📐 [大屏适配] 平板导航模式：根据用户偏好决定
     // 仅在平板且用户选择了侧边栏时使用侧边导航
     val useSideNavigation = windowSizeClass.isExpandedScreen && tabletUseSidebar
     
@@ -382,6 +398,10 @@ fun HomeScreen(
                     if (isAtTop) {
                         viewModel.refresh()
                     } else {
+                        // [性能优化] 逻辑同上，如果太远先瞬移回来
+                        if ((gridState?.firstVisibleItemIndex ?: 0) > 12) {
+                            gridState?.scrollToItem(12)
+                        }
                         gridState?.animateScrollToItem(0) 
                     } 
                 }
@@ -463,40 +483,43 @@ fun HomeScreen(
         }
     }
     
-    // [Feature] 首页 Header 自动隐藏逻辑 (独立于底栏)
-    var isHeaderVisible by remember { mutableStateOf(true) }
-    var lastHeaderScrollOffset by remember { mutableIntStateOf(0) }
-    var lastHeaderFirstVisibleItem by remember { mutableIntStateOf(0) }
+    // [Feature] Sticky Header Logic via NestedScrollConnection
+    // Max collapse depends on setting: 
+    // If enabled: Search Bar (52.dp) + Tabs (44.dp)
+    // If disabled: Only Search Bar (52.dp)
+    val searchBarHeightDp = 52.dp
+    val tabRowHeightDp = 44.dp
+    val searchBarHeightPx = with(density) { searchBarHeightDp.toPx() }
+    val tabRowHeightPx = with(density) { tabRowHeightDp.toPx() }
+    
+    val isHeaderCollapseEnabled = homeSettings.isHeaderCollapseEnabled
+    
+    val headerMaxOffsetPx = if (isHeaderCollapseEnabled) {
+        searchBarHeightPx + tabRowHeightPx
+    } else {
+        0f // [Fix] Fixed Header when setting is disabled (No collapse at all)
+    }
 
-    LaunchedEffect(state.currentCategory) {
-        val currentGridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
-        snapshotFlow {
-            Pair(currentGridState.firstVisibleItemIndex, currentGridState.firstVisibleItemScrollOffset)
-        }
-        .distinctUntilChanged()
-        .collect { (firstVisibleItem, scrollOffset) ->
-             // 顶部始终显示
-            if (firstVisibleItem == 0 && scrollOffset < 100) {
-                isHeaderVisible = true
-            } else {
-                val isScrollingDown = when {
-                    firstVisibleItem > lastHeaderFirstVisibleItem -> true
-                    firstVisibleItem < lastHeaderFirstVisibleItem -> false
-                    else -> scrollOffset > lastHeaderScrollOffset + 50 // 较灵敏的阈值
-                }
-                val isScrollingUp = when {
-                    firstVisibleItem < lastHeaderFirstVisibleItem -> true
-                    firstVisibleItem > lastHeaderFirstVisibleItem -> false
-                    else -> scrollOffset < lastHeaderScrollOffset - 50
-                }
-                
-                if (isScrollingDown) isHeaderVisible = false
-                if (isScrollingUp) isHeaderVisible = true
+    var headerOffsetHeightPx by remember { mutableFloatStateOf(0f) }
+
+    val nestedScrollConnection = remember(headerMaxOffsetPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                val newOffset = headerOffsetHeightPx + delta
+                headerOffsetHeightPx = newOffset.coerceIn(-headerMaxOffsetPx, 0f)
+                return Offset.Zero // Do not consume scroll, let list scroll too
             }
-            lastHeaderFirstVisibleItem = firstVisibleItem
-            lastHeaderScrollOffset = scrollOffset
         }
     }
+    
+    // Reset header when switching categories or toggling setting
+    LaunchedEffect(state.currentCategory, isHeaderCollapseEnabled) {
+        headerOffsetHeightPx = 0f
+    }
+    
+    // [Removed] Legacy snapshotFlow logic for isHeaderVisible
+    val isHeaderVisible = true // Always "visible" in terms of layout presence, managed by offset now
     
     // [Fix Bug 2] 首页上滑未触发隐藏时切换 Tab 导致底栏突兀消失的问题
     // 监听 currentCategory 变化，如果新 Tab 处于顶部，强制显示底栏
@@ -687,6 +710,7 @@ fun HomeScreen(
     // 指示器位置逻辑也移入 graphicsLayer
     
     val scaffoldContent: @Composable () -> Unit = {
+
     Scaffold(
         //  [新增] JSON 插件过滤提示
         snackbarHost = {
@@ -716,17 +740,20 @@ fun HomeScreen(
             // ===== 内容层 (hazeSource) =====
             
             // [Feature] Animate content up when Tabs collapse
-            val contentTranslationY by androidx.compose.animation.core.animateDpAsState(
-                targetValue = if (isHeaderVisible) 0.dp else (-44).dp, // -TabHeight
-                animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessLow),
-                label = "contentTranslation"
-            )
+            // [Optimized] Use direct offset from NestedScroll
+            // Note: If we translate content up, we might see the gap? 
+            // Actually, standard behavior is: Header translates UP (clips), content scrolls naturally.
+            // We usually DO NOT translate the whole content box unless we want to pull it up.
+            // Since we use standard list with padding, we let the list handle its own scroll.
+            // But we can translate the *Tab Row* or Header container inside iOSHomeHeader.
+            // So we don't need `contentTranslationY` here anymore for the whole Box.
 
             // [修复] 如果有全局 hazeState，同时应用两个 hazeSource
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { translationY = contentTranslationY.toPx() } // Apply sticky header compensation
+                    .nestedScroll(nestedScrollConnection) // [Feature] Attach scroll connection
+                    //.graphicsLayer { translationY = contentTranslationY.toPx() } // [Removed]
                     // [Revert] Capture for Liquid Glass TopBar removed
 
                     // [Revert] Capture for Liquid Glass TopBar removed
@@ -777,11 +804,15 @@ fun HomeScreen(
                 }
                 
                 //  [Refactor] Use Box to allow overlay and proper blur nesting
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // [Fix] Disable default overscroll (stretch) effect which causes screen shrinking
-                    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                // [新增] Video Preview State (Long Press)
+    // [Move] Preview Dialog is now an overlay at the end of the Box
+    // if (previewVideoItem != null) { ... } // Removed
+
+    Box(modifier = Modifier.fillMaxSize()) {
+                    // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(
                             state = pagerState,
+                            beyondViewportPageCount = 1, // [Optimization] Preload adjacent pages to prevent swipe lag
                             modifier = Modifier
                                 .fillMaxSize()
                                 .hazeSource(state = hazeState), // [Restored] Always apply hazeSource for consistent blur
@@ -822,7 +853,6 @@ fun HomeScreen(
                         val pageGridState = gridStates[category] ?: rememberLazyGridState()
                         
                         //  把 GridState 提升给父级用于控制 Header? 
-                        //  暂时简化：Header 固定，内部滚动
                         
                         PullToRefreshBox(
                             isRefreshing = isRefreshing && state.currentCategory == category,
@@ -908,15 +938,15 @@ fun HomeScreen(
                                      onLoadMore = { viewModel.loadMore() },
                                      onDismissVideo = { viewModel.startVideoDissolve(it) },
                                      onWatchLater = { bvid, aid -> viewModel.addToWatchLater(bvid, aid) },
-                                     onDissolveComplete = { viewModel.completeVideoDissolve(it) }
+                                     onDissolveComplete = { viewModel.completeVideoDissolve(it) },
+                                     longPressCallback = { targetVideoItemState.value = it } // [Feature] Pass callback
                                  )
                              }
                              } // Close Box wrapper
                         }
                     }
-                    } // Ends CompositionLocalProvider
                 }
-            } // 关闭 PullToRefreshBox
+            } // Close Box wrapperfreshBox
         }  // 关闭 hazeSource Box
         
         //  ===== Header Overlay (毛玻璃效果) =====
@@ -928,8 +958,32 @@ fun HomeScreen(
 
         //  [Restored] Header 始终显示，不再随 Loading/Error 状态隐藏
         //  这保证了 Tab 指示器状态的连续性，防止消失或重置
+        
+        // Calculate parameters based on scroll
+        // 1. Search Bar Collapse (First phase)
+        val searchCollapseAmount = headerOffsetHeightPx.coerceAtLeast(-searchBarHeightPx)
+        val currentSearchHeight = searchBarHeightDp + with(density) { searchCollapseAmount.toDp() }
+        val searchAlpha = (1f + (searchCollapseAmount / searchBarHeightPx)).coerceIn(0f, 1f)
+        
+        // 2. Tab Row Collapse (Second phase, only if enabled)
+        // Starts after Search Bar is fully collapsed (-52dp)
+        val tabCollapseStart = -searchBarHeightPx
+        val tabCollapseAmount = (headerOffsetHeightPx - tabCollapseStart).coerceAtMost(0f)
+        
+        val currentTabHeight = if (headerOffsetHeightPx < tabCollapseStart && isHeaderCollapseEnabled) {
+             tabRowHeightDp + with(density) { tabCollapseAmount.toDp() }
+        } else {
+             tabRowHeightDp
+        }
+        val tabAlpha = if (headerOffsetHeightPx < tabCollapseStart && isHeaderCollapseEnabled) {
+            (1f + (tabCollapseAmount / tabRowHeightPx)).coerceIn(0f, 1f)
+        } else 1f
+        
         iOSHomeHeader(
-            scrollOffset = scrollOffset,
+            searchBarHeight = currentSearchHeight,
+            searchBarAlpha = searchAlpha,
+            tabContainerHeight = currentTabHeight, // [Feature] Dynamic Tab Height
+            tabAlpha = tabAlpha,                   // [Feature] Dynamic Tab Alpha
             user = state.user,
             onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
             onSettingsClick = onSettingsClick,
@@ -945,11 +999,12 @@ fun HomeScreen(
                 }
             },
             onPartitionClick = onPartitionClick,
-            isScrollingUp = isHeaderVisible,
+            // isScrollingUp = isHeaderVisible, // [Removed] logic moved to offset
             hazeState = if (isHeaderBlurEnabled) hazeState else null,
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
                     gridStates[state.currentCategory]?.animateScrollToItem(0)
+                    headerOffsetHeightPx = 0f // [Refinement] Reset header on double tap
                 }
             },
             isRefreshing = isRefreshing,
@@ -959,7 +1014,54 @@ fun HomeScreen(
             // backdrop = homeBackdrop,
             homeSettings = homeSettings
         )
+        // [Feature] Video Preview Overlay with Animation
+        androidx.compose.animation.AnimatedVisibility(
+            visible = targetVideoItemState.value != null,
+            enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.9f, animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
+            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.9f, animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
+            modifier = Modifier.fillMaxSize().zIndex(100f) // Ensure on top
+        ) {
+            val item = targetVideoItemState.value
+            if (item != null) {
+                com.android.purebilibili.feature.home.components.VideoPreviewDialog(
+                    video = item,
+                    onDismiss = { targetVideoItemState.value = null },
+                    onPlay = {
+                     // 1. Log click
+                     wrappedOnVideoClick(item.bvid, item.id, item.pic)
+                     // 2. Clear preview state
+                     targetVideoItemState.value = null
+                },
+                onWatchLater = {
+                    viewModel.addToWatchLater(item.bvid, item.aid)
+                    targetVideoItemState.value = null
+                },
+                onShare = {
+                   val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "【${item.title}】 https://www.bilibili.com/video/${item.bvid}")
+                    }
+                    val chooser = android.content.Intent.createChooser(shareIntent, "分享视频")
+                    if (context !is android.app.Activity) {
+                        chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(chooser)
+                    targetVideoItemState.value = null
+                },
+                onNotInterested = {
+                    viewModel.markNotInterested(item.bvid)
+                    targetVideoItemState.value = null
+                },
+                onGetPreviewUrl = { bvid, cid ->
+                    viewModel.getPreviewVideoUrl(bvid, cid)
+                },
+                hazeState = hazeState
+            )
+            }
+        }
+
     }  // 关闭 outer Box
+
     }  // 关闭 Scaffold lambda
     }  //  关闭 scaffoldContent lambda
     // 📱 [平板适配] 导航模式切换动画

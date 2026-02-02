@@ -30,6 +30,7 @@ import com.kyant.backdrop.effects.lens
 import com.android.purebilibili.core.ui.effect.simpMusicLiquidGlass 
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -49,13 +50,13 @@ import com.android.purebilibili.core.ui.blur.BlurIntensity
 /**
  *  简洁版首页头部 (带滚动隐藏/显示动画)
  * 
- * 注意：Header 不使用 hazeChild 模糊效果（会导致渲染问题）
- * 磨砂效果仅保留给 BottomBar（在屏幕底部可以正常工作）
- * hazeState 参数保留以保持 API 兼容性
+ *  [Refactor] 现在改为由外部通过 NestedScrollConnection 直接控制高度和透明度，
+ *  实现了 1:1 的物理跟手效果，消除了漂浮感。
  */
 @Composable
 fun iOSHomeHeader(
-    scrollOffset: Float,
+    searchBarHeight: Dp,
+    searchBarAlpha: Float,
     user: UserState,
     onAvatarClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -63,70 +64,24 @@ fun iOSHomeHeader(
     categoryIndex: Int,
     onCategorySelected: (Int) -> Unit,
     onPartitionClick: () -> Unit = {},  //  新增：分区按钮回调
-    isScrollingUp: Boolean = true,
-    collapseThreshold: androidx.compose.ui.unit.Dp = 60.dp,
     hazeState: HazeState? = null,  // 保留参数兼容性，但不用于模糊
     onStatusBarDoubleTap: () -> Unit = {},
-    //  [新增] 下拉刷新状态
     //  [新增] 下拉刷新状态
     isRefreshing: Boolean = false,
     pullProgress: Float = 0f,  // 0.0 ~ 1.0+ 下拉进度
     pagerState: androidx.compose.foundation.pager.PagerState? = null, // [New] PagerState for sync
     // [New] LayerBackdrop for liquid glass effect
     backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
-    homeSettings: com.android.purebilibili.core.store.HomeSettings? = null
+    homeSettings: com.android.purebilibili.core.store.HomeSettings? = null,
+    // [Feature] Tab Collapse Control
+    tabContainerHeight: Dp = 44.dp,
+    tabAlpha: Float = 1f
 ) {
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
 
-    // 计算滚动进度
-    val maxOffsetPx = with(density) { 50.dp.toPx() }
-    val scrollProgress = (scrollOffset / maxOffsetPx).coerceIn(0f, 1f)
-    
-    //  [优化] 下拉刷新时强制展开标签页
-    //  防止下拉回弹时的微小滚动偏移以及刷新状态下标签页消失
-    val progress = if (pullProgress > 0f || isRefreshing) 0f else scrollProgress
-    
-    // [Feature] 自动折叠逻辑 (Auto-Collapse)
-    // 当向上滚动 (isScrollingUp) 或处于顶部时显示；向下滚动时隐藏
-    // 使用 animateDpAsState 实现平滑过渡
-    val isHeaderVisible = isScrollingUp || scrollOffset < 100f
-    
-    // 计算位移: 隐藏时向上移动整个 Header 高度
-    // Header 总高度 ≈ 状态栏 + 搜索栏(52dp) + Tab栏(约44dp)
-    // 但这里我们只隐藏 Search Bar 部分，保留 Tab 栏？
-    // 用户需求 "TopBar上滑自动折叠隐藏"，通常指整个 Header 或者只留 Status Bar
-    // 参考 B站/Piliplus，通常是隐藏 Search Bar，Tab 吸顶? 
-    // 或者整个都隐藏？
-    // 假设隐藏整个 Header 内容区域 (Search + Tabs)，或者只保留 Tabs?
-    // 让我们尝试 "整体隐藏" 但保留 Status Bar 占位? 不需要，Content 会滚上来。
-    // 为了平滑，我们移动 offsetY。
-    
-    // 既然 iOS 风格 App Store 是大标题滚上去变成小标题。
-    // 这里并没有大标题。
-    // 我们实现：向下滚动时，整个 Header 向上滑出屏幕。
-    // 向上滚动时，Header 滑入。
-    
-    // [Feature] Sticky Search Bar Logic
-    // Only the Tab Row collapses (slides up & fades/clips)
-    
-    val tabHeight = 44.dp
-    val animatedTabHeight by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isHeaderVisible) tabHeight else 0.dp,
-        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessLow),
-        label = "tabHeight"
-    )
-    
-    val animatedTabTranslationY by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isHeaderVisible) 0.dp else (-44).dp,
-        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessLow),
-        label = "tabTranslation"
-    )
-
     // 状态栏高度
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val searchBarHeight = 52.dp
-    val totalHeaderTopPadding = statusBarHeight + searchBarHeight
     
     // [Feature] Liquid Glass Logic
     val isGlassEnabled = homeSettings?.isLiquidGlassEnabled == true
@@ -136,8 +91,6 @@ fun iOSHomeHeader(
         .collectAsState(initial = BlurIntensity.THIN)
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity) * 0.8f // Slightly more transparent for glass
     
-    val isSimpMusic = homeSettings?.liquidGlassStyle == com.android.purebilibili.core.store.LiquidGlassStyle.SIMP_MUSIC
-    
     val targetHeaderColor = if (isGlassEnabled) {
          MaterialTheme.colorScheme.surface.copy(alpha = 0.01f) // Almost transparent
     } else {
@@ -145,21 +98,18 @@ fun iOSHomeHeader(
     }
     
     // [UX优化] 平滑过渡顶部栏背景色 (Smooth Header Color Transition)
+    // 注意：这里保留颜色动画是没问题的，因为它不影响布局
     val animatedHeaderColor by animateColorAsState(
         targetValue = targetHeaderColor,
         animationSpec = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(300),
         label = "headerColor"
     )
     
-    // Unified Header Container (Status Bar + Search Bar + Tabs)
-    val isSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
-    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .zIndex(10f) // Ensure high z-index for the whole header
-            //.offset(y = animatedTranslationY) // [Removed] Whole header translation
-             // [Revert] Removed Liquid Glass Effect due to performance issues
+            // [Revert] Removed Liquid Glass Effect due to performance issues
              .run {
                   this.then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
                       .background(animatedHeaderColor)
@@ -182,123 +132,129 @@ fun iOSHomeHeader(
         )
 
         // 2. Search Bar + Avatar + Settings
-        Row(
+        // 高度和透明度由外部直接控制，实现物理跟手
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .height(searchBarHeight)
+                .graphicsLayer { alpha = searchBarAlpha }
+                .clip(androidx.compose.ui.graphics.RectangleShape) // Ensure content is clipped when shrinking
         ) {
-            // Avatar
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .iOSTapEffect { onAvatarClick() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(52.dp) // 内部内容保持原始高度，通过父容器裁剪实现收缩
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Avatar
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        .size(44.dp)
+                        .iOSTapEffect { onAvatarClick() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (user.isLogin && user.face.isNotEmpty()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(FormatUtils.fixImageUrl(user.face))
-                                .crossfade(true).build(),
-                            contentDescription = "用户头像",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("未", fontSize = 11.sp, fontWeight = FontWeight.Bold, 
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
+                        if (user.isLogin && user.face.isNotEmpty()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(FormatUtils.fixImageUrl(user.face))
+                                    .crossfade(true).build(),
+                                contentDescription = "用户头像",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("未", fontSize = 11.sp, fontWeight = FontWeight.Bold, 
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Search Box
-            // [优化] 外层容器用于居中，内层容器限制最大宽度 (640dp)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Search Box
+                // [优化] 外层容器用于居中，内层容器限制最大宽度 (640dp)
                 Box(
                     modifier = Modifier
-                        .widthIn(max = 640.dp)
-                        .fillMaxWidth()
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                        .clickable { 
-                            haptic(HapticType.LIGHT)
-                            onSearchClick() 
-                        }
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .weight(1f)
+                        .height(36.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            CupertinoIcons.Default.MagnifyingGlass,
-                            contentDescription = "搜索",
-                            tint = iOSSystemGray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        // [优化] 响应式字体大小
-                        val isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
-                        Text(
-                            text = "搜索视频、UP主...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontSize = if (isTablet) 16.sp else 15.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = iOSSystemGray,
-                            maxLines = 1
-                        )
+                    Box(
+                        modifier = Modifier
+                            .widthIn(max = 640.dp)
+                            .fillMaxWidth()
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                            .clickable { 
+                                haptic(HapticType.LIGHT)
+                                onSearchClick() 
+                            }
+                            .padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                CupertinoIcons.Default.MagnifyingGlass,
+                                contentDescription = "搜索",
+                                tint = iOSSystemGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // [优化] 响应式字体大小
+                            val isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
+                            Text(
+                                text = "搜索视频、UP主...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontSize = if (isTablet) 16.sp else 15.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = iOSSystemGray,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Settings Button
-            IconButton(
-                onClick = { 
-                    haptic(HapticType.LIGHT)
-                    onSettingsClick() 
-                },
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    CupertinoIcons.Default.Gear,
-                    contentDescription = "设置",
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    modifier = Modifier.size(22.dp)
-                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Settings Button
+                IconButton(
+                    onClick = { 
+                        haptic(HapticType.LIGHT)
+                        onSettingsClick() 
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        CupertinoIcons.Default.Gear,
+                        contentDescription = "设置",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
         
         // 3. Category Tabs (Merged directly below Search Bar)
-        // Adjust padding to make them close
+        // Tabs 始终显示，但会随 SearchBar 收缩而上移
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(-1f) // Slide behind search bar
-                .height(animatedTabHeight) // Animate height to pull content up if needed (though we handle content separate)
-                // Actually, height animation is critical for the header background to shrink
-                .graphicsLayer {
-                    translationY = animatedTabTranslationY.toPx()
-                }
-                .clip(RoundedCornerShape(bottomStart = 0.dp, bottomEnd = 0.dp)) // Ensure internal clip if needed, mostly container clip
+                .height(tabContainerHeight) // [Feature] Collapse Tabs
+                .graphicsLayer { alpha = tabAlpha }
+                .clip(RoundedCornerShape(bottomStart = 0.dp, bottomEnd = 0.dp))
         ) {
             CategoryTabRow(
                 selectedIndex = categoryIndex,
@@ -308,5 +264,4 @@ fun iOSHomeHeader(
             )
         }
     }
-
 }

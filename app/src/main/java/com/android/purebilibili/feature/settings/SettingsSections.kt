@@ -87,7 +87,8 @@ fun GeneralSection(
     onAppearanceClick: () -> Unit,
     onPlaybackClick: () -> Unit,
     onBottomBarClick: () -> Unit,
-    onOpenLinksClick: (() -> Unit)? = null // [New] Optional callback
+    onTipsClick: () -> Unit, // [Feature] Tips
+    onOpenLinksClick: () -> Unit
 ) {
     SettingsGroup {
         SettingClickableItem(
@@ -114,17 +115,25 @@ fun GeneralSection(
             iconTint = iOSBlue
         )
         
+        SettingsDivider(startIndent = 66.dp)
+        // [Feature] 小贴士 & 隐藏操作
+        SettingClickableItem(
+            icon = CupertinoIcons.Default.Lightbulb,
+            title = "小贴士 & 隐藏操作",
+            value = "探索更多功能",
+            onClick = onTipsClick,
+            iconTint = iOSOrange
+        )
+        
+        SettingsDivider(startIndent = 66.dp)
         // [New] Open by Default Links
-        if (onOpenLinksClick != null) {
-            SettingsDivider(startIndent = 66.dp)
-            SettingClickableItem(
-                icon = CupertinoIcons.Default.Link,
-                title = "默认打开链接",
-                value = "设置应用链接支持",
-                onClick = onOpenLinksClick,
-                iconTint = iOSOrange
-            )
-        }
+        SettingClickableItem(
+            icon = CupertinoIcons.Default.Link,
+            title = "默认打开链接",
+            value = "设置应用链接支持",
+            onClick = onOpenLinksClick,
+            iconTint = iOSOrange
+        )
     }
 }
 

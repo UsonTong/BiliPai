@@ -134,6 +134,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // [New] Mark as Not Interested (Dislike)
+    fun markNotInterested(bvid: String) {
+        viewModelScope.launch {
+            // Optimistically remove from UI
+            completeVideoDissolve(bvid) 
+            // TODO: Call API to persist dislike
+             com.android.purebilibili.core.util.Logger.d("HomeVM", "Marked as not interested: $bvid")
+        }
+    }
+
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -595,6 +605,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             com.android.purebilibili.core.util.Logger.d("HomeVM", " Total following mids fetched and cached: ${allMids.size}")
         } catch (e: Exception) {
             com.android.purebilibili.core.util.Logger.e("HomeVM", " Error fetching following list", e)
+        }
+    }
+
+    // [Feature] Preview Video URL logic
+    suspend fun getPreviewVideoUrl(bvid: String, cid: Long): String? {
+        return try {
+            com.android.purebilibili.data.repository.VideoRepository.getPreviewVideoUrl(bvid, cid)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 }

@@ -15,6 +15,8 @@ import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
 import com.android.purebilibili.feature.video.controller.QualityManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
@@ -135,10 +137,18 @@ class VideoPlaybackUseCase(
             
             onProgress("Loading video info...")
             
-            //  [关键修复] 传递 aid 参数给 Repository
-            val detailResult = VideoRepository.getVideoDetails(bvid, aid, defaultQuality)
-            val relatedVideos = if (bvid.isNotEmpty()) VideoRepository.getRelatedVideos(bvid) else emptyList()
-            val emoteMap = com.android.purebilibili.data.repository.CommentRepository.getEmoteMap()
+            //  [性能优化] 并行请求视频详情、相关推荐和其它数据
+            val (detailResult, relatedVideos, emoteMap) = kotlinx.coroutines.coroutineScope {
+                val detailDeferred = async { VideoRepository.getVideoDetails(bvid, aid, defaultQuality) }
+                val relatedDeferred = async { 
+                    if (bvid.isNotEmpty()) VideoRepository.getRelatedVideos(bvid) else emptyList() 
+                }
+                val emoteDeferred = async { 
+                    com.android.purebilibili.data.repository.CommentRepository.getEmoteMap() 
+                }
+                
+                Triple(detailDeferred.await(), relatedDeferred.await(), emoteDeferred.await())
+            }
             
             return detailResult.fold(
                 onSuccess = { (info, playData) ->

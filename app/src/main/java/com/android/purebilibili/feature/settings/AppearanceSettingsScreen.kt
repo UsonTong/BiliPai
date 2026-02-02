@@ -132,6 +132,9 @@ fun AppearanceSettingsContent(
         isVisible = true
     }
 
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600 // Material Design 3 中型屏幕断点
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize(),
@@ -544,8 +547,31 @@ fun AppearanceSettingsContent(
                     )
                 }
             }
-        }
-            
+        } // End of Personalization item
+
+            //  [新增] 平板设置 (仅平板显示)
+            if (isTablet) {
+                item {
+                    Box(modifier = Modifier.staggeredEntrance(8, isVisible)) {
+                        IOSSectionTitle("平板布局")
+                    }
+                }
+                item {
+                    Box(modifier = Modifier.staggeredEntrance(9, isVisible)) {
+                        IOSGroup {
+                            IOSSwitchItem(
+                                icon = CupertinoIcons.Outlined.SidebarLeft,
+                                title = "侧边导航栏",
+                                subtitle = "开启后使用侧边栏代替底部导航",
+                                checked = state.tabletUseSidebar,
+                                onCheckedChange = { viewModel.toggleTabletUseSidebar(it) },
+                                iconTint = iOSBlue
+                            )
+                        }
+                    }
+                }
+            }
+        
             //  首页展示 - 抽屉式选择
             item { 
                 Box(modifier = Modifier.staggeredEntrance(6, isVisible)) {
@@ -652,6 +678,16 @@ fun AppearanceSettingsContent(
                                 }
                             }
                         }
+                        
+                        Divider(modifier = Modifier.padding(start = 16.dp))
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.ChevronUp,
+                            title = "顶部栏自动收缩",
+                            subtitle = "上滑时自动收起推荐分类",
+                            checked = state.isHeaderCollapseEnabled,
+                            onCheckedChange = { viewModel.toggleHeaderCollapse(it) },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
                     }
                 }
             }

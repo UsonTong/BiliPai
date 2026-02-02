@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.home.components
 
 // Duplicate import removed
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -248,8 +249,16 @@ fun FrostedBottomBar(
         val itemCount = visibleItems.size
         // itemWidth calculation
         val contentWidth = availableWidth - (rowPadding * 2)
+        // [平板适配] 优化底栏宽度：根据图标数量自适应，避免过度拉伸
+        // 假设每个图标最佳宽度约 80-100dp，按 88dp 计算较为紧凑且适中
+        val sidebarCount = if (isTablet && onToggleSidebar != null) 1 else 0
+        val optimalWidth = ((visibleItems.size + sidebarCount) * 88).dp
+        
         // 限制最大宽度 (平板适配)
-        val maxContentWidth = if (isFloating && availableWidth > 640.dp) 640.dp - (rowPadding * 2) else contentWidth
+        // 使用 min(640.dp, optimalWidth) 确保不超宽也不过窄
+        val targetMaxWidth = if (optimalWidth < 640.dp) optimalWidth else 640.dp
+        
+        val maxContentWidth = if (isFloating && availableWidth > 640.dp) targetMaxWidth - (rowPadding * 2) else contentWidth
         val finalContentWidth = if (maxContentWidth > contentWidth) contentWidth else maxContentWidth
         
         val itemWidth = finalContentWidth / itemCount
@@ -358,7 +367,8 @@ fun FrostedBottomBar(
     
     // 🟢 最外层容器
     Box(
-        modifier = Modifier // 使用传入的 constraint modifier (已经有了 fillMaxWidth)
+        modifier = Modifier
+            .fillMaxWidth() // [Fix] Ensure container fills width so Alignment.BottomCenter works
             .padding(horizontal = barHorizontalPadding)
             .padding(bottom = barBottomPadding)
             .then(if (isFloating) Modifier.navigationBarsPadding() else Modifier),
@@ -452,7 +462,8 @@ fun FrostedBottomBar(
                                         onDrawSurface = {
                                             // [Visual Tuning] Translucency & Readability
                                             // Increased opacity to ensure text readability while maintaining "glass" look
-                                            val baseAlpha = if (isDark) 0.40f else 0.60f 
+                                            // [Optimized] Improved legibility (Deep: 0.5, Light: 0.75)
+                                            val baseAlpha = if (isDark) 0.50f else 0.75f 
                                             val scrollImpact = (scrollValue * 0.0005f).coerceIn(0f, 0.1f)
                                             val overlayAlpha = baseAlpha + scrollImpact
                                             
@@ -619,33 +630,6 @@ private fun BottomBarContent(
         
         // 由于 multi_replace 限制，我必须提供完整的 BottomBarContent。
         // ... (平板按钮代码) 
-        if (isTablet && onToggleSidebar != null) {
-            // ... (复制原有逻辑)
-            // 简单复制：
-             var isPending by remember { mutableStateOf(false) }
-            val primaryColor = MaterialTheme.colorScheme.primary
-            val unselectedColor = if (hazeState != null) {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            } else {
-                BottomBarColors.UNSELECTED
-            }
-            val iconColor by animateColorAsState(targetValue = if (isPending) primaryColor else unselectedColor, label = "iconColor")
-
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().offset(y = contentVerticalOffset)
-                    .then(if (isInteractive) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { isPending = true; haptic(HapticType.LIGHT); kotlinx.coroutines.MainScope().launch { kotlinx.coroutines.delay(100); onToggleSidebar(); isPending = false } } else Modifier),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-            ) {
-                Box(modifier = Modifier.size(26.dp)) {
-                    Icon(imageVector = CupertinoIcons.Outlined.SidebarLeft, contentDescription = "侧边栏", tint = iconColor, modifier = Modifier.fillMaxSize())
-                }
-                if (labelMode == 0) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(text = "侧边栏", style = MaterialTheme.typography.labelSmall, color = iconColor, fontWeight = FontWeight.Medium, fontSize = if (isTablet) 12.sp else 10.sp)
-                }
-            }
-        }
-        
         visibleItems.forEachIndexed { index, item ->
             val isSelected = selectedIndex == index
             val itemColorIndex = itemColorIndices[item.name] ?: 0
@@ -674,6 +658,45 @@ private fun BottomBarContent(
                 contentLuminance = contentLuminance, // [New]
                 liquidGlassStyle = liquidGlassStyle // [New]
             )
+        }
+
+        if (isTablet && onToggleSidebar != null) {
+            // ... (复制原有逻辑)
+            // 简单复制：
+             var isPending by remember { mutableStateOf(false) }
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val unselectedColor = if (hazeState != null) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            } else {
+                BottomBarColors.UNSELECTED
+            }
+            val iconColor by animateColorAsState(targetValue = if (isPending) primaryColor else unselectedColor, label = "iconColor")
+
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight().offset(y = contentVerticalOffset)
+                    .then(if (isInteractive) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { isPending = true; haptic(HapticType.LIGHT); kotlinx.coroutines.MainScope().launch { kotlinx.coroutines.delay(100); onToggleSidebar(); isPending = false } } else Modifier),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+            ) {
+                Box(modifier = Modifier.size(26.dp)) {
+                    Icon(imageVector = CupertinoIcons.Outlined.SidebarLeft, contentDescription = "侧边栏", tint = iconColor, modifier = Modifier.fillMaxSize())
+                }
+                if (labelMode == 0) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "侧边栏",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            shadow = if (isTablet) androidx.compose.ui.graphics.Shadow(
+                                color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 1f),
+                                blurRadius = 3f
+                            ) else null
+                        ),
+                        color = iconColor,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = if (isTablet) 12.sp else 10.sp
+                    )
+                }
+            }
         }
     }
 }
@@ -707,17 +730,26 @@ private fun BottomBarItem(
     // Light Mode: Black text/icons (to stand out against white-ish glass)
     // Dark Mode: White text/icons (to stand out against dark glass)
     // [SimpMusic Style]: Adaptive based on luminance
-    val unselectedColor = if (liquidGlassStyle == LiquidGlassStyle.SIMP_MUSIC) {
+    // [Fix] Reliably detect Light Mode using surface luminance
+    // This handles cases where app theme overrides system theme
+    val isLightMode = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+
+    val unselectedColor = if (isLightMode) {
+        // [Force] Light Mode: Always use Black for maximum readability
+        androidx.compose.ui.graphics.Color.Black
+    } else if (liquidGlassStyle == LiquidGlassStyle.SIMP_MUSIC) {
         // Luminance > 0.6 (Bright background) -> Black text
         // Luminance < 0.6 (Dark background) -> White text
         if (contentLuminance > 0.6f) androidx.compose.ui.graphics.Color.Black.copy(alpha=0.8f) 
         else androidx.compose.ui.graphics.Color.White.copy(alpha=0.9f)
     } else {
-        // Classic Logic
-        if (isDarkTheme) {
-            androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
+        // Classic Logic (Dark Mode)
+        if (isTablet) {
+             // [平板优化] 悬浮底栏下方是复杂视频流，强制使用高可见度白色 + 投影
+             androidx.compose.ui.graphics.Color.White.copy(alpha = 0.95f)
         } else {
-            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f)
+            // [Fix] Dark Mode: Increase opacity to 0.95 for better legibility against glass
+            androidx.compose.ui.graphics.Color.White.copy(alpha = 0.95f)
         }
     }
     
@@ -849,9 +881,17 @@ private fun BottomBarItem(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.label,
-                    fontSize = if (isTablet) 12.sp else 10.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        // [Fix] Add Shadow for Liquid Glass Readability (Both Tablet & Phone)
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = if (isDarkTheme) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f) else androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f),
+                            offset = androidx.compose.ui.geometry.Offset(0f, 1f),
+                            blurRadius = 3f
+                        )
+                    ),
+                    color = iconColor,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = iconColor
+                    fontSize = if (isTablet) 12.sp else 10.sp
                 )
             }
             2 -> { // Text Only

@@ -75,6 +75,7 @@ fun ElegantVideoCard(
     onDismiss: (() -> Unit)? = null,    //  [新增] 删除/过滤回调（长按触发）
     onWatchLater: (() -> Unit)? = null,  //  [新增] 稍后再看回调
     onUnfavorite: (() -> Unit)? = null,  //  [新增] 取消收藏回调
+    onLongClick: ((VideoItem) -> Unit)? = null, // [Feature] Long Press Preview
     onClick: (String, Long) -> Unit
 ) {
     val haptic = rememberHapticFeedback()
@@ -188,6 +189,12 @@ fun ElegantVideoCard(
                             isPressed = true
                             tryAwaitRelease()
                             isPressed = false
+                        },
+                        onLongPress = {
+                            if (onLongClick != null) {
+                                haptic(HapticType.HEAVY)
+                                onLongClick(video)
+                            }
                         },
                         onTap = {
                             cardBounds?.let { bounds ->
@@ -303,7 +310,10 @@ fun ElegantVideoCard(
                                 isPressed = false
                             },
                             onLongPress = {
-                                if (hasLongPressMenu) {
+                                if (onLongClick != null) {
+                                  haptic(HapticType.HEAVY)
+                                  onLongClick(video)
+                                } else if (hasLongPressMenu) {
                                     haptic(HapticType.HEAVY)
                                     showDismissMenu = true
                                 }
