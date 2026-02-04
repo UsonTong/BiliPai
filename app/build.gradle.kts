@@ -8,8 +8,8 @@ plugins {
     // Room 数据库编译插件
     id("com.google.devtools.ksp")
     // 🔥 Firebase 相关插件
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
+    // id("com.google.gms.google-services")
+    // id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -59,8 +59,11 @@ android {
             )
             
             // Explicitly disable mapping file upload to avoid network errors
-            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-                mappingFileUploadEnabled = false
+            // Explicitly disable mapping file upload to avoid network errors
+            pluginManager.withPlugin("com.google.firebase.crashlytics") {
+                configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                    mappingFileUploadEnabled = false
+                }
             }
         }
         debug {
@@ -260,4 +263,9 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+}
+
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }

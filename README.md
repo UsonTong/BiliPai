@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-4.3.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.0.4-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -51,6 +51,7 @@
 | **倍速播放** | 0.5x / 0.75x / 1.0x / 1.25x / 1.5x / 2.0x |
 | **画中画** | 悬浮小窗播放，多任务无缝切换 |
 | **听视频模式** | 🆕 专属音频播放界面，支持沉浸式/黑胶唱片模式，歌词显示与播放列表管理 |
+| **原地播放** | 长按视频封面直接预览播放，点击即可全屏，无缝衔接 |
 | **后台播放** | 锁屏/切后台继续听，支持通知栏控制 |
 | **播放记忆** | 自动记录观看进度，下次打开继续播放 |
 | **TV 登录** | 支持 TV 端扫码登录，解锁大会员专属高画质 |
@@ -169,6 +170,15 @@ JSON 规则插件是一种**无需编程**的轻量级插件格式，只需编�
 | **图片下载** | 长按预览，一键保存到相册 |
 | **@ 高亮** | 动态中 @用户 自动高亮显示 |
 
+### 💬 私信聊天
+
+| 功能 | 描述 |
+|-----|-----|
+| **消息列表** | 支持查看历史消息，分页加载 |
+| **富文本交互** | 支持表情包、@提醒、图片查看 |
+| **链接预览** | 自动识别视频链接 (BV号) 并生成即时预览卡片 |
+| **深色适配** | 聊天界面完美适配深色模式 |
+
 ### 📥 离线缓存
 
 | 功能 | 描述 |
@@ -198,6 +208,8 @@ JSON 规则插件是一种**无需编程**的轻量级插件格式，只需编�
 | **骨架屏加载** | Shimmer 效果，优雅的加载占位 |
 | **Lottie 动画** | 点赞/投币/收藏 精美交互反馈 |
 | **庆祝动画** | 三连成功烟花粒子特效 |
+| **粒子消散** | "不感兴趣"操作触发灭霸响指式粒子消散动画 |
+| **平板适配** | 侧边栏支持持久化切换，底部栏自动居中适配大屏体验 |
 
 ### 👤 个人中心
 
@@ -312,6 +324,9 @@ app/src/main/java/com/android/purebilibili/
 
 ## 🗺️ 路线图
 
+> [!NOTE]
+> 文档内容可能不会实时更新，部分功能可能在最新代码中已经实现。请以实际 App 体验为准。
+
 ### ✅ 已完成功能
 
 - [x] 首页推荐流 + 瀑布流布局
@@ -330,7 +345,7 @@ app/src/main/java/com/android/purebilibili/
 ### 🚧 开发中
 
 - [ ] 弹幕发送功能
-- [x] 平板/折叠屏适配 (基本完成)
+- [x] 平板/折叠屏适配 (侧边栏+底栏优化)
 - [ ] 应用内更新检测
 
 ### 📋 计划中
@@ -346,7 +361,15 @@ app/src/main/java/com/android/purebilibili/
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v4.3.0)
+### 最近更新 (v5.0.4)
+
+- 🛠 **工程优化**: 移除对 `google-services.json` 的强制依赖，支持纯净编译
+- 📱 **平板适配**: 优化 Pad 端侧边栏交互与底部导航栏布局
+- 💬 **私信升级**: 完善私信列表分页加载，新增视频链接预览卡片
+- ✨ **视觉特效**: 新增"不感兴趣"粒子消散动画，优化顶部栏折叠效果
+- 🐛 **修复**: 修复已知崩溃与网络连接问题
+
+### 历史更新 (v4.3.0)
 
 - 🛠 **修复**: 修复视频加载时的黑屏问题，强制启用 HTTPS 加载资源
 - 🐛 **修复**: 修复竖屏模式下弹幕显示异常及自定义下载路径支持 (v4.2.4)
@@ -373,6 +396,7 @@ cd BiliPai
 - Android Studio Hedgehog (2023.1.1) 或更高版本
 - Android SDK 34
 - Gradle 8.2+
+- (可选) `google-services.json`: 放置于 `app/` 目录下以启用 Firebase 功能。如无此文件，构建脚本将自动跳过相关插件，不影响编译运行。
 
 ---
 
@@ -439,7 +463,6 @@ cd BiliPai
 - ✅ 修改后的代码必须同样开源
 - ❌ 不得用于商业目的
 - ❌ 不得移除原作者信息
-
 
 ## ⭐ Star History
 
