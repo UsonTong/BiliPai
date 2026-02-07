@@ -45,8 +45,8 @@ fun SubReplySheet(
     // [新增] 点赞
     onCommentLike: ((Long) -> Unit)? = null,
     likedComments: Set<Long> = emptySet(),
-    // [新增] URL 点击
-    onUrlClick: ((String) -> Unit)? = null
+    onUrlClick: ((String) -> Unit)? = null,
+    onAvatarClick: ((String) -> Unit)? = null
 ) {
     if (state.visible && state.rootReply != null) {
         com.android.purebilibili.core.ui.IOSModalBottomSheet(
@@ -70,7 +70,8 @@ fun SubReplySheet(
                 onDeleteComment = onDeleteComment,
                 onCommentLike = onCommentLike,
                 likedComments = likedComments,
-                onUrlClick = onUrlClick
+                onUrlClick = onUrlClick,
+                onAvatarClick = onAvatarClick
             )
         }
     }
@@ -95,7 +96,8 @@ fun SubReplyList(
     onDeleteComment: ((Long) -> Unit)? = null,
     onCommentLike: ((Long) -> Unit)? = null,
     likedComments: Set<Long> = emptySet(),
-    onUrlClick: ((String) -> Unit)? = null
+    onUrlClick: ((String) -> Unit)? = null,
+    onAvatarClick: ((String) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val shouldLoadMore by remember {
@@ -141,7 +143,8 @@ fun SubReplyList(
                     // [新增] 点赞
                     onLikeClick = { onCommentLike?.invoke(rootReply.rpid) },
                     isLiked = rootReply.action == 1 || rootReply.rpid in likedComments,
-                    onUrlClick = onUrlClick
+                    onUrlClick = onUrlClick,
+                    onAvatarClick = { onAvatarClick?.invoke(it) ?: Unit }
                 )
                 HorizontalDivider(thickness = 8.dp, color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
@@ -169,7 +172,8 @@ fun SubReplyList(
                         // [新增] 点赞
                         onLikeClick = { onCommentLike?.invoke(item.rpid) },
                         isLiked = item.action == 1 || item.rpid in likedComments,
-                        onUrlClick = onUrlClick
+                        onUrlClick = onUrlClick,
+                        onAvatarClick = { onAvatarClick?.invoke(it) ?: Unit }
                     )
                 }
             }

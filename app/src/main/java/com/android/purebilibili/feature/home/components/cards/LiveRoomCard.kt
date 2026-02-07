@@ -84,9 +84,9 @@ fun LiveRoomCard(
                     elevation = 2.dp,
                     shape = RoundedCornerShape(cardCornerRadius),
                     ambientColor = Color.Black.copy(alpha = 0.08f),
-                    spotColor = Color.Black.copy(alpha = 0.12f)
+                    spotColor = Color.Black.copy(alpha = 0.12f),
+                    clip = true // [Optimization] Combine shadow and clip
                 )
-                .clip(RoundedCornerShape(cardCornerRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .then(
                     if (sharedTransitionScope != null && animatedVisibilityScope != null) {

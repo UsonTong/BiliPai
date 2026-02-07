@@ -178,9 +178,9 @@ fun StoryVideoCard(
                     elevation = 6.dp, // 降低阴影使其更轻量
                     shape = RoundedCornerShape(cardCornerRadius),
                     ambientColor = Color.Black.copy(alpha = 0.1f),
-                    spotColor = Color.Black.copy(alpha = 0.15f)
+                    spotColor = Color.Black.copy(alpha = 0.15f),
+                    clip = true // [Optimization] Combine shadow and clip
                 )
-                .clip(RoundedCornerShape(cardCornerRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant) // 封面占位色
         ) {
             //  封面 - 2:1 电影宽屏

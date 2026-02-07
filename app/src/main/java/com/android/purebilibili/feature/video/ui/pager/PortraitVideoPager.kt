@@ -3,10 +3,15 @@ package com.android.purebilibili.feature.video.ui.pager
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -19,6 +24,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,7 +36,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -76,95 +84,26 @@ fun PortraitVideoPager(
     viewModel: PlayerViewModel,
     commentViewModel: VideoCommentViewModel,
     initialStartPositionMs: Long = 0L,
-    onProgressUpdate: (Long) -> Unit = {}
+    onProgressUpdate: (Long) -> Unit = {},
+    onUserClick: (Long) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     // 构造页面列表：第一个是当前视频，后续是推荐视频
-    val pageItems = remember(initialBvid, recommendations) {
+    // 构造页面列表：第一个是当前视频，后续是推荐视频
+    // [修复] 使用 remember { } 而不是 remember(key) 来避免因 ViewModel 更新导致的列表重建和死循环
+    // 列表只会在进入时构建一次，后续的 viewModel.loadVideo 更新不会影响列表结构
+    val pageItems = remember {
         val list = mutableListOf<Any>()
-        // Page 0: Current Video Info
         list.add(initialInfo)
-        // Page 1+: Recommended Videos
         list.addAll(recommendations)
         list
     }
     
     val pagerState = rememberPagerState(pageCount = { pageItems.size })
-    
-    // 监听页面变化，通过 callback 通知外部更新（可选，用于数据同步）
-    LaunchedEffect(pagerState.currentPage) {
-        val item = pageItems.getOrNull(pagerState.currentPage)
-        if (item is RelatedVideo) {
-            onVideoChange(item.bvid)
-        } else if (item is ViewInfo && pagerState.currentPage == 0) {
-            onVideoChange(item.bvid)
-        }
-    }
 
-    VerticalPager(
-        state = pagerState,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) { page ->
-        val item = pageItems.getOrNull(page)
-        
-        if (item != null) {
-            // 为每一页创建独立的播放内容
-            VideoPageItem(
-                item = item,
-                isCurrentPage = page == pagerState.currentPage,
-                onBack = onBack,
-                viewModel = viewModel,
-                commentViewModel = commentViewModel,
-                startPositionMs = if (page == 0) initialStartPositionMs else 0L,
-                onProgressUpdate = if (page == 0) onProgressUpdate else { _ -> } // 暂时只同步主视频，或者也可以同步所有
-            )
-        }
-    }
-}
-
-@UnstableApi
-@Composable
-private fun VideoPageItem(
-    item: Any, // ViewInfo or RelatedVideo
-    isCurrentPage: Boolean,
-    onBack: () -> Unit,
-    viewModel: PlayerViewModel,
-    commentViewModel: VideoCommentViewModel,
-    startPositionMs: Long,
-    onProgressUpdate: (Long) -> Unit
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    
-    // 提取统一的视频信息
-    val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
-    val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid.toLong() // RelatedVideo aid is Long? No, Video info uses Long. Need to check type. RelatedVideo aid might be Int or Long. Let's cast safely or assume compatibility. Checking view_file output...
-    // RelatedVideo likely has 'aid'. ViewInfo has 'aid'.
-    
-    // 互动显示状态
-    var showCommentSheet by remember { mutableStateOf(false) }
-    // RelatedVideo 没有 cid，需要后续获取
-    val initialCid = if (item is ViewInfo) item.cid else 0L
-    
-    val title = if (item is ViewInfo) item.title else (item as RelatedVideo).title
-    val cover = if (item is ViewInfo) item.pic else (item as RelatedVideo).pic
-    val authorName = if (item is ViewInfo) item.owner.name else (item as RelatedVideo).owner.name
-    val authorFace = if (item is ViewInfo) item.owner.face else (item as RelatedVideo).owner.face
-    val authorMid = if (item is ViewInfo) item.owner.mid else (item as RelatedVideo).owner.mid
-    
-    // 播放状态
-    var isPlaying by remember { mutableStateOf(isCurrentPage) } // 默认进来如果是当前页就播放
-    var playUrl by remember { mutableStateOf<String?>(null) }
-    var audioUrl by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    // 互动状态 (简化版)
-    var isLiked by remember { mutableStateOf(false) }
-    var isCoined by remember { mutableStateOf(false) }
-    var isFavorited by remember { mutableStateOf(false) }
-    
-    // 创建 ExoPlayer
+    // [核心] 单一播放器实例
     val exoPlayer = remember(context) {
         ExoPlayer.Builder(context)
             .setAudioAttributes(
@@ -180,102 +119,174 @@ private fun VideoPageItem(
                 volume = 1.0f
             }
     }
-    
-    // 加载视频地址
-    LaunchedEffect(isCurrentPage, bvid) {
-        if (!isCurrentPage) {
-            exoPlayer.pause()
-            return@LaunchedEffect
-        }
-        
-        if (playUrl != null) {
-            exoPlayer.play()
-            return@LaunchedEffect
-        }
-        
-        isLoading = true
-        try {
-            // 调用 Repository 获取视频详情和播放流
-            // 注意：getVideoDetails 返回 Pair<ViewInfo, PlayUrlData>
-            val result = com.android.purebilibili.data.repository.VideoRepository.getVideoDetails(
-                 bvid = bvid,
-                 aid = aid,
-                 targetQuality = 64 // 优先高清
-            )
-             
-            result.fold(
-                 onSuccess = { (_, playData) ->
-                     // 提取视频流
-                     val videoUrl = playData.dash?.video?.firstOrNull()?.baseUrl 
-                         ?: playData.durl?.firstOrNull()?.url
-                         
-                     val audioUrlResult = playData.dash?.audio?.firstOrNull()?.baseUrl
-                     
-                     if (!videoUrl.isNullOrEmpty()) {
-                         playUrl = videoUrl
-                         audioUrl = audioUrlResult
-                         isLoading = false
-                         
-                     // 设置 MediaSource
-                     // 关键修复：添加 Referer 和 User-Agent 防止 403 Forbidden
-                     val headers = mapOf(
-                         "Referer" to "https://www.bilibili.com",
-                         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                     )
-                     
-                     val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-                         .setUserAgent(headers["User-Agent"])
-                         .setDefaultRequestProperties(headers)
-                         
-                     val mediaSourceFactory = DefaultMediaSourceFactory(context)
-                         .setDataSourceFactory(dataSourceFactory)
-                     
-                     val videoSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(videoUrl))
-                     val finalSource = if (!audioUrlResult.isNullOrEmpty()) {
-                         val audioSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrlResult))
-                         MergingMediaSource(videoSource, audioSource)
-                     } else {
-                         videoSource
-                     }
-                     
-                     exoPlayer.setMediaSource(finalSource)
-                     exoPlayer.prepare()
-                     
-                     // [新增] 应用初始进度 (仅第一次)
-                     if (startPositionMs > 0) {
-                         com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Seeking to start position: ${startPositionMs}ms")
-                         exoPlayer.seekTo(startPositionMs)
-                     } else {
-                         com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Start position is 0 or invalid: $startPositionMs")
-                     }
-                     
-                     exoPlayer.play()
-                     } else {
-                         isLoading = false
-                         // Failed to get valid url
-                     }
-                 },
-                 onFailure = {
-                     // Error handling
-                     isLoading = false
-                 }
-            )
-             
-        } catch (e: Exception) {
-            isLoading = false
-            e.printStackTrace()
-        }
-    }
-    
+
     // 释放播放器
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
     }
+
+    // [状态] 当前播放的视频 URL
+    var currentPlayingBvid by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // [逻辑] 切换视频源
+    LaunchedEffect(pagerState.currentPage) {
+        val item = pageItems.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
+        
+        // 提取信息
+        val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
+        val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid.toLong()
+        
+        // 通知外部
+        onVideoChange(bvid)
+        
+        // 如果已经加载过这个视频，就不重新加载 (避免重复请求)
+        if (currentPlayingBvid == bvid) return@LaunchedEffect
+
+        // 停止上一个播放
+        exoPlayer.stop()
+        exoPlayer.clearMediaItems()
+        isLoading = true
+        currentPlayingBvid = bvid
+
+        // 加载新视频
+        launch {
+            try {
+                val result = com.android.purebilibili.data.repository.VideoRepository.getVideoDetails(
+                    bvid = bvid,
+                    aid = aid,
+                    targetQuality = 64
+                )
+                
+                result.fold(
+                    onSuccess = { (_, playData) ->
+                        val videoUrl = playData.dash?.video?.firstOrNull()?.baseUrl 
+                            ?: playData.durl?.firstOrNull()?.url
+                        val audioUrl = playData.dash?.audio?.firstOrNull()?.baseUrl
+
+                        if (!videoUrl.isNullOrEmpty()) {
+                            val headers = mapOf(
+                                "Referer" to "https://www.bilibili.com",
+                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                            )
+                            val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+                                .setUserAgent(headers["User-Agent"])
+                                .setDefaultRequestProperties(headers)
+                            val mediaSourceFactory = DefaultMediaSourceFactory(context)
+                                .setDataSourceFactory(dataSourceFactory)
+
+                            val videoSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(videoUrl))
+                            val finalSource = if (!audioUrl.isNullOrEmpty()) {
+                                val audioSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl))
+                                MergingMediaSource(videoSource, audioSource)
+                            } else {
+                                videoSource
+                            }
+
+                            // [修复] 再次检查是否仍然是当前应该播放的视频，防止快速滑动时的竞态条件
+                            if (currentPlayingBvid == bvid) {
+                                exoPlayer.setMediaSource(finalSource)
+                                exoPlayer.prepare()
+                                
+                                // 如果是初始视频且有进度
+                                if (pagerState.currentPage == 0 && initialStartPositionMs > 0) {
+                                    exoPlayer.seekTo(initialStartPositionMs)
+                                }
+                                
+                                    exoPlayer.play()
+                            } else {
+                                com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Discarded video load for $bvid as current is $currentPlayingBvid")
+                            }
+                        }
+                        
+                        // [修复] 只有当前视频加载完成，才取消 Loading
+                        if (currentPlayingBvid == bvid) {
+                            isLoading = false
+                        }
+                    },
+                    onFailure = {
+                        if (currentPlayingBvid == bvid) {
+                            isLoading = false
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                if (currentPlayingBvid == bvid) {
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    VerticalPager(
+        state = pagerState,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) { page ->
+        val item = pageItems.getOrNull(page)
+        
+        if (item != null) {
+            VideoPageItem(
+                item = item,
+                isCurrentPage = page == pagerState.currentPage,
+                onBack = onBack,
+                viewModel = viewModel,
+                commentViewModel = commentViewModel,
+                exoPlayer = exoPlayer, // [核心] 传递共享播放器
+                currentPlayingBvid = currentPlayingBvid, // [修复] 传递当前播放的 BVID 用于校验
+                isLoading = if (page == pagerState.currentPage) isLoading else false, // 只有当前页显示 Loading
+                onUserClick = onUserClick
+            )
+        }
+    }
+}
+
+@UnstableApi
+@Composable
+private fun VideoPageItem(
+    item: Any,
+    isCurrentPage: Boolean,
+    onBack: () -> Unit,
+    viewModel: PlayerViewModel,
+    commentViewModel: VideoCommentViewModel,
+    exoPlayer: ExoPlayer,
+    currentPlayingBvid: String?, // [新增]
+    isLoading: Boolean,
+    onUserClick: (Long) -> Unit
+) {
+    val context = LocalContext.current
     
-    // 提取时长 (如果有)
-    // 提取时长 (如果有)
+    // [修复] 手动监听 ExoPlayer 播放状态，确保 UI 及时更新
+    var isPlaying by remember { mutableStateOf(exoPlayer.isPlaying) }
+    
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying_: Boolean) {
+                isPlaying = isPlaying_
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+        }
+    }
+    
+    // 提取信息
+    val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
+    val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid.toLong()
+    // [逻辑] 只有当播放器正在播放当前视频时，才显示 PlayerView
+    val isPlayerReadyForThisVideo = bvid == currentPlayingBvid
+    val title = if (item is ViewInfo) item.title else (item as RelatedVideo).title
+    val cover = if (item is ViewInfo) item.pic else (item as RelatedVideo).pic
+    val authorName = if (item is ViewInfo) item.owner.name else (item as RelatedVideo).owner.name
+    val authorFace = if (item is ViewInfo) item.owner.face else (item as RelatedVideo).owner.face
+    val authorMid = if (item is ViewInfo) item.owner.mid else (item as RelatedVideo).owner.mid
+
+    // 提取时长
     val initialDuration = if (item is RelatedVideo) {
         item.duration * 1000L
     } else if (item is ViewInfo) {
@@ -283,79 +294,108 @@ private fun VideoPageItem(
     } else {
         0L
     }
-    com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Initial duration for $bvid: $initialDuration ms (Item type: ${item::class.simpleName})")
 
-    // 提取 Stats
-    val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
-
-    // [新增] 详情页显示状态
+    // 互动状态
+    var showCommentSheet by remember { mutableStateOf(false) }
     var showDetailSheet by remember { mutableStateOf(false) }
-
-    // [新增] 覆盖层显示状态，默认为显示
     var isOverlayVisible by remember { mutableStateOf(true) }
 
-    // 进度监听
-    var progressState by remember { 
-        mutableStateOf(PlayerProgress(0, initialDuration, 0)) 
-    }
-    LaunchedEffect(exoPlayer) {
-        var logCount = 0
-        while (true) {
-            val realDuration = exoPlayer.duration
-            var displayDuration = if (realDuration > 0 && realDuration != androidx.media3.common.C.TIME_UNSET) realDuration else initialDuration
-            
-            if (displayDuration <= 0 && item is ViewInfo) {
-                val mainDuration = viewModel.currentPlayer?.duration ?: 0L
-                if (mainDuration > 0) {
-                     displayDuration = mainDuration
+    // 进度状态 (从播放器获取)
+    var progressState by remember { mutableStateOf(PlayerProgress(0, initialDuration, 0)) }
+    
+    // 如果是当前页，监听播放器进度
+    LaunchedEffect(isCurrentPage, exoPlayer) {
+        if (isCurrentPage) {
+            while (true) {
+                if (exoPlayer.isPlaying) {
+                    val realDuration = if (exoPlayer.duration > 0) exoPlayer.duration else initialDuration
+                    progressState = PlayerProgress(
+                        current = exoPlayer.currentPosition,
+                        duration = realDuration,
+                        buffered = exoPlayer.bufferedPosition
+                    )
                 }
+                delay(200)
             }
-            
-            if (logCount % 25 == 0 || (displayDuration > 0 && progressState.duration <= 0)) {
-                com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Duration update: real=$realDuration, initial=$initialDuration, display=$displayDuration, bvid=$bvid")
-            }
-            logCount++
-
-            progressState = PlayerProgress(
-                current = exoPlayer.currentPosition,
-                duration = displayDuration,
-                buffered = exoPlayer.bufferedPosition
-            )
-            
-            if (isCurrentPage && exoPlayer.isPlaying) {
-                onProgressUpdate(exoPlayer.currentPosition)
-            }
-            
-            delay(200)
         }
     }
     
+    // 手势调整进度状态
+    var isSeekGesture by remember { mutableStateOf(false) }
+    var seekStartPosition by remember { mutableFloatStateOf(0f) }
+    var seekTargetPosition by remember { mutableFloatStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onTap = { 
-                        isOverlayVisible = !isOverlayVisible
-                    },
+                    onTap = { isOverlayVisible = !isOverlayVisible },
                     onDoubleTap = {
-                        if (isPlaying) {
-                             exoPlayer.pause()
-                             isPlaying = false
-                        } else {
-                             exoPlayer.play()
-                             isPlaying = true
+                        if (isCurrentPage) {
+                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                        }
+                    }
+                )
+            }
+            // 进度调整手势
+            .pointerInput(progressState.duration) {
+                detectHorizontalDragGestures(
+                    onDragStart = { 
+                        if (isCurrentPage && progressState.duration > 0) {
+                            isSeekGesture = true
+                            seekStartPosition = exoPlayer.currentPosition.toFloat()
+                            seekTargetPosition = seekStartPosition
+                        }
+                    },
+                    onDragEnd = {
+                        if (isCurrentPage && isSeekGesture) {
+                            exoPlayer.seekTo(seekTargetPosition.toLong())
+                            isSeekGesture = false
+                        }
+                    },
+                    onDragCancel = { isSeekGesture = false },
+                    onHorizontalDrag = { _, dragAmount ->
+                        if (isCurrentPage && isSeekGesture && progressState.duration > 0) {
+                            val seekDelta = (dragAmount / size.width) * progressState.duration * 0.75f
+                            seekTargetPosition = (seekTargetPosition + seekDelta).coerceIn(0f, progressState.duration.toFloat())
                         }
                     }
                 )
             }
     ) {
-        // 背景图 (封面)
-        if (playUrl == null || isLoading) {
+        // [核心逻辑]
+        // 始终保留 AndroidView 以确保 Surface 准备就绪，但只有当播放器加载了当前视频时才将其绑定或显示
+        // 否则显示封面
+        
+        if (isCurrentPage && isPlayerReadyForThisVideo) {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = false
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    }
+                },
+                update = { view ->
+                    if (view.player != exoPlayer) {
+                        view.player = exoPlayer
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // 封面图 (在加载中、未匹配到视频、或未开始播放时显示)
+        val showCover = isLoading || !isCurrentPage || !isPlayerReadyForThisVideo || (isCurrentPage && !isPlaying && progressState.current == 0L)
+        
+        if (showCover) {
             AsyncImage(
                 model = FormatUtils.fixImageUrl(cover),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black), // 避免透明底
                 contentScale = ContentScale.Crop
             )
             
@@ -365,22 +405,12 @@ private fun VideoPageItem(
                     color = Color.White
                 )
             }
-        } else {
-            // 播放器视图
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        player = exoPlayer
-                        useController = false
-                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
         }
-        
-        // 暂停图标
-        if (!isPlaying && !isLoading && playUrl != null) {
+
+        // 暂停图标 (仅当前页且暂停时显示)
+        // [修复] 使用响应式的 isPlaying 状态
+        val showPauseIcon = isCurrentPage && !isPlaying && !isLoading && !isSeekGesture
+        if (showPauseIcon) {
             Icon(
                 imageVector = Icons.Filled.PlayArrow,
                 contentDescription = "Pause",
@@ -390,21 +420,49 @@ private fun VideoPageItem(
                 tint = Color.White.copy(alpha = 0.8f)
             )
         }
-    
-        // 覆盖层 (Overlay)
-        // 判断当前 Item 是否是 ViewModel 正在持有的视频 (用于获取实时状态)
+        
+        // 滑动进度提示
+        if (isSeekGesture && progressState.duration > 0) {
+            val targetTimeText = FormatUtils.formatDuration(seekTargetPosition.toLong())
+            val totalTimeText = FormatUtils.formatDuration(progressState.duration)
+            val deltaMs = (seekTargetPosition - seekStartPosition).toLong()
+            val deltaText = if (deltaMs >= 0) "+${FormatUtils.formatDuration(deltaMs)}" else "-${FormatUtils.formatDuration(-deltaMs)}"
+            
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                androidx.compose.material3.Text(
+                    text = "$targetTimeText / $totalTimeText",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                androidx.compose.material3.Text(
+                    text = deltaText,
+                    color = if (deltaMs >= 0) Color(0xFF66FF66) else Color(0xFFFF6666),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        // Overlay & Interaction
         val currentUiState = viewModel.uiState.collectAsState().value
         val isCurrentModelVideo = (currentUiState as? PlayerUiState.Success)?.info?.bvid == bvid
         val currentSuccess = currentUiState as? PlayerUiState.Success
+        val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
 
         PortraitFullscreenOverlay(
             title = title,
             authorName = authorName,
             authorFace = authorFace,
-            isPlaying = isPlaying,
+            isPlaying = if (isCurrentPage) isPlaying else false,
             progress = progressState,
             
-            // 互动数据
             statView = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.view else stat.view,
             statLike = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.like else stat.like,
             statDanmaku = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.danmaku else stat.danmaku,
@@ -412,27 +470,21 @@ private fun VideoPageItem(
             statFavorite = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.favorite else stat.favorite,
             statShare = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.share else stat.share,
             
-            // 交互状态
             isLiked = if(isCurrentModelVideo) currentSuccess?.isLiked == true else false,
             isCoined = false,
             isFavorited = if(isCurrentModelVideo) currentSuccess?.isFavorited == true else false,
             
-            // 关注状态
             isFollowing = (currentUiState as? PlayerUiState.Success)?.followingMids?.contains(authorMid) == true,
             onFollowClick = { 
                 viewModel.toggleFollow(authorMid, (currentUiState as? PlayerUiState.Success)?.followingMids?.contains(authorMid) == true)
             },
             
-            // [新增] 详情点击
-            onDetailClick = {
-                showDetailSheet = true
-            },
-            
+            onDetailClick = { showDetailSheet = true },
             onLikeClick = { if (isCurrentModelVideo) viewModel.toggleLike() },
             onCoinClick = { },
             onFavoriteClick = { if (isCurrentModelVideo) viewModel.showFavoriteFolderDialog() },
             onCommentClick = { showCommentSheet = true },
-            onShareClick = { 
+            onShareClick = {
                 val shareIntent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
                     putExtra(android.content.Intent.EXTRA_TEXT, "Check out this video: https://www.bilibili.com/video/$bvid")
@@ -441,47 +493,45 @@ private fun VideoPageItem(
                 context.startActivity(android.content.Intent.createChooser(shareIntent, "Share too..."))
             },
             
-            // 状态
             currentSpeed = 1.0f,
             currentQualityLabel = "高清",
             currentRatio = VideoAspectRatio.FIT,
             danmakuEnabled = true,
             isStatusBarHidden = true,
             
-            // 回调
             onBack = onBack,
             onPlayPause = {
-                if (isPlaying) { exoPlayer.pause(); isPlaying = false } 
-                else { exoPlayer.play(); isPlaying = true }
+                if (isCurrentPage) {
+                    if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                }
             },
-            onSeek = { pos -> exoPlayer.seekTo(pos) },
+            onSeek = { pos -> if (isCurrentPage) exoPlayer.seekTo(pos) },
             onSeekStart = { },
             onSpeedClick = { },
             onQualityClick = { },
             onRatioClick = { },
             onDanmakuToggle = { },
             onDanmakuInputClick = { 
-                android.widget.Toast.makeText(context, "暂不可用，后续更新", android.widget.Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "暂不可用，后续更新", Toast.LENGTH_SHORT).show() 
             },
             onToggleStatusBar = { },
             
-            // [修改] 结合 isOverlayVisible 控制，且这几个 sheet 开启时隐藏 controls
             showControls = isOverlayVisible && !showCommentSheet && !showDetailSheet
         )
-        
-        // 评论底栏 Sheet
+
         PortraitCommentSheet(
             visible = showCommentSheet,
             onDismiss = { showCommentSheet = false },
             commentViewModel = commentViewModel,
-            aid = aid
+            aid = aid,
+            onUserClick = onUserClick
         )
         
-        // [新增] 简介 Sheet
         PortraitDetailSheet(
             visible = showDetailSheet,
             onDismiss = { showDetailSheet = false },
-            info = currentSuccess?.info // 传递完整 info 用于显示简介
+            info = currentSuccess?.info 
         )
     }
 }
+

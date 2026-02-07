@@ -234,6 +234,34 @@ fun WatchLaterScreen(
                             Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "返回")
                         }
                     },
+                    actions = {
+                        // 🎵 [新增] 全部播放按钮
+                        if (state.items.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    // 设置外部播放列表
+                                    val playlistItems = state.items.map { video ->
+                                        com.android.purebilibili.feature.video.player.PlaylistItem(
+                                            bvid = video.bvid,
+                                            title = video.title,
+                                            cover = video.pic,
+                                            owner = video.owner?.name ?: "",
+                                            duration = video.duration.toLong()
+                                        )
+                                    }
+                                    com.android.purebilibili.feature.video.player.PlaylistManager.setExternalPlaylist(playlistItems, 0)
+                                    // 导航到第一个视频
+                                    onVideoClick(state.items.first().bvid, 0L)
+                                }
+                            ) {
+                                Icon(
+                                    CupertinoIcons.Filled.Play,
+                                    contentDescription = "全部播放",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,

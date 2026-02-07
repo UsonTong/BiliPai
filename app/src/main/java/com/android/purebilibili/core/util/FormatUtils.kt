@@ -40,24 +40,25 @@ object FormatUtils {
      * 2. 自动添加缩放后缀节省流量
      */
     fun fixImageUrl(url: String?): String {
-        if (url.isNullOrEmpty()) return "" // 防止空指针
+        if (url.isNullOrEmpty()) return ""
 
-        var newUrl = url
-
-        // 修复无协议头的链接 (//i0.hdslb.com...)
-        if (newUrl.startsWith("//")) {
-            newUrl = "https:$newUrl"
-        }
-        // 修复 http 链接
-        if (newUrl.startsWith("http://")) {
-            newUrl = newUrl.replace("http://", "https://")
+        // Process protocol
+        val withProtocol = if (url.startsWith("//")) {
+            "https:$url"
+        } else if (url.startsWith("http://")) {
+            url.replace("http://", "https://")
+        } else {
+            url
         }
 
-        // 如果没有后缀，加上缩放参数 (宽640, 高400)
-        if (!newUrl.contains("@")) {
-            newUrl = "$newUrl@640w_400h.webp"
+        // Add resize suffix if not present and no other processing parameters
+        // [Optimization] Avoid string allocation if already correct
+        return if (withProtocol.contains("@")) {
+            withProtocol
+        } else {
+            // Append webp suffix for bandwidth saving
+            "$withProtocol@640w_400h.webp"
         }
-        return newUrl
     }
 
     /**

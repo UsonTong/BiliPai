@@ -57,7 +57,8 @@ fun PortraitCommentSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
     commentViewModel: VideoCommentViewModel,
-    aid: Long
+    aid: Long,
+    onUserClick: (Long) -> Unit
 ) {
     // 监听返回键
     BackHandler(enabled = visible) {
@@ -108,7 +109,7 @@ fun PortraitCommentSheet(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.75f)
+                        .fillMaxHeight(0.60f) // 📱 [修复] 减少覆盖高度，让视频可见
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -123,11 +124,13 @@ fun PortraitCommentSheet(
                     if (subReplyState.visible) {
                          SubReplyContent(
                              viewModel = commentViewModel,
-                             onBack = { commentViewModel.closeSubReply() }
+                             onBack = { commentViewModel.closeSubReply() },
+                             onUserClick = onUserClick
                          )
                     } else {
                          MainCommentList(
-                             viewModel = commentViewModel
+                             viewModel = commentViewModel,
+                             onUserClick = onUserClick
                          )
                     }
                 }
@@ -138,7 +141,8 @@ fun PortraitCommentSheet(
 
 @Composable
 private fun MainCommentList(
-    viewModel: VideoCommentViewModel
+    viewModel: VideoCommentViewModel,
+    onUserClick: (Long) -> Unit
 ) {
     val state by viewModel.commentState.collectAsState()
     
@@ -168,7 +172,8 @@ private fun MainCommentList(
                         onSubClick = { parentReply ->
                             viewModel.openSubReply(parentReply)
                         },
-                        onLikeClick = { viewModel.likeComment(reply.rpid) }
+                        onLikeClick = { viewModel.likeComment(reply.rpid) },
+                        onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUserClick(it) } }
                     )
                 }
                 
@@ -191,7 +196,8 @@ private fun MainCommentList(
 @Composable
 private fun SubReplyContent(
     viewModel: VideoCommentViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onUserClick: (Long) -> Unit
 ) {
     val state by viewModel.subReplyState.collectAsState()
     val rootReply = state.rootReply ?: return
@@ -235,7 +241,8 @@ private fun SubReplyContent(
                     onClick = { /* TODO */ },
                     onSubClick = { /* 已经是详情页，忽略 */ },
                     hideSubPreview = true, // 详情页不显示楼中楼预览
-                    onLikeClick = { viewModel.likeComment(rootReply.rpid) }
+                    onLikeClick = { viewModel.likeComment(rootReply.rpid) },
+                    onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUserClick(it) } }
                 )
                 
                 HorizontalDivider(
@@ -260,7 +267,8 @@ private fun SubReplyContent(
                     isPinned = false,
                     onClick = { /* TODO: 回复子评论 */ },
                     onSubClick = { /* 子评论没有子子评论预览 */ },
-                    onLikeClick = { viewModel.likeComment(reply.rpid) }
+                    onLikeClick = { viewModel.likeComment(reply.rpid) },
+                    onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUserClick(it) } }
                 )
             }
             

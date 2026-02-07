@@ -18,6 +18,7 @@ import android.content.Context
 import com.android.purebilibili.core.store.SettingsManager
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -465,6 +466,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    // [New] Easter Egg: Triple Jump Setting
+    val tripleJumpEnabled = SettingsManager.getTripleJumpEnabled(application).stateIn(
+        scope = viewModelScope,
+        started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    fun setTripleJumpEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            SettingsManager.setTripleJumpEnabled(getApplication(), enabled)
         }
     }
 }

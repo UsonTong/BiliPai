@@ -30,7 +30,11 @@ data class SpaceUserInfo(
     @SerialName("top_photo")
     val topPhoto: String = "",
     @SerialName("live_room")
-    val liveRoom: SpaceLiveRoom? = null
+    val liveRoom: SpaceLiveRoom? = null,
+    @SerialName("live_place")
+    val livePlace: String? = null,
+    @SerialName("ip_location")
+    val ipLocation: String? = null
 )
 
 @Serializable

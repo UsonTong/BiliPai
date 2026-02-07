@@ -361,7 +361,9 @@ private fun TabletSecondaryContent(
                                     // [新增] 删除按钮
                                     onDeleteClick = if (commentState.currentMid > 0 && reply.mid == commentState.currentMid) {
                                         { commentViewModel.startDissolve(reply.rpid) }
-                                    } else null
+                                    } else null,
+                                    // [新增] 头像点击
+                                    onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUpClick(it) } }
                                 )
                             }
                         }

@@ -55,8 +55,8 @@ import com.android.purebilibili.core.ui.blur.BlurIntensity
  */
 @Composable
 fun iOSHomeHeader(
-    searchBarHeight: Dp,
-    searchBarAlpha: Float,
+    headerOffsetProvider: () -> Float, // [Optimization] Defer state read to prevent parent recomposition
+    isHeaderCollapseEnabled: Boolean = true,
     user: UserState,
     onAvatarClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -73,10 +73,7 @@ fun iOSHomeHeader(
     pagerState: androidx.compose.foundation.pager.PagerState? = null, // [New] PagerState for sync
     // [New] LayerBackdrop for liquid glass effect
     backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
-    homeSettings: com.android.purebilibili.core.store.HomeSettings? = null,
-    // [Feature] Tab Collapse Control
-    tabContainerHeight: Dp = 44.dp,
-    tabAlpha: Float = 1f
+    homeSettings: com.android.purebilibili.core.store.HomeSettings? = null
 ) {
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -100,11 +97,41 @@ fun iOSHomeHeader(
     
     // [UX优化] 平滑过渡顶部栏背景色 (Smooth Header Color Transition)
     // 注意：这里保留颜色动画是没问题的，因为它不影响布局
+    // [UX优化] 平滑过渡顶部栏背景色 (Smooth Header Color Transition)
+    // 注意：这里保留颜色动画是没问题的，因为它不影响布局
     val animatedHeaderColor by animateColorAsState(
         targetValue = targetHeaderColor,
         animationSpec = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(300),
         label = "headerColor"
     )
+
+    // [Optimization] Calculate layout values LOCALLY using deferred state read
+    // This prevents HomeScreen from recomposing when headerOffset changes
+    val headerOffset by remember { derivedStateOf(headerOffsetProvider) }
+    
+    val searchBarHeightDp = 52.dp
+    val tabRowHeightDp = 44.dp
+    val searchBarHeightPx = with(density) { searchBarHeightDp.toPx() }
+    val tabRowHeightPx = with(density) { tabRowHeightDp.toPx() }
+
+    // 1. Search Bar Collapse (First phase)
+    val searchCollapseAmount = headerOffset.coerceAtLeast(-searchBarHeightPx)
+    val currentSearchHeight = searchBarHeightDp + with(density) { searchCollapseAmount.toDp() }
+    val searchAlpha = (1f + (searchCollapseAmount / searchBarHeightPx)).coerceIn(0f, 1f)
+    
+    // 2. Tab Row Collapse (Second phase, only if enabled)
+    // Starts after Search Bar is fully collapsed (-52dp)
+    val tabCollapseStart = -searchBarHeightPx
+    val tabCollapseAmount = (headerOffset - tabCollapseStart).coerceAtMost(0f)
+    
+    val currentTabHeight = if (headerOffset < tabCollapseStart && isHeaderCollapseEnabled) {
+         tabRowHeightDp + with(density) { tabCollapseAmount.toDp() }
+    } else {
+         tabRowHeightDp
+    }
+    val tabAlpha = if (headerOffset < tabCollapseStart && isHeaderCollapseEnabled) {
+        (1f + (tabCollapseAmount / tabRowHeightPx)).coerceIn(0f, 1f)
+    } else 1f
     
     Column(
         modifier = Modifier
@@ -137,8 +164,8 @@ fun iOSHomeHeader(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(searchBarHeight)
-                .graphicsLayer { alpha = searchBarAlpha }
+                .height(currentSearchHeight) // Use local derived value
+                .graphicsLayer { alpha = searchAlpha } // Use local derived value
                 .clip(androidx.compose.ui.graphics.RectangleShape) // Ensure content is clipped when shrinking
         ) {
             Row(
@@ -253,8 +280,9 @@ fun iOSHomeHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .zIndex(-1f) // Slide behind search bar
-                .height(tabContainerHeight) // [Feature] Collapse Tabs
-                .graphicsLayer { alpha = tabAlpha }
+                .zIndex(-1f) // Slide behind search bar
+                .height(currentTabHeight) // Use local derived value [Feature] Collapse Tabs
+                .graphicsLayer { alpha = tabAlpha } // Use local derived value
                 .clip(RoundedCornerShape(bottomStart = 0.dp, bottomEnd = 0.dp))
         ) {
             CategoryTabRow(

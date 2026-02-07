@@ -22,6 +22,7 @@ import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
 import com.android.purebilibili.feature.video.usecase.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -129,9 +130,60 @@ class PlayerViewModel : ViewModel() {
     private val _coinDialogVisible = MutableStateFlow(false)
     val coinDialogVisible = _coinDialogVisible.asStateFlow()
 
+    
+    // [New] User Coin Balance
+    // [New] User Coin Balance
+    private val _userCoinBalance = MutableStateFlow<Double?>(null)
+    val userCoinBalance = _userCoinBalance.asStateFlow()
+
     fun showCoinDialog() {
         _coinDialogVisible.value = true
+        fetchUserCoins()
     }
+    
+    private fun fetchUserCoins() {
+        viewModelScope.launch {
+            _userCoinBalance.value = null // Loading
+            try {
+                // Check if we even have a local token
+                if (com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty()) {
+                     com.android.purebilibili.core.util.Logger.e("PlayerViewModel", "fetchUserCoins: No local token found")
+                    _userCoinBalance.value = -4.0 // Local Token Missing
+                    return@launch
+                }
+
+                com.android.purebilibili.core.util.Logger.d("PlayerViewModel", "fetchUserCoins calls getNavInfo")
+                
+                // [Fix] Use IO dispatcher and timeout to prevent hanging
+                val result = withContext(Dispatchers.IO) {
+                    kotlinx.coroutines.withTimeout(5000L) {
+                        com.android.purebilibili.core.network.NetworkModule.api.getNavInfo()
+                    }
+                }
+                
+                com.android.purebilibili.core.util.Logger.d("PlayerViewModel", 
+                    "NavInfo: code=${result.code}, isLogin=${result.data?.isLogin}, money=${result.data?.money}, wallet=${result.data?.wallet?.bcoin_balance}")
+                
+                if (result.code == 0 && result.data != null) {
+                    if (result.data.isLogin) {
+                        _userCoinBalance.value = result.data.money
+                    } else {
+                        com.android.purebilibili.core.util.Logger.w("PlayerViewModel", "User not logged in according to getNavInfo")
+                        _userCoinBalance.value = -3.0 // API says Not Logged In
+                    }
+                } else {
+                    com.android.purebilibili.core.util.Logger.e("PlayerViewModel", "getNavInfo failed: code=${result.code}")
+                    _userCoinBalance.value = -1.0 // Network/API Error
+                }
+            } catch (e: Exception) {
+                com.android.purebilibili.core.util.Logger.e("PlayerViewModel", "fetchUserCoins Error: ${e.javaClass.simpleName} - ${e.message}")
+                e.printStackTrace()
+                _userCoinBalance.value = -2.0 // Exception (Network or Timeout)
+            }
+        }
+    }
+
+
 
     fun dismissCoinDialog() {
         _coinDialogVisible.value = false
@@ -377,8 +429,13 @@ class PlayerViewModel : ViewModel() {
                     // 🎵 [修复] 优先播放下一个分P，没有分P时再播放推荐视频
                     playNextPageOrRecommended()
                 } else {
-                    // 自动播放关闭，显示选择对话框
-                    _showPlaybackEndedDialog.value = true
+                    // 🔒 [修复] 外部播放列表模式下自动播放下一个，不显示弹窗
+                    if (PlaylistManager.isExternalPlaylist.value) {
+                        playNextPageOrRecommended()
+                    } else {
+                        // 自动播放关闭，显示选择对话框
+                        _showPlaybackEndedDialog.value = true
+                    }
                 }
             }
         }
@@ -839,6 +896,21 @@ class PlayerViewModel : ViewModel() {
      *  [新增] 更新播放列表
      */
     private fun updatePlaylist(currentInfo: com.android.purebilibili.data.model.response.ViewInfo, related: List<com.android.purebilibili.data.model.response.RelatedVideo>) {
+        // 🔒 [修复] 检查是否为外部播放列表（稍后再看、UP主页等）
+        // 如果是外部播放列表，只更新当前索引，不覆盖列表
+        if (PlaylistManager.isExternalPlaylist.value) {
+            val currentPlaylist = PlaylistManager.playlist.value
+            val matchIndex = currentPlaylist.indexOfFirst { it.bvid == currentInfo.bvid }
+            if (matchIndex >= 0) {
+                // 找到当前视频在列表中的位置，更新索引
+                PlaylistManager.playAt(matchIndex)
+                Logger.d("PlayerVM", "🔒 外部播放列表模式: 更新索引到 $matchIndex/${currentPlaylist.size}")
+            } else {
+                Logger.d("PlayerVM", "🔒 外部播放列表模式: 当前视频 ${currentInfo.bvid} 不在列表中")
+            }
+            return
+        }
+        
         val currentPlaylist = PlaylistManager.playlist.value
         val currentIndex = PlaylistManager.currentIndex.value
         val currentItemInList = currentPlaylist.getOrNull(currentIndex)
@@ -873,12 +945,12 @@ class PlayerViewModel : ViewModel() {
              
              // 3. 更新列表，保持当前索引不变
              PlaylistManager.setPlaylist(newPlaylist, currentIndex)
-             Logger.d("PlayerVM", " 播放列表已扩展: 保留 ${history.size} 项历史, 更新后续 ${relatedItems.size} 项")
+             Logger.d("PlayerVM", "🎵 播放列表已扩展: 保留 ${history.size} 项历史, 更新后续 ${relatedItems.size} 项")
         } else {
             // 新播放逻辑：当前 + 推荐
             val playlist = listOf(currentFullItem) + relatedItems
             PlaylistManager.setPlaylist(playlist, 0)
-            Logger.d("PlayerVM", " 播放列表已重置: 1 + ${relatedItems.size} 项")
+            Logger.d("PlayerVM", "🎵 播放列表已重置: 1 + ${relatedItems.size} 项")
         }
         
         // 🚀 [优化] 预加载前 2 个推荐视频的 PlayUrl
@@ -1723,6 +1795,7 @@ class PlayerViewModel : ViewModel() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
         if (current.coinCount >= 2) { toast("\u5df2\u6295\u6ee12\u4e2a\u786c\u5e01"); return }
         _coinDialogVisible.value = true
+        fetchUserCoins()
     }
     
     fun closeCoinDialog() { _coinDialogVisible.value = false }
@@ -1761,6 +1834,17 @@ class PlayerViewModel : ViewModel() {
                     _uiState.value = newState
                     if (result.allSuccess) _tripleCelebrationVisible.value = true
                     toast(result.toSummaryMessage())
+
+                    // [New] Easter Egg: Auto Jump after Triple Action
+                    viewModelScope.launch {
+                        val context = appContext ?: return@launch
+                        val isJumpEnabled = com.android.purebilibili.core.store.SettingsManager.getTripleJumpEnabled(context).first()
+                        if (result.allSuccess && isJumpEnabled) {
+                             // Wait a bit for the celebration to show
+                            delay(2000)
+                            loadVideo("BV1JsK5eyEuB", autoPlay = true)
+                        }
+                    }
                 }
                 .onFailure { toast(it.message ?: "\u4e09\u8fde\u5931\u8d25") }
         }

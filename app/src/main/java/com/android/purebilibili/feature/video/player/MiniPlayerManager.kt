@@ -439,6 +439,8 @@ class MiniPlayerManager private constructor(private val context: Context) :
                 .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
                 .setAudioAttributes(audioAttributes, true)
                 .setHandleAudioBecomingNoisy(true)
+                // 🔋 [修复] 防止息屏时音频停止，保持网络连接和 CPU 唤醒
+                .setWakeMode(C.WAKE_MODE_NETWORK)
                 .build()
                 .apply {
                     addListener(playerListener)

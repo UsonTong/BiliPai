@@ -214,13 +214,24 @@ fun BottomControlBar(
                     modifier = Modifier.clickable(onClick = onSpeedClick)
                 )
 
+                // 📱 [修复] 竖屏全屏按钮 - 仅在非全屏模式下显示
+                if (!isFullscreen) {
+                    Text(
+                        text = "竖屏",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable(onClick = onPortraitFullscreen)
+                    )
+                }
+
                 // Fullscreen
                 Icon(
                     imageVector = if (isFullscreen) CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft else CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
                     contentDescription = "Fullscreen",
                     tint = Color.White,
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(20.dp)
                         .clickable(onClick = onToggleFullscreen)
                 )
             }

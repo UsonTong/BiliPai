@@ -128,3 +128,10 @@
 -keepclassmembers class * implements android.os.Parcelable {
     public static final ** CREATOR;
 }
+
+# === Cling (DLNA) ===
+-keep class org.fourthline.cling.** { *; }
+-dontwarn org.fourthline.cling.**
+-dontwarn javax.enterprise.context.**
+-dontwarn javax.inject.**
+-dontwarn org.seamless.**

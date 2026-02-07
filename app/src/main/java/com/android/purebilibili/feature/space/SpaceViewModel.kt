@@ -101,6 +101,7 @@ class SpaceViewModel : ViewModel() {
                 val upStatDeferred = async { fetchUpStat(mid) }
                 val videosDeferred = async { fetchSpaceVideos(mid, 1, cachedImgKey, cachedSubKey) }
                 
+                
                 val userInfo = infoDeferred.await()
                 val relationStat = relationDeferred.await()
                 val upStat = upStatDeferred.await()
@@ -246,6 +247,8 @@ class SpaceViewModel : ViewModel() {
             null
         }
     }
+
+
     
     //  支持 tid 和 order 参数的视频获取
     private suspend fun fetchSpaceVideos(

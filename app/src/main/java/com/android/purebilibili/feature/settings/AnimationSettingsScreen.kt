@@ -183,6 +183,15 @@ fun AnimationSettingsContent(
                         // 磨砂效果 (始终显示)
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.Sparkles,
+                            title = "顶部栏磨砂",
+                            subtitle = "顶部导航栏的毛玻璃模糊效果",
+                            checked = state.headerBlurEnabled,
+                            onCheckedChange = { viewModel.toggleHeaderBlur(it) },
+                            iconTint = iOSBlue
+                        )
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Sparkles,
                             title = "底栏磨砂",
                             subtitle = "底部导航栏的毛玻璃模糊效果",
                             checked = state.bottomBarBlurEnabled,
@@ -190,8 +199,8 @@ fun AnimationSettingsContent(
                             iconTint = iOSBlue
                         )
                         
-                        // 模糊强度（仅在开启时显示）
-                        if (state.bottomBarBlurEnabled) {
+                        // 模糊强度（仅在任意模糊开启时显示）
+                        if (state.headerBlurEnabled || state.bottomBarBlurEnabled) {
                             Divider()
                             BlurIntensitySelector(
                                 selectedIntensity = state.blurIntensity,

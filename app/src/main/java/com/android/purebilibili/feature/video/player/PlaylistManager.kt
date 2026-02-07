@@ -53,6 +53,11 @@ object PlaylistManager {
     private val _playMode = MutableStateFlow(PlayMode.SEQUENTIAL)
     val playMode = _playMode.asStateFlow()
     
+    // 🔒 [新增] 外部播放列表标志 - 当为 true 时，不使用推荐视频覆盖
+    // 适用于：稍后再看全部播放、UP主页全部播放、收藏夹播放等
+    private val _isExternalPlaylist = MutableStateFlow(false)
+    val isExternalPlaylist = _isExternalPlaylist.asStateFlow()
+    
     // 已播放的随机索引（用于随机模式历史）
     private val shuffleHistory = mutableListOf<Int>()
     private var shuffleHistoryIndex = -1
@@ -63,11 +68,33 @@ object PlaylistManager {
      * 设置播放列表
      * @param items 播放列表
      * @param startIndex 开始播放的索引
+     * 注意：此方法会重置外部播放列表标志
      */
     fun setPlaylist(items: List<PlaylistItem>, startIndex: Int = 0) {
-        Logger.d(TAG, " 设置播放列表: ${items.size} 项, 从索引 $startIndex 开始")
+        Logger.d(TAG, "🎵 设置播放列表: ${items.size} 项, 从索引 $startIndex 开始")
         _playlist.value = items
         _currentIndex.value = startIndex.coerceIn(0, items.lastIndex.coerceAtLeast(0))
+        _isExternalPlaylist.value = false  // 重置外部播放列表标志
+        
+        // 重置随机历史
+        shuffleHistory.clear()
+        if (startIndex >= 0 && startIndex < items.size) {
+            shuffleHistory.add(startIndex)
+            shuffleHistoryIndex = 0
+        }
+    }
+    
+    /**
+     * 🔒 [新增] 设置外部播放列表（稍后再看、UP主页、收藏夹等）
+     * 外部播放列表不会被推荐视频覆盖
+     * @param items 播放列表
+     * @param startIndex 开始播放的索引
+     */
+    fun setExternalPlaylist(items: List<PlaylistItem>, startIndex: Int = 0) {
+        Logger.d(TAG, "🔒 设置外部播放列表: ${items.size} 项, 从索引 $startIndex 开始")
+        _playlist.value = items
+        _currentIndex.value = startIndex.coerceIn(0, items.lastIndex.coerceAtLeast(0))
+        _isExternalPlaylist.value = true  // 标记为外部播放列表
         
         // 重置随机历史
         shuffleHistory.clear()

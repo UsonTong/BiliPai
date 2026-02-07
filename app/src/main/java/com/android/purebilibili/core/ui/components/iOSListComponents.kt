@@ -70,7 +70,9 @@ fun IOSSwitchItem(
     subtitle: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    iconTint: Color = MaterialTheme.colorScheme.primary
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val iconCornerRadius = iOSCornerRadius.Small * cornerRadiusScale
@@ -95,10 +97,10 @@ fun IOSSwitchItem(
             Spacer(modifier = Modifier.width(14.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, color = textColor)
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
             }
         }
         val primaryColor = MaterialTheme.colorScheme.primary

@@ -78,6 +78,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +95,8 @@ fun ProfileScreen(
     onFollowingClick: (Long) -> Unit = {},  //  关注列表点击
     onDownloadClick: () -> Unit = {},  //  离线缓存点击
     onWatchLaterClick: () -> Unit = {}, // 稍后再看点击
-    onInboxClick: () -> Unit = {}  //  [新增] 私信入口点击
+    onInboxClick: () -> Unit = {},  //  [新增] 私信入口点击
+    onVideoClick: (String) -> Unit = {}  // [新增] 视频点击（三连彩蛋跳转用）
     // [注意] 移除了 globalHazeState - 双 hazeSource 模式与 Haze 库冲突
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -182,6 +186,7 @@ fun ProfileScreen(
                     onDownloadClick = onGoToLogin,
                     onWatchLaterClick = onGoToLogin,
                     onInboxClick = onGoToLogin,  //  [新增] 游客点击需登录
+                    onVideoClick = { },  // 游客模式不显示三连
                     scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(),
                     onBack = onBack,
                     onSettingsClick = onSettingsClick,
@@ -333,6 +338,7 @@ fun ProfileScreen(
                             onDownloadClick = onDownloadClick,
                             onWatchLaterClick = onWatchLaterClick,
                             onInboxClick = onInboxClick,  //  [新增] 私信入口
+                            onVideoClick = onVideoClick,  // [新增] 三连彩蛋跳转
                             // [Immersive] Pass ScrollBehavior and Navigation Actions
                             scrollBehavior = scrollBehavior,
                             onBack = onBack,
@@ -547,6 +553,7 @@ fun MobileProfileContent(
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onInboxClick: () -> Unit = {},  //  [新增] 私信入口
+    onVideoClick: (String) -> Unit = {},  // [新增] 三连彩蛋跳转
     // [New] Params
     scrollBehavior: TopAppBarScrollBehavior,
     onBack: () -> Unit,
@@ -757,13 +764,18 @@ fun MobileProfileContent(
             }
             if (user.isLogin) {
                 item { UserStatsSection(user, onFollowingClick, transparent = isImmersive) }
+                // [Modified] 删除 VIP 横幅，改为三连图标入口
+                item {
+                    ProfileTripleActionEntry(
+                        onVipClick = { onVideoClick("BV1GJ411x7h7") },
+                        on4KClick = { onVideoClick("BV1JsK5eyEuB") }
+                    )
+                }
             } else {
                  // [Fix] Guest mode spacer to compensate for missing stats section
-                 // 16dp was too small, stats section is roughly 56dp (icon + text + padding)
                  item { Spacer(modifier = Modifier.height(56.dp)) }
             }
-            // [Modified] 移除 VIP Banner
-            // item { VipBannerSection(user) }
+
             
             item { 
 
@@ -792,6 +804,7 @@ fun MobileProfileContent(
                     borderColor = if (isImmersive) glassBorderColor else null,
                     isLogin = user.isLogin // [New] Pass login status
                 )
+                
             }
             // item { Spacer(...) } // Removed
             // item { IOSGroup { ... } } // Removed
@@ -1031,6 +1044,7 @@ fun UserStatsSection(user: UserState, onFollowingClick: () -> Unit = {}, transpa
         StatItem(count = FormatUtils.formatStat(user.dynamic.toLong()), label = "动态", textColor = textColor, labelColor = labelColor)
         StatItem(count = FormatUtils.formatStat(user.following.toLong()), label = "关注", onClick = onFollowingClick, textColor = textColor, labelColor = labelColor)
         StatItem(count = FormatUtils.formatStat(user.follower.toLong()), label = "粉丝", textColor = textColor, labelColor = labelColor)
+        StatItem(count = FormatUtils.formatStat(user.coin.toLong()), label = "硬币", textColor = textColor, labelColor = labelColor)
     }
 }
 
@@ -1217,5 +1231,121 @@ fun ServicesSection(
             )
         }
     }
+    }
+}
+
+/**
+ * 个人空间三连彩蛋入口 - 图三样式
+ * 显示点赞+投币+收藏三个图标，长按大拇指触发三连动画后弹窗选择
+ */
+@Composable
+fun ProfileTripleActionEntry(
+    onVipClick: () -> Unit,
+    on4KClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // 引入动画和手势相关
+    var isLongPressing by remember { mutableStateOf(false) }
+    var longPressProgress by remember { mutableFloatStateOf(0f) }
+    var showDialog by remember { mutableStateOf(false) }
+    val progressDuration = 1500 // 1.5 秒
+    
+    val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
+    
+    // 进度动画
+    val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isLongPressing) 1f else 0f,
+        animationSpec = if (isLongPressing) {
+            androidx.compose.animation.core.tween(durationMillis = progressDuration, easing = androidx.compose.animation.core.LinearEasing)
+        } else {
+            androidx.compose.animation.core.tween(durationMillis = 200, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        },
+        label = "tripleProgress",
+        finishedListener = { progress ->
+            if (progress >= 1f && isLongPressing) {
+                haptic(com.android.purebilibili.core.util.HapticType.MEDIUM)
+                showDialog = true
+                isLongPressing = false
+            }
+        }
+    )
+    
+    LaunchedEffect(animatedProgress) {
+        longPressProgress = animatedProgress
+    }
+
+    LaunchedEffect(isLongPressing) {
+        if (isLongPressing) {
+            haptic(com.android.purebilibili.core.util.HapticType.LIGHT)
+        }
+    }
+    
+    // 选择弹窗
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("🎉 三连成功！") },
+            text = { Text("请选择你想解锁的功能：") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    onVipClick()
+                }) {
+                    Text("解锁大会员")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    on4KClick()
+                }) {
+                    Text("4K 画质")
+                }
+            }
+        )
+    }
+    
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isLongPressing = true
+                        val released = tryAwaitRelease()
+                        isLongPressing = false
+                    }
+                )
+            },
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 点赞图标 (带进度环)
+        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+            icon = CupertinoIcons.Outlined.HandThumbsup,
+            text = "149",
+            progress = longPressProgress,
+            progressColor = MaterialTheme.colorScheme.primary,
+            isActive = false
+        )
+        
+        // 投币图标
+        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+            icon = com.android.purebilibili.core.ui.AppIcons.BiliCoin,
+            text = "25",
+            progress = longPressProgress,
+            progressColor = Color(0xFFFFB300),
+            isActive = false
+        )
+        
+        // 收藏图标
+        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+            icon = CupertinoIcons.Outlined.Bookmark,
+            text = "7",
+            progress = longPressProgress,
+            progressColor = Color(0xFFFFC107),
+            isActive = false
+        )
     }
 }

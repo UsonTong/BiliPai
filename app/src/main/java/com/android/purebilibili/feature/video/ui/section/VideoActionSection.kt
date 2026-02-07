@@ -278,7 +278,7 @@ private fun TripleLikeActionButton(
  * 带圆形进度环的图标
  */
 @Composable
-private fun TripleProgressIcon(
+fun TripleProgressIcon(
     icon: ImageVector,
     text: String,
     progress: Float,

@@ -722,6 +722,16 @@ object SettingsManager {
     private val KEY_VERTICAL_VIDEO_RATIO = floatPreferencesKey("vertical_video_ratio")
     
     // --- 竖屏全屏功能开关 (默认开启) ---
+    // [New] Easter Egg: Enable Auto Jump after Triple Action
+    private val KEY_TRIPLE_JUMP_ENABLED = booleanPreferencesKey("triple_jump_enabled")
+
+    fun getTripleJumpEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_TRIPLE_JUMP_ENABLED] ?: false }
+
+    suspend fun setTripleJumpEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_TRIPLE_JUMP_ENABLED] = value }
+    }
+
     fun getPortraitFullscreenEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_PORTRAIT_FULLSCREEN_ENABLED] ?: true }
 

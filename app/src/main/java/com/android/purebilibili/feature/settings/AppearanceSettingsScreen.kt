@@ -536,6 +536,7 @@ fun AppearanceSettingsContent(
                         onClick = onNavigateToAnimationSettings,
                         iconTint = iOSPink
                     )
+
                     Divider()
                     // 触感反馈
                     IOSSwitchItem(

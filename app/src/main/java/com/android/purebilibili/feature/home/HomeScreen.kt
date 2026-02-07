@@ -29,6 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import com.android.purebilibili.feature.home.components.MineSideDrawer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -199,19 +203,7 @@ fun HomeScreen(
 
     // [New] Broadcast Scroll Offset for Liquid Glass Effect & Parallax
     // Create the state here and provide it
-    val globalScrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
-    LaunchedEffect(state.currentCategory, gridStates) { // Re-launch when category changes
-        // Use a simple timer loop or snapshotFlow to poll scroll state to avoid heavy recomposition
-        // We only need rough updates for the shader wave effect
-        val gridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
-        snapshotFlow { 
-            // Calculate an approximate absolute scroll pixel value
-            gridState.firstVisibleItemIndex * 500f + gridState.firstVisibleItemScrollOffset
-        }.collect { offset ->
-            globalScrollOffsetState.floatValue = offset
-        }
-    }
     
     //  [彩蛋] 彩蛋开关设置
     val easterEggEnabled by SettingsManager.getEasterEggEnabled(context).collectAsState(initial = true)
@@ -289,6 +281,7 @@ fun HomeScreen(
     val crashTrackingConsentShown = homeSettings.crashTrackingConsentShown
     val cardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val cardTransitionEnabled = homeSettings.cardTransitionEnabled    //  卡片过渡动画开关
+    val isLiquidGlassEnabled = homeSettings.isLiquidGlassEnabled      //  流体玻璃特效开关
     
     //  [新增] 底栏可见项目配置
     val orderedVisibleTabIds by SettingsManager.getOrderedVisibleTabs(context).collectAsState(
@@ -483,343 +476,138 @@ fun HomeScreen(
                 }
                 
                 if (isScrollingDown) setBottomBarVisible(false)
-                else if (isScrollingUp) setBottomBarVisible(true)
+                if (isScrollingUp) setBottomBarVisible(true)
+                
+                // 更新上次位置（用于下次比较）
+                lastScrollOffset = scrollOffset
+                lastFirstVisibleItem = firstVisibleItem
             }
-            
-            lastFirstVisibleItem = firstVisibleItem
-            lastScrollOffset = scrollOffset
         }
-    }
-    
-    // [Feature] Sticky Header Logic via NestedScrollConnection
-    // Max collapse depends on setting: 
-    // If enabled: Search Bar (52.dp) + Tabs (44.dp)
-    // If disabled: Only Search Bar (52.dp)
-    val searchBarHeightDp = 52.dp
-    val tabRowHeightDp = 44.dp
-    val searchBarHeightPx = with(density) { searchBarHeightDp.toPx() }
-    val tabRowHeightPx = with(density) { tabRowHeightDp.toPx() }
-    
-    val isHeaderCollapseEnabled = homeSettings.isHeaderCollapseEnabled
-    
-    val headerMaxOffsetPx = if (isHeaderCollapseEnabled) {
-        searchBarHeightPx + tabRowHeightPx
-    } else {
-        0f // [Fix] Fixed Header when setting is disabled (No collapse at all)
     }
 
-    var headerOffsetHeightPx by remember { mutableFloatStateOf(0f) }
-
-    val nestedScrollConnection = remember(headerMaxOffsetPx) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                val newOffset = headerOffsetHeightPx + delta
-                headerOffsetHeightPx = newOffset.coerceIn(-headerMaxOffsetPx, 0f)
-                return Offset.Zero // Do not consume scroll, let list scroll too
-            }
-        }
-    }
-    
-    // Reset header when switching categories or toggling setting
-    LaunchedEffect(state.currentCategory, isHeaderCollapseEnabled) {
-        headerOffsetHeightPx = 0f
-    }
-    
-    // [Removed] Legacy snapshotFlow logic for isHeaderVisible
-    val isHeaderVisible = true // Always "visible" in terms of layout presence, managed by offset now
-    
-    // [Fix Bug 2] 首页上滑未触发隐藏时切换 Tab 导致底栏突兀消失的问题
-    // 监听 currentCategory 变化，如果新 Tab 处于顶部，强制显示底栏
-    LaunchedEffect(state.currentCategory) {
-        val currentGridState = gridStates[state.currentCategory]
-        if (currentGridState == null || (currentGridState.firstVisibleItemIndex == 0 && currentGridState.firstVisibleItemScrollOffset < 200)) {
-            setBottomBarVisible(true) 
-        }
-    }
-    
-    //  [修复] 用于取消延迟协程的 Job 引用
-    var bottomBarRestoreJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    
-    //  包装 onVideoClick：点击视频时先隐藏底栏再导航
-    val wrappedOnVideoClick: (String, Long, String) -> Unit = remember(onVideoClick) {
-        { bvid, cid, cover ->
-            //  取消之前的恢复协程，防止竞态条件
-            bottomBarRestoreJob?.cancel()
-            bottomBarRestoreJob = null
-            
-            setBottomBarVisible(false)  //  触发底栏下滑动画
-            isVideoNavigating = true  //  标记正在导航到视频
-            onVideoClick(bvid, cid, cover)
-        }
-    }
-    
-    //  [修复] 使用生命周期事件控制底栏可见性
-    // ON_START: 恢复底栏（仅在从视频页返回时）
-    // ON_STOP: 隐藏底栏（导航到其他页面时，避免影响导航栏区域）
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, useSideNavigation) {
-        if (useSideNavigation) {
-            return@DisposableEffect onDispose { }
-        }
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_START -> {
-                    //  关键修复：只在底栏当前隐藏时才恢复可见
-                    if (!bottomBarVisible && isVideoNavigating) {
-                        //  [同步动画] 延迟后再显示底栏，让进入动画与卡片返回动画同步
-                        //  [优化] 将延迟增加到 360ms (略大于转场动画 350ms)，防止在动画过程中修改 Padding 导致列表重排卡顿
-                        bottomBarRestoreJob = kotlinx.coroutines.MainScope().launch {
-                            kotlinx.coroutines.delay(360)  // 等待返回动画结束
-                            setBottomBarVisible(true)
-                            // 延迟重置导航状态，确保进入动画完成
-                            kotlinx.coroutines.delay(200)
-                            isVideoNavigating = false
-                        }
-                    } else if (!bottomBarVisible && !isVideoNavigating) {
-                        //  [新增] 从设置等非视频页面返回时，立即显示底栏（无延迟）
-                        setBottomBarVisible(true)
-                    }
-                }
-                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
-                    //  [修复] 移除此处隐藏底栏的逻辑
-                    //  防止切换到其他Tab（如动态/历史）时底栏消失
-                    bottomBarRestoreJob?.cancel()
-                    bottomBarRestoreJob = null
-                    // setBottomBarVisible(false) // REMOVED
-                }
-                else -> { /* 其他事件不处理 */ }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            bottomBarRestoreJob?.cancel()
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
+    // [New] State for side drawer
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
     //  [修复] 使用 ViewModel 中的标签页显示索引（跨导航保持）
     // 当用户滑动到特殊分类时，标签页位置更新，但内容分类保持不变
     val displayedTabIndex = state.displayedTabIndex
-    
-    //  [修复] 使用 rememberSaveable 记住本次会话中是否已处理过弹窗（防止导航后重新显示）
-    var consentDialogHandled by rememberSaveable { mutableStateOf(false) }
-    var showConsentDialog by remember { mutableStateOf(false) }
-    
-    //  检查欢迎弹窗是否已显示过（确保弹窗顺序显示，不会同时出现）
-    val welcomePrefs = remember { context.getSharedPreferences("app_welcome", Context.MODE_PRIVATE) }
-    val welcomeAlreadyShown = welcomePrefs.getBoolean("first_launch_shown", false)
-    
-    // 检查是否需要显示弹窗（欢迎弹窗已显示过 且 同意弹窗尚未显示过 且 本次会话未处理过）
-    LaunchedEffect(crashTrackingConsentShown) {
-        if (welcomeAlreadyShown && !crashTrackingConsentShown && !consentDialogHandled) {
-            showConsentDialog = true
-        }
-    }
-    
-    // 显示弹窗
-    if (showConsentDialog) {
-        com.android.purebilibili.feature.home.components.CrashTrackingConsentDialog(
-            onDismiss = { 
-                showConsentDialog = false
-                consentDialogHandled = true  // 标记为已处理
-            }
-        )
-    }
-    
-    //  计算滚动偏移量用于头部动画 -  优化：量化减少重组
-    //  计算滚动偏移量用于头部动画 -  优化：量化减少重组
-    val scrollOffset by remember {
-        derivedStateOf {
-            val currentGridState = gridStates[state.currentCategory]
-            if (currentGridState == null) return@derivedStateOf 0f
-            
-            val firstVisibleItem = currentGridState.firstVisibleItemIndex
-            if (firstVisibleItem == 0) {
-                //  直接使用原始偏移量，避免量化导致的跳变
-                currentGridState.firstVisibleItemScrollOffset.toFloat()
-            } else 1000f
-        }
-    }
-    
-    //  滚动方向（简化版 - 不再需要复杂检测，因为标签页只在顶部显示）
-    val isScrollingUp = true  // 保留参数兼容性
 
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val currentGridState = gridStates[state.currentCategory]
-            if (currentGridState == null) return@derivedStateOf false
+    //  根据滚动距离动态调整 BottomBar 可见性
+    //  逻辑优化：使用 nestedScrollConnection 监听滚动
+    var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
+    
+    // [Header Animation] Use raw offset for fluid animation
+    var headerOffsetHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    
+    // Constants
+    val searchBarHeightDp = 52.dp 
+    val tabRowHeightDp = 44.dp
+    val headerHeightDp = searchBarHeightDp + tabRowHeightDp // Total height
+    
+    // Pixels
+    val searchBarHeightPx = with(density) { searchBarHeightDp.toPx() }
+    val tabRowHeightPx = with(density) { tabRowHeightDp.toPx() }
+    val headerHeightPx = with(density) { headerHeightDp.toPx() }
+    
+    // Thresholds
+    val searchCollapseThreshold = searchBarHeightPx // Collapse search bar first
+    
+    // [Feature] Sticky Header Options
+    // If true, header will shrink but stay visible. If false, it scrolls away.
+    val isHeaderCollapseEnabled = homeSettings.isHeaderCollapseEnabled // Enable shrinking based on settings
+    
+    // [Feature] Bottom Bar Auto-Hide (based on scroll hide mode)
+    val isBottomBarAutoHideEnabled = bottomBarVisibilityMode == SettingsManager.BottomBarVisibilityMode.SCROLL_HIDE
+    val bottomBarVisibleState = LocalSetBottomBarVisible.current
+    
+    // [Feature] Global Scroll Offset for Liquid Glass
+    val globalScrollOffset = LocalHomeScrollOffset.current
 
-            val layoutInfo = currentGridState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4 && !state.isLoading && !isRefreshing
-        }
-    }
-    LaunchedEffect(shouldLoadMore) { if (shouldLoadMore) viewModel.loadMore() }
-    
-    //  [性能优化] 图片预加载 - 提前加载即将显示的视频封面
-    // 📉 [省流量] 省流量模式下禁用预加载
-    val isDataSaverActive = remember {
-        com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
-    }
-    
-    LaunchedEffect(state.currentCategory, isDataSaverActive) {
-        // 📉 省流量模式下跳过预加载
-        if (isDataSaverActive) return@LaunchedEffect
-        
-        val currentGridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
-        
-        snapshotFlow { currentGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-            .distinctUntilChanged()  //  只在索引变化时触发
-            .collect { lastVisibleIndex ->
-                val videos = state.videos
-                val preloadStart = (lastVisibleIndex + 1).coerceAtMost(videos.size)
-                val preloadEnd = (lastVisibleIndex + 6).coerceAtMost(videos.size)  //  减少预加载数量
+    val nestedScrollConnection = remember(isHeaderCollapseEnabled, isBottomBarAutoHideEnabled, useSideNavigation, isLiquidGlassEnabled) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
                 
-                if (preloadStart < preloadEnd) {
-                    for (i in preloadStart until preloadEnd) {
-                        val imageUrl = videos.getOrNull(i)?.pic ?: continue
-                        val request = coil.request.ImageRequest.Builder(context)
-                            .data(com.android.purebilibili.core.util.FormatUtils.fixImageUrl(imageUrl))
-                            .size(360, 225)  //  预加载也使用限制尺寸
-                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
-                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
-                            .build()
-                        context.imageLoader.enqueue(request)
+                // Update Global Scroll Offset (accumulate)
+                // [优化] 仅当开启流体玻璃特效时才更新全局滚动状态，避免不必要的重组开销
+                if (isLiquidGlassEnabled) {
+                    globalScrollOffset.value -= delta // Scroll down = positive offset
+                }
+                
+                // Header Collapse Logic
+                if (isHeaderCollapseEnabled) {
+                    val newOffset = headerOffsetHeightPx + delta
+                    // Min height: -searchBarHeightPx (Search bar collapsed) OR 0 (Full visible)?
+                    // Actually, we want to collapse SearchBar (-52dp) but keep Tabs?
+                    // Or collapse everything?
+                    // Let's allow collapsing up to -searchBarHeightPx (hide search, keep tabs)
+                    // If we also want to hide tabs, limit = -headerHeightPx
+                    val minOffset = -headerHeightPx // Fully scroll away
+                    headerOffsetHeightPx = newOffset.coerceIn(minOffset, 0f)
+                } else {
+                    headerOffsetHeightPx = 0f // Reset to full height if disabled
+                }
+                
+                // Bottom Bar Logic
+                if (isBottomBarAutoHideEnabled && !useSideNavigation) {
+                    if (delta < -10) { //  向下滑动 (手指向上) -> 隐藏
+                         bottomBarVisibleState(false)
+                    } else if (delta > 10) { //  向上滑动 (手指向下) -> 显示
+                         bottomBarVisibleState(true)
                     }
                 }
+                
+                return Offset.Zero
             }
+        }
+    }
+    var bottomBarRestoreJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    
+
+    //  包装 onVideoClick：点击视频时先隐藏底栏再导航
+    val wrappedOnVideoClick: (String, Long, String) -> Unit = remember(onVideoClick) {
+        { bvid, aid, pic ->
+             setBottomBarVisible(false)
+             onVideoClick(bvid, aid, pic)
+        }
     }
 
-
-    //  PullToRefreshBox 自动处理下拉刷新逻辑
-    
-    //  [已移除] 特殊分类（ANIME, MOVIE等）不再在首页切换，直接导航到独立页面
-    
-    //  [修复] 如果当前在直播-关注分类且列表为空，返回时先切换到热门，再切换到推荐
-    val isEmptyLiveFollowed = state.currentCategory == HomeCategory.LIVE && 
-                               state.liveSubCategory == LiveSubCategory.FOLLOWED &&
-                               state.liveRooms.isEmpty() && 
-                               !state.isLoading
-    androidx.activity.compose.BackHandler(enabled = isEmptyLiveFollowed) {
-        // 切换到热门直播
-        viewModel.switchLiveSubCategory(LiveSubCategory.POPULAR)
-    }
-
-    //  [修复] 如果当前在直播分类（非关注空列表情况），返回时切换到推荐
-    val isLiveCategoryNotHome = state.currentCategory == HomeCategory.LIVE && !isEmptyLiveFollowed
-    androidx.activity.compose.BackHandler(enabled = isLiveCategoryNotHome) {
-        viewModel.switchCategory(HomeCategory.RECOMMEND)
-    }
-    
-// [Removed] Animation logic moved inside HorizontalPager where the active state exists
-    
-    // 指示器位置逻辑也移入 graphicsLayer
-    
-    val scaffoldContent: @Composable () -> Unit = {
-
-    Scaffold(
-        //  [新增] JSON 插件过滤提示
-        snackbarHost = {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.padding(
-                    bottom = when {
-                        useSideNavigation -> navBarHeight + 8.dp
-                        isBottomBarFloating -> 100.dp
-                        else -> 80.dp
-                    }
+    //  Scaffold 内容封装 (用于 Panel 左右布局复用)
+    val scaffoldContent = @Composable {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = true, // 允许侧滑打开
+            drawerContent = {
+                MineSideDrawer(
+                    drawerState = drawerState,
+                    user = state.user,
+                    onLogout = { /* 登出后由 ProfileScreen 处理 */ },
+                    onHistoryClick = onHistoryClick,
+                    onFavoriteClick = onFavoriteClick,
+                    onDownloadClick = { /* TODO */ },
+                    onWatchLaterClick = onWatchLaterClick,
+                    onInboxClick = { /* TODO */ },
+                    onSettingsClick = onSettingsClick,
+                    onProfileClick = onProfileClick,
+                    hazeState = hazeState, // 传递毛玻璃状态
+                    isBlurEnabled = isHeaderBlurEnabled // [新增] 使用顶部模糊开关作为全局状态
                 )
-            )
-        },
-        //  [修复] 禁用 Scaffold 默认的 contentWindowInsets，防止底部出现白色填充
-        contentWindowInsets = WindowInsets(0),
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        //  [重构] 实现真正的毛玻璃效果
-        // 外层 Box 包含：1) hazeSource 内容层  2) Header overlay 层
-        // Header 在 hazeSource 外部，可以正确模糊内层内容
-        Box(
-            modifier = Modifier.fillMaxSize()
+            }
         ) {
-            CompositionLocalProvider(LocalHomeScrollOffset provides globalScrollOffsetState) {
-
-            // ===== 内容层 (hazeSource) =====
-            
-            // [Feature] Animate content up when Tabs collapse
-            // [Optimized] Use direct offset from NestedScroll
-            // Note: If we translate content up, we might see the gap? 
-            // Actually, standard behavior is: Header translates UP (clips), content scrolls naturally.
-            // We usually DO NOT translate the whole content box unless we want to pull it up.
-            // Since we use standard list with padding, we let the list handle its own scroll.
-            // But we can translate the *Tab Row* or Header container inside iOSHomeHeader.
-            // So we don't need `contentTranslationY` here anymore for the whole Box.
-
-            // [修复] 如果有全局 hazeState，同时应用两个 hazeSource
-            Box(
+            Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection) // [Feature] Attach scroll connection
-                    //.graphicsLayer { translationY = contentTranslationY.toPx() } // [Removed]
-                    // [Revert] Capture for Liquid Glass TopBar removed
+                    .nestedScroll(nestedScrollConnection),
+                containerColor = MaterialTheme.colorScheme.background,
+                bottomBar = {
+                   // BottomBar logic handled by parent
+                },
+                contentWindowInsets = WindowInsets(0.dp)
+            ) { padding ->
+                   // [Refactor] Use Box to allow overlay and proper blur nesting
+                   // [新增] Video Preview State (Long Press)
 
-                    // [Revert] Capture for Liquid Glass TopBar removed
-                    // .run { ... }
-                    // [Fix] Move local hazeSource deeper to avoid drawing hierarchy crash
-                    // .hazeSource(state = hazeState) 
-                    .then(if (globalHazeState != null) Modifier.hazeSource(state = globalHazeState) else Modifier)  // 全局 hazeSource - 底栏使用
-            ) {
-            //  [Restored] Always render Pager. Loading/Error states are handled per-page internally.
-            //  This prevents the Pager from being destroyed during category switches or loading states.
-                
-            //  [Best Practice] 使用 InteractionSource 区分用户操作和代码滚动
-            //  只有在用户发生过拖拽/按压行为后的 settling 才是用户切换，否则可能是代码触发的滚动
-            var isUserAction by remember { mutableStateOf(false) }
-
-                //  监听用户交互
-                LaunchedEffect(pagerState) {
-                    pagerState.interactionSource.interactions.collect { interaction ->
-                        if (interaction is androidx.compose.foundation.interaction.DragInteraction.Start) {
-                            isUserAction = true
-                        }
-                    }
-                }
-
-                //  联动 Pager -> ViewModel
-                //  仅当 isUserAction 为 true 时才允许 Pager 驱动 ViewModel 变更
-                LaunchedEffect(pagerState) {
-                    snapshotFlow { pagerState.settledPage }
-                        .collect { page ->
-                            if (isUserAction) {
-                                val category = HomeCategory.entries[page]
-                                // [简化] 直播分类直接导航到独立页面，不做回滚
-                                if (category == HomeCategory.LIVE) {
-                                    onLiveListClick()
-                                } else if (state.currentCategory != category) {
-                                    viewModel.switchCategory(category)
-                                }
-                                // 重置标记，等待下一次手势
-                                isUserAction = false
-                            }
-                        }
-                }
-                
-                //  联动 ViewModel -> Pager
-                //  当点击 Tab 时触发，此时 isUserAction 为 false，不会反向触发
-                LaunchedEffect(state.currentCategory) {
-                    val targetIndex = HomeCategory.entries.indexOf(state.currentCategory)
-                    if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
-                        pagerState.animateScrollToPage(targetIndex)
-                    }
-                }
-                
-                //  [Refactor] Use Box to allow overlay and proper blur nesting
-                // [新增] Video Preview State (Long Press)
-    // [Move] Preview Dialog is now an overlay at the end of the Box
-    // if (previewVideoItem != null) { ... } // Removed
-
-    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
                     // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(
                             state = pagerState,
@@ -932,6 +720,14 @@ fun HomeScreen(
                                  }
                              } else {
                                  // Data Content
+                                 // [性能优化] Stabilize event callbacks to prevent recomposition on scroll
+                                 val onLoadMoreCallback = remember(viewModel) { { viewModel.loadMore() } }
+                                 val onDismissVideoCallback = remember(viewModel) { { bvid: String -> viewModel.startVideoDissolve(bvid) } }
+                                 val onWatchLaterCallback = remember(viewModel) { { bvid: String, aid: Long -> viewModel.addToWatchLater(bvid, aid) } }
+                                 val onDissolveCompleteCallback = remember(viewModel) { { bvid: String -> viewModel.completeVideoDissolve(bvid) } }
+                                 val onLongPressCallback = remember(targetVideoItemState) { { item: VideoItem -> targetVideoItemState.value = item } }
+                                 val onLiveClickCallback = remember(onLiveClick) { onLiveClick }
+
                                  HomeCategoryPageContent(
                                      category = category,
                                      categoryState = categoryState,
@@ -949,20 +745,19 @@ fun HomeScreen(
                                      dissolvingVideos = state.dissolvingVideos,
                                      followingMids = state.followingMids,
                                      onVideoClick = wrappedOnVideoClick,
-                                     onLiveClick = onLiveClick,
-                                     onLoadMore = { viewModel.loadMore() },
-                                     onDismissVideo = { viewModel.startVideoDissolve(it) },
-                                     onWatchLater = { bvid, aid -> viewModel.addToWatchLater(bvid, aid) },
-                                     onDissolveComplete = { viewModel.completeVideoDissolve(it) },
-                                     longPressCallback = { targetVideoItemState.value = it } // [Feature] Pass callback
+                                     onLiveClick = onLiveClickCallback,
+                                     onLoadMore = onLoadMoreCallback,
+                                     onDismissVideo = onDismissVideoCallback,
+                                     onWatchLater = onWatchLaterCallback,
+                                     onDissolveComplete = onDissolveCompleteCallback,
+                                     longPressCallback = onLongPressCallback // [Feature] Pass callback
                                  )
                              }
                              } // Close Box wrapper
                         }
-                    }
-                }
-            } // Close Box wrapperfreshBox
-        }  // 关闭 hazeSource Box
+                } // Close HorizontalPager lambda
+            } // Close Box wrapper
+        } // Close Scaffold lambda
         
         //  ===== Header Overlay (毛玻璃效果) =====
         //  Header 现在在外层 Box 内、hazeSource 外部，可以正确模糊内层内容
@@ -976,31 +771,17 @@ fun HomeScreen(
         
         // Calculate parameters based on scroll
         // 1. Search Bar Collapse (First phase)
-        val searchCollapseAmount = headerOffsetHeightPx.coerceAtLeast(-searchBarHeightPx)
-        val currentSearchHeight = searchBarHeightDp + with(density) { searchCollapseAmount.toDp() }
-        val searchAlpha = (1f + (searchCollapseAmount / searchBarHeightPx)).coerceIn(0f, 1f)
-        
-        // 2. Tab Row Collapse (Second phase, only if enabled)
-        // Starts after Search Bar is fully collapsed (-52dp)
-        val tabCollapseStart = -searchBarHeightPx
-        val tabCollapseAmount = (headerOffsetHeightPx - tabCollapseStart).coerceAtMost(0f)
-        
-        val currentTabHeight = if (headerOffsetHeightPx < tabCollapseStart && isHeaderCollapseEnabled) {
-             tabRowHeightDp + with(density) { tabCollapseAmount.toDp() }
-        } else {
-             tabRowHeightDp
-        }
-        val tabAlpha = if (headerOffsetHeightPx < tabCollapseStart && isHeaderCollapseEnabled) {
-            (1f + (tabCollapseAmount / tabRowHeightPx)).coerceIn(0f, 1f)
-        } else 1f
-        
         iOSHomeHeader(
-            searchBarHeight = currentSearchHeight,
-            searchBarAlpha = searchAlpha,
-            tabContainerHeight = currentTabHeight, // [Feature] Dynamic Tab Height
-            tabAlpha = tabAlpha,                   // [Feature] Dynamic Tab Alpha
+            headerOffsetProvider = { headerOffsetHeightPx }, // [Optimization] Pass lambda to defer state read
+            isHeaderCollapseEnabled = isHeaderCollapseEnabled,
             user = state.user,
-            onAvatarClick = { if (state.user.isLogin) onProfileClick() else onAvatarClick() },
+            onAvatarClick = { 
+                if (state.user.isLogin) {
+                    coroutineScope.launch { drawerState.open() }
+                } else {
+                    onAvatarClick() 
+                }
+            },
             onSettingsClick = onSettingsClick,
             onSearchClick = onSearchClick,
             categoryIndex = displayedTabIndex,
@@ -1076,10 +857,175 @@ fun HomeScreen(
             }
         }
 
-    }  // 关闭 outer Box
+    } // Close ModalNavigationDrawer
+    }
 
-    }  // 关闭 Scaffold lambda
-    }  //  关闭 scaffoldContent lambda
+    
+    //  [修复] 使用生命周期事件控制底栏可见性
+    // ON_START: 恢复底栏（仅在从视频页返回时）
+    // ON_STOP: 隐藏底栏（导航到其他页面时，避免影响导航栏区域）
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, useSideNavigation) {
+        if (useSideNavigation) {
+            return@DisposableEffect onDispose { }
+        }
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> {
+                    //  关键修复：只在底栏当前隐藏时才恢复可见
+                    if (!bottomBarVisible && isVideoNavigating) {
+                        //  [同步动画] 延迟后再显示底栏，让进入动画与卡片返回动画同步
+                        //  [优化] 将延迟增加到 360ms (略大于转场动画 350ms)，防止在动画过程中修改 Padding 导致列表重排卡顿
+                        bottomBarRestoreJob = kotlinx.coroutines.MainScope().launch {
+                            kotlinx.coroutines.delay(360)  // 等待返回动画结束
+                            setBottomBarVisible(true)
+                            // 延迟重置导航状态，确保进入动画完成
+                            kotlinx.coroutines.delay(200)
+                            isVideoNavigating = false
+                        }
+                    } else if (!bottomBarVisible && !isVideoNavigating) {
+                        //  [新增] 从设置等非视频页面返回时，立即显示底栏（无延迟）
+                        setBottomBarVisible(true)
+                    }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    //  [修复] 移除此处隐藏底栏的逻辑
+                    //  防止切换到其他Tab（如动态/历史）时底栏消失
+                    bottomBarRestoreJob?.cancel()
+                    bottomBarRestoreJob = null
+                    // setBottomBarVisible(false) // REMOVED
+                }
+                else -> { /* 其他事件不处理 */ }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            bottomBarRestoreJob?.cancel()
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
+    //  [修复] 使用 rememberSaveable 记住本次会话中是否已处理过弹窗（防止导航后重新显示）
+    var consentDialogHandled by rememberSaveable { mutableStateOf(false) }
+    var showConsentDialog by remember { mutableStateOf(false) }
+    
+    //  检查欢迎弹窗是否已显示过（确保弹窗顺序显示，不会同时出现）
+    val welcomePrefs = remember { context.getSharedPreferences("app_welcome", Context.MODE_PRIVATE) }
+    val welcomeAlreadyShown = welcomePrefs.getBoolean("first_launch_shown", false)
+    
+    // 检查是否需要显示弹窗（欢迎弹窗已显示过 且 同意弹窗尚未显示过 且 本次会话未处理过）
+    LaunchedEffect(crashTrackingConsentShown) {
+        if (welcomeAlreadyShown && !crashTrackingConsentShown && !consentDialogHandled) {
+            showConsentDialog = true
+        }
+    }
+    
+    // 显示弹窗
+    if (showConsentDialog) {
+        com.android.purebilibili.feature.home.components.CrashTrackingConsentDialog(
+            onDismiss = { 
+                showConsentDialog = false
+                consentDialogHandled = true  // 标记为已处理
+            }
+        )
+    }
+    
+    //  计算滚动偏移量用于头部动画 -  优化：量化减少重组
+    //  计算滚动偏移量用于头部动画 -  优化：量化减少重组
+    val scrollOffset by remember {
+        derivedStateOf {
+            val currentGridState = gridStates[state.currentCategory]
+            if (currentGridState == null) return@derivedStateOf 0f
+            
+            val firstVisibleItem = currentGridState.firstVisibleItemIndex
+            if (firstVisibleItem == 0) {
+                //  直接使用原始偏移量，避免量化导致的跳变
+                currentGridState.firstVisibleItemScrollOffset.toFloat()
+            } else 1000f
+        }
+    }
+    
+    //  滚动方向（简化版 - 不再需要复杂检测，因为标签页只在顶部显示）
+    val isScrollingUp = true  // 保留参数兼容性
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val currentGridState = gridStates[state.currentCategory]
+            if (currentGridState == null) return@derivedStateOf false
+
+            val layoutInfo = currentGridState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4 && !state.isLoading && !isRefreshing
+        }
+    }
+    LaunchedEffect(shouldLoadMore) { if (shouldLoadMore) viewModel.loadMore() }
+    
+    //  [性能优化] 图片预加载 - 提前加载即将显示的视频封面
+    // 📉 [省流量] 省流量模式下禁用预加载
+    val isDataSaverActive = remember {
+        com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
+    }
+    
+    LaunchedEffect(state.currentCategory, isDataSaverActive) {
+        // 📉 省流量模式下跳过预加载
+        if (isDataSaverActive) return@LaunchedEffect
+        
+        val currentGridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
+        
+        snapshotFlow { currentGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .distinctUntilChanged()  //  只在索引变化时触发
+            .collect { lastVisibleIndex ->
+                // Move heavy lifting to IO thread
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val videos = state.videos
+                    val preloadStart = (lastVisibleIndex + 1).coerceAtMost(videos.size)
+                    val preloadEnd = (lastVisibleIndex + 6).coerceAtMost(videos.size)  //  减少预加载数量
+                    
+                    if (preloadStart < preloadEnd) {
+                        for (i in preloadStart until preloadEnd) {
+                            val imageUrl = videos.getOrNull(i)?.pic ?: continue
+                            // [Optimization] Run validation and request building off main thread
+                            val fixedUrl = com.android.purebilibili.core.util.FormatUtils.fixImageUrl(imageUrl)
+                            
+                            val request = coil.request.ImageRequest.Builder(context)
+                                .data(fixedUrl)
+                                .size(360, 225)  //  预加载也使用限制尺寸
+                                .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                                .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                                .build()
+                            context.imageLoader.enqueue(request)
+                        }
+                    }
+                }
+            }
+    }
+
+
+    //  PullToRefreshBox 自动处理下拉刷新逻辑
+    
+    //  [已移除] 特殊分类（ANIME, MOVIE等）不再在首页切换，直接导航到独立页面
+    
+    //  [修复] 如果当前在直播-关注分类且列表为空，返回时先切换到热门，再切换到推荐
+    val isEmptyLiveFollowed = state.currentCategory == HomeCategory.LIVE && 
+                               state.liveSubCategory == LiveSubCategory.FOLLOWED &&
+                               state.liveRooms.isEmpty() && 
+                               !state.isLoading
+    androidx.activity.compose.BackHandler(enabled = isEmptyLiveFollowed) {
+        // 切换到热门直播
+        viewModel.switchLiveSubCategory(LiveSubCategory.POPULAR)
+    }
+
+    //  [修复] 如果当前在直播分类（非关注空列表情况），返回时切换到推荐
+    val isLiveCategoryNotHome = state.currentCategory == HomeCategory.LIVE && !isEmptyLiveFollowed
+    androidx.activity.compose.BackHandler(enabled = isLiveCategoryNotHome) {
+        viewModel.switchCategory(HomeCategory.RECOMMEND)
+    }
+    
+// [Removed] Animation logic moved inside HorizontalPager where the active state exists
+    
+    // 指示器位置逻辑也移入 graphicsLayer
+    
     // 📱 [平板适配] 导航模式切换动画
     // 始终使用 Row 布局，通过动画控制侧边栏的显示/隐藏
     Row(modifier = Modifier.fillMaxSize()) {

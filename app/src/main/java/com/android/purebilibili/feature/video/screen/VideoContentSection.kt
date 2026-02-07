@@ -489,7 +489,9 @@ private fun VideoCommentTab(
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 }
-                            }
+                            },
+                            // [新增] 头像点击
+                            onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUpClick(it) } }
                         )
                     }
                 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 fun CoinDialog(
     visible: Boolean,
     currentCoinCount: Int,  // Already given coins 0/1/2
+    userBalance: Double?,    // [New] Current user coin balance (null = loading)
     onDismiss: () -> Unit,
     onConfirm: (count: Int, alsoLike: Boolean) -> Unit
 ) {
@@ -37,7 +38,25 @@ fun CoinDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("\u6295\u5e01", fontWeight = FontWeight.Bold) },
+        title = { 
+            Column {
+                Text("\u6295\u5e01", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                val balanceText = when {
+                    userBalance == null -> "加载中..."
+                    userBalance == -1.0 -> "加载失败"
+                    userBalance == -2.0 -> "网络错误"
+                    userBalance == -3.0 -> "未登录"
+                    userBalance == -4.0 -> "Token丢失"
+                    else -> "余额: $userBalance"
+                }
+                Text(
+                    balanceText, 
+                    style = MaterialTheme.typography.labelMedium, 
+                    color = if (userBalance != null && userBalance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         text = {
             Column {
                 Text(

@@ -448,7 +448,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     //  [新增] 底栏显示模式 (0=图标+文字, 1=仅图标, 2=仅文字)
     fun setBottomBarLabelMode(mode: Int) { viewModelScope.launch { SettingsManager.setBottomBarLabelMode(context, mode) } }
     
-    //  [新增] 模糊效果开关
+
+
     fun toggleHeaderBlur(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderBlurEnabled(context, value) } }
     fun toggleHeaderCollapse(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderCollapseEnabled(context, value) } }
     fun toggleBottomBarBlur(value: Boolean) { 
@@ -510,6 +511,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             if (enabled) {
                 // 开启液态玻璃时，自动关闭磨砂效果，仅保留一个效果
                 SettingsManager.setBottomBarBlurEnabled(context, false)
+            } else {
+                // [Fix] 关闭液态玻璃时，自动重新开启磨砂效果
+                // 否则底栏会变得完全不透明，体验不佳
+                SettingsManager.setBottomBarBlurEnabled(context, true)
             }
         }
     }

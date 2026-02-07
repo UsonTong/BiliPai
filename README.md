@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.1.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.1.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -362,12 +362,16 @@ app/src/main/java/com/android/purebilibili/
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v5.1.0)
+### 最近更新 (v5.1.1)
+
+- ✨ **系统优化**: 修复了一些问题，新增一些实验性功能
+- ⬆️ **版本迭代**: 升级至 v5.1.1
+
+### 历史更新 (v5.1.0)
 
 - ✨ **性能优化**: 优化列表滚动性能，减少重组开销，保持顺滑体验
 - 🛠 **交互增强**: 优化卡片按压反馈动画，微调物理特性
 - 🐛 **修复**: 修复已知场景下的掉帧问题，优化布局计算
-- ⬆️ **版本迭代**: 升级至 v5.1.0
 
 ### 历史更新 (v5.0.5)
 

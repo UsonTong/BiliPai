@@ -9,7 +9,12 @@ import com.android.purebilibili.core.ui.blur.unifiedBlur
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.platform.LocalContext // [New]
+import androidx.compose.ui.platform.LocalDensity // [New]
+import androidx.compose.ui.zIndex // [New]
+import androidx.compose.ui.layout.onGloballyPositioned // [New]
 import com.android.purebilibili.core.store.SettingsManager // [New]
+import com.android.purebilibili.core.ui.blur.BlurIntensity // [New]
+import com.android.purebilibili.core.ui.blur.BlurStyles // [New]
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -171,20 +176,136 @@ fun CommonListScreen(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    // [优化] Haze 性能优化：优先使用全局 HazeState，避免双重 Source 导致的过度绘制
-    val activeHazeState = globalHazeState ?: androidx.compose.runtime.remember { HazeState() }
+    
+    // [Fix] 这里的模糊冲突核心：顶栏需要自己的独立 HazeState
+    val localHazeState = androidx.compose.runtime.remember { HazeState() }
     
     // 🔍 搜索状态
     var searchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
 
+    // [New] 动态顶栏高度测量 (最准确的方式)
+    var headerHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val headerHeightDp = with(LocalDensity.current) { headerHeightPx.toDp() }
+    
+    // [Feature] Header Blur Optimization
+    val isHeaderBlurEnabled by SettingsManager.getHeaderBlurEnabled(context).collectAsState(initial = true)
+    val blurIntensity by SettingsManager.getBlurIntensity(context).collectAsState(initial = BlurIntensity.THIN)
+    val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
+    
+    // 决定顶栏背景 (使用私有的 localHazeState)
+    val topBarBackgroundModifier = if (isHeaderBlurEnabled) {
+        Modifier
+            .fillMaxWidth()
+            .unifiedBlur(localHazeState)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha))
+    } else {
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-             // 使用 Box 包裹实现毛玻璃背景
+        containerColor = MaterialTheme.colorScheme.background
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 1. 底层：内容区域
+            // [关键] 同时向本地和全局 HazeState 提供像素源
+            val contentModifier = Modifier
+                .fillMaxSize()
+                .hazeSource(state = localHazeState)
+                .then(if (globalHazeState != null) Modifier.hazeSource(state = globalHazeState) else Modifier)
+
+            Box(modifier = contentModifier) {
+                // [新增] 如果是收藏页面且有多个文件夹，显示 HorizontalPager
+                if (favoriteViewModel != null && foldersState.size > 1) {
+                    // [Feature] 联动 Pager -> ViewModel
+                    // 仅当 isUserAction 为 true 时才允许 Pager 驱动 ViewModel 变更
+                    var isUserAction by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+                    LaunchedEffect(pagerState) {
+                        pagerState.interactionSource.interactions.collect { interaction ->
+                             if (interaction is androidx.compose.foundation.interaction.DragInteraction.Start) {
+                                 isUserAction = true
+                             }
+                        }
+                    }
+
+                    LaunchedEffect(pagerState) {
+                        snapshotFlow { pagerState.settledPage }
+                            .collect { page ->
+                                if (isUserAction) {
+                                    favoriteViewModel.switchFolder(page)
+                                    isUserAction = false
+                                }
+                            }
+                    }
+                    
+                    // 联动 ViewModel -> Pager (Tab click)
+                    LaunchedEffect(selectedFolderIndex) {
+                        if (pagerState.currentPage != selectedFolderIndex) {
+                            pagerState.animateScrollToPage(selectedFolderIndex)
+                        }
+                    }
+
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 1 // 预加载
+                    ) { page ->
+                        // 获取当前页面的状态
+                        val folderUiState by favoriteViewModel.getFolderUiState(page).collectAsState()
+                        
+                        // 确保数据加载
+                        LaunchedEffect(page) {
+                            favoriteViewModel.loadFolder(page)
+                        }
+                        
+                        // 渲染通用列表内容 (复用下方逻辑，提取为组件)
+                        CommonListContent(
+                            items = folderUiState.items,
+                            isLoading = folderUiState.isLoading,
+                            error = folderUiState.error,
+                            searchQuery = searchQuery,
+                            columns = columns,
+                            spacing = spacing.medium,
+                            padding = PaddingValues(top = headerHeightDp, bottom = scaffoldPadding.calculateBottomPadding()),
+                            onVideoClick = onVideoClick,
+                             onLoadMore = { favoriteViewModel.loadMoreForFolder(page) },
+                            onUnfavorite = { video -> favoriteViewModel.removeVideo(video) }
+                        )
+                    }
+                } else {
+                     CommonListContent(
+                        items = state.items,
+                        isLoading = state.isLoading,
+                        error = state.error,
+                        searchQuery = searchQuery,
+                        columns = columns,
+                        spacing = spacing.medium,
+                        padding = PaddingValues(top = headerHeightDp, bottom = scaffoldPadding.calculateBottomPadding()),
+                        onVideoClick = onVideoClick,
+                        onLoadMore = { 
+                            favoriteViewModel?.loadMore()
+                            historyViewModel?.loadMore()
+                        },
+                        onUnfavorite = if (favoriteViewModel != null) { 
+                            { favoriteViewModel.removeVideo(it) } 
+                        } else null
+                    )
+                }
+            }
+
+            // 2. 顶层：悬浮顶栏 (使用 onGloballyPositioned 测量高度)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .unifiedBlur(activeHazeState)
+                modifier = topBarBackgroundModifier
+                    .zIndex(1f)
+                    .align(Alignment.TopCenter)
+                    .onGloballyPositioned { coordinates ->
+                        headerHeightPx = coordinates.size.height
+                    }
             ) {
                 Column {
                     TopAppBar(
@@ -201,7 +322,7 @@ fun CommonListScreen(
                         scrollBehavior = scrollBehavior
                     )
                     
-                    // 🔍 搜索栏 (在 TopBar 内部)
+                    // 🔍 搜索栏
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -211,7 +332,7 @@ fun CommonListScreen(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
                             placeholder = "搜索视频",
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) // 更加透明以适应模糊背景
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         )
                     }
                     
@@ -255,93 +376,6 @@ fun CommonListScreen(
                         }
                     }
                 }
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = activeHazeState) // [优化] 仅使用统一的 activeHazeState
-        ) {
-            
-            // [新增] 如果是收藏页面且有多个文件夹，显示 HorizontalPager
-            if (favoriteViewModel != null && foldersState.size > 1) {
-                // [Feature] 联动 Pager -> ViewModel
-                // 仅当 isUserAction 为 true 时才允许 Pager 驱动 ViewModel 变更
-                var isUserAction by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-
-                LaunchedEffect(pagerState) {
-                    pagerState.interactionSource.interactions.collect { interaction ->
-                         if (interaction is androidx.compose.foundation.interaction.DragInteraction.Start) {
-                             isUserAction = true
-                         }
-                    }
-                }
-
-                LaunchedEffect(pagerState) {
-                    snapshotFlow { pagerState.settledPage }
-                        .collect { page ->
-                            if (isUserAction) {
-                                favoriteViewModel.switchFolder(page)
-                                isUserAction = false
-                            }
-                        }
-                }
-                
-                // 联动 ViewModel -> Pager (Tab click)
-                LaunchedEffect(selectedFolderIndex) {
-                    if (pagerState.currentPage != selectedFolderIndex) {
-                        pagerState.animateScrollToPage(selectedFolderIndex)
-                    }
-                }
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1 // 预加载
-                ) { page ->
-                    // 获取当前页面的状态
-                    val folderUiState by favoriteViewModel.getFolderUiState(page).collectAsState()
-                    
-                    // 确保数据加载
-                    LaunchedEffect(page) {
-                        favoriteViewModel.loadFolder(page)
-                    }
-                    
-                    // 渲染通用列表内容 (复用下方逻辑，提取为组件)
-                    CommonListContent(
-                        items = folderUiState.items,
-                        isLoading = folderUiState.isLoading,
-                        error = folderUiState.error,
-                        searchQuery = searchQuery,
-                        columns = columns,
-                        spacing = spacing.medium,
-                        padding = padding,
-                        onVideoClick = onVideoClick,
-                         onLoadMore = { favoriteViewModel.loadMoreForFolder(page) },
-                        onUnfavorite = { video -> favoriteViewModel.removeVideo(video) }
-                    )
-                }
-            } else {
-                // 原有逻辑 (历史记录 或 单个收藏夹)
-                 CommonListContent(
-                    items = state.items,
-                    isLoading = state.isLoading,
-                    error = state.error,
-                    searchQuery = searchQuery,
-                    columns = columns,
-                    spacing = spacing.medium,
-                    padding = padding,
-                    onVideoClick = onVideoClick,
-                    onLoadMore = { 
-                        favoriteViewModel?.loadMore()
-                        historyViewModel?.loadMore()
-                    },
-                    onUnfavorite = if (favoriteViewModel != null) { 
-                        { favoriteViewModel.removeVideo(it) } 
-                    } else null
-                )
             }
         }
     }

@@ -51,6 +51,12 @@ interface BilibiliApi {
         @Query("photo") photo: Boolean = true
     ): UserCardResponse
 
+    @GET("x/web-interface/card")
+    suspend fun getUserCardRaw(
+        @Query("mid") mid: Long,
+        @Query("photo") photo: Boolean = true
+    ): okhttp3.ResponseBody
+
     @GET("x/web-interface/history/cursor")
     suspend fun getHistoryList(
         @Query("ps") ps: Int = 30,
@@ -721,6 +727,9 @@ interface SpaceApi {
     // 获取用户详细信息 (需要 WBI 签名)
     @GET("x/space/wbi/acc/info")
     suspend fun getSpaceInfo(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceInfoResponse
+
+    @GET("x/space/wbi/acc/info")
+    suspend fun getSpaceInfoRaw(@QueryMap params: Map<String, String>): okhttp3.ResponseBody
     
     // 获取用户投稿视频列表 (需要 WBI 签名)
     @GET("x/space/wbi/arc/search")

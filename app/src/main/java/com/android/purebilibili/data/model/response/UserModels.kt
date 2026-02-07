@@ -22,7 +22,9 @@ data class UserCardData(
     val archive_count: Int = 0,
     val article_count: Int = 0,
     val follower: Int = 0,
-    val like_num: Int = 0
+    val like_num: Int = 0,
+    @SerialName("ip_location")
+    val ipLocation: String? = null
 )
 
 @Serializable
@@ -35,7 +37,9 @@ data class UserCardBase(
     val sign: String = "",
     val level_info: LevelInfo? = null,
     val Official:  UserOfficial? = null,
-    val vip: VipInfo? = null
+    val vip: VipInfo? = null,
+    @SerialName("ip_location")
+    val ipLocation: String? = null
 )
 
 @Serializable

@@ -34,7 +34,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.purebilibili.core.ui.AppIcons
 import com.android.purebilibili.core.util.FormatUtils
-import com.android.purebilibili.feature.video.player.CoinDialog
+import com.android.purebilibili.feature.video.ui.components.CoinDialog
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.ui.components.CollectionSheet  // 📂 [新增] 合集弹窗
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
@@ -506,9 +506,11 @@ fun AudioModeScreen(
     }
     
     //  投币对话框
+    val userBalance by viewModel.userCoinBalance.collectAsState()
     CoinDialog(
         visible = coinDialogVisible,
         currentCoinCount = currentCoinCount,
+        userBalance = userBalance,
         onDismiss = { viewModel.closeCoinDialog() },
         onConfirm = { count, alsoLike -> viewModel.doCoin(count, alsoLike) }
     )

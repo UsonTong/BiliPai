@@ -90,7 +90,8 @@ fun ReplyItemView(
     onDeleteClick: (() -> Unit)? = null,
     location: String? = item.replyControl?.location,
     onUrlClick: ((String) -> Unit)? = null,
-    hideSubPreview: Boolean = false
+    hideSubPreview: Boolean = false,
+    onAvatarClick: (String) -> Unit
 ) {
     val isUpComment = upMid > 0 && item.mid == upMid
     val localEmoteMap = remember(item.content.emote, emoteMap) {
@@ -130,6 +131,7 @@ fun ReplyItemView(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onAvatarClick(item.member.mid) }
             )
             
             Spacer(modifier = Modifier.width(12.dp))

@@ -1342,15 +1342,18 @@ fun VideoDetailScreen(
                         // [Fix] 这里的 playerState.player 是 VideoDetailScreen 的 ExoPlayer (主播放器)
                         playerState.player.seekTo(pos)
                     }
-                }
+                },
+                onUserClick = onUpClick
             )
         }
         //  [新增] 投币对话框
         val coinDialogVisible by viewModel.coinDialogVisible.collectAsState()
         val currentCoinCount = (uiState as? PlayerUiState.Success)?.coinCount ?: 0
+        val userBalance by viewModel.userCoinBalance.collectAsState()
         CoinDialog(
             visible = coinDialogVisible,
             currentCoinCount = currentCoinCount,
+            userBalance = userBalance,
             onDismiss = { viewModel.closeCoinDialog() },
             onConfirm = { count, alsoLike -> viewModel.doCoin(count, alsoLike) }
         )
@@ -1708,7 +1711,8 @@ fun VideoDetailScreen(
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                }
+                },
+                onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUpClick(it) } }
             )
         }
 

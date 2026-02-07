@@ -51,7 +51,7 @@ fun PortraitBottomContainer(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp, start = 8.dp, end = 8.dp) // 底部留一点边距
-            .height(30.dp) // 触摸热区高度
+            .height(48.dp) // 📱 [修复] 增大触摸热区高度
         ,
         contentAlignment = Alignment.Center
     ) {
@@ -89,7 +89,7 @@ fun ThinWigglyProgressBar(
     
     // 动画状态
     val barHeight by animateDpAsState(
-        targetValue = if (isDragging) 12.dp else 2.dp,
+        targetValue = if (isDragging) 12.dp else 3.dp, // 📱 [修复] 默认高度从 2dp 增加到 3dp
         label = "barHeight"
     )
     

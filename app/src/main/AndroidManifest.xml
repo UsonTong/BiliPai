@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- 🔋 WakeLock 权限 (防止息屏时 CPU 休眠导致音频停止) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 🔐 存储权限 (仅 Android 9 及以下需要，用于保存图片到相册) -->
     <uses-permission 
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"

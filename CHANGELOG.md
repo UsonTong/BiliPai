@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.1.1] - 2026-02-07
+
+### ✨ New Features (新增功能)
+
+- **Experimental Features**: Added some experimental features for better user experience.
+
+### 🛠 Improvements & Fixes (优化与修复)
+
+- **System Stability**: Fixed some known issues and optimized layout performance.
+
+## [5.1.0] - 2026-02-06
+
+### 🛠 Improvements (优化)
+
+- **Scrolling Performance**: Optimized list scrolling performance and reduced recomposition overhead.
+- **UI Interaction**: Enhanced card press feedback and physics.
+
 ## [5.0.5] - 2026-02-05
 
 ### ✨ New Features (新增功能)

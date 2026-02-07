@@ -821,17 +821,17 @@ private fun SpaceHeader(
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = "♂",
-                            modifier = Modifier.size(16.dp),
                             color = Color(0xFF00AEEC),  // 蓝色
-                            fontSize = 14.sp
+                            fontSize = 16.sp,
+                            lineHeight = 16.sp
                         )
                     } else if (userInfo.sex == "女") {
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = "♀",
-                            modifier = Modifier.size(16.dp),
                             color = Color(0xFFFF6699),  // 粉色
-                            fontSize = 14.sp
+                            fontSize = 16.sp,
+                            lineHeight = 16.sp
                         )
                     }
                     

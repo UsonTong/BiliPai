@@ -275,6 +275,9 @@ fun AppNavigation(
                 modifier = Modifier
                     .fillMaxSize()
                     .layerBackdrop(bottomBarBackdrop)
+                    // [Fix] 将内容标记为全局底栏模糊的源
+                    // 必须添加 hazeSource，否则底栏的 hazeEffect 无法获取背景内容，导致模糊失效
+                    .then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)
             ) {
                 NavHost(
             navController = navController,
@@ -565,7 +568,8 @@ fun AppNavigation(
                 onFollowingClick = { mid -> navController.navigate(ScreenRoutes.Following.createRoute(mid)) },
                 onDownloadClick = { navController.navigate(ScreenRoutes.DownloadList.route) },
                 onWatchLaterClick = { navController.navigate(ScreenRoutes.WatchLater.route) },
-                onInboxClick = { navController.navigate(ScreenRoutes.Inbox.route) }  //  [新增] 私信入口
+                onInboxClick = { navController.navigate(ScreenRoutes.Inbox.route) },  //  [新增] 私信入口
+                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }  // [新增] 三连彩蛋跳转
             )
         }
 
