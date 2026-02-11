@@ -143,18 +143,23 @@ class InboxViewModel : ViewModel() {
                 return@launch
             }
             
-            // 过滤已缓存的
-            val toFetch = mids.filter { !userCache.containsKey(it) }
+            // 仅拉取缺失或缓存不完整的用户，避免空值缓存导致后续页面显示缺失
+            val toFetch = mids
+                .distinct()
+                .filter { InboxUserInfoResolver.shouldFetchUserInfo(it, userCache) }
             
             toFetch.forEach { mid ->
                 launch {
-                    fetchUserInfo(mid)?.let { info ->
-                        userCache[mid] = info
-                        // 更新UI状态
-                        _uiState.value = _uiState.value.copy(
-                            userInfoMap = userCache.toMap()
-                        )
-                    }
+                    val merged = InboxUserInfoResolver.mergeFetchedUserInfo(
+                        existing = userCache[mid],
+                        fetched = fetchUserInfo(mid)
+                    ) ?: return@launch
+
+                    userCache[mid] = merged
+                    // 更新UI状态
+                    _uiState.value = _uiState.value.copy(
+                        userInfoMap = userCache.toMap()
+                    )
                 }
             }
         }
@@ -174,10 +179,13 @@ class InboxViewModel : ViewModel() {
             val response = NetworkModule.spaceApi.getSpaceInfo(params)
             
             if (response.code == 0 && response.data != null) {
-                UserBasicInfo(
-                    mid = response.data.mid,
-                    name = response.data.name,
-                    face = response.data.face
+                InboxUserInfoResolver.mergeFetchedUserInfo(
+                    existing = null,
+                    fetched = UserBasicInfo(
+                        mid = response.data.mid,
+                        name = response.data.name,
+                        face = response.data.face
+                    )
                 )
             } else {
                 android.util.Log.w("InboxVM", "fetchUserInfo failed for $mid: ${response.code}")

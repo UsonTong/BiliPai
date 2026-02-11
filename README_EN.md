@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-02-11 · Synced to v5.2.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-02-11 · Synced to v5.2.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.2.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.2.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -315,13 +315,12 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v5.1.3 · 2026-02-08)
+### Latest (v5.2.2 · 2026-02-11)
 
-- ✨ **Search upgrade**: Expanded search flows (Video/UP/Bangumi/Live) and improved suggestion + pagination behavior.
-- ✨ **Comments**: Added default comment sort preference and fixed missing uploader/pinned comments under some sort modes.
-- ✨ **Danmaku plugin**: Added UID/hash filtering and in-player hot refresh when plugin rules change.
-- 🛠 **Playback UX fixes**: Fixed unexpected background pause, reduced accidental gesture triggers, and removed intrusive completion popup when auto-next is disabled.
-- 🛠 **Observability**: Strengthened Firebase Analytics + Crashlytics event/error context.
+- 🛠 **Portrait playback flow**: Improved portrait-mode switching continuity and progress sync across portrait/landscape transitions.
+- 🛠 **Dynamic UX**: Added double-tap bottom-tab reselect to scroll Dynamic feed back to top; fixed non-clickable images in forwarded dynamics.
+- 🛠 **Inbox stability**: Improved private-message list user info resolution to reduce intermittent avatar/username loading failures.
+- 🎨 **Image preview motion**: Unified open/close transitions with smoother corner morphing and spring-like close rebound.
 
 ---
 

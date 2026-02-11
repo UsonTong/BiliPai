@@ -7,16 +7,59 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import com.android.purebilibili.data.model.response.DynamicDesc
 import com.android.purebilibili.data.model.response.DynamicItem
+import com.android.purebilibili.data.model.response.DrawMajor
+import com.android.purebilibili.data.model.response.OpusMajor
+
+internal data class ForwardedImagePreviewState(
+    val images: List<String>,
+    val initialIndex: Int
+)
+
+internal fun resolveForwardedDrawPreviewState(
+    draw: DrawMajor,
+    clickedIndex: Int
+): ForwardedImagePreviewState? {
+    return resolveForwardedImagePreviewState(
+        images = draw.items.map { it.src },
+        clickedIndex = clickedIndex
+    )
+}
+
+internal fun resolveForwardedOpusPreviewState(
+    opus: OpusMajor,
+    clickedIndex: Int
+): ForwardedImagePreviewState? {
+    return resolveForwardedImagePreviewState(
+        images = opus.pics.map { it.url },
+        clickedIndex = clickedIndex
+    )
+}
+
+private fun resolveForwardedImagePreviewState(
+    images: List<String>,
+    clickedIndex: Int
+): ForwardedImagePreviewState? {
+    if (clickedIndex !in images.indices) return null
+    if (images.isEmpty()) return null
+    return ForwardedImagePreviewState(
+        images = images,
+        initialIndex = clickedIndex
+    )
+}
 
 /**
  *  转发的原始内容
@@ -30,6 +73,8 @@ fun ForwardedContent(
 ) {
     val author = orig.modules.module_author
     val content = orig.modules.module_dynamic
+    var previewState by remember { mutableStateOf<ForwardedImagePreviewState?>(null) }
+    var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
     
     Column(
         modifier = Modifier
@@ -82,7 +127,11 @@ fun ForwardedContent(
             DrawGridV2(
                 items = draw.items.take(4),
                 gifImageLoader = gifImageLoader,
-                onImageClick = { _, _ -> }  // 转发内容暂不支持图片预览
+                onImageClick = { index, rect ->
+                    val state = resolveForwardedDrawPreviewState(draw, index) ?: return@DrawGridV2
+                    previewState = state
+                    previewSourceRect = rect
+                }
             )
         }
         
@@ -115,10 +164,25 @@ fun ForwardedContent(
                 DrawGridV2(
                     items = drawItems,
                     gifImageLoader = gifImageLoader,
-                    onImageClick = { _, _ -> }  // 转发内容暂不支持图片预览
+                    onImageClick = { index, rect ->
+                        val state = resolveForwardedOpusPreviewState(opus, index) ?: return@DrawGridV2
+                        previewState = state
+                        previewSourceRect = rect
+                    }
                 )
             }
         }
     }
-}
 
+    previewState?.let { state ->
+        ImagePreviewDialog(
+            images = state.images,
+            initialIndex = state.initialIndex,
+            sourceRect = previewSourceRect,
+            onDismiss = {
+                previewState = null
+                previewSourceRect = null
+            }
+        )
+    }
+}

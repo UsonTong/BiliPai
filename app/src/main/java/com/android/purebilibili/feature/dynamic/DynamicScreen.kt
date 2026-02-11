@@ -61,6 +61,11 @@ import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.util.resolveScrollToTopPlan
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+
+val LocalDynamicScrollChannel = compositionLocalOf<Channel<Unit>?> { null }
 
 /**
  *  动态页面 - 支持两种布局模式
@@ -83,6 +88,7 @@ fun DynamicScreen(
     val state by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val listState = rememberLazyListState()
+    val dynamicScrollChannel = LocalDynamicScrollChannel.current
     
     // 侧边栏状态
     val followedUsers by viewModel.followedUsers.collectAsState()
@@ -172,6 +178,24 @@ fun DynamicScreen(
     
     // [Feature] BottomBar Scroll Hiding for Dynamic Screen
     val setBottomBarVisible = com.android.purebilibili.core.ui.LocalSetBottomBarVisible.current
+
+    LaunchedEffect(dynamicScrollChannel) {
+        dynamicScrollChannel?.receiveAsFlow()?.collect {
+            val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 50
+            if (isAtTop) {
+                viewModel.refresh()
+            } else {
+                val currentIndex = listState.firstVisibleItemIndex
+                val plan = resolveScrollToTopPlan(currentIndex)
+                plan.preJumpIndex?.let { preJump ->
+                    if (currentIndex > preJump) {
+                        listState.scrollToItem(preJump)
+                    }
+                }
+                listState.animateScrollToItem(plan.animateTargetIndex)
+            }
+        }
+    }
     
     // 监听列表滚动实现底栏自动隐藏/显示
     var lastFirstVisibleItem by remember { mutableIntStateOf(0) }

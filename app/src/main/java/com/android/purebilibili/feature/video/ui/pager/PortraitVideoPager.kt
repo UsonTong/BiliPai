@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +66,8 @@ import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverl
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -89,7 +92,9 @@ fun PortraitVideoPager(
     viewModel: PlayerViewModel,
     commentViewModel: VideoCommentViewModel,
     initialStartPositionMs: Long = 0L,
-    onProgressUpdate: (Long) -> Unit = {},
+    onProgressUpdate: (String, Long) -> Unit = { _, _ -> },
+    onExitSnapshot: (String, Long) -> Unit = { _, _ -> },
+    onSearchClick: () -> Unit = {},
     onUserClick: (Long) -> Unit,
     onRotateToLandscape: () -> Unit
 ) {
@@ -157,106 +162,179 @@ fun PortraitVideoPager(
     var currentPlayingCid by remember { mutableStateOf(0L) }
     var currentPlayingAid by remember { mutableStateOf(0L) }
     var isLoading by remember { mutableStateOf(false) }
+    var lastCommittedPage by remember { mutableIntStateOf(-1) }
+    var activeLoadGeneration by remember { mutableIntStateOf(0) }
+    var hasConsumedInitialSeek by remember { mutableStateOf(false) }
+    var pendingAutoPlayGeneration by remember { mutableIntStateOf(-1) }
 
     DisposableEffect(exoPlayer) {
         danmakuManager.attachPlayer(exoPlayer)
         onDispose { }
     }
 
-    // [逻辑] 切换视频源
-    LaunchedEffect(pagerState.currentPage) {
-        val item = pageItems.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
-        
-        // 提取信息
-        val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
-        val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid.toLong()
-        
-        // 通知外部
-        onVideoChange(bvid)
-        
-        // 如果已经加载过这个视频，就不重新加载 (避免重复请求)
-        if (currentPlayingBvid == bvid) return@LaunchedEffect
+    DisposableEffect(exoPlayer, activeLoadGeneration) {
+        val autoPlayListener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY &&
+                    pendingAutoPlayGeneration == activeLoadGeneration &&
+                    !exoPlayer.isPlaying
+                ) {
+                    exoPlayer.playWhenReady = true
+                    exoPlayer.play()
+                }
+            }
 
-        // 停止上一个播放
-        exoPlayer.clearVideoSurface()
-        exoPlayer.stop()
-        exoPlayer.clearMediaItems()
-        danmakuManager.clear()
-        isLoading = true
-        currentPlayingBvid = bvid
-        currentPlayingCid = 0L
-        currentPlayingAid = aid
-
-        // 加载新视频
-        launch {
-            try {
-                val result = com.android.purebilibili.data.repository.VideoRepository.getVideoDetails(
-                    bvid = bvid,
-                    aid = aid,
-                    targetQuality = 64
-                )
-                
-                result.fold(
-                    onSuccess = { (info, playData) ->
-                        val videoUrl = playData.dash?.video?.firstOrNull()?.baseUrl 
-                            ?: playData.durl?.firstOrNull()?.url
-                        val audioUrl = playData.dash?.audio?.firstOrNull()?.baseUrl
-
-                        if (!videoUrl.isNullOrEmpty()) {
-                            val headers = mapOf(
-                                "Referer" to "https://www.bilibili.com",
-                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                            )
-                            val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-                                .setUserAgent(headers["User-Agent"])
-                                .setDefaultRequestProperties(headers)
-                            val mediaSourceFactory = DefaultMediaSourceFactory(context)
-                                .setDataSourceFactory(dataSourceFactory)
-
-                            val videoSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(videoUrl))
-                            val finalSource = if (!audioUrl.isNullOrEmpty()) {
-                                val audioSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl))
-                                MergingMediaSource(videoSource, audioSource)
-                            } else {
-                                videoSource
-                            }
-
-                            // [修复] 再次检查是否仍然是当前应该播放的视频，防止快速滑动时的竞态条件
-                            if (currentPlayingBvid == bvid) {
-                                currentPlayingCid = info.cid
-                                currentPlayingAid = info.aid
-                                exoPlayer.setMediaSource(finalSource)
-                                exoPlayer.prepare()
-                                
-                                // 如果是初始视频且有进度
-                                if (pagerState.currentPage == 0 && initialStartPositionMs > 0) {
-                                    exoPlayer.seekTo(initialStartPositionMs)
-                                }
-                                
-                                    exoPlayer.play()
-                            } else {
-                                com.android.purebilibili.core.util.Logger.d("PortraitVideoPager", "Discarded video load for $bvid as current is $currentPlayingBvid")
-                            }
-                        }
-                        
-                        // [修复] 只有当前视频加载完成，才取消 Loading
-                        if (currentPlayingBvid == bvid) {
-                            isLoading = false
-                        }
-                    },
-                    onFailure = {
-                        if (currentPlayingBvid == bvid) {
-                            isLoading = false
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                if (currentPlayingBvid == bvid) {
-                    isLoading = false
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying && pendingAutoPlayGeneration == activeLoadGeneration) {
+                    pendingAutoPlayGeneration = -1
                 }
             }
         }
+        exoPlayer.addListener(autoPlayListener)
+        onDispose {
+            exoPlayer.removeListener(autoPlayListener)
+        }
+    }
+
+    // [核心] 仅在页面 settle 后切流，避免拖动过程频繁切换导致卡顿与竞态
+    LaunchedEffect(pagerState, pageItems) {
+        snapshotFlow {
+            resolveCommittedPage(
+                isScrollInProgress = pagerState.isScrollInProgress,
+                currentPage = pagerState.currentPage,
+                lastCommittedPage = lastCommittedPage
+            )
+        }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { committedPage ->
+                lastCommittedPage = committedPage
+                val item = pageItems.getOrNull(committedPage) ?: return@collect
+
+                val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
+                val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid.toLong()
+
+                onVideoChange(bvid)
+
+                if (currentPlayingBvid == bvid) {
+                    isLoading = false
+                    return@collect
+                }
+
+                activeLoadGeneration += 1
+                val requestGeneration = activeLoadGeneration
+
+                exoPlayer.stop()
+                exoPlayer.clearMediaItems()
+                danmakuManager.clear()
+                isLoading = true
+                currentPlayingBvid = bvid
+                currentPlayingCid = 0L
+                currentPlayingAid = aid
+                pendingAutoPlayGeneration = requestGeneration
+
+                launch {
+                    try {
+                        val result = com.android.purebilibili.data.repository.VideoRepository.getVideoDetails(
+                            bvid = bvid,
+                            aid = aid,
+                            targetQuality = 64
+                        )
+
+                        result.fold(
+                            onSuccess = { (info, playData) ->
+                                val videoUrl = playData.dash?.video?.firstOrNull()?.baseUrl
+                                    ?: playData.durl?.firstOrNull()?.url
+                                val audioUrl = playData.dash?.audio?.firstOrNull()?.baseUrl
+
+                                if (videoUrl.isNullOrEmpty()) {
+                                    pendingAutoPlayGeneration = -1
+                                    if (shouldApplyLoadResult(
+                                            requestGeneration = requestGeneration,
+                                            activeGeneration = activeLoadGeneration,
+                                            expectedBvid = bvid,
+                                            currentPlayingBvid = currentPlayingBvid
+                                        )
+                                    ) {
+                                        isLoading = false
+                                    }
+                                    return@fold
+                                }
+
+                                val headers = mapOf(
+                                    "Referer" to "https://www.bilibili.com",
+                                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                                )
+                                val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+                                    .setUserAgent(headers["User-Agent"])
+                                    .setDefaultRequestProperties(headers)
+                                val mediaSourceFactory = DefaultMediaSourceFactory(context)
+                                    .setDataSourceFactory(dataSourceFactory)
+
+                                val videoSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(videoUrl))
+                                val finalSource = if (!audioUrl.isNullOrEmpty()) {
+                                    val audioSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl))
+                                    MergingMediaSource(videoSource, audioSource)
+                                } else {
+                                    videoSource
+                                }
+
+                                if (!shouldApplyLoadResult(
+                                        requestGeneration = requestGeneration,
+                                        activeGeneration = activeLoadGeneration,
+                                        expectedBvid = bvid,
+                                        currentPlayingBvid = currentPlayingBvid
+                                    )
+                                ) {
+                                    com.android.purebilibili.core.util.Logger.d(
+                                        "PortraitVideoPager",
+                                        "Discarded stale video load for $bvid (request=$requestGeneration, active=$activeLoadGeneration, current=$currentPlayingBvid)"
+                                    )
+                                    return@fold
+                                }
+
+                                currentPlayingCid = info.cid
+                                currentPlayingAid = info.aid
+                                exoPlayer.playWhenReady = true
+                                exoPlayer.setMediaSource(finalSource)
+                                exoPlayer.prepare()
+
+                                if (committedPage == 0 && initialStartPositionMs > 0 && !hasConsumedInitialSeek) {
+                                    exoPlayer.seekTo(initialStartPositionMs)
+                                    hasConsumedInitialSeek = true
+                                }
+
+                                exoPlayer.play()
+                                isLoading = false
+                            },
+                            onFailure = {
+                                pendingAutoPlayGeneration = -1
+                                if (shouldApplyLoadResult(
+                                        requestGeneration = requestGeneration,
+                                        activeGeneration = activeLoadGeneration,
+                                        expectedBvid = bvid,
+                                        currentPlayingBvid = currentPlayingBvid
+                                    )
+                                ) {
+                                    isLoading = false
+                                }
+                            }
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        pendingAutoPlayGeneration = -1
+                        if (shouldApplyLoadResult(
+                                requestGeneration = requestGeneration,
+                                activeGeneration = activeLoadGeneration,
+                                expectedBvid = bvid,
+                                currentPlayingBvid = currentPlayingBvid
+                            )
+                        ) {
+                            isLoading = false
+                        }
+                    }
+                }
+            }
     }
 
     LaunchedEffect(currentPlayingCid, currentPlayingAid, danmakuEnabled, exoPlayer) {
@@ -305,8 +383,11 @@ fun PortraitVideoPager(
                 isLoading = if (page == pagerState.currentPage) isLoading else false, // 只有当前页显示 Loading
                 danmakuManager = danmakuManager,
                 danmakuEnabled = danmakuEnabled,
+                onExitSnapshot = onExitSnapshot,
+                onSearchClick = onSearchClick,
                 onUserClick = onUserClick,
-                onRotateToLandscape = onRotateToLandscape
+                onRotateToLandscape = onRotateToLandscape,
+                onProgressUpdate = onProgressUpdate
             )
         }
     }
@@ -325,8 +406,11 @@ private fun VideoPageItem(
     isLoading: Boolean,
     danmakuManager: DanmakuManager,
     danmakuEnabled: Boolean,
+    onExitSnapshot: (String, Long) -> Unit,
+    onSearchClick: () -> Unit,
     onUserClick: (Long) -> Unit,
-    onRotateToLandscape: () -> Unit
+    onRotateToLandscape: () -> Unit,
+    onProgressUpdate: (String, Long) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -399,6 +483,7 @@ private fun VideoPageItem(
                         duration = realDuration,
                         buffered = exoPlayer.bufferedPosition
                     )
+                    onProgressUpdate(bvid, exoPlayer.currentPosition)
                 }
                 delay(200)
             }
@@ -587,12 +672,19 @@ private fun VideoPageItem(
         }
 
         // Overlay & Interaction
-        val currentUiState = viewModel.uiState.collectAsState().value
-        val isCurrentModelVideo = (currentUiState as? PlayerUiState.Success)?.info?.bvid == bvid
-        val currentSuccess = currentUiState as? PlayerUiState.Success
-        val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
+    val currentUiState = viewModel.uiState.collectAsState().value
+    val isCurrentModelVideo = (currentUiState as? PlayerUiState.Success)?.info?.bvid == bvid
+    val currentSuccess = currentUiState as? PlayerUiState.Success
+    val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
+    val isFollowing = (currentUiState as? PlayerUiState.Success)?.followingMids?.contains(authorMid) == true
 
-        PortraitFullscreenOverlay(
+    LaunchedEffect(isCurrentPage, authorMid) {
+        if (isCurrentPage && authorMid > 0L) {
+            viewModel.ensureFollowStatus(authorMid)
+        }
+    }
+
+    PortraitFullscreenOverlay(
             title = title,
             authorName = authorName,
             authorFace = authorFace,
@@ -610,9 +702,9 @@ private fun VideoPageItem(
             isCoined = false,
             isFavorited = if(isCurrentModelVideo) currentSuccess?.isFavorited == true else false,
             
-            isFollowing = (currentUiState as? PlayerUiState.Success)?.followingMids?.contains(authorMid) == true,
+            isFollowing = isFollowing,
             onFollowClick = { 
-                viewModel.toggleFollow(authorMid, (currentUiState as? PlayerUiState.Success)?.followingMids?.contains(authorMid) == true)
+                viewModel.toggleFollow(authorMid, isFollowing)
             },
             
             onDetailClick = { showDetailSheet = true },
@@ -635,7 +727,10 @@ private fun VideoPageItem(
             danmakuEnabled = danmakuEnabled,
             isStatusBarHidden = true,
             
-            onBack = onBack,
+            onBack = {
+                onExitSnapshot(bvid, exoPlayer.currentPosition)
+                onBack()
+            },
             onPlayPause = {
                 if (isCurrentPage) {
                     if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
@@ -664,7 +759,17 @@ private fun VideoPageItem(
                 }
             },
             onToggleStatusBar = { },
-            onRotateToLandscape = onRotateToLandscape,
+            onSearchClick = {
+                onExitSnapshot(bvid, exoPlayer.currentPosition)
+                onSearchClick()
+            },
+            onMoreClick = {
+                showDetailSheet = true
+            },
+            onRotateToLandscape = {
+                onExitSnapshot(bvid, exoPlayer.currentPosition)
+                onRotateToLandscape()
+            },
             
             showControls = isOverlayVisible && !showCommentSheet && !showDetailSheet
         )

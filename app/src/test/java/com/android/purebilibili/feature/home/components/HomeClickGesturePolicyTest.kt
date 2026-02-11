@@ -31,4 +31,20 @@ class HomeClickGesturePolicyTest {
             )
         )
     }
+
+    @Test
+    fun dynamicUsesReselectCombinedGestureOnlyWhenSelected() {
+        assertTrue(
+            shouldUseBottomReselectCombinedClickable(
+                item = BottomNavItem.DYNAMIC,
+                isSelected = true
+            )
+        )
+        assertFalse(
+            shouldUseBottomReselectCombinedClickable(
+                item = BottomNavItem.DYNAMIC,
+                isSelected = false
+            )
+        )
+    }
 }

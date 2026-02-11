@@ -15,4 +15,14 @@ class BottomControlBarPolicyTest {
     fun aspectRatioButtonHiddenInPortraitMode() {
         assertFalse(shouldShowAspectRatioButtonInControlBar(isFullscreen = false))
     }
+
+    @Test
+    fun portraitSwitchButtonVisibleInFullscreen() {
+        assertTrue(shouldShowPortraitSwitchButtonInControlBar(isFullscreen = true))
+    }
+
+    @Test
+    fun portraitSwitchButtonHiddenInPortraitMode() {
+        assertFalse(shouldShowPortraitSwitchButtonInControlBar(isFullscreen = false))
+    }
 }

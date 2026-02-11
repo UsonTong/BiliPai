@@ -237,6 +237,7 @@ class PlayerViewModel : ViewModel() {
     private var heartbeatJob: Job? = null
     private var appContext: android.content.Context? = null  //  [新增] 保存 Context 用于网络检测
     private var hasUserStartedPlayback = false  // 🛡️ [修复] 用户是否主动开始播放（用于区分“加载已看完视频”和“自然播放结束”）
+    private val followStatusCheckInFlight = mutableSetOf<Long>()
     
     //  Public Player Accessor
     val currentPlayer: Player?
@@ -801,7 +802,7 @@ class PlayerViewModel : ViewModel() {
                             // 加载全局列表
                             loadFollowingMids()
                             // [关键修复] 额外检查当前作者的关注状态 (防止列表分页不全)
-                            checkIsFollowing(result.info.owner.mid)
+                            ensureFollowStatus(result.info.owner.mid, force = true)
                         }
                         
                         //  异步加载视频标签
@@ -873,34 +874,25 @@ class PlayerViewModel : ViewModel() {
      * 点赞弹幕
      */
     fun likeDanmaku(dmid: Long) {
-        val current = _uiState.value as? PlayerUiState.Success ?: return
-        val cid = current.info.cid
-        
-        viewModelScope.launch {
-            val result = com.android.purebilibili.data.repository.DanmakuRepository.likeDanmaku(cid, dmid)
-            result.onSuccess {
-                toast("点赞成功")
-            }.onFailure {
-                toast("点赞失败: ${it.message}")
-            }
+        if (dmid <= 0L) {
+            viewModelScope.launch { toast("当前弹幕不支持投票") }
+            return
         }
+
+        val menuState = _danmakuMenuState.value
+        val shouldLike = if (menuState.visible && menuState.dmid == dmid && menuState.canVote) {
+            !menuState.hasLiked
+        } else {
+            true
+        }
+        likeDanmaku(dmid = dmid, like = shouldLike)
     }
 
     /**
      * 举报弹幕
      */
     fun reportDanmaku(dmid: Long, reason: Int) {
-        val current = _uiState.value as? PlayerUiState.Success ?: return
-        val cid = current.info.cid
-        
-        viewModelScope.launch {
-            val result = com.android.purebilibili.data.repository.DanmakuRepository.reportDanmaku(cid, dmid, reason)
-            result.onSuccess {
-                toast("举报提交成功")
-            }.onFailure {
-                toast("举报失败: ${it.message}")
-            }
-        }
+        reportDanmaku(dmid = dmid, reason = reason, content = "")
     }
     
     /**
@@ -1323,20 +1315,30 @@ class PlayerViewModel : ViewModel() {
         val text: String = "",
         val dmid: Long = 0,
         val uid: Long = 0, // 发送者 UID (如果可用)
-        val isSelf: Boolean = false // 是否是自己发送的
+        val isSelf: Boolean = false, // 是否是自己发送的
+        val voteCount: Int = 0,
+        val hasLiked: Boolean = false,
+        val voteLoading: Boolean = false,
+        val canVote: Boolean = false
     )
     
     private val _danmakuMenuState = MutableStateFlow(DanmakuMenuState())
     val danmakuMenuState = _danmakuMenuState.asStateFlow()
     
     fun showDanmakuMenu(dmid: Long, text: String, uid: Long = 0, isSelf: Boolean = false) {
+        val supportsVote = dmid > 0L && currentCid > 0L
         _danmakuMenuState.value = DanmakuMenuState(
             visible = true,
             text = text,
             dmid = dmid,
             uid = uid,
-            isSelf = isSelf
+            isSelf = isSelf,
+            voteLoading = supportsVote,
+            canVote = supportsVote
         )
+        if (supportsVote) {
+            refreshDanmakuThumbupState(dmid)
+        }
         // 暂停播放 (可选，防止弹幕飘走)
         // if (exoPlayer?.isPlaying == true) exoPlayer?.pause()
     }
@@ -1344,6 +1346,32 @@ class PlayerViewModel : ViewModel() {
     fun hideDanmakuMenu() {
         _danmakuMenuState.value = _danmakuMenuState.value.copy(visible = false)
         // 恢复播放?
+    }
+
+    private fun refreshDanmakuThumbupState(dmid: Long) {
+        if (dmid <= 0L || currentCid <= 0L) return
+
+        viewModelScope.launch {
+            com.android.purebilibili.data.repository.DanmakuRepository
+                .getDanmakuThumbupState(cid = currentCid, dmid = dmid)
+                .onSuccess { thumbupState ->
+                    _danmakuMenuState.update { current ->
+                        if (!current.visible || current.dmid != dmid) current
+                        else current.copy(
+                            voteCount = thumbupState.likes,
+                            hasLiked = thumbupState.liked,
+                            voteLoading = false,
+                            canVote = true
+                        )
+                    }
+                }
+                .onFailure {
+                    _danmakuMenuState.update { current ->
+                        if (!current.visible || current.dmid != dmid) current
+                        else current.copy(voteLoading = false, canVote = false)
+                    }
+                }
+        }
     }
 
     /**
@@ -1381,14 +1409,44 @@ class PlayerViewModel : ViewModel() {
             viewModelScope.launch { toast("视频未加载") }
             return
         }
+        if (dmid <= 0L) {
+            viewModelScope.launch { toast("当前弹幕不支持投票") }
+            return
+        }
+
+        _danmakuMenuState.update { current ->
+            if (!current.visible || current.dmid != dmid) current
+            else current.copy(voteLoading = true)
+        }
         
         viewModelScope.launch {
             com.android.purebilibili.data.repository.DanmakuRepository
                 .likeDanmaku(cid = currentCid, dmid = dmid, like = like)
                 .onSuccess {
+                    _danmakuMenuState.update { current ->
+                        if (!current.visible || current.dmid != dmid) current
+                        else {
+                            val delta = when {
+                                like && !current.hasLiked -> 1
+                                !like && current.hasLiked -> -1
+                                else -> 0
+                            }
+                            current.copy(
+                                hasLiked = like,
+                                voteCount = (current.voteCount + delta).coerceAtLeast(0),
+                                voteLoading = false,
+                                canVote = true
+                            )
+                        }
+                    }
                     toast(if (like) "点赞成功" else "已取消点赞")
+                    refreshDanmakuThumbupState(dmid)
                 }
                 .onFailure { error ->
+                    _danmakuMenuState.update { current ->
+                        if (!current.visible || current.dmid != dmid) current
+                        else current.copy(voteLoading = false)
+                    }
                     toast(error.message ?: "操作失败")
                 }
         }
@@ -1554,8 +1612,18 @@ class PlayerViewModel : ViewModel() {
      *  [新增] 检查特定用户的关注状态
      *  解决 loadFollowingMids 分页限制导致的状态不准问题
      */
-    private fun checkIsFollowing(mid: Long) {
+    fun ensureFollowStatus(mid: Long, force: Boolean = false) {
         if (mid == 0L) return
+
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        if (!current.isLoggedIn) return
+        if (!force && current.followingMids.contains(mid)) return
+
+        synchronized(followStatusCheckInFlight) {
+            if (!force && followStatusCheckInFlight.contains(mid)) return
+            followStatusCheckInFlight.add(mid)
+        }
+
         val currentApi = com.android.purebilibili.core.network.NetworkModule.api
         viewModelScope.launch {
             try {
@@ -1563,7 +1631,7 @@ class PlayerViewModel : ViewModel() {
                 val response = currentApi.getRelation(mid)
                 if (response.code == 0 && response.data != null) {
                     val isFollowing = response.data.attribute == 2 || response.data.attribute == 6
-                    
+
                     _uiState.update { state ->
                         if (state is PlayerUiState.Success) {
                             val newSet = state.followingMids.toMutableSet()
@@ -1577,6 +1645,10 @@ class PlayerViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Logger.e("PlayerVM", "Failed to check relation for mid=$mid", e)
+            } finally {
+                synchronized(followStatusCheckInFlight) {
+                    followStatusCheckInFlight.remove(mid)
+                }
             }
         }
     }

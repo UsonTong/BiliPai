@@ -116,9 +116,10 @@ fun InboxScreen(
                                     session = session,
                                     userInfo = userInfo,
                                     onClick = {
-                                        val userName = userInfo?.name 
-                                            ?: session.account_info?.name 
-                                            ?: "用户${session.talker_id}"
+                                        val userName = InboxUserInfoResolver.resolveDisplayName(
+                                            cached = userInfo,
+                                            session = session
+                                        )
                                         onSessionClick(session.talker_id, session.session_type, userName)
                                     },
                                     onRemove = { viewModel.removeSession(session) },
@@ -163,13 +164,14 @@ fun SessionListItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
-    // 优先使用缓存的用户信息，否则回退使用API返回的account_info
-    val displayName = userInfo?.name 
-        ?: session.account_info?.name 
-        ?: "用户${session.talker_id}"
-    val displayAvatar = userInfo?.face 
-        ?: session.account_info?.avatarUrl 
-        ?: ""
+    val displayName = InboxUserInfoResolver.resolveDisplayName(
+        cached = userInfo,
+        session = session
+    )
+    val displayAvatar = InboxUserInfoResolver.resolveDisplayAvatar(
+        cached = userInfo,
+        session = session
+    )
     
     Row(
         modifier = Modifier

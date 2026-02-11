@@ -17,5 +17,5 @@ internal fun resolveSpaceDynamicClickAction(dynamic: SpaceDynamicItem): SpaceDyn
     }
 
     val dynamicId = dynamic.id_str.trim().takeIf { it.isNotEmpty() } ?: return SpaceDynamicClickAction.None
-    return SpaceDynamicClickAction.OpenWeb("https://t.bilibili.com/$dynamicId")
+    return SpaceDynamicClickAction.OpenWeb("https://m.bilibili.com/dynamic/$dynamicId")
 }

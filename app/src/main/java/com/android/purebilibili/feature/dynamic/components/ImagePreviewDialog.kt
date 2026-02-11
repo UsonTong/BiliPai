@@ -45,11 +45,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import android.app.Activity
 import android.content.ContextWrapper
-import android.view.View
-import android.view.WindowManager
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.graphics.toArgb
 
 /**
@@ -99,9 +95,13 @@ fun ImagePreviewDialog(
     val animateTrigger = remember { androidx.compose.animation.core.Animatable(0f) }
     var isDismissing by remember { mutableStateOf(false) }
     
-    // 启动入场动画 - 使用更流畅的参数
+    // 启动入场动画 - 使用轻阻尼弹簧，保留自然惯性
     LaunchedEffect(Unit) {
-        animateTrigger.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = 400f))
+        animateTrigger.snapTo(0f)
+        animateTrigger.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+        )
     }
     
     // 触发退场动画
@@ -109,8 +109,16 @@ fun ImagePreviewDialog(
         if (isDismissing) return
         isDismissing = true
         scope.launch {
-            // 使用稍快的退场动画
-            animateTrigger.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 500f))
+            // 先轻微过冲再回到 source，形成符合物理直觉的回弹感
+            val dismissMotion = imagePreviewDismissMotion()
+            animateTrigger.animateTo(
+                targetValue = dismissMotion.overshootTarget,
+                animationSpec = spring(dampingRatio = 0.62f, stiffness = 650f)
+            )
+            animateTrigger.animateTo(
+                targetValue = dismissMotion.settleTarget,
+                animationSpec = spring(dampingRatio = 0.9f, stiffness = 420f)
+            )
             onDismiss()
         }
     }
@@ -175,12 +183,17 @@ fun ImagePreviewDialog(
             val fullWidth = constraints.maxWidth
             val fullHeight = constraints.maxHeight
             
-            val progress = animateTrigger.value
+            val rawProgress = animateTrigger.value
             
             //  计算容器位置和大小
             // 如果切走了或者没有源矩形，则全屏显示（仅淡入淡出）
             val isInitialPage = pagerState.currentPage == initialIndex
             val shouldUseRectAnim = sourceRect != null && isInitialPage
+            val transitionFrame = resolveImagePreviewTransitionFrame(
+                rawProgress = rawProgress,
+                hasSourceRect = shouldUseRectAnim,
+                sourceCornerRadiusDp = 12f
+            )
             
             val targetLeft = 0.dp
             val targetTop = 0.dp
@@ -193,13 +206,10 @@ fun ImagePreviewDialog(
                 val sourceWidth = with(density) { sourceRect!!.width.toDp() }
                 val sourceHeight = with(density) { sourceRect!!.height.toDp() }
                 
-                val l = androidx.compose.ui.unit.lerp(sourceLeft, targetLeft, progress)
-                val t = androidx.compose.ui.unit.lerp(sourceTop, targetTop, progress)
-                val w = androidx.compose.ui.unit.lerp(sourceWidth, targetWidth, progress)
-                val h = androidx.compose.ui.unit.lerp(sourceHeight, targetHeight, progress)
-                
-                // 修正圆角：全屏时0，缩小时8.dp
-                // val cornerRadius = androidx.compose.ui.unit.lerp(8.dp, 0.dp, progress)
+                val l = androidx.compose.ui.unit.lerp(sourceLeft, targetLeft, transitionFrame.layoutProgress)
+                val t = androidx.compose.ui.unit.lerp(sourceTop, targetTop, transitionFrame.layoutProgress)
+                val w = androidx.compose.ui.unit.lerp(sourceWidth, targetWidth, transitionFrame.layoutProgress)
+                val h = androidx.compose.ui.unit.lerp(sourceHeight, targetHeight, transitionFrame.layoutProgress)
                 
                 Quad(l, t, w, h)
             } else {
@@ -210,7 +220,7 @@ fun ImagePreviewDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = progress))
+                    .background(Color.Black.copy(alpha = transitionFrame.visualProgress))
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = { triggerDismiss() }
@@ -223,7 +233,13 @@ fun ImagePreviewDialog(
                  modifier = Modifier
                      .offset(x = currentLeft, y = currentTop)
                      .size(width = currentWidth, height = currentHeight)
-                     // 如果需要裁切圆角，可在此添加 graphicsLayer
+                     .clip(RoundedCornerShape(transitionFrame.cornerRadiusDp.dp))
+                     .graphicsLayer {
+                         if (!shouldUseRectAnim) {
+                             scaleX = transitionFrame.fallbackScale
+                             scaleY = transitionFrame.fallbackScale
+                         }
+                     }
             ) {
                 //  使用 HorizontalPager 实现滑动切换 + 3D立体动画
                 HorizontalPager(
@@ -237,7 +253,7 @@ fun ImagePreviewDialog(
                     
                     // 🎭 3D 立体旋转动画 - Cube 效果
                     // 仅当完全打开时才应用复杂变换，避免动画冲突
-                    val apply3D = progress > 0.9f
+                    val apply3D = transitionFrame.visualProgress > 0.92f
                     
                     Box(
                         modifier = Modifier
@@ -313,7 +329,7 @@ fun ImagePreviewDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = progress }
+                    .graphicsLayer { alpha = transitionFrame.visualProgress }
             ) {
                 //  页码指示器（圆点样式）
                 if (images.size > 1) {

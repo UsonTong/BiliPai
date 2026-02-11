@@ -46,6 +46,7 @@ data class PlayerProgress(
 )
 
 internal fun shouldShowAspectRatioButtonInControlBar(isFullscreen: Boolean): Boolean = isFullscreen
+internal fun shouldShowPortraitSwitchButtonInControlBar(isFullscreen: Boolean): Boolean = isFullscreen
 
 @Composable
 fun BottomControlBar(
@@ -238,10 +239,20 @@ fun BottomControlBar(
                     )
                 }
 
+                if (shouldShowPortraitSwitchButtonInControlBar(isFullscreen)) {
+                    Text(
+                        text = "竖屏",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable(onClick = onToggleFullscreen)
+                    )
+                }
+
                 // Fullscreen
                 Icon(
                     imageVector = if (isFullscreen) CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft else CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
-                    contentDescription = "Fullscreen",
+                    contentDescription = if (isFullscreen) "退出横屏" else "横屏",
                     tint = Color.White,
                     modifier = Modifier
                         .size(20.dp)

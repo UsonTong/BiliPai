@@ -42,6 +42,12 @@ import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.util.FormatUtils
 
+internal fun shouldUseCompactPortraitTopBar(screenWidthDp: Int): Boolean = screenWidthDp <= 360
+
+internal fun shouldShowPortraitViewCount(viewCount: Int, compactMode: Boolean): Boolean {
+    return viewCount > 0 && !compactMode
+}
+
 /**
  * 竖屏全屏覆盖层 (B站官方风格) - 重构版
  */
@@ -101,6 +107,8 @@ fun PortraitFullscreenOverlay(
     onDanmakuInputClick: () -> Unit,
     onToggleStatusBar: () -> Unit,
     onRotateToLandscape: () -> Unit,
+    onSearchClick: () -> Unit = {},
+    onMoreClick: () -> Unit = {},
     
     modifier: Modifier = Modifier
 ) {
@@ -121,9 +129,13 @@ fun PortraitFullscreenOverlay(
                 PortraitTopControlBar(
                     onBack = onBack,
                     viewCount = statView,
+                    danmakuEnabled = danmakuEnabled,
+                    onDanmakuToggle = onDanmakuToggle,
                     isStatusBarHidden = isStatusBarHidden,
                     onToggleStatusBar = onToggleStatusBar,
-                    onRotateToLandscape = onRotateToLandscape
+                    onRotateToLandscape = onRotateToLandscape,
+                    onSearchClick = onSearchClick,
+                    onMoreClick = onMoreClick
                 )
 
                 // 2. 右侧互动栏 (不再包含头像)
@@ -198,20 +210,33 @@ fun PortraitFullscreenOverlay(
 private fun PortraitTopControlBar(
     onBack: () -> Unit,
     viewCount: Int,
+    danmakuEnabled: Boolean,
+    onDanmakuToggle: () -> Unit,
     isStatusBarHidden: Boolean,
     onToggleStatusBar: () -> Unit,
-    onRotateToLandscape: () -> Unit
+    onRotateToLandscape: () -> Unit,
+    onSearchClick: () -> Unit,
+    onMoreClick: () -> Unit
 ) {
-    Row(
+    val configuration = LocalConfiguration.current
+    val compactMode = shouldUseCompactPortraitTopBar(configuration.screenWidthDp)
+    val horizontalPadding = if (compactMode) 10.dp else 16.dp
+    val verticalPadding = if (compactMode) 8.dp else 10.dp
+    val iconSize = if (compactMode) 20.dp else 22.dp
+    val actionSpacing = if (compactMode) 8.dp else 16.dp
+    val rotateText = if (compactMode) "横" else "横屏"
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
     ) {
         // 左侧：返回 + 观看人数
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.align(Alignment.CenterStart),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(
                 onClick = onBack,
                 colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Transparent)
@@ -224,41 +249,58 @@ private fun PortraitTopControlBar(
                 )
             }
             Spacer(modifier = Modifier.width(4.dp))
-            if (viewCount > 0) {
+            if (shouldShowPortraitViewCount(viewCount = viewCount, compactMode = compactMode)) {
                 Text(
                     text = "${FormatUtils.formatStat(viewCount.toLong())}播放",
                     color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 12.sp
+                    fontSize = if (compactMode) 11.sp else 12.sp
                 )
             }
         }
-        
+
+        // 中间：横屏按钮（与左右区解耦，保证视觉居中）
+        Text(
+            text = rotateText,
+            color = Color.White,
+            fontSize = if (compactMode) 13.sp else 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { onRotateToLandscape() }
+                .padding(horizontal = if (compactMode) 6.dp else 8.dp, vertical = 4.dp)
+        )
+
         // 右上角功能区
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(actionSpacing)
         ) {
-            Text(
-                text = "横屏",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onRotateToLandscape() }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-             Icon(
-                 imageVector = Icons.Rounded.Search,
-                 contentDescription = "搜索",
-                 tint = Color.White,
-                 modifier = Modifier.size(24.dp)
-             )
-             Icon(
-                 imageVector = Icons.Rounded.MoreVert,
-                 contentDescription = "菜单",
-                 tint = Color.White,
-                 modifier = Modifier.size(24.dp)
-             )
+            IconButton(onClick = onDanmakuToggle) {
+                Icon(
+                    imageVector = if (danmakuEnabled) CupertinoIcons.Default.TextBubble else CupertinoIcons.Outlined.TextBubble,
+                    contentDescription = if (danmakuEnabled) "关闭弹幕" else "开启弹幕",
+                    tint = if (danmakuEnabled) Color.White else Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = "搜索",
+                    tint = Color.White,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+            IconButton(onClick = onMoreClick) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "菜单",
+                    tint = Color.White,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
         }
     }
 }

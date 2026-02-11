@@ -372,6 +372,13 @@ interface BilibiliApi {
         @retrofit2.http.Field("csrf") csrf: String
     ): DanmakuActionResponse
 
+    // [新增] 查询弹幕点赞状态与票数
+    @GET("x/v2/dm/thumbup/stats")
+    suspend fun getDanmakuThumbupStats(
+        @Query("oid") oid: Long,                              // 视频 cid
+        @Query("ids") ids: String                             // 逗号分隔 dmid 列表
+    ): com.android.purebilibili.data.model.response.DanmakuThumbupStatsResponse
+
     // [新增] 举报弹幕
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/dm/report/add")

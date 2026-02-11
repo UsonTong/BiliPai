@@ -2,6 +2,7 @@
 package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.data.model.response.DanmakuThumbupStatsItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -9,6 +10,48 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+
+internal data class DanmakuThumbupState(
+    val likes: Int,
+    val liked: Boolean
+)
+
+internal fun resolveDanmakuThumbupState(
+    dmid: Long,
+    data: Map<String, DanmakuThumbupStatsItem>
+): DanmakuThumbupState? {
+    val key = dmid.toString()
+    val matched = data[key] ?: return null
+    return DanmakuThumbupState(
+        likes = matched.likes.coerceAtLeast(0),
+        liked = matched.userLike == 1
+    )
+}
+
+internal fun mapSendDanmakuErrorMessage(code: Int, fallbackMessage: String): String {
+    return when (code) {
+        -101 -> "请先登录"
+        -102 -> "账号被封禁"
+        -111 -> "鉴权失败，请重新登录"
+        -400 -> "请求参数错误"
+        -509 -> "请求过于频繁，请稍后再试"
+        36700 -> "系统升级中，请稍后再试"
+        36701 -> "弹幕包含被禁止的内容"
+        36702 -> "弹幕长度超出限制"
+        36703 -> "发送频率过快，请稍后再试"
+        36704 -> "当前视频暂不允许发送弹幕"
+        36705 -> "当前账号等级不足，无法发送该弹幕"
+        36706 -> "当前账号等级不足，无法发送顶端弹幕"
+        36707 -> "当前账号等级不足，无法发送底端弹幕"
+        36708 -> "当前账号暂无彩色弹幕权限"
+        36709 -> "当前账号等级不足，无法发送高级弹幕"
+        36710 -> "当前账号暂无该弹幕样式权限"
+        36711 -> "该视频禁止发送弹幕"
+        36712 -> "当前账号等级限制，弹幕长度上限更低"
+        36718 -> "当前账号不是大会员，无法发送渐变彩色弹幕"
+        else -> fallbackMessage.ifEmpty { "发送弹幕失败 ($code)" }
+    }
+}
 
 /**
  * 弹幕相关数据仓库
@@ -306,20 +349,7 @@ object DanmakuRepository {
                 com.android.purebilibili.core.util.Logger.d("DanmakuRepo", "✅ Danmaku sent: dmid=${response.data.dmid_str}")
                 Result.success(response.data)
             } else {
-                val errorMsg = when (response.code) {
-                    -101 -> "请先登录"
-                    -102 -> "账号被封禁"
-                    -111 -> "鉴权失败，请重新登录"
-                    -400 -> "请求参数错误"
-                    -509 -> "请求过于频繁，请稍后再试"
-                    36700 -> "弹幕内容包含敏感词"
-                    36701 -> "弹幕发送冷却中"
-                    36702 -> "弹幕字数过多"
-                    36703 -> "弹幕被禁用"
-                    36704 -> "禁止向此视频发送弹幕"
-                    36705 -> "弹幕包含被禁止的内容"
-                    else -> response.message.ifEmpty { "发送弹幕失败 (${response.code})" }
-                }
+                val errorMsg = mapSendDanmakuErrorMessage(response.code, response.message)
                 android.util.Log.e("DanmakuRepo", "❌ sendDanmaku failed: ${response.code} - ${response.message}")
                 Result.failure(Exception(errorMsg))
             }
@@ -370,6 +400,38 @@ object DanmakuRepository {
             }
         } catch (e: Exception) {
             android.util.Log.e("DanmakuRepo", "❌ recallDanmaku exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 查询单条弹幕的点赞状态与票数
+     */
+    internal suspend fun getDanmakuThumbupState(
+        cid: Long,
+        dmid: Long
+    ): Result<DanmakuThumbupState> = withContext(Dispatchers.IO) {
+        try {
+            if (dmid <= 0L) {
+                return@withContext Result.failure(IllegalArgumentException("弹幕ID无效"))
+            }
+
+            val response = api.getDanmakuThumbupStats(
+                oid = cid,
+                ids = dmid.toString()
+            )
+
+            if (response.code != 0) {
+                val message = response.message.ifEmpty { "查询弹幕投票状态失败 (${response.code})" }
+                return@withContext Result.failure(Exception(message))
+            }
+
+            val state = resolveDanmakuThumbupState(dmid = dmid, data = response.data)
+                ?: return@withContext Result.failure(Exception("未找到该弹幕投票信息"))
+
+            Result.success(state)
+        } catch (e: Exception) {
+            android.util.Log.e("DanmakuRepo", "❌ getDanmakuThumbupState exception: ${e.message}", e)
             Result.failure(e)
         }
     }

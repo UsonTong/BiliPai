@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +37,6 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 
 // iOS Visual Styles
 private val MenuBackground = Color(0xCC1C1C1E) // Translucent Black
-private val MenuItemPress = Color(0xFF2C2C2E)
 private val SeparatorColor = Color(0xFF38383A)
 private val DestructiveColor = Color(0xFFFF453A) // System Red
 private val PrimaryColor = Color(0xFF0A84FF) // System Blue
@@ -50,6 +48,10 @@ fun DanmakuContextMenu(
     onLike: () -> Unit,
     onRecall: () -> Unit,
     onReport: (reason: Int) -> Unit,
+    voteCount: Int = 0,
+    hasLiked: Boolean = false,
+    voteLoading: Boolean = false,
+    canVote: Boolean = false,
     onBlockUser: () -> Unit = {}
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -87,6 +89,10 @@ fun DanmakuContextMenu(
                 } else {
                     MainMenu(
                         text = text,
+                        voteCount = voteCount,
+                        hasLiked = hasLiked,
+                        voteLoading = voteLoading,
+                        canVote = canVote,
                         onLike = {
                             onLike()
                             onDismiss()
@@ -114,6 +120,10 @@ fun DanmakuContextMenu(
 @Composable
 private fun MainMenu(
     text: String,
+    voteCount: Int,
+    hasLiked: Boolean,
+    voteLoading: Boolean,
+    canVote: Boolean,
     onLike: () -> Unit,
     onRecall: () -> Unit,
     onReportClick: () -> Unit,
@@ -155,9 +165,16 @@ private fun MainMenu(
 
         MenuSeparator()
 
+        val voteLabel = when {
+            voteLoading -> "加载投票状态..."
+            !canVote -> "当前弹幕不支持投票"
+            hasLiked -> "取消点赞 (${formatVoteCount(voteCount)})"
+            else -> "点赞弹幕 (${formatVoteCount(voteCount)})"
+        }
         MenuItem(
-            label = "点赞弹幕",
+            label = voteLabel,
             icon = Icons.Filled.ThumbUp,
+            enabled = canVote && !voteLoading,
             onClick = onLike
         )
         
@@ -259,25 +276,36 @@ private fun ReportReasonMenu(
     }
 }
 
+private fun formatVoteCount(rawCount: Int): String {
+    val count = rawCount.coerceAtLeast(0)
+    if (count < 10_000) return count.toString()
+    val compact = ((count / 1000) / 10f).toString().removeSuffix(".0")
+    return "${compact}万"
+}
+
 @Composable
 private fun MenuItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     color: Color = Color.White,
     centered: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val clickModifier = if (enabled) Modifier.clickable(onClick = onClick) else Modifier
+    val displayColor = if (enabled) color else color.copy(alpha = 0.45f)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .then(clickModifier)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = if (centered) Arrangement.Center else Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            color = color,
+            color = displayColor,
             fontSize = 16.sp,
             fontWeight = FontWeight.Normal
         )
@@ -285,7 +313,7 @@ private fun MenuItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = color,
+                tint = displayColor,
                 modifier = Modifier.size(20.dp)
             )
         }

@@ -71,6 +71,7 @@ import com.android.purebilibili.core.ui.animation.DissolvableVideoCard  //  粒�
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve      // 📳 iOS 风格抖动效果
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.util.CardPositionManager
+import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import coil.imageLoader
 import kotlinx.coroutines.launch
@@ -161,14 +162,14 @@ fun HomeScreen(
                 if (isAtTop) {
                     viewModel.refresh()
                 } else {
-                    // [性能优化] 长列表回顶性能优化
-                    // 如果列表滚得太远（>12个），直接平滑滚动会因为measure太多item导致卡顿
-                    // 解决方案：通过 scrollToItem 先"瞬移"到第12个位置，再从那里平滑滚回顶部
-                    // 这样既保留了回顶的动效，又避免了大量计算
-                    if ((gridState?.firstVisibleItemIndex ?: 0) > 12) {
-                        gridState?.scrollToItem(12)
+                    val currentIndex = gridState?.firstVisibleItemIndex ?: 0
+                    val plan = resolveScrollToTopPlan(currentIndex)
+                    plan.preJumpIndex?.let { preJump ->
+                        if (currentIndex > preJump) {
+                            gridState?.scrollToItem(preJump)
+                        }
                     }
-                    gridState?.animateScrollToItem(0)
+                    gridState?.animateScrollToItem(plan.animateTargetIndex)
                 }
                 headerOffsetHeightPx = 0f
             }

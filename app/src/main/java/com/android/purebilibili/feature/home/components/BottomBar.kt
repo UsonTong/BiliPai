@@ -163,6 +163,7 @@ fun FrostedBottomBar(
     labelMode: Int = 1,
     homeSettings: com.android.purebilibili.core.store.HomeSettings = com.android.purebilibili.core.store.HomeSettings(),
     onHomeDoubleTap: () -> Unit = {},
+    onDynamicDoubleTap: () -> Unit = {},
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
     itemColorIndices: Map<String, Int> = emptyMap(),
     onToggleSidebar: (() -> Unit)? = null,
@@ -576,6 +577,7 @@ fun FrostedBottomBar(
                                 haptic = haptic,
                                 debounceClick = debounceClick,
                                 onHomeDoubleTap = onHomeDoubleTap,
+                                onDynamicDoubleTap = onDynamicDoubleTap,
                                 itemWidth = itemWidth,
                                 rowPadding = rowPadding,
                                 contentVerticalOffset = contentVerticalOffset,
@@ -647,6 +649,13 @@ internal fun shouldUseHomeCombinedClickable(
     return item == BottomNavItem.HOME && isSelected
 }
 
+internal fun shouldUseBottomReselectCombinedClickable(
+    item: BottomNavItem,
+    isSelected: Boolean
+): Boolean {
+    return isSelected && (item == BottomNavItem.HOME || item == BottomNavItem.DYNAMIC)
+}
+
 @Composable
 private fun BottomBarContent(
     visibleItems: List<BottomNavItem>,
@@ -660,6 +669,7 @@ private fun BottomBarContent(
     haptic: (HapticType) -> Unit,
     debounceClick: (BottomNavItem, () -> Unit) -> Unit,
     onHomeDoubleTap: () -> Unit,
+    onDynamicDoubleTap: () -> Unit,
     itemWidth: Dp,
     rowPadding: Dp,
     contentVerticalOffset: Dp,
@@ -709,6 +719,7 @@ private fun BottomBarContent(
                 haptic = haptic,
                 debounceClick = debounceClick,
                 onHomeDoubleTap = onHomeDoubleTap,
+                onDynamicDoubleTap = onDynamicDoubleTap,
                 isTablet = isTablet,
                 contentLuminance = contentLuminance, // [New]
                 liquidGlassStyle = liquidGlassStyle // [New]
@@ -789,6 +800,7 @@ private fun BottomBarItem(
     haptic: (HapticType) -> Unit,
     debounceClick: (BottomNavItem, () -> Unit) -> Unit,
     onHomeDoubleTap: () -> Unit,
+    onDynamicDoubleTap: () -> Unit,
     isTablet: Boolean,
     contentLuminance: Float = 0f, // [New]
     liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC // [New]
@@ -884,7 +896,7 @@ private fun BottomBarItem(
             .offset(y = contentVerticalOffset)
             .then(
                 // 仅当“当前已在首页”时保留双击手势，避免从其他页切首页产生点击延迟
-                if (shouldUseHomeCombinedClickable(item, isSelected)) {
+                if (shouldUseBottomReselectCombinedClickable(item, isSelected)) {
                     Modifier.combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -906,7 +918,11 @@ private fun BottomBarItem(
                         },
                         onDoubleClick = {
                             haptic(HapticType.MEDIUM)
-                            onHomeDoubleTap()
+                            when (item) {
+                                BottomNavItem.HOME -> onHomeDoubleTap()
+                                BottomNavItem.DYNAMIC -> onDynamicDoubleTap()
+                                else -> Unit
+                            }
                         }
                     )
                 } else {

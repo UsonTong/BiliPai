@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-02-11 · 文档已同步至 v5.2.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-02-11 · 文档已同步至 v5.2.2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.2.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.2.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -370,11 +370,12 @@ app/src/main/java/com/android/purebilibili/
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v5.2.1 · 2026-02-11)
+### 最近更新 (v5.2.2 · 2026-02-11)
 
-- 🛠 **空间动态修复**：修复个人空间动态中图文动态无法进入详情的问题，视频动态与图文动态均可正常跳转
-- 🛠 **首页双击修复**：修复开启顶部自动收缩后在非顶部双击首页出现空白的问题，并确保双击回顶时顶部标签自动恢复显示
-- 🛠 **液态玻璃优化**：优化底栏指示器折射区域，提升图标+文字模式下文字折射一致性
+- 🛠 **竖屏播放链路优化**：优化竖屏模式下切换视频与进度同步逻辑，减少切换后手动恢复播放的情况
+- 🛠 **动态交互增强**：动态页支持底栏双击回顶；修复转发动态中的图片无法点击预览问题
+- 🛠 **私信稳定性提升**：优化“我的私信”列表用户信息解析，降低重复进入后用户名/头像偶发加载失败
+- 🎨 **图片预览动画统一**：统一图片打开/关闭动画，圆角过渡更顺滑，关闭带轻回弹
 
 ### 历史版本
 

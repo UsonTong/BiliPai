@@ -37,6 +37,7 @@ import com.android.purebilibili.feature.list.FavoriteViewModel
 import com.android.purebilibili.feature.video.screen.VideoDetailScreen
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.dynamic.DynamicScreen
+import com.android.purebilibili.feature.dynamic.LocalDynamicScrollChannel
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.ui.ProvideAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.SharedTransitionProvider
@@ -244,6 +245,7 @@ fun AppNavigation(
 
         // [新增] 首页回顶事件通道 (Channel based event bus)
         val homeScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
+        val dynamicScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
@@ -255,6 +257,7 @@ fun AppNavigation(
             LocalSetBottomBarVisible provides setBottomBarVisible,
             LocalBottomBarVisible provides finalBottomBarVisible,
             com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel,
+            LocalDynamicScrollChannel provides dynamicScrollChannel,
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
         ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -489,6 +492,9 @@ fun AppNavigation(
                     onNavigateToAudioMode = { 
                         isNavigatingToAudioMode = true
                         navController.navigate(ScreenRoutes.AudioMode.route)
+                    },
+                    onNavigateToSearch = {
+                        if (canNavigate()) navController.navigate(ScreenRoutes.Search.route)
                     },
                     // [修复] 传递视频点击导航回调
                     onVideoClick = { vid, _ -> 
@@ -1300,6 +1306,7 @@ fun AppNavigation(
                                     currentItem = currentBottomNavItem,
                                     onItemClick = { item -> navigateTo(item.route) },
                                     onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
+                                    onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
                                     hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                     isFloating = true,
                                     labelMode = bottomBarLabelMode,
@@ -1321,6 +1328,7 @@ fun AppNavigation(
                                 currentItem = currentBottomNavItem,
                                 onItemClick = { item -> navigateTo(item.route) },
                                 onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
+                                onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
                                 hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                 isFloating = false,
                                 labelMode = bottomBarLabelMode,

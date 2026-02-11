@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.2.2] - 2026-02-11
+
+### ✨ New Features (新增功能)
+
+- **Danmaku Interaction Callback**: Wired danmaku click callback end-to-end for context menu and interaction extension scenarios.
+
+### 🛠 Improvements & Fixes (优化与修复)
+
+- **Portrait Video Mode Upgrade**: Improved portrait-mode player flow, including playback continuity when swiping between videos, progress synchronization across portrait/landscape transitions, and overlay control consistency.
+- **Dynamic Feed UX**: Added dynamic-tab bottom reselect double-tap to top behavior and improved smoothness of Home/Dynamic return-to-top animations.
+- **Forwarded Dynamic Images**: Fixed an issue where images inside forwarded dynamics could not be opened for preview.
+- **Image Preview Animation Polish**: Unified open/close motion for image preview dialog across entry points, with smoother rounded-corner transitions and spring-like close rebound.
+- **Inbox User Info Stability**: Improved reliability of avatar/username resolution in private-message list after repeated entry.
+- **Version Bump**: Updated app version to `5.2.2`.
+
 ## [5.2.1] - 2026-02-11
 
 ### 🛠 Improvements & Fixes (优化与修复)

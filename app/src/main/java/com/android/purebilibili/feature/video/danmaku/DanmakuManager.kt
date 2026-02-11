@@ -21,6 +21,7 @@ import com.bytedance.danmaku.render.engine.DanmakuView
 import com.bytedance.danmaku.render.engine.control.DanmakuController
 import com.bytedance.danmaku.render.engine.data.DanmakuData
 import com.bytedance.danmaku.render.engine.render.draw.text.TextData
+import com.bytedance.danmaku.render.engine.touch.IItemClickListener
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_BOTTOM_CENTER
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_SCROLL
 import com.bytedance.danmaku.render.engine.utils.LAYER_TYPE_TOP_CENTER
@@ -97,6 +98,7 @@ class DanmakuManager private constructor(
     // 弹幕状态
     private var isPlaying = false
     private var isLoading = false
+    private var danmakuClickListener: ((String, Long, Long, Boolean) -> Unit)? = null
     
     // 缓存解析后的弹幕数据（横竖屏切换时复用）
     private var cachedDanmakuList: List<DanmakuData>? = null
@@ -566,6 +568,7 @@ class DanmakuManager private constructor(
         
         danmakuView = view
         controller = view.controller
+        applyDanmakuClickListener()
         
         Log.w(TAG, "📎 controller obtained: ${controller != null}")
         
@@ -1250,27 +1253,31 @@ class DanmakuManager private constructor(
      * @param listener 回调函数，参数为 (text, dmid, uid, isSelf)
      */
     fun setOnDanmakuClickListener(listener: (String, Long, Long, Boolean) -> Unit) {
+        danmakuClickListener = listener
+        applyDanmakuClickListener()
+    }
+
+    private fun applyDanmakuClickListener() {
+        val callback = danmakuClickListener ?: return
         controller?.let { ctrl ->
             try {
-                // 暂时使用模拟数据进行测试，因为实际的 API 尚不可用
-                // 实际集成时，需要使用 ctrl.setOnItemClickListener 
-                // 并从 onItemClick 回调中获取 DanmakuData
-                
-                // ctrl.setOnItemClickListener { danmaku ->
-                //     if (danmaku is DanmakuData) {
-                //          // 提取数据
-                //          val text = danmaku.text ?: ""
-                //          val dmid = 0L // 需要从 Tag 或其他字段获取
-                //          val uid = 0L
-                //          val isSelf = false
-                //          listener(text, dmid, uid, isSelf)
-                //          true // consumed
-                //     } else {
-                //          false
-                //     }
-                // }
-                
-                Log.d(TAG, "setOnDanmakuClickListener set (Stub implementation)")
+                ctrl.itemClickListener = object : IItemClickListener {
+                    override fun onDanmakuClick(
+                        danmaku: DanmakuData,
+                        rect: android.graphics.RectF,
+                        point: android.graphics.PointF
+                    ) {
+                        val textData = danmaku as? TextData
+                        val weighted = textData as? WeightedTextData
+                        val text = textData?.text.orEmpty()
+                        val dmid = weighted?.danmakuId ?: 0L
+                        val uid = weighted?.userHash?.toLongOrNull() ?: 0L
+                        val currentMid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
+                        val isSelf = uid != 0L && uid == currentMid
+                        callback(text, dmid, uid, isSelf)
+                    }
+                }
+                Log.d(TAG, "setOnDanmakuClickListener set (DanmakuRenderEngine)")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set listener", e)
             }
