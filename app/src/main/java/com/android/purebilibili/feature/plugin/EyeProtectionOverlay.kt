@@ -1,20 +1,29 @@
-// 文件路径: feature/plugin/EyeProtectionOverlay.kt
 package com.android.purebilibili.feature.plugin
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
-
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-//  Cupertino Icons - iOS SF Symbols 风格图标
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.*
-import io.github.alexzhirkevich.cupertino.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -24,82 +33,73 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.plugin.PluginManager
+import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
+import io.github.alexzhirkevich.cupertino.icons.filled.Moon
 
-/**
- *  护眼覆盖层
- * 
- * 功能：
- * 1. 在夜间护眼模式激活时，添加半透明暖色覆盖层
- * 2. 显示休息提醒对话框
- * 
- * 使用方式：在 MainActivity 的根 Composable 中添加此组件
- */
 @Composable
 fun EyeProtectionOverlay() {
-    // 获取插件实例
-    val plugin = remember { EyeProtectionPlugin.getInstance() }
-    
-    if (plugin == null) return
-    
-    // 监听插件状态
+    val plugins by PluginManager.pluginsFlow.collectAsState()
+    val pluginInfo = plugins.find { it.plugin.id == "eye_protection" } ?: return
+    val plugin = pluginInfo.plugin as? EyeProtectionPlugin ?: return
+    val pluginEnabled = pluginInfo.enabled
+    val settingsPreviewEnabled by plugin.settingsPreviewEnabled.collectAsState()
+    if (!pluginEnabled && !settingsPreviewEnabled) return
+
     val isNightModeActive by plugin.isNightModeActive.collectAsState()
     val brightnessLevel by plugin.brightnessLevel.collectAsState()
     val warmFilterStrength by plugin.warmFilterStrength.collectAsState()
-    val showRestReminder by plugin.showRestReminder.collectAsState()
-    
-    // 检查插件是否启用
-    val pluginEnabled by remember {
-        derivedStateOf {
-            PluginManager.plugins.find { it.plugin.id == "eye_protection" }?.enabled == true
-        }
-    }
-    
-    if (!pluginEnabled) return
-    
-    //  护眼滤镜覆盖层
+    val careReminder by plugin.careReminder.collectAsState()
+
+    val darknessAlpha by animateFloatAsState(
+        targetValue = (1f - brightnessLevel).coerceIn(0f, 0.7f),
+        label = "eye_darkness"
+    )
+    val warmTopAlpha by animateFloatAsState(
+        targetValue = warmFilterStrength * 0.3f,
+        label = "eye_warm_top"
+    )
+    val warmBottomAlpha by animateFloatAsState(
+        targetValue = warmFilterStrength * 0.2f,
+        label = "eye_warm_bottom"
+    )
+
     AnimatedVisibility(
-        visible = isNightModeActive,
+        visible = isNightModeActive || settingsPreviewEnabled,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // 第一层：亮度降低 + 暖色滤镜
-            //  关键修复：使用 Canvas 绘制，不消耗触摸事件
-            Canvas(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                //  亮度降低效果（黑色半透明覆盖）
-                drawRect(
-                    color = Color.Black.copy(alpha = (1f - brightnessLevel).coerceIn(0f, 0.7f))
-                )
-                //  暖色滤镜效果
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawRect(color = Color.Black.copy(alpha = darknessAlpha))
                 drawRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFFF9800).copy(alpha = warmFilterStrength * 0.3f),
-                            Color(0xFFFF5722).copy(alpha = warmFilterStrength * 0.2f)
+                            Color(0xFFFF9800).copy(alpha = warmTopAlpha),
+                            Color(0xFFFF5722).copy(alpha = warmBottomAlpha)
                         )
                     )
                 )
             }
         }
     }
-    
-    //  休息提醒对话框
-    if (showRestReminder) {
+
+    careReminder?.let { reminder ->
         RestReminderDialog(
-            onDismiss = { plugin.dismissRestReminder() },
-            onRest = { plugin.resetUsageTime() }
+            reminder = reminder,
+            snoozeMinutes = plugin.getSnoozeMinutes(),
+            onDismiss = { plugin.dismissReminder() },
+            onSnooze = { plugin.snoozeReminder() },
+            onRest = { plugin.confirmRest() }
         )
     }
 }
 
-/**
- * 休息提醒对话框
- */
 @Composable
 private fun RestReminderDialog(
+    reminder: EyeCareReminder,
+    snoozeMinutes: Int,
     onDismiss: () -> Unit,
+    onSnooze: () -> Unit,
     onRest: () -> Unit
 ) {
     AlertDialog(
@@ -118,7 +118,7 @@ private fun RestReminderDialog(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    CupertinoIcons.Default.Moon,
+                    CupertinoIcons.Filled.Moon,
                     contentDescription = null,
                     tint = Color(0xFF7E57C2),
                     modifier = Modifier.size(36.dp)
@@ -127,7 +127,7 @@ private fun RestReminderDialog(
         },
         title = {
             Text(
-                "休息一下吧 👀",
+                text = reminder.title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Center,
@@ -140,42 +140,55 @@ private fun RestReminderDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "你已经使用了一段时间了",
+                    text = "你已连续观看 ${reminder.usageMinutes} 分钟",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "起来活动活动，看看远方\n保护眼睛从现在开始 💪",
+                    text = reminder.message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = reminder.suggestion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = onRest,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7E57C2)
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E57C2)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("我去休息一下", fontWeight = FontWeight.Medium)
+                Text("我去休息 20 秒", fontWeight = FontWeight.Medium)
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "稍后提醒",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                TextButton(
+                    onClick = onSnooze,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("${snoozeMinutes} 分钟后提醒")
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "先继续观看",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     )

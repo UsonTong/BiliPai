@@ -14,6 +14,7 @@ import com.android.purebilibili.core.cache.PlayUrlCache
 import com.android.purebilibili.core.cooldown.PlaybackCooldownManager
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.SkipAction
+import com.android.purebilibili.core.store.TodayWatchProfileStore
 import com.android.purebilibili.core.util.AnalyticsHelper
 import com.android.purebilibili.core.util.CrashReporter
 import com.android.purebilibili.core.util.Logger
@@ -90,7 +91,8 @@ sealed class PlayerUiState {
         val bgmInfo: BgmInfo? = null,
         // [New] AI Audio Translation
         val aiAudio: AiAudioInfo? = null,
-        val currentAudioLang: String? = null
+        val currentAudioLang: String? = null,
+        val videoDurationMs: Long = 0L
     ) : PlayerUiState() {
         val cdnCount: Int get() = allVideoUrls.size.coerceAtLeast(1)
         val currentCdnLabel: String get() = "线路${currentCdnIndex + 1}"
@@ -240,6 +242,7 @@ class PlayerViewModel : ViewModel() {
     private var appContext: android.content.Context? = null  //  [新增] 保存 Context 用于网络检测
     private var hasUserStartedPlayback = false  // 🛡️ [修复] 用户是否主动开始播放（用于区分“加载已看完视频”和“自然播放结束”）
     private val followStatusCheckInFlight = mutableSetOf<Long>()
+    private var lastCreatorSignalPositionSec: Long = -1L
     
     //  Public Player Accessor
     val currentPlayer: Player?
@@ -654,13 +657,17 @@ class PlayerViewModel : ViewModel() {
             Logger.d("PlayerVM", "🎯 $bvid already playing but UI missing (New VM). Fetching info, skipping player prepare.")
         }
         
-        if (currentBvid.isNotEmpty() && currentBvid != bvid) saveCurrentPosition()
+        if (currentBvid.isNotEmpty() && currentBvid != bvid) {
+            recordCreatorWatchProgressSnapshot()
+            saveCurrentPosition()
+        }
         
         // 🛡️ [修复] 加载新视频时重置标志
         hasUserStartedPlayback = false
         
         val cachedPosition = playbackUseCase.getCachedPosition(bvid)
         currentBvid = bvid
+        lastCreatorSignalPositionSec = cachedPosition / 1000L
         
         viewModelScope.launch {
             _uiState.value = PlayerUiState.Loading.Initial
@@ -796,7 +803,8 @@ class PlayerViewModel : ViewModel() {
                             audioCodecId = result.audioCodecId,
                             // [New] AI Audio
                             aiAudio = result.aiAudio,
-                            currentAudioLang = result.curAudioLang
+                            currentAudioLang = result.curAudioLang,
+                            videoDurationMs = result.duration
                         )
                         
                         //  [新增] 异步加载关注列表（用于推荐视频的已关注标签）
@@ -2136,7 +2144,13 @@ class PlayerViewModel : ViewModel() {
                     cachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
                 )
                 val label = current.qualityLabels.getOrNull(current.qualityIds.indexOf(result.actualQuality)) ?: "${result.actualQuality}"
-                toast(if (result.wasFallback) " 已切换至 $label" else "✓ 已切换至 $label")
+                toast(
+                    if (result.wasFallback) {
+                        "目标清晰度不可用，已切换至 $label"
+                    } else {
+                        "✓ 已切换至 $label"
+                    }
+                )
                 //  记录画质切换事件
                 AnalyticsHelper.logQualityChange(currentBvid, current.currentQuality, result.actualQuality)
             } else {
@@ -2274,17 +2288,47 @@ class PlayerViewModel : ViewModel() {
             while (true) {
                 delay(30_000)
                 if (exoPlayer?.isPlaying == true && currentBvid.isNotEmpty() && currentCid > 0) {
-                    try { VideoRepository.reportPlayHeartbeat(currentBvid, currentCid, playbackUseCase.getCurrentPosition() / 1000) }
+                    try {
+                        VideoRepository.reportPlayHeartbeat(currentBvid, currentCid, playbackUseCase.getCurrentPosition() / 1000)
+                        recordCreatorWatchProgressSnapshot()
+                    }
                     catch (_: Exception) {}
                 }
             }
         }
+    }
+
+    private fun recordCreatorWatchProgressSnapshot() {
+        val context = appContext ?: return
+        val current = _uiState.value as? PlayerUiState.Success ?: return
+        val mid = current.info.owner.mid
+        if (mid <= 0L) return
+
+        val currentPositionSec = playbackUseCase.getCurrentPosition() / 1000L
+        if (currentPositionSec <= 0L) return
+
+        val rawDelta = if (lastCreatorSignalPositionSec < 0L) {
+            currentPositionSec
+        } else {
+            currentPositionSec - lastCreatorSignalPositionSec
+        }
+        val safeDelta = rawDelta.coerceIn(0L, 45L)
+        lastCreatorSignalPositionSec = currentPositionSec
+        if (safeDelta <= 0L) return
+
+        TodayWatchProfileStore.recordWatchProgress(
+            context = context,
+            mid = mid,
+            creatorName = current.info.owner.name,
+            deltaWatchSec = safeDelta
+        )
     }
     
     fun toast(msg: String) { viewModelScope.launch { _toastEvent.send(msg) } }
     
     override fun onCleared() {
         super.onCleared()
+        recordCreatorWatchProgressSnapshot()
         heartbeatJob?.cancel()
         pluginCheckJob?.cancel()
         onlineCountJob?.cancel()  // 👀 取消在线人数轮询

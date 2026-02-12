@@ -50,6 +50,39 @@ enum class LiveSubCategory(val label: String) {
     POPULAR("热门")
 }
 
+enum class TodayWatchMode(val label: String) {
+    RELAX("今晚轻松看"),
+    LEARN("深度学习看")
+}
+
+@Immutable
+data class TodayUpRank(
+    val mid: Long,
+    val name: String,
+    val score: Double,
+    val watchCount: Int
+)
+
+@Immutable
+data class TodayWatchPlan(
+    val mode: TodayWatchMode = TodayWatchMode.RELAX,
+    val upRanks: List<TodayUpRank> = emptyList(),
+    val videoQueue: List<VideoItem> = emptyList(),
+    val explanationByBvid: Map<String, String> = emptyMap(),
+    val historySampleCount: Int = 0,
+    val nightSignalUsed: Boolean = false,
+    val generatedAt: Long = 0L
+)
+
+@Immutable
+data class TodayWatchCardUiConfig(
+    val showUpRank: Boolean = true,
+    val showReasonHint: Boolean = true,
+    val queuePreviewLimit: Int = 6,
+    val enableWaterfallAnimation: Boolean = true,
+    val waterfallExponent: Float = 1.38f
+)
+
 /**
  * 单个分类的内容状态 (新增)
  */
@@ -101,5 +134,12 @@ data class HomeUiState(
     //  [新增] 推荐流中“旧内容起始”索引（用于插入分割线）
     val recommendOldContentStartIndex: Int? = null,
     //  [新增] 正在消散动画中的视频 BVIDs（动画完成后移除）
-    val dissolvingVideos: Set<String> = emptySet()
+    val dissolvingVideos: Set<String> = emptySet(),
+    //  [新增] 今日看什么推荐单
+    val todayWatchMode: TodayWatchMode = TodayWatchMode.RELAX,
+    val todayWatchPlan: TodayWatchPlan? = null,
+    val todayWatchLoading: Boolean = false,
+    val todayWatchError: String? = null,
+    val todayWatchPluginEnabled: Boolean = false,
+    val todayWatchCardConfig: TodayWatchCardUiConfig = TodayWatchCardUiConfig()
 )

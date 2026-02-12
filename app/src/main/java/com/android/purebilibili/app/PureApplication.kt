@@ -27,6 +27,7 @@ import com.android.purebilibili.feature.plugin.AdFilterPlugin
 import com.android.purebilibili.feature.plugin.DanmakuEnhancePlugin
 import com.android.purebilibili.feature.plugin.EyeProtectionPlugin
 import com.android.purebilibili.feature.plugin.SponsorBlockPlugin
+import com.android.purebilibili.feature.plugin.TodayWatchPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -125,7 +126,8 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
             PluginManager.register(AdFilterPlugin())
             PluginManager.register(DanmakuEnhancePlugin())
             PluginManager.register(EyeProtectionPlugin())
-            Logger.d(TAG, " Plugin system initialized with 4 built-in plugins")
+            PluginManager.register(TodayWatchPlugin())
+            Logger.d(TAG, " Plugin system initialized with 5 built-in plugins")
 
             // [Moved] JSON 规则插件系统初始化
             com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)

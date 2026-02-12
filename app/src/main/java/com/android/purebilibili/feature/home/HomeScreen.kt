@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.home
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.SystemClock
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -267,7 +268,7 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(state.refreshNewItemsKey, state.refreshNewItemsHandledKey) {
+    LaunchedEffect(state.refreshNewItemsKey) {
         val refreshKey = state.refreshNewItemsKey
         if (!shouldHandleRefreshNewItemsEvent(refreshKey, state.refreshNewItemsHandledKey)) {
             return@LaunchedEffect
@@ -280,9 +281,9 @@ fun HomeScreen(
         refreshDeltaTipText = if (count > 0) "新增 $count 条内容" else "暂无新内容"
         // 分割线需等待用户发生下滑后再展示
         if (count > 0) dividerRevealRefreshKey = 0L
-        viewModel.markRefreshNewItemsHandled(refreshKey)
         delay(2200)
         refreshDeltaTipText = null
+        viewModel.markRefreshNewItemsHandled(refreshKey)
     }
 
     // 仅在推荐页检测“刷新后是否已下滑”，用于激活旧内容分割线
@@ -473,6 +474,8 @@ fun HomeScreen(
     //  [修复] 动态计算内容顶部边距，防止被头部遮挡
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val listTopPadding = statusBarHeight + 120.dp  // [调整] 优化顶部间距 (110 -> 120) 增加呼吸感
+    val homeStartupElapsedAt = remember { SystemClock.elapsedRealtime() }
+    var todayWatchStartupRevealHandled by rememberSaveable { mutableStateOf(false) }
 
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     
@@ -712,6 +715,41 @@ fun HomeScreen(
         }
     }
 
+    // [TodayWatch首曝] 冷启动启动窗口内自动回顶一次，确保用户能看到今日推荐单卡片。
+    LaunchedEffect(
+        state.todayWatchPluginEnabled,
+        state.todayWatchPlan?.generatedAt,
+        state.currentCategory
+    ) {
+        if (todayWatchStartupRevealHandled) return@LaunchedEffect
+
+        val recommendGridState = gridStates[HomeCategory.RECOMMEND] ?: return@LaunchedEffect
+        val decision = decideTodayWatchStartupReveal(
+            startupElapsedMs = SystemClock.elapsedRealtime() - homeStartupElapsedAt,
+            isPluginEnabled = state.todayWatchPluginEnabled,
+            currentCategory = state.currentCategory,
+            hasTodayPlan = state.todayWatchPlan != null,
+            firstVisibleItemIndex = recommendGridState.firstVisibleItemIndex,
+            firstVisibleItemOffset = recommendGridState.firstVisibleItemScrollOffset
+        )
+
+        when (decision) {
+            TodayWatchStartupRevealDecision.REVEAL -> {
+                headerOffsetHeightPx = 0f
+                if (recommendGridState.firstVisibleItemIndex > 12) {
+                    recommendGridState.scrollToItem(12)
+                }
+                recommendGridState.animateScrollToItem(0)
+                headerOffsetHeightPx = 0f
+                todayWatchStartupRevealHandled = true
+            }
+            TodayWatchStartupRevealDecision.SKIP -> {
+                todayWatchStartupRevealHandled = true
+            }
+            TodayWatchStartupRevealDecision.WAIT -> Unit
+        }
+    }
+
     //  Scaffold 内容封装 (用于 Panel 左右布局复用)
     val scaffoldLayout: @Composable () -> Unit = {
         Scaffold(
@@ -847,6 +885,7 @@ fun HomeScreen(
                                  val onDissolveCompleteCallback = remember(viewModel) { { bvid: String -> viewModel.completeVideoDissolve(bvid) } }
                                  val onLongPressCallback = remember(targetVideoItemState) { { item: VideoItem -> targetVideoItemState.value = item } }
                                  val onLiveClickCallback = remember(onLiveClick) { onLiveClick }
+                                 val onTodayWatchModeChange = remember(viewModel) { { mode: TodayWatchMode -> viewModel.switchTodayWatchMode(mode) } }
 
                                  HomeCategoryPageContent(
                                      category = category,
@@ -885,7 +924,14 @@ fun HomeScreen(
                                          }
                                      } else {
                                          null
-                                     }
+                                     },
+                                     todayWatchEnabled = category == HomeCategory.RECOMMEND && state.todayWatchPluginEnabled,
+                                     todayWatchMode = state.todayWatchMode,
+                                     todayWatchPlan = if (category == HomeCategory.RECOMMEND) state.todayWatchPlan else null,
+                                     todayWatchLoading = category == HomeCategory.RECOMMEND && state.todayWatchLoading,
+                                     todayWatchError = if (category == HomeCategory.RECOMMEND) state.todayWatchError else null,
+                                     todayWatchCardConfig = state.todayWatchCardConfig,
+                                     onTodayWatchModeChange = onTodayWatchModeChange
                                  )
                              }
                              } // Close Box wrapper

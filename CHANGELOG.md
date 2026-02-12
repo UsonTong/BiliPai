@@ -2,10 +2,53 @@
 
 ## [5.2.3] - 2026-02-12
 
+### ✨ New Features (新增功能)
+
+- **Today Watch Plugin (今日推荐单插件)**: Added a new built-in plugin that locally analyzes watch history and builds a daily recommendation queue with two modes:
+  - `今晚轻松看`
+  - `深度学习看`
+- **Today Watch Card UI**: Added a dedicated recommendation card in Home/Recommend with:
+  - mode switch chips
+  - UP 主榜
+  - recommended video queue (with UP avatar/name)
+  - per-item explanation tags
+- **Local Personalization Stores**:
+  - added creator-profile persistence store (`TodayWatchProfileStore`)
+  - added negative-feedback persistence store (`TodayWatchFeedbackStore`)
+- **Eye Protection 2.0**: Rebuilt eye-care plugin with:
+  - three presets (`轻柔 / 平衡 / 专注`) plus DIY tuning
+  - real-time settings preview
+  - reminder cadence + snooze options
+  - richer humanized reminder copy
+
 ### 🛠 Improvements & Fixes (优化与修复)
 
+- **Cold Start Discoverability**: Fixed issue where Today Watch card was loaded but often out of viewport on cold start; now applies one-shot startup reveal strategy during startup window.
+- **Refresh Toast Lifecycle Fix**: Fixed issue where “新增 X 条内容” hint could remain on screen and not auto-dismiss reliably.
+- **Recommendation Signal Upgrade**:
+  - fused history completion + recency + creator affinity
+  - linked eye-care night signal (shorter, lower-stimulation preference at night)
+  - integrated dislike penalties (video / creator / keyword)
+  - diversified queue ordering to avoid consecutive same-creator streaks
+- **Playback Quality Switching Reliability**:
+  - quality options now prioritize actual DASH switchable tracks
+  - cache switching now requires exact quality match; falls back to API fetch when missing
+  - improved quality-switch toast wording for clearer fallback explanation
+- **History Model Enrichment**: Added `author_mid` mapping in history response conversion so creator affinity can be computed accurately.
+- **Plugin Registry Update**: Built-in plugin count updated from 4 to 5 by registering Today Watch plugin in app startup.
 - **App Icon Switching Fix**: Resolved icon switching errors caused by mismatched Telegram activity-alias names during app startup icon-state sync (`icon_telegram_pink`, `icon_telegram_purple`, `icon_telegram_dark`).
-- **Icon State Sync Stability**: Startup icon synchronization now correctly maps all Telegram icon keys to manifest-declared aliases, avoiding component lookup failures and failed sync logs.
+
+### ✅ Tests (测试)
+
+- Added and verified unit tests:
+  - `TodayWatchPolicyTest`
+  - `TodayWatchMotionPolicyTest`
+  - `TodayWatchStartupRevealPolicyTest`
+  - `EyeProtectionPolicyTest`
+  - `VideoPlaybackUseCaseQualitySwitchTest`
+
+### 📦 Release
+
 - **Version Bump**: Updated app version to `5.2.3`.
 
 ## [5.2.2] - 2026-02-11

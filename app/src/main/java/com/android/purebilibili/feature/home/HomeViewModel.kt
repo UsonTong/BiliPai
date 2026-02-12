@@ -6,13 +6,21 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.TodayWatchFeedbackStore
+import com.android.purebilibili.core.store.TodayWatchProfileStore
 import com.android.purebilibili.core.util.appendDistinctByKey
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.core.util.prependDistinctByKey
 import com.android.purebilibili.data.model.response.VideoItem
+import com.android.purebilibili.data.repository.HistoryRepository
 import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.data.repository.LiveRepository
+import com.android.purebilibili.feature.plugin.EyeProtectionPlugin
+import com.android.purebilibili.feature.plugin.TodayWatchPlugin
+import com.android.purebilibili.feature.plugin.TodayWatchPluginConfig
+import com.android.purebilibili.feature.plugin.TodayWatchPluginMode
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -24,6 +32,36 @@ internal fun trimIncrementalRefreshVideosToEvenCount(videos: List<VideoItem>): L
     if (size <= 1 || size % 2 == 0) return videos
     return videos.dropLast(1)
 }
+
+private const val HISTORY_SAMPLE_CACHE_TTL_MS = 10 * 60 * 1000L
+
+private fun TodayWatchPluginMode.toUiMode(): TodayWatchMode {
+    return when (this) {
+        TodayWatchPluginMode.RELAX -> TodayWatchMode.RELAX
+        TodayWatchPluginMode.LEARN -> TodayWatchMode.LEARN
+    }
+}
+
+private fun TodayWatchMode.toPluginMode(): TodayWatchPluginMode {
+    return when (this) {
+        TodayWatchMode.RELAX -> TodayWatchPluginMode.RELAX
+        TodayWatchMode.LEARN -> TodayWatchPluginMode.LEARN
+    }
+}
+
+private data class TodayWatchRuntimeConfig(
+    val enabled: Boolean,
+    val mode: TodayWatchMode,
+    val upRankLimit: Int,
+    val queueBuildLimit: Int,
+    val queuePreviewLimit: Int,
+    val historySampleLimit: Int,
+    val linkEyeCareSignal: Boolean,
+    val showUpRank: Boolean,
+    val showReasonHint: Boolean,
+    val enableWaterfallAnimation: Boolean,
+    val waterfallExponent: Float
+)
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(
@@ -50,6 +88,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // [Feature] Blocked UPs
     private val blockedUpRepository = com.android.purebilibili.data.repository.BlockedUpRepository(application)
     private var blockedMids: Set<Long> = emptySet()
+    private var historySampleCache: List<VideoItem> = emptyList()
+    private var historySampleLoadedAtMs: Long = 0L
+    private val todayDislikedBvids = mutableSetOf<String>()
+    private val todayDislikedCreatorMids = mutableSetOf<Long>()
+    private val todayDislikedKeywords = linkedSetOf<String>()
+    private var todayWatchPluginObserverJob: Job? = null
+    private var observedTodayWatchPlugin: TodayWatchPlugin? = null
 
     init {
         viewModelScope.launch {
@@ -62,6 +107,32 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             blockedUpRepository.getAllBlockedUps().collect { list ->
                 blockedMids = list.map { it.mid }.toSet()
                 reFilterAllContent()
+            }
+        }
+        syncTodayWatchFeedbackFromStore()
+        viewModelScope.launch {
+            PluginManager.pluginsFlow.collect { plugins ->
+                val plugin = plugins.find { it.plugin.id == TodayWatchPlugin.PLUGIN_ID }?.plugin as? TodayWatchPlugin
+                if (plugin !== observedTodayWatchPlugin) {
+                    todayWatchPluginObserverJob?.cancel()
+                    observedTodayWatchPlugin = plugin
+                    if (plugin != null) {
+                        todayWatchPluginObserverJob = viewModelScope.launch {
+                            plugin.configState.collect {
+                                val runtime = syncTodayWatchPluginState(clearWhenDisabled = true)
+                                if (runtime.enabled && _uiState.value.currentCategory == HomeCategory.RECOMMEND) {
+                                    rebuildTodayWatchPlan()
+                                }
+                            }
+                        }
+                    } else {
+                        todayWatchPluginObserverJob = null
+                    }
+                }
+                val runtime = syncTodayWatchPluginState(clearWhenDisabled = true)
+                if (runtime.enabled && _uiState.value.currentCategory == HomeCategory.RECOMMEND) {
+                    rebuildTodayWatchPlan()
+                }
             }
         }
         loadData()
@@ -92,6 +163,183 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         
         _uiState.value = newState
+        viewModelScope.launch {
+            rebuildTodayWatchPlan()
+        }
+    }
+
+    private fun resolveTodayWatchRuntimeConfig(
+        pluginEnabled: Boolean,
+        config: TodayWatchPluginConfig
+    ): TodayWatchRuntimeConfig {
+        return TodayWatchRuntimeConfig(
+            enabled = pluginEnabled,
+            mode = config.currentMode.toUiMode(),
+            upRankLimit = config.upRankLimit,
+            queueBuildLimit = config.queueBuildLimit,
+            queuePreviewLimit = config.queuePreviewLimit,
+            historySampleLimit = config.historySampleLimit,
+            linkEyeCareSignal = config.linkEyeCareSignal,
+            showUpRank = config.showUpRank,
+            showReasonHint = config.showReasonHint,
+            enableWaterfallAnimation = config.enableWaterfallAnimation,
+            waterfallExponent = config.waterfallExponent
+        )
+    }
+
+    private fun syncTodayWatchPluginState(clearWhenDisabled: Boolean): TodayWatchRuntimeConfig {
+        val info = PluginManager.plugins.find { it.plugin.id == TodayWatchPlugin.PLUGIN_ID }
+        val pluginEnabled = info?.enabled == true
+        val plugin = info?.plugin as? TodayWatchPlugin
+        val config = plugin?.configState?.value ?: TodayWatchPluginConfig()
+        val runtime = resolveTodayWatchRuntimeConfig(pluginEnabled = pluginEnabled, config = config)
+
+        val currentState = _uiState.value
+        var nextState = currentState.copy(
+            todayWatchPluginEnabled = runtime.enabled,
+            todayWatchMode = runtime.mode,
+            todayWatchCardConfig = TodayWatchCardUiConfig(
+                showUpRank = runtime.showUpRank,
+                showReasonHint = runtime.showReasonHint,
+                queuePreviewLimit = runtime.queuePreviewLimit,
+                enableWaterfallAnimation = runtime.enableWaterfallAnimation,
+                waterfallExponent = runtime.waterfallExponent
+            )
+        )
+
+        if (!runtime.enabled && clearWhenDisabled) {
+            nextState = nextState.copy(
+                todayWatchPlan = null,
+                todayWatchLoading = false,
+                todayWatchError = null
+            )
+        }
+        if (nextState != currentState) {
+            _uiState.value = nextState
+        }
+        return runtime
+    }
+
+    fun switchTodayWatchMode(mode: TodayWatchMode) {
+        val info = PluginManager.plugins.find { it.plugin.id == TodayWatchPlugin.PLUGIN_ID }
+        if (info?.enabled != true) return
+
+        val plugin = info.plugin as? TodayWatchPlugin
+        plugin?.setCurrentMode(mode.toPluginMode())
+        _uiState.value = _uiState.value.copy(todayWatchMode = mode)
+        viewModelScope.launch {
+            rebuildTodayWatchPlan()
+        }
+    }
+
+    private suspend fun rebuildTodayWatchPlan(forceReloadHistory: Boolean = false) {
+        val runtime = syncTodayWatchPluginState(clearWhenDisabled = true)
+        if (!runtime.enabled) {
+            return
+        }
+        syncTodayWatchFeedbackFromStore()
+
+        val recommendVideos = getRecommendCandidates()
+        if (recommendVideos.isEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                todayWatchPlan = null,
+                todayWatchLoading = false,
+                todayWatchError = null
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(todayWatchLoading = true, todayWatchError = null)
+
+        val historySample = loadHistorySample(
+            forceReload = forceReloadHistory,
+            sampleLimit = runtime.historySampleLimit
+        )
+        val creatorSignals = TodayWatchProfileStore.getCreatorSignals(
+            context = getApplication(),
+            limit = runtime.historySampleLimit / 4
+        ).map {
+            TodayWatchCreatorSignal(
+                mid = it.mid,
+                name = it.name,
+                score = it.score,
+                watchCount = it.watchCount
+            )
+        }
+        val eyeCareNightActive = runtime.linkEyeCareSignal &&
+            EyeProtectionPlugin.getInstance()?.isNightModeActive?.value == true
+
+        val plan = buildTodayWatchPlan(
+            historyVideos = historySample,
+            candidateVideos = recommendVideos,
+            mode = runtime.mode,
+            eyeCareNightActive = eyeCareNightActive,
+            upRankLimit = runtime.upRankLimit,
+            queueLimit = runtime.queueBuildLimit,
+            creatorSignals = creatorSignals,
+            penaltySignals = TodayWatchPenaltySignals(
+                dislikedBvids = todayDislikedBvids.toSet(),
+                dislikedCreatorMids = todayDislikedCreatorMids.toSet(),
+                dislikedKeywords = todayDislikedKeywords.toSet()
+            )
+        )
+
+        _uiState.value = _uiState.value.copy(
+            todayWatchPlan = plan,
+            todayWatchMode = runtime.mode,
+            todayWatchLoading = false,
+            todayWatchError = null
+        )
+    }
+
+    private suspend fun loadHistorySample(forceReload: Boolean, sampleLimit: Int): List<VideoItem> {
+        val now = System.currentTimeMillis()
+        if (!forceReload &&
+            historySampleCache.isNotEmpty() &&
+            now - historySampleLoadedAtMs < HISTORY_SAMPLE_CACHE_TTL_MS
+        ) {
+            return historySampleCache.take(sampleLimit.coerceIn(20, 120))
+        }
+
+        val firstPage = HistoryRepository.getHistoryList(ps = 50, max = 0, viewAt = 0).getOrNull()
+        if (firstPage == null) {
+            _uiState.value = _uiState.value.copy(
+                todayWatchLoading = false,
+                todayWatchError = "历史记录不可用，已按当前推荐生成"
+            )
+            return emptyList()
+        }
+
+        val merged = firstPage.list.map { it.toVideoItem() }.toMutableList()
+        val cursor = firstPage.cursor
+        if (cursor != null && cursor.max > 0 && merged.size < 80) {
+            val secondPage = HistoryRepository.getHistoryList(
+                ps = 50,
+                max = cursor.max,
+                viewAt = cursor.view_at
+            ).getOrNull()
+            if (secondPage != null) {
+                merged += secondPage.list.map { it.toVideoItem() }
+            }
+        }
+
+        historySampleCache = merged
+            .filter { it.bvid.isNotBlank() }
+            .distinctBy { it.bvid }
+        historySampleLoadedAtMs = now
+        return historySampleCache.take(sampleLimit.coerceIn(20, 120))
+    }
+
+    private fun getRecommendCandidates(): List<VideoItem> {
+        val state = _uiState.value
+        val recommendVideos = state.categoryStates[HomeCategory.RECOMMEND]?.videos.orEmpty()
+        return if (recommendVideos.isNotEmpty()) {
+            recommendVideos
+        } else if (state.currentCategory == HomeCategory.RECOMMEND) {
+            state.videos
+        } else {
+            emptyList()
+        }
     }
 
     //  [新增] 切换分类
@@ -129,6 +377,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             // 如果目标分类没有数据，则加载
             if (needFetch) {
                  fetchData(isLoadMore = false)
+            } else if (category == HomeCategory.RECOMMEND) {
+                rebuildTodayWatchPlan()
             }
         }
     }
@@ -162,6 +412,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         
         // Also update the global dissolving set in UI state
         _uiState.value = _uiState.value.copy(dissolvingVideos = newDissolving)
+        if (currentCategory == HomeCategory.RECOMMEND) {
+            viewModelScope.launch {
+                rebuildTodayWatchPlan()
+            }
+        }
     }
     
     
@@ -196,11 +451,76 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // [New] Mark as Not Interested (Dislike)
     fun markNotInterested(bvid: String) {
         viewModelScope.launch {
+            val currentCategory = _uiState.value.currentCategory
+            val categoryVideos = _uiState.value.categoryStates[currentCategory]?.videos.orEmpty()
+            categoryVideos.firstOrNull { it.bvid == bvid }?.let { video ->
+                recordTodayWatchNegativeFeedback(video)
+            }
             // Optimistically remove from UI
             completeVideoDissolve(bvid) 
             // TODO: Call API to persist dislike
              com.android.purebilibili.core.util.Logger.d("HomeVM", "Marked as not interested: $bvid")
         }
+    }
+
+    private fun recordTodayWatchNegativeFeedback(video: VideoItem) {
+        if (video.bvid.isNotBlank()) {
+            todayDislikedBvids += video.bvid
+        }
+        if (video.owner.mid > 0L) {
+            todayDislikedCreatorMids += video.owner.mid
+        }
+        val keywords = extractFeedbackKeywords(video.title)
+        keywords.forEach { keyword ->
+            if (todayDislikedKeywords.size >= 40) {
+                val oldest = todayDislikedKeywords.firstOrNull()
+                if (oldest != null) todayDislikedKeywords.remove(oldest)
+            }
+            todayDislikedKeywords += keyword
+        }
+        persistTodayWatchFeedback()
+    }
+
+    private fun extractFeedbackKeywords(title: String): Set<String> {
+        if (title.isBlank()) return emptySet()
+        val normalized = title.lowercase()
+        val stopWords = setOf("视频", "合集", "最新", "一个", "我们", "你们", "今天", "真的", "这个")
+
+        val zhTokens = Regex("[\\u4e00-\\u9fa5]{2,6}")
+            .findAll(normalized)
+            .map { it.value }
+            .filter { it !in stopWords }
+            .take(6)
+            .toList()
+
+        val enTokens = Regex("[a-z0-9]{3,}")
+            .findAll(normalized)
+            .map { it.value }
+            .take(4)
+            .toList()
+
+        return (zhTokens + enTokens).toSet()
+    }
+
+    private fun syncTodayWatchFeedbackFromStore() {
+        val snapshot = TodayWatchFeedbackStore.getSnapshot(getApplication())
+        todayDislikedBvids.clear()
+        todayDislikedBvids.addAll(snapshot.dislikedBvids)
+        todayDislikedCreatorMids.clear()
+        todayDislikedCreatorMids.addAll(snapshot.dislikedCreatorMids)
+        todayDislikedKeywords.clear()
+        todayDislikedKeywords.addAll(snapshot.dislikedKeywords)
+    }
+
+    private fun persistTodayWatchFeedback() {
+        TodayWatchFeedbackStore.saveSnapshot(
+            context = getApplication(),
+            snapshot = com.android.purebilibili.core.store.TodayWatchFeedbackSnapshot(
+                dislikedBvids = todayDislikedBvids.toSet(),
+                dislikedCreatorMids = todayDislikedCreatorMids.toSet(),
+                dislikedKeywords = todayDislikedKeywords.toSet()
+            )
+        )
     }
 
     private fun loadData() {
@@ -390,12 +710,26 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                      )
                  }
             }
+            if (currentCategory == HomeCategory.RECOMMEND) {
+                viewModelScope.launch {
+                    rebuildTodayWatchPlan(forceReloadHistory = !isLoadMore && isManualRefresh)
+                }
+            }
         }.onFailure { error ->
             updateCategoryState(currentCategory) { oldState ->
                 oldState.copy(
                     isLoading = false,
                     error = if (!isLoadMore && oldState.videos.isEmpty()) error.message ?: "网络错误" else null
                 )
+            }
+            if (currentCategory == HomeCategory.RECOMMEND) {
+                val runtime = syncTodayWatchPluginState(clearWhenDisabled = true)
+                if (runtime.enabled) {
+                    _uiState.value = _uiState.value.copy(
+                        todayWatchLoading = false,
+                        todayWatchError = error.message ?: "今日推荐单生成失败"
+                    )
+                }
             }
         }
         return refreshNewItemsCount

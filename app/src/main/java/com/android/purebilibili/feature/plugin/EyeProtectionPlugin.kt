@@ -1,30 +1,54 @@
-// 文件路径: feature/plugin/EyeProtectionPlugin.kt
 package com.android.purebilibili.feature.plugin
 
-import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-//  Cupertino Icons - iOS SF Symbols 风格图标
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.*
-import io.github.alexzhirkevich.cupertino.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.plugin.Plugin
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
+import com.android.purebilibili.core.ui.components.IOSSwitchItem
 import com.android.purebilibili.core.util.Logger
-import com.android.purebilibili.core.ui.components.*
-import io.github.alexzhirkevich.cupertino.CupertinoSwitch
+import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
+import io.github.alexzhirkevich.cupertino.icons.filled.Moon
+import io.github.alexzhirkevich.cupertino.icons.filled.SunMax
+import io.github.alexzhirkevich.cupertino.icons.outlined.Clock
+import io.github.alexzhirkevich.cupertino.icons.outlined.Heart
+import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
+import io.github.alexzhirkevich.cupertino.icons.outlined.Moon
+import io.github.alexzhirkevich.cupertino.icons.outlined.Sparkles
+import io.github.alexzhirkevich.cupertino.icons.outlined.SunMax
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,179 +57,246 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.util.Calendar
 
 private const val TAG = "EyeProtectionPlugin"
 
-/**
- *  夜间护眼提示插件
- * 
- * 功能：
- * 1. 自定义夜间护眼时间段（如 22:00 - 07:00）
- * 2. 使用时长提醒（如每 30 分钟提醒休息）
- * 3. 自动降低亮度（添加半透明覆盖层）
- * 4. 暖色滤镜（减少蓝光）
- */
+@Serializable
+enum class EyeCarePreset {
+    GENTLE,
+    BALANCED,
+    FOCUS,
+    CUSTOM
+}
+
+@Serializable
+data class EyeCareProfile(
+    val brightnessLevel: Float,
+    val warmFilterStrength: Float,
+    val reminderIntervalMinutes: Int,
+    val snoozeMinutes: Int
+)
+
+@Serializable
+data class EyeCareReminder(
+    val usageMinutes: Int,
+    val title: String,
+    val message: String,
+    val suggestion: String
+)
+
+@Serializable
+data class EyeProtectionConfig(
+    // 定时护眼模式
+    val nightModeEnabled: Boolean = true,
+    val nightModeStartHour: Int = 22,
+    val nightModeEndHour: Int = 7,
+
+    // 使用时长提醒
+    val usageReminderEnabled: Boolean = true,
+    val usageDurationMinutes: Int = 30,
+    val reminderSnoozeMinutes: Int = 10,
+    val remindOnlyDuringNight: Boolean = true,
+
+    // 显示调节
+    val brightnessLevel: Float = 0.78f,
+    val warmFilterStrength: Float = 0.22f,
+
+    // 当前选中的模式（可 DIY）
+    val carePreset: EyeCarePreset = EyeCarePreset.BALANCED,
+    val profileGentle: EyeCareProfile = EyeCareProfile(
+        brightnessLevel = 0.88f,
+        warmFilterStrength = 0.12f,
+        reminderIntervalMinutes = 45,
+        snoozeMinutes = 10
+    ),
+    val profileBalanced: EyeCareProfile = EyeCareProfile(
+        brightnessLevel = 0.78f,
+        warmFilterStrength = 0.22f,
+        reminderIntervalMinutes = 30,
+        snoozeMinutes = 10
+    ),
+    val profileFocus: EyeCareProfile = EyeCareProfile(
+        brightnessLevel = 0.65f,
+        warmFilterStrength = 0.32f,
+        reminderIntervalMinutes = 25,
+        snoozeMinutes = 5
+    ),
+
+    // 手动强制开启
+    val forceEnabled: Boolean = false
+)
+
 class EyeProtectionPlugin : Plugin {
-    
+
     override val id = "eye_protection"
     override val name = "夜间护眼"
-    override val description = "护眼提醒、自动降低亮度和蓝光过滤"
-    override val version = "1.0.0"
+    override val description = "夜间护眼、休息提醒与温和关怀"
+    override val version = "2.0.0"
     override val author = "YangY"
     override val icon: ImageVector = CupertinoIcons.Default.Moon
-    
+
     private var config: EyeProtectionConfig = EyeProtectionConfig()
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val workerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var usageTrackingJob: Job? = null
-    
+
     // 使用时长（分钟）
     private var usageMinutes = 0
-    
-    //  状态流 - 供 UI 层监听
-    private val _showRestReminder = MutableStateFlow(false)
-    val showRestReminder: StateFlow<Boolean> = _showRestReminder.asStateFlow()
-    
+    private var snoozeUntilMinute: Int? = null
+    private var lastReminderMinute: Int? = null
+
     private val _isNightModeActive = MutableStateFlow(false)
     val isNightModeActive: StateFlow<Boolean> = _isNightModeActive.asStateFlow()
-    
-    //  护眼效果参数（供 Overlay 使用）
+
     private val _brightnessLevel = MutableStateFlow(1.0f)
     val brightnessLevel: StateFlow<Float> = _brightnessLevel.asStateFlow()
-    
+
     private val _warmFilterStrength = MutableStateFlow(0f)
     val warmFilterStrength: StateFlow<Float> = _warmFilterStrength.asStateFlow()
-    
+
+    private val _settingsPreviewEnabled = MutableStateFlow(false)
+    val settingsPreviewEnabled: StateFlow<Boolean> = _settingsPreviewEnabled.asStateFlow()
+
+    private val _careReminder = MutableStateFlow<EyeCareReminder?>(null)
+    val careReminder: StateFlow<EyeCareReminder?> = _careReminder.asStateFlow()
+
     override suspend fun onEnable() {
         loadConfigSuspend()
+        applyVisualState()
         startUsageTracking()
-        checkNightModeStatus()
-        Logger.d(TAG, " 夜间护眼插件已启用")
+        Logger.d(TAG, "夜间护眼插件已启用")
     }
-    
+
     override suspend fun onDisable() {
         usageTrackingJob?.cancel()
         usageMinutes = 0
-        _showRestReminder.value = false
+        snoozeUntilMinute = null
+        lastReminderMinute = null
+        _careReminder.value = null
+        _settingsPreviewEnabled.value = false
         _isNightModeActive.value = false
         _brightnessLevel.value = 1.0f
         _warmFilterStrength.value = 0f
-        Logger.d(TAG, "🔴 夜间护眼插件已禁用")
+        Logger.d(TAG, "夜间护眼插件已禁用")
     }
-    
-    /**
-     * 开始使用时长追踪
-     */
+
+    fun dismissReminder() {
+        _careReminder.value = null
+    }
+
+    fun snoozeReminder() {
+        snoozeUntilMinute = usageMinutes + config.reminderSnoozeMinutes
+        _careReminder.value = null
+        Logger.d(TAG, "提醒已暂缓 ${config.reminderSnoozeMinutes} 分钟")
+    }
+
+    fun confirmRest() {
+        usageMinutes = 0
+        snoozeUntilMinute = null
+        lastReminderMinute = null
+        _careReminder.value = null
+        Logger.d(TAG, "用户已确认休息，计时重置")
+    }
+
+    fun getSnoozeMinutes(): Int = config.reminderSnoozeMinutes
+
+    fun setSettingsPreviewEnabled(enabled: Boolean) {
+        _settingsPreviewEnabled.value = enabled
+        applyVisualState()
+    }
+
     private fun startUsageTracking() {
         usageTrackingJob?.cancel()
-        usageTrackingJob = scope.launch {
-            while (true) {
-                delay(60_000) // 每分钟检查一次
+        usageTrackingJob = workerScope.launch {
+            while (isActive) {
+                delay(60_000)
+                applyVisualState()
+
+                if (!shouldCountUsageMinute()) continue
+
                 usageMinutes++
-                
-                // 检查夜间模式状态
-                checkNightModeStatus()
-                
-                // 检查是否需要提醒休息
-                if (config.usageReminderEnabled && 
-                    usageMinutes > 0 && 
-                    usageMinutes % config.usageDurationMinutes == 0) {
-                    Logger.d(TAG, "⏰ 触发休息提醒：已使用 $usageMinutes 分钟")
-                    _showRestReminder.value = true
+                if (shouldTriggerCareReminder(
+                        usageMinutes = usageMinutes,
+                        intervalMinutes = config.usageDurationMinutes,
+                        snoozeUntilMinute = snoozeUntilMinute,
+                        lastReminderMinute = lastReminderMinute
+                    )
+                ) {
+                    lastReminderMinute = usageMinutes
+                    _careReminder.value = EyeCareReminder(
+                        usageMinutes = usageMinutes,
+                        title = "给眼睛一个小休息",
+                        message = buildCareReminderMessage(usageMinutes),
+                        suggestion = "试试 20-20-20：看向远处 20 秒"
+                    )
+                    Logger.d(TAG, "触发护眼提醒：$usageMinutes 分钟")
                 }
             }
         }
-        Logger.d(TAG, " 开始追踪使用时长")
     }
-    
-    /**
-     * 检查是否在夜间护眼时段
-     */
-    private fun checkNightModeStatus() {
-        if (!config.nightModeEnabled && !config.forceEnabled) {
-            _isNightModeActive.value = false
-            _brightnessLevel.value = 1.0f
-            _warmFilterStrength.value = 0f
+
+    private fun shouldCountUsageMinute(): Boolean {
+        if (_settingsPreviewEnabled.value) return false
+        if (!config.usageReminderEnabled) return false
+
+        // 避免应用在后台也累计使用时长
+        val appForeground = androidx.lifecycle.ProcessLifecycleOwner.get()
+            .lifecycle.currentState
+            .isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        if (!appForeground) return false
+
+        if (!config.remindOnlyDuringNight) return true
+        return _isNightModeActive.value || config.forceEnabled
+    }
+
+    private fun applyVisualState() {
+        if (_settingsPreviewEnabled.value) {
+            _isNightModeActive.value = true
+            _brightnessLevel.value = config.brightnessLevel.coerceIn(0.3f, 1.0f)
+            _warmFilterStrength.value = config.warmFilterStrength.coerceIn(0f, 0.5f)
             return
         }
-        
-        // 手动强制开启
-        if (config.forceEnabled) {
+
+        val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val visualActive = isVisualEffectActive(
+            forceEnabled = config.forceEnabled,
+            nightModeEnabled = config.nightModeEnabled,
+            currentHour = currentHour,
+            startHour = config.nightModeStartHour,
+            endHour = config.nightModeEndHour
+        )
+
+        if (visualActive) {
             _isNightModeActive.value = true
-            _brightnessLevel.value = config.brightnessLevel
-            _warmFilterStrength.value = config.warmFilterStrength
-            return
-        }
-        
-        // 检查当前时间是否在夜间时段
-        val calendar = Calendar.getInstance()
-        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
-        
-        val inNightPeriod = if (config.nightModeStartHour > config.nightModeEndHour) {
-            // 跨天情况：如 22:00 - 07:00
-            currentHour >= config.nightModeStartHour || currentHour < config.nightModeEndHour
-        } else {
-            // 同天情况：如 20:00 - 23:00
-            currentHour >= config.nightModeStartHour && currentHour < config.nightModeEndHour
-        }
-        
-        if (inNightPeriod) {
-            _isNightModeActive.value = true
-            _brightnessLevel.value = config.brightnessLevel
-            _warmFilterStrength.value = config.warmFilterStrength
-            Logger.d(TAG, " 进入夜间护眼模式 (${config.nightModeStartHour}:00 - ${config.nightModeEndHour}:00)")
+            _brightnessLevel.value = config.brightnessLevel.coerceIn(0.3f, 1.0f)
+            _warmFilterStrength.value = config.warmFilterStrength.coerceIn(0f, 0.5f)
         } else {
             _isNightModeActive.value = false
             _brightnessLevel.value = 1.0f
             _warmFilterStrength.value = 0f
         }
     }
-    
-    /**
-     * 用户确认休息提醒后调用
-     */
-    fun dismissRestReminder() {
-        _showRestReminder.value = false
-    }
-    
-    /**
-     * 用户休息后重置使用时长
-     */
-    fun resetUsageTime() {
-        usageMinutes = 0
-        _showRestReminder.value = false
-        Logger.d(TAG, " 使用时长已重置")
-    }
-    
-    /**
-     * 手动切换护眼模式
-     */
-    fun toggleForceEnabled(enabled: Boolean) {
-        config = config.copy(forceEnabled = enabled)
-        saveConfig()
-        checkNightModeStatus()
-        Logger.d(TAG, " 手动${if (enabled) "开启" else "关闭"}护眼模式")
-    }
-    
+
     private suspend fun loadConfigSuspend() {
         try {
             val context = PluginManager.getContext()
             val jsonStr = PluginStore.getConfigJson(context, id)
-            if (jsonStr != null) {
+            if (!jsonStr.isNullOrBlank()) {
                 config = Json.decodeFromString<EyeProtectionConfig>(jsonStr)
             }
+            config = applyPresetConfig(config, config.carePreset)
         } catch (e: Exception) {
             Logger.e(TAG, "加载配置失败", e)
         }
     }
-    
+
     private fun saveConfig() {
         ioScope.launch {
             try {
@@ -216,340 +307,475 @@ class EyeProtectionPlugin : Plugin {
             }
         }
     }
-    
+
+    private fun normalizePreset(preset: EyeCarePreset): EyeCarePreset {
+        return if (preset == EyeCarePreset.CUSTOM) EyeCarePreset.BALANCED else preset
+    }
+
+    private fun profileForPreset(
+        source: EyeProtectionConfig,
+        preset: EyeCarePreset
+    ): EyeCareProfile {
+        return when (normalizePreset(preset)) {
+            EyeCarePreset.GENTLE -> source.profileGentle
+            EyeCarePreset.BALANCED -> source.profileBalanced
+            EyeCarePreset.FOCUS -> source.profileFocus
+            EyeCarePreset.CUSTOM -> source.profileBalanced
+        }
+    }
+
+    private fun withPresetProfile(
+        source: EyeProtectionConfig,
+        preset: EyeCarePreset,
+        profile: EyeCareProfile
+    ): EyeProtectionConfig {
+        return when (normalizePreset(preset)) {
+            EyeCarePreset.GENTLE -> source.copy(profileGentle = profile)
+            EyeCarePreset.BALANCED -> source.copy(profileBalanced = profile)
+            EyeCarePreset.FOCUS -> source.copy(profileFocus = profile)
+            EyeCarePreset.CUSTOM -> source.copy(profileBalanced = profile)
+        }
+    }
+
+    private fun applyPresetConfig(
+        source: EyeProtectionConfig,
+        preset: EyeCarePreset
+    ): EyeProtectionConfig {
+        val normalizedPreset = normalizePreset(preset)
+        val profile = profileForPreset(source, normalizedPreset)
+        return source.copy(
+            carePreset = normalizedPreset,
+            brightnessLevel = profile.brightnessLevel.coerceIn(0.3f, 1.0f),
+            warmFilterStrength = profile.warmFilterStrength.coerceIn(0f, 0.5f),
+            usageDurationMinutes = profile.reminderIntervalMinutes.coerceAtLeast(1),
+            reminderSnoozeMinutes = profile.snoozeMinutes.coerceAtLeast(1)
+        )
+    }
+
+    private fun persistCurrentValuesToSelectedPreset(source: EyeProtectionConfig): EyeProtectionConfig {
+        val normalizedPreset = normalizePreset(source.carePreset)
+        val profile = EyeCareProfile(
+            brightnessLevel = source.brightnessLevel.coerceIn(0.3f, 1.0f),
+            warmFilterStrength = source.warmFilterStrength.coerceIn(0f, 0.5f),
+            reminderIntervalMinutes = source.usageDurationMinutes.coerceAtLeast(1),
+            snoozeMinutes = source.reminderSnoozeMinutes.coerceAtLeast(1)
+        )
+        return withPresetProfile(source.copy(carePreset = normalizedPreset), normalizedPreset, profile)
+    }
+
+    @OptIn(ExperimentalLayoutApi::class)
     @Composable
     override fun SettingsContent() {
-        val context = LocalContext.current
-        val scope = rememberCoroutineScope()
-        
-        // 状态
-        var nightModeEnabled by remember { mutableStateOf(config.nightModeEnabled) }
-        var nightModeStartHour by remember { mutableStateOf(config.nightModeStartHour) }
-        var nightModeEndHour by remember { mutableStateOf(config.nightModeEndHour) }
-        var usageReminderEnabled by remember { mutableStateOf(config.usageReminderEnabled) }
-        var usageDurationMinutes by remember { mutableStateOf(config.usageDurationMinutes) }
-        var brightnessLevel by remember { mutableStateOf(config.brightnessLevel) }
-        var warmFilterStrength by remember { mutableStateOf(config.warmFilterStrength) }
-        var forceEnabled by remember { mutableStateOf(config.forceEnabled) }
-        
-        // 加载配置
+        var uiConfig by remember { mutableStateOf(config) }
+
         LaunchedEffect(Unit) {
             loadConfigSuspend()
-            nightModeEnabled = config.nightModeEnabled
-            nightModeStartHour = config.nightModeStartHour
-            nightModeEndHour = config.nightModeEndHour
-            usageReminderEnabled = config.usageReminderEnabled
-            usageDurationMinutes = config.usageDurationMinutes
-            brightnessLevel = config.brightnessLevel
-            warmFilterStrength = config.warmFilterStrength
-            forceEnabled = config.forceEnabled
+            uiConfig = config
         }
-        
+        DisposableEffect(Unit) {
+            setSettingsPreviewEnabled(true)
+            onDispose {
+                setSettingsPreviewEnabled(false)
+            }
+        }
+
+        fun updateConfig(newConfig: EyeProtectionConfig, refreshVisual: Boolean = true) {
+            uiConfig = newConfig
+            config = newConfig
+            saveConfig()
+            if (refreshVisual) applyVisualState()
+        }
+
+        val presets = listOf(
+            EyeCarePreset.GENTLE to "轻柔",
+            EyeCarePreset.BALANCED to "平衡",
+            EyeCarePreset.FOCUS to "专注"
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // ========== 手动开关 ==========
             IOSSwitchItem(
-                icon = CupertinoIcons.Default.Star,
-                title = "立即开启护眼模式",
+                icon = CupertinoIcons.Outlined.Lightbulb,
+                title = "立即开启护眼",
                 subtitle = "手动强制开启，不受时间段限制",
-                checked = forceEnabled,
-                onCheckedChange = { newValue ->
-                    forceEnabled = newValue
-                    config = config.copy(forceEnabled = newValue)
-                    scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                    toggleForceEnabled(newValue)
+                checked = uiConfig.forceEnabled,
+                onCheckedChange = { enabled ->
+                    updateConfig(uiConfig.copy(forceEnabled = enabled))
                 },
                 iconTint = Color(0xFFFFB74D)
             )
-            
-            HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(0.5f))
-            
-            // ========== 定时护眼模式 ==========
+
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 56.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
             IOSSwitchItem(
-                icon = CupertinoIcons.Default.Moon,
+                icon = CupertinoIcons.Outlined.Moon,
                 title = "定时护眼模式",
-                subtitle = "${nightModeStartHour}:00 - ${nightModeEndHour}:00 自动开启",
-                checked = nightModeEnabled,
-                onCheckedChange = { newValue ->
-                    nightModeEnabled = newValue
-                    config = config.copy(nightModeEnabled = newValue)
-                    scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                    checkNightModeStatus()
+                subtitle = "${uiConfig.nightModeStartHour}:00 - ${uiConfig.nightModeEndHour}:00 自动开启",
+                checked = uiConfig.nightModeEnabled,
+                onCheckedChange = { enabled ->
+                    updateConfig(uiConfig.copy(nightModeEnabled = enabled))
                 },
                 iconTint = Color(0xFF7E57C2)
             )
-            
-            // 时间段选择（仅在定时模式开启时显示）
-            if (nightModeEnabled) {
-                Spacer(modifier = Modifier.height(12.dp))
-                
+
+            if (uiConfig.nightModeEnabled) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 56.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 开始时间
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "开始时间",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TimePickerDropdown(
-                            selectedHour = nightModeStartHour,
-                            onHourSelected = { hour ->
-                                nightModeStartHour = hour
-                                config = config.copy(nightModeStartHour = hour)
-                                scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                                checkNightModeStatus()
-                            }
-                        )
-                    }
-                    
-                    Text(
-                        "→",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    TimePickerDropdown(
+                        modifier = Modifier.weight(1f),
+                        selectedHour = uiConfig.nightModeStartHour,
+                        onHourSelected = { hour ->
+                            updateConfig(uiConfig.copy(nightModeStartHour = hour))
+                        },
+                        label = "开始"
                     )
-                    
-                    // 结束时间
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "结束时间",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TimePickerDropdown(
-                            selectedHour = nightModeEndHour,
-                            onHourSelected = { hour ->
-                                nightModeEndHour = hour
-                                config = config.copy(nightModeEndHour = hour)
-                                scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                                checkNightModeStatus()
-                            }
-                        )
-                    }
+                    TimePickerDropdown(
+                        modifier = Modifier.weight(1f),
+                        selectedHour = uiConfig.nightModeEndHour,
+                        onHourSelected = { hour ->
+                            updateConfig(uiConfig.copy(nightModeEndHour = hour))
+                        },
+                        label = "结束"
+                    )
                 }
             }
-            
-            HorizontalDivider(modifier = Modifier.padding(start = 56.dp, top = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(0.5f))
-            
-            // ========== 使用时长提醒 ==========
+
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 56.dp, top = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
             IOSSwitchItem(
-                icon = CupertinoIcons.Default.Clock,
-                title = "使用时长提醒",
-                subtitle = "每 ${usageDurationMinutes} 分钟提醒休息",
-                checked = usageReminderEnabled,
-                onCheckedChange = { newValue ->
-                    usageReminderEnabled = newValue
-                    config = config.copy(usageReminderEnabled = newValue)
-                    scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
+                icon = CupertinoIcons.Outlined.Clock,
+                title = "关怀提醒",
+                subtitle = "定时提醒休息、看远处、放松肩颈",
+                checked = uiConfig.usageReminderEnabled,
+                onCheckedChange = { enabled ->
+                    updateConfig(uiConfig.copy(usageReminderEnabled = enabled), refreshVisual = false)
                 },
                 iconTint = Color(0xFF42A5F5)
             )
-            
-            // 时长选择（仅在开启时显示）
-            if (usageReminderEnabled) {
+
+            if (uiConfig.usageReminderEnabled) {
+                Spacer(modifier = Modifier.height(10.dp))
+
+                IOSSwitchItem(
+                    icon = CupertinoIcons.Outlined.Sparkles,
+                    title = "仅夜间提醒",
+                    subtitle = "白天减少打扰，夜间更积极守护",
+                    checked = uiConfig.remindOnlyDuringNight,
+                    onCheckedChange = { enabled ->
+                        updateConfig(uiConfig.copy(remindOnlyDuringNight = enabled), refreshVisual = false)
+                    },
+                    iconTint = Color(0xFF5C6BC0)
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                Column(modifier = Modifier.padding(start = 56.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(15, 30, 45, 60).forEach { minutes ->
-                            FilterChip(
-                                selected = usageDurationMinutes == minutes,
-                                onClick = {
-                                    usageDurationMinutes = minutes
-                                    config = config.copy(usageDurationMinutes = minutes)
-                                    scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                                },
-                                label = { Text("${minutes}分钟") }
-                            )
-                        }
+                Text(
+                    text = "提醒频率",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 56.dp)
+                )
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 56.dp, top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(20, 30, 45, 60).forEach { minutes ->
+                        FilterChip(
+                            selected = uiConfig.usageDurationMinutes == minutes,
+                            onClick = {
+                                val changed = uiConfig.copy(usageDurationMinutes = minutes)
+                                updateConfig(persistCurrentValuesToSelectedPreset(changed), refreshVisual = false)
+                            },
+                            modifier = Modifier.defaultMinSize(minWidth = 84.dp),
+                            label = {
+                                Text(
+                                    text = "${minutes}分钟",
+                                    softWrap = false,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "稍后提醒",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 56.dp)
+                )
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 56.dp, top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(5, 10, 15, 20).forEach { minutes ->
+                        FilterChip(
+                            selected = uiConfig.reminderSnoozeMinutes == minutes,
+                            onClick = {
+                                val changed = uiConfig.copy(reminderSnoozeMinutes = minutes)
+                                updateConfig(persistCurrentValuesToSelectedPreset(changed), refreshVisual = false)
+                            },
+                            modifier = Modifier.defaultMinSize(minWidth = 84.dp),
+                            label = {
+                                Text(
+                                    text = "${minutes}分钟",
+                                    softWrap = false,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
+                                )
+                            }
+                        )
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // ========== 显示调节 ==========
+            Text(
+                text = "关怀强度预设",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "三种模式都可 DIY，当前模式下的调节会自动保存",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                presets.forEach { (preset, label) ->
+                    FilterChip(
+                        selected = uiConfig.carePreset == preset,
+                        onClick = {
+                            val changed = applyPresetConfig(uiConfig, preset)
+                            updateConfig(changed)
+                        },
+                        label = {
+                            Text(
+                                text = label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip
+                            )
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "显示调节",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-            
-            // 亮度调节
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            CupertinoIcons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFB74D),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("亮度", style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Text(
-                        "${(brightnessLevel * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = "当前页面是实时预览；离开设置后按“立即开启护眼/定时护眼”规则生效。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Filled.SunMax,
+                        contentDescription = null,
+                        tint = Color(0xFFFFB74D),
+                        modifier = Modifier.size(22.dp)
                     )
+                    Spacer(modifier = Modifier.padding(horizontal = 6.dp))
+                    Text("亮度", style = MaterialTheme.typography.bodyLarge)
                 }
-                Slider(
-                    value = brightnessLevel,
-                    onValueChange = { newValue ->
-                        brightnessLevel = newValue
-                        config = config.copy(brightnessLevel = newValue)
-                        _brightnessLevel.value = newValue
-                    },
-                    onValueChangeFinished = {
-                        scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                    },
-                    valueRange = 0.3f..1.0f,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "${(uiConfig.brightnessLevel * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // 暖色滤镜
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            CupertinoIcons.Default.SunMax,
-                            contentDescription = null,
-                            tint = Color(0xFFFF7043),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("暖色滤镜", style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Text(
-                        "${(warmFilterStrength * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Slider(
+                value = uiConfig.brightnessLevel,
+                onValueChange = { value ->
+                    val newConfig = persistCurrentValuesToSelectedPreset(
+                        uiConfig.copy(brightnessLevel = value)
                     )
+                    uiConfig = newConfig
+                    config = newConfig
+                    _brightnessLevel.value = value
+                },
+                onValueChangeFinished = {
+                    saveConfig()
+                    applyVisualState()
+                },
+                valueRange = 0.3f..1.0f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        CupertinoIcons.Outlined.SunMax,
+                        contentDescription = null,
+                        tint = Color(0xFFFF7043),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.padding(horizontal = 6.dp))
+                    Text("暖色滤镜", style = MaterialTheme.typography.bodyLarge)
                 }
-                Slider(
-                    value = warmFilterStrength,
-                    onValueChange = { newValue ->
-                        warmFilterStrength = newValue
-                        config = config.copy(warmFilterStrength = newValue)
-                        _warmFilterStrength.value = newValue
-                    },
-                    onValueChangeFinished = {
-                        scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                    },
-                    valueRange = 0f..0.5f,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "${(uiConfig.warmFilterStrength * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Slider(
+                value = uiConfig.warmFilterStrength,
+                onValueChange = { value ->
+                    val newConfig = persistCurrentValuesToSelectedPreset(
+                        uiConfig.copy(warmFilterStrength = value)
+                    )
+                    uiConfig = newConfig
+                    config = newConfig
+                    _warmFilterStrength.value = value
+                },
+                onValueChangeFinished = {
+                    saveConfig()
+                    applyVisualState()
+                },
+                valueRange = 0f..0.5f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text(
+                text = "护眼滤镜不影响触摸操作。建议搭配夜间模式与定时休息。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = CupertinoIcons.Outlined.Heart,
+                    contentDescription = null,
+                    tint = Color(0xFFE57373),
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    "增加暖色可减少蓝光，保护眼睛",
+                    text = "照顾好自己，视频永远看得完。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // ========== 效果预览 ==========
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.Black.copy(alpha = 1f - brightnessLevel)
-                    .copy(red = (1f - brightnessLevel) + warmFilterStrength * 0.3f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Color(
-                                red = warmFilterStrength * 0.2f,
-                                green = warmFilterStrength * 0.1f,
-                                blue = 0f,
-                                alpha = warmFilterStrength
-                            )
-                        )
-                ) {
-                    Text(
-                        "效果预览",
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
     }
-    
+
     companion object {
-        //  单例获取插件实例（用于 Overlay 层访问状态）
         fun getInstance(): EyeProtectionPlugin? {
             return PluginManager.plugins.find { it.plugin.id == "eye_protection" }?.plugin as? EyeProtectionPlugin
         }
     }
 }
 
-/**
- * 时间选择器下拉组件
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerDropdown(
+    modifier: Modifier = Modifier,
     selectedHour: Int,
-    onHourSelected: (Int) -> Unit
+    onHourSelected: (Int) -> Unit,
+    label: String
 ) {
     var expanded by remember { mutableStateOf(false) }
-    
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
+
+    Box(
+        modifier = Modifier
+            .then(modifier)
+            .fillMaxWidth()
     ) {
-        OutlinedTextField(
-            value = String.format("%02d:00", selectedHour),
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        OutlinedButton(
+            onClick = { expanded = true },
             modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium
-        )
-        
-        ExposedDropdownMenu(
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = String.format("%02d:00", selectedHour),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Icon(
+                    imageVector = CupertinoIcons.Outlined.Clock,
+                    contentDescription = null
+                )
+            }
+        }
+
+        DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth()
         ) {
             (0..23).forEach { hour ->
                 DropdownMenuItem(
                     text = { Text(String.format("%02d:00", hour)) },
+                    trailingIcon = {
+                        if (hour == selectedHour) {
+                            Text(
+                                text = "当前",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
                     onClick = {
                         onHourSelected(hour)
                         expanded = false
@@ -559,25 +785,3 @@ private fun TimePickerDropdown(
         }
     }
 }
-
-/**
- * 夜间护眼配置
- */
-@Serializable
-data class EyeProtectionConfig(
-    // 定时护眼模式
-    val nightModeEnabled: Boolean = false,
-    val nightModeStartHour: Int = 22,     // 22:00 开始
-    val nightModeEndHour: Int = 7,        // 07:00 结束
-    
-    // 使用时长提醒
-    val usageReminderEnabled: Boolean = true,
-    val usageDurationMinutes: Int = 30,   // 每 30 分钟提醒
-    
-    // 显示调节
-    val brightnessLevel: Float = 0.7f,    // 亮度等级 (0.3 ~ 1.0)
-    val warmFilterStrength: Float = 0.2f, // 暖色滤镜强度 (0 ~ 0.5)
-    
-    // 手动强制开启
-    val forceEnabled: Boolean = false
-)

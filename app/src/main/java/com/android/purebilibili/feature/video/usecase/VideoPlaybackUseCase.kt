@@ -78,6 +78,10 @@ class VideoPlaybackUseCase(
     private var progressManager: PlaybackProgressManager = PlaybackProgressManager(),
     private val qualityManager: QualityManager = QualityManager()
 ) {
+
+    companion object {
+        private val STANDARD_LOW_QUALITIES = listOf(32, 16)
+    }
     
     private var exoPlayer: ExoPlayer? = null
     
@@ -267,14 +271,16 @@ class VideoPlaybackUseCase(
                     val isEffectiveVip = isVip // || isUnlockHighQuality
                     // if (isUnlockHighQuality) ...
                     
-                    //  [修复] 合成完整画质列表：API 返回的 accept_quality + DASH 视频流中的实际画质
+                    //  [修复] 画质列表优先使用 DASH 实际轨道，避免展示“可选但不可切”的画质。
                     val apiQualities = playData.accept_quality ?: emptyList()
                     val dashVideoIds = playData.dash?.video?.map { it.id }?.distinct() ?: emptyList()
-                    
-                    //  [新增] 确保包含所有标准画质选项，用户可以切换到低画质以省流量
-                    // 即使 DASH 流中没有这些画质，也可以通过 API 请求获取
-                    val standardLowQualities = listOf(32, 16) // 480P, 360P
-                    val mergedQualityIds = (apiQualities + dashVideoIds + standardLowQualities)
+
+                    val switchableQualities = if (dashVideoIds.isNotEmpty()) {
+                        dashVideoIds
+                    } else {
+                        apiQualities
+                    }
+                    val mergedQualityIds = (switchableQualities + STANDARD_LOW_QUALITIES)
                         .distinct()
                         .sortedDescending()
                     
@@ -296,7 +302,10 @@ class VideoPlaybackUseCase(
                         qualityLabelMap[qn] ?: "${qn}P"
                     }
                     
-                    Logger.d("VideoPlaybackUseCase", " Quality merge: api=$apiQualities, dash=$dashVideoIds, merged=$mergedQualityIds")
+                    Logger.d(
+                        "VideoPlaybackUseCase",
+                        " Quality merge: api=$apiQualities, dash=$dashVideoIds, switchable=$switchableQualities, merged=$mergedQualityIds"
+                    )
                     
                     // Check user interaction status
                     val isFollowing = if (isLogin) ActionRepository.checkFollowStatus(info.owner.mid) else false
@@ -439,43 +448,36 @@ class VideoPlaybackUseCase(
         val availableIds = cachedVideos.map { it.id }.distinct().sortedDescending()
         Logger.d("VideoPlaybackUseCase", " changeQualityFromCache: target=$qualityId, available=$availableIds")
         
-        //  [优先精确匹配] 先找精确匹配
-        var match = cachedVideos.find { it.id == qualityId }
-        
-        // [新增] 如果没找到精确匹配，且 qualityId 是某些特定值（比如用户手动选择的），尝试找最接近的
-        // 防止降级逻辑直接跳过缓存去请求 API，结果 API 也没有
+        // 只接受精确匹配；没有目标轨道时返回 null，让上层走 API 请求。
+        val match = cachedVideos.find { it.id == qualityId }
         if (match == null) {
-             match = cachedVideos.minByOrNull { kotlin.math.abs(it.id - qualityId) }
-             if (match != null) {
-                 Logger.d("VideoPlaybackUseCase", " Cache exact match failed for $qualityId, using closest cached: ${match.id}")
-             }
+            Logger.d("VideoPlaybackUseCase", " Cache exact match missing for $qualityId, fallback to API")
+            return null
         }
+
+        Logger.d("VideoPlaybackUseCase", " Match found in cache: ${match.id}")
+        val videoUrl = match.getValidUrl()
         
-        if (match != null) {
-            Logger.d("VideoPlaybackUseCase", " Match found in cache: ${match.id}")
-            val videoUrl = match.getValidUrl()
-            
-            // [修复] 音频也应该重新选择最佳匹配，而不是盲目取第一个
-            val dashAudio = if (audioQualityPreference != -1) {
-                // 使用 Dash.getBestAudio 逻辑的简化版 (因为这里只有 List<DashAudio>)
-                cachedAudios.find { it.id == audioQualityPreference } 
-                    ?: cachedAudios.minByOrNull { kotlin.math.abs(it.id - audioQualityPreference) }
-            } else {
-                cachedAudios.maxByOrNull { it.bandwidth }
-            }
-             
-            val audioUrl = dashAudio?.getValidUrl()
-            if (videoUrl.isNotEmpty()) {
-                playDashVideo(videoUrl, audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
-                return QualitySwitchResult(
-                    videoUrl = videoUrl,
-                    audioUrl = audioUrl,
-                    actualQuality = match.id,
-                    wasFallback = match.id != qualityId,
-                    cachedDashVideos = cachedVideos,
-                    cachedDashAudios = cachedAudios
-                )
-            }
+        // [修复] 音频也应该重新选择最佳匹配，而不是盲目取第一个
+        val dashAudio = if (audioQualityPreference != -1) {
+            // 使用 Dash.getBestAudio 逻辑的简化版 (因为这里只有 List<DashAudio>)
+            cachedAudios.find { it.id == audioQualityPreference }
+                ?: cachedAudios.minByOrNull { kotlin.math.abs(it.id - audioQualityPreference) }
+        } else {
+            cachedAudios.maxByOrNull { it.bandwidth }
+        }
+         
+        val audioUrl = dashAudio?.getValidUrl()
+        if (videoUrl.isNotEmpty()) {
+            playDashVideo(videoUrl, audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
+            return QualitySwitchResult(
+                videoUrl = videoUrl,
+                audioUrl = audioUrl,
+                actualQuality = match.id,
+                wasFallback = false,
+                cachedDashVideos = cachedVideos,
+                cachedDashAudios = cachedAudios
+            )
         }
         
         //  [降级逻辑] 缓存中没有目标画质，需要返回 null 让调用者请求 API

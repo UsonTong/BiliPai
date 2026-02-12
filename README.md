@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-02-11 · 文档已同步至 v5.2.2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-02-12 · 文档已同步至 v5.2.3（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.2.2-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.2.3-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/Platform-Android%2010+-brightgreen?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/APK-14MB-orange?style=flat-square" alt="Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Plugins-4%20Built--in-blueviolet?style=flat-square" alt="Plugins">
+  <img src="https://img.shields.io/badge/Plugins-5%20Built--in-blueviolet?style=flat-square" alt="Plugins">
 </p>
 
 <p align="center">
@@ -62,7 +62,7 @@
 | **横屏信息栏** | 全屏顶部新增时间显示，横屏交互信息更完整 |
 | **播放记忆** | 自动记录观看进度，下次打开继续播放 |
 | **TV 登录** | 支持 TV 端扫码登录，解锁大会员专属高画质 |
-| **插件系统** | 内置空降助手、去广告、弹幕增强、护眼模式四大插件，可扩展架构 |
+| **插件系统** | 内置空降助手、去广告、弹幕增强、夜间护眼、今日推荐单等插件，可扩展架构 |
 
 ### 🔌 插件系统
 
@@ -72,8 +72,23 @@
 | **去广告插件** | 智能过滤推荐流中的商业推广内容 |
 | **弹幕增强** | 支持关键词 + 用户 UID/hash 过滤与高亮，规则变更支持播放内热更新 |
 | **夜间护眼** | 定时护眼、使用时长提醒、暖色滤镜 |
+| **🆕 今日推荐单** | 本地分析观看历史与反馈，生成“今晚轻松看 / 深度学习看”视频队列 |
 | **插件中心** | 统一管理所有插件，支持独立配置 |
 | **🆕 外部插件** | 支持通过 URL 动态加载 JSON 规则插件 |
+
+#### 今日推荐单算法（通俗版）
+
+- **先看你最近看了谁**：统计历史记录里你常看的 UP 主，并结合播放进度和“最近看过”的权重。
+- **再给候选视频打分**：每条视频会综合以下信号：
+  - 热度（播放量）
+  - 与你偏好 UP 主的匹配度
+  - 新鲜度（发布时间）
+  - 模式偏好（`今晚轻松看` 更偏短、轻松；`深度学习看` 更偏知识、时长适中）
+  - 夜间护眼状态（夜间会降低高刺激、超长视频权重）
+  - 负反馈（不感兴趣的视频/UP/关键词会被明显降权）
+- **最后做“去同质化”排序**：不是只按分数从高到低排，而是避免连续刷到同一个 UP 主，让列表更耐看。
+
+一句话总结：`今日推荐单` 是一个完全本地、可解释的加权排序器，会根据你的观看行为持续微调结果。
 
 <details>
 <summary><b>📖 JSON 规则插件快速入门（点击展开）</b></summary>
@@ -348,7 +363,7 @@ app/src/main/java/com/android/purebilibili/
 - [x] TV 扫码登录 (解锁高画质)
 - [x] 共享元素过渡动画
 - [x] 插件系统核心架构
-- [x] 内置插件 (空降助手 / 去广告 / 弹幕增强 / 护眼模式)
+- [x] 内置插件 (空降助手 / 去广告 / 弹幕增强 / 夜间护眼 / 今日推荐单)
 - [x] Firebase Analytics + Crashlytics（支持用户行为统计与崩溃追踪）
 
 ### 🚧 开发中
@@ -370,12 +385,14 @@ app/src/main/java/com/android/purebilibili/
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v5.2.2 · 2026-02-11)
+### 最近更新 (v5.2.3 · 2026-02-12)
 
-- 🛠 **竖屏播放链路优化**：优化竖屏模式下切换视频与进度同步逻辑，减少切换后手动恢复播放的情况
-- 🛠 **动态交互增强**：动态页支持底栏双击回顶；修复转发动态中的图片无法点击预览问题
-- 🛠 **私信稳定性提升**：优化“我的私信”列表用户信息解析，降低重复进入后用户名/头像偶发加载失败
-- 🎨 **图片预览动画统一**：统一图片打开/关闭动画，圆角过渡更顺滑，关闭带轻回弹
+- ✨ **今日推荐单插件上线**：新增“今晚轻松看 / 深度学习看”双模式，支持本地推荐队列、UP 主榜与推荐理由展示
+- ✨ **推荐联动增强**：推荐算法接入护眼状态、负反馈信号与本地创作者画像，夜间优先短时长低刺激内容
+- 🛠 **冷启动可见性修复**：修复“今日推荐单”首屏不易发现问题，冷启动窗口内自动曝光卡片
+- 🛠 **下拉刷新提示修复**：修复“新增 X 条内容”提示偶发不自动消失的问题
+- ✨ **夜间护眼 2.0**：重写护眼插件，支持三套预设可 DIY、实时预览、定时时段、关怀提醒与稍后提醒
+- 🛠 **画质切换稳定性修复**：优化缓存切换逻辑与画质列表来源，避免“可切换但实际失败”，并改进失败提示语义
 
 ### 历史版本
 

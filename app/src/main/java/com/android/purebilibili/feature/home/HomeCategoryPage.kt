@@ -1,13 +1,28 @@
 package com.android.purebilibili.feature.home
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve
@@ -19,6 +34,8 @@ import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
 
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import androidx.compose.ui.Alignment
+import coil.compose.AsyncImage
+import kotlinx.coroutines.yield
 
 @Composable
 fun HomeCategoryPageContent(
@@ -42,6 +59,13 @@ fun HomeCategoryPageContent(
     isDataSaverActive: Boolean,
     oldContentAnchorBvid: String? = null,
     oldContentStartIndex: Int? = null,
+    todayWatchEnabled: Boolean = false,
+    todayWatchMode: TodayWatchMode = TodayWatchMode.RELAX,
+    todayWatchPlan: TodayWatchPlan? = null,
+    todayWatchLoading: Boolean = false,
+    todayWatchError: String? = null,
+    todayWatchCardConfig: TodayWatchCardUiConfig = TodayWatchCardUiConfig(),
+    onTodayWatchModeChange: (TodayWatchMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Check for load more
@@ -119,6 +143,22 @@ fun HomeCategoryPageContent(
             }
         } else {
             // Video Category Content
+            if (category == HomeCategory.RECOMMEND) {
+                if (todayWatchEnabled) {
+                    item(span = { GridItemSpan(gridColumns) }) {
+                        TodayWatchPlanCard(
+                            selectedMode = todayWatchMode,
+                            plan = todayWatchPlan,
+                            isLoading = todayWatchLoading,
+                            error = todayWatchError,
+                            cardConfig = todayWatchCardConfig,
+                            onModeChange = onTodayWatchModeChange,
+                            onVideoClick = onVideoClick
+                        )
+                    }
+                }
+            }
+
             if (categoryState.videos.isNotEmpty()) {
                 val shouldShowOldContentDivider = category == HomeCategory.RECOMMEND &&
                     (
@@ -208,6 +248,271 @@ fun HomeCategoryPageContent(
         item(span = { GridItemSpan(gridColumns) }) {
             Box(modifier = Modifier.fillMaxWidth().height(20.dp))
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TodayWatchPlanCard(
+    selectedMode: TodayWatchMode,
+    plan: TodayWatchPlan?,
+    isLoading: Boolean,
+    error: String?,
+    cardConfig: TodayWatchCardUiConfig,
+    onModeChange: (TodayWatchMode) -> Unit,
+    onVideoClick: (String, Long, String) -> Unit
+) {
+    var revealContent by remember(plan?.generatedAt, isLoading, cardConfig.enableWaterfallAnimation) {
+        mutableStateOf(!cardConfig.enableWaterfallAnimation)
+    }
+    LaunchedEffect(plan?.generatedAt, isLoading, cardConfig.enableWaterfallAnimation) {
+        if (!cardConfig.enableWaterfallAnimation) {
+            revealContent = true
+            return@LaunchedEffect
+        }
+        if (isLoading) {
+            revealContent = false
+            return@LaunchedEffect
+        }
+        revealContent = false
+        yield()
+        revealContent = true
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "今日推荐单",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TodayWatchMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = selectedMode == mode,
+                        onClick = { onModeChange(mode) },
+                        label = { Text(mode.label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    )
+                }
+            }
+
+            if (isLoading) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 1.8.dp)
+                    Text("正在根据你的历史观看习惯生成推荐…", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            if (!error.isNullOrBlank()) {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            val activePlan = plan ?: return@Column
+            var revealIndex = 0
+
+            if (cardConfig.showReasonHint) {
+                val hintOrder = revealIndex++
+                WaterfallReveal(
+                    enabled = cardConfig.enableWaterfallAnimation,
+                    visible = revealContent,
+                    index = hintOrder,
+                    exponent = cardConfig.waterfallExponent
+                ) {
+                    Text(
+                        text = if (activePlan.nightSignalUsed) {
+                            "已结合护眼状态：夜间优先短时长、低刺激内容"
+                        } else {
+                            "当前按你的观看习惯与模式偏好生成"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (cardConfig.showUpRank && activePlan.upRanks.isNotEmpty()) {
+                val titleOrder = revealIndex++
+                WaterfallReveal(
+                    enabled = cardConfig.enableWaterfallAnimation,
+                    visible = revealContent,
+                    index = titleOrder,
+                    exponent = cardConfig.waterfallExponent
+                ) {
+                    Text("UP主榜", style = MaterialTheme.typography.labelLarge)
+                }
+                val ranksOrder = revealIndex++
+                WaterfallReveal(
+                    enabled = cardConfig.enableWaterfallAnimation,
+                    visible = revealContent,
+                    index = ranksOrder,
+                    exponent = cardConfig.waterfallExponent
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        activePlan.upRanks.forEachIndexed { index, up ->
+                            Text(
+                                text = "${index + 1}. ${up.name}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (activePlan.videoQueue.isNotEmpty()) {
+                val queueTitleOrder = revealIndex++
+                WaterfallReveal(
+                    enabled = cardConfig.enableWaterfallAnimation,
+                    visible = revealContent,
+                    index = queueTitleOrder,
+                    exponent = cardConfig.waterfallExponent
+                ) {
+                    Text("视频队列", style = MaterialTheme.typography.labelLarge)
+                }
+                activePlan.videoQueue
+                    .take(cardConfig.queuePreviewLimit.coerceAtLeast(1))
+                    .forEachIndexed { index, video ->
+                        val rowOrder = revealIndex++
+                        WaterfallReveal(
+                            enabled = cardConfig.enableWaterfallAnimation,
+                            visible = revealContent,
+                            index = rowOrder,
+                            exponent = cardConfig.waterfallExponent
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onVideoClick(video.bvid, video.cid, video.pic) }
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${index + 1}.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (video.owner.face.isNotBlank()) {
+                                    AsyncImage(
+                                        model = video.owner.face,
+                                        contentDescription = video.owner.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceTint.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = video.owner.name.take(1).ifBlank { "UP" },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = video.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = video.owner.name.ifBlank { "未知UP主" },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    val explanation = activePlan.explanationByBvid[video.bvid].orEmpty()
+                                    if (explanation.isNotBlank()) {
+                                        Text(
+                                            text = explanation,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WaterfallReveal(
+    enabled: Boolean,
+    visible: Boolean,
+    index: Int,
+    exponent: Float,
+    content: @Composable () -> Unit
+) {
+    if (!enabled) {
+        content()
+        return
+    }
+    val delay = nonLinearWaterfallDelayMillis(
+        index = index,
+        baseDelayMs = 52,
+        exponent = exponent,
+        maxDelayMs = 620
+    )
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = 280,
+                delayMillis = delay,
+                easing = LinearOutSlowInEasing
+            )
+        ) + expandVertically(
+            expandFrom = Alignment.Top,
+            animationSpec = tween(
+                durationMillis = 420,
+                delayMillis = delay,
+                easing = FastOutSlowInEasing
+            )
+        ),
+        exit = fadeOut(animationSpec = tween(durationMillis = 120))
+    ) {
+        content()
     }
 }
 
