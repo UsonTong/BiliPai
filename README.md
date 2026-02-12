@@ -90,6 +90,107 @@
 
 一句话总结：`今日推荐单` 是一个完全本地、可解释的加权排序器，会根据你的观看行为持续微调结果。
 
+#### 今日推荐单算法原理（详细版）
+
+> 对应实现：`app/src/main/java/com/android/purebilibili/feature/home/TodayWatchPolicy.kt`  
+> 画像与反馈存储：`app/src/main/java/com/android/purebilibili/core/store/TodayWatchProfileStore.kt`、`app/src/main/java/com/android/purebilibili/core/store/TodayWatchFeedbackStore.kt`
+
+1. 输入数据
+
+- 历史样本：`historyVideos`（本地历史记录）
+- 候选集合：`candidateVideos`（首页推荐流候选）
+- 模式：`RELAX`（今晚轻松看）或 `LEARN`（深度学习看）
+- 护眼信号：`eyeCareNightActive`（夜间护眼是否激活）
+- 画像信号：`creatorSignals`（本地累计的 UP 主偏好）
+- 负反馈信号：`penaltySignals`（不感兴趣视频/UP/关键词）
+
+2. 历史预处理与 UP 主亲和度构建
+
+- 仅保留有效历史项：`bvid` 非空且 `owner.mid > 0`
+- 按 `view_at` 倒序，统计每位 UP 的聚合分：
+  - `creator_score += 1.0 + completion * 1.2 + recencyBonus(view_at)`
+  - `completion`：
+    - `progress < 0` -> `0.35`
+    - `duration <= 0` -> `clamp(progress / 600, 0..1)`
+    - 其他 -> `clamp(progress / duration, 0..1)`
+  - `recencyBonus(view_at)`：
+    - `<=1天:1.0`，`<=3天:0.8`，`<=7天:0.6`，`<=30天:0.35`，其余 `0.15`
+
+3. 跨会话画像融合（Creator Signal）
+
+- 从本地画像仓读取每位 UP 的长期偏好分：
+  - `engagementScore = ln(totalWatchSec + 1) * 0.92 + ln(engagementEvents + 1) * 0.66`
+  - `recencyScore`：
+    - `<=1天:1.15`，`<=3天:0.85`，`<=7天:0.55`，`<=30天:0.2`，其余 `-0.1`
+  - `signal.score = engagementScore + recencyScore`
+- 合并到当前会话亲和度：`creatorAffinity[mid] += signal.score`
+
+4. 候选视频清洗
+
+- 过滤无效候选：`bvid/title` 非空
+- 按 `bvid` 去重
+- 标记是否已看过：`alreadySeen = bvid in historySet`
+
+5. 单条候选打分（核心公式）
+
+- 总分：
+  - `score = base + creator + freshness + seenPenalty + mode + night + feedback`
+- 基础分：
+  - `base = ln(view + 1) * 0.45`
+  - `creator = ln(creatorAffinity + 1) * 2.1`
+  - `freshness(pubdate)`：`<=1天:0.8`，`<=3天:0.55`，`<=7天:0.3`，`<=30天:0.1`，其余 `-0.05`
+  - `seenPenalty`：已看过则 `-2.6`
+- 强度信号（弹幕密度近似刺激度）：
+  - `intensity = danmaku / max(view,1)`
+  - `calmScore`：`<0.004:1.0`，`<0.01:0.3`，其余 `-1.0`
+- 模式分：
+  - `RELAX`：
+    - `durationRelaxScore`：`<2:-0.2`，`<=12:1.4`，`<=20:0.6`，`<=35:-0.1`，其余 `-0.9`
+    - `keywordBonus(title, RELAX_KEYWORDS, LEARN_KEYWORDS)`
+    - `+ calmScore`
+  - `LEARN`：
+    - `durationLearnScore`：`<5:-0.6`，`<=12:0.5`，`<=35:1.5`，`<=55:0.8`，其余 `-0.2`
+    - `keywordBonus(title, LEARN_KEYWORDS, RELAX_KEYWORDS)`
+    - 时长补偿：`duration>=10分钟 ? +0.6 : -0.2`
+- 夜间护眼调权（仅护眼激活时）：
+  - `durationPenalty`：`<=15:+1.2`，`<=25:+0.2`，`>25` 按时长递减到最多 `-3.0`
+  - `intensityPenalty`：`<0.006:+0.6`，`<0.012:0.0`，其余 `-1.1`
+- 负反馈惩罚：
+  - 命中不感兴趣视频：`-3.2`
+  - 命中不感兴趣 UP：`-2.4`
+  - 不感兴趣关键词：每个 `-0.7`，最低封顶 `-2.8`
+
+6. 关键词加权与限幅
+
+- `keywordBonus = positiveCount * 0.55 - negativeCount * 0.35`
+- 限幅区间：`[-1.2, 1.8]`（防止关键词信号压过核心行为信号）
+
+7. UP 主榜与多样化队列
+
+- UP 主榜：按聚合 `creator_score` 取 TopN（默认 5，可配置）
+- 视频队列不是直接按总分排序，而是做“多样化贪心”：
+  - `adjusted = candidateScore - sameCreatorPenalty - repeatPenalty + noveltyBonus`
+  - 同 UP 连续惩罚：`1.15`
+  - 重复出现惩罚：`usedCount * 0.75`
+  - 首次出现奖励：`+0.35`
+- 作用：避免连续刷到同一个 UP，提高耐看度和探索感
+
+8. 可解释输出
+
+- 每条推荐会附带解释标签（如：`学习向 · 中时长 · 夜间友好 · 偏好UP`）
+- `偏好UP` 触发阈值：`creatorAffinity > 0.8`
+
+9. 冷启动可见性策略
+
+- 推荐单在冷启动窗口内采用一次性曝光策略：
+  - 若插件已启用、推荐单已生成、当前在推荐页且列表不在顶部，则自动回顶一次
+  - 避免“推荐单已生成但首屏看不到”
+
+10. 隐私与可控性
+
+- 算法完全在本地运行，不上传历史记录用于个性化训练
+- 支持一键清空本地画像与反馈，恢复冷启动推荐状态
+
 <details>
 <summary><b>📖 JSON 规则插件快速入门（点击展开）</b></summary>
 
