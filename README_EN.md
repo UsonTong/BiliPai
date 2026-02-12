@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-02-11 · Synced to v5.2.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-02-12 · Synced to v5.3.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.2.2-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.3.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/Platform-Android%2010+-brightgreen?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/APK-14MB-orange?style=flat-square" alt="Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Plugins-4%20Built--in-blueviolet?style=flat-square" alt="Plugins">
+  <img src="https://img.shields.io/badge/Plugins-5%20Built--in-blueviolet?style=flat-square" alt="Plugins">
 </p>
 
 <p align="center">
@@ -54,7 +54,7 @@
 | **Background Play** | Continue listening when screen is off or in background |
 | **Playback History** | Automatically resume playback from where you left off |
 | **TV Login** | Scan QR code to login as TV client to unlock high quality |
-| **Plugin System** | Built-in SponsorBlock, AdBlock, Danmaku Enhancement, and Eye Protection plugins |
+| **Plugin System** | Built-in SponsorBlock, AdBlock, Danmaku Enhancement, Eye Protection, and Today Watch plugins |
 
 ### 🔌 Plugin System
 
@@ -63,9 +63,72 @@
 | **SponsorBlock** | Automatically skip ads/sponsor segments based on BilibiliSponsorBlock database |
 | **AdBlock** | Smartly filter commercial content from recommendation feeds |
 | **Danmaku Plus** | Keyword blocking and highlighting for personalized danmaku experience |
-| **Night Mode** | Scheduled eye protection, usage reminders, warm color filter |
+| **Eye Protection** | Scheduled eye care, 3 presets + DIY tuning, real-time preview, warm filter, humane reminders with snooze |
+| **🆕 Today Watch** | Local recommendation plugin with Relax/Learn modes, UP ranking, reason tags, night-aware ranking, and startup exposure |
 | **Plugin Center** | Unified management for all plugins with independent configurations |
 | **🆕 External Plugins** | Support loading dynamic JSON rule plugins via URL |
+
+#### Implemented Details (Supplement)
+
+- `Today Watch`:
+  - dual mode switch: `Relax Tonight` / `Deep Learning`
+  - UP ranking + recommendation queue + per-item explanation tags
+  - queue rows display uploader avatar + name for better readability
+  - linked with eye-care night signal (prefers shorter, lower-stimulation content at night)
+  - local negative-feedback learning (disliked video/uploader/keywords)
+  - one-shot cold-start exposure strategy so users can see the card on first screen
+  - one-tap reset of local profile + feedback in plugin settings
+- `Eye Protection 2.0`:
+  - 3 presets (`Gentle/Balanced/Focus`) + full DIY controls
+  - real-time brightness and warm-filter preview
+  - schedule + usage reminders + snooze
+  - improved humane reminder copy and pacing strategy
+- `Quality Switching`:
+  - switchable quality list now prioritizes real DASH tracks
+  - cache switching requires exact target quality match; falls back to API when missing
+  - clearer fallback toast when requested quality is unavailable
+
+#### Today Watch UI Example
+
+<p align="center">
+  <img src="docs/images/screenshot_today_watch_plan.png" alt="Today Watch screenshot" height="560">
+</p>
+
+#### Today Watch Algorithm (Detailed)
+
+1. Inputs
+
+- history sample from local watch history
+- candidate videos from home recommend feed
+- mode (`Relax` or `Learn`)
+- eye-care night signal
+- creator profile signals (cross-session local memory)
+- penalty signals (disliked video/uploader/keywords)
+
+2. Creator affinity build-up
+
+- filter valid history items (`bvid` not empty, valid `owner.mid`)
+- aggregate per-creator score with completion + recency bonus
+- merge cross-session profile signals from local store
+
+3. Candidate scoring
+
+- score = base popularity + creator affinity + freshness + mode score + night adjustment + feedback penalty + seen penalty
+- seen videos are explicitly penalized
+- mode score differs for Relax and Learn (duration + keyword orientation)
+- night adjustment favors short, low-stimulation items
+
+4. Diversity queue
+
+- queue is not pure score sort
+- each round applies anti-streak penalties for repeated creators
+- includes novelty bonus for unseen creators in the current queue
+
+5. Explainability and privacy
+
+- each queued item has explanation tags (e.g. `Learn · Mid Length · Night Friendly · Preferred Uploader`)
+- runs fully local; no history upload for personalization
+- users can clear local profile/feedback and restart recommendation learning
 
 <details>
 <summary><b>📖 JSON Rule Plugin Quick Start (Click to expand)</b></summary>
@@ -315,12 +378,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v5.2.2 · 2026-02-11)
+### Latest (v5.3.0 · 2026-02-12)
 
-- 🛠 **Portrait playback flow**: Improved portrait-mode switching continuity and progress sync across portrait/landscape transitions.
-- 🛠 **Dynamic UX**: Added double-tap bottom-tab reselect to scroll Dynamic feed back to top; fixed non-clickable images in forwarded dynamics.
-- 🛠 **Inbox stability**: Improved private-message list user info resolution to reduce intermittent avatar/username loading failures.
-- 🎨 **Image preview motion**: Unified open/close transitions with smoother corner morphing and spring-like close rebound.
+- ✨ **Today Watch Plugin**: Added local daily recommendation card with Relax/Learn modes, UP ranking, queue, and explanation tags.
+- ✨ **Recommendation Signal Upgrade**: Added eye-care linkage, creator-profile fusion, and negative-feedback penalties.
+- 🛠 **Cold Start Discoverability**: Fixed issue where Today Watch could be generated but outside initial viewport.
+- 🛠 **Refresh Hint Lifecycle**: Fixed issue where “new items” hint could occasionally remain visible.
+- ✨ **Eye Protection 2.0**: Rebuilt eye-care plugin with presets + DIY, real-time preview, reminder + snooze, and humane copy.
+- 🛠 **Quality Switch Reliability**: Improved DASH quality option source, cache exact-match behavior, and fallback feedback messages.
 
 ---
 
