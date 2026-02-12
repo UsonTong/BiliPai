@@ -425,8 +425,19 @@ interface BilibiliApi {
         @retrofit2.http.Field("plat") plat: Int = 1,
         @retrofit2.http.Field("root") root: Long? = null,
         @retrofit2.http.Field("parent") parent: Long? = null,
+        @retrofit2.http.Field("pictures") pictures: String? = null,
         @retrofit2.http.Field("csrf") csrf: String
     ): AddReplyResponse
+
+    // [新增] 评论图片上传（复用动态图片上传接口）
+    @retrofit2.http.Multipart
+    @retrofit2.http.POST("x/dynamic/feed/draw/upload_bfs")
+    suspend fun uploadCommentImage(
+        @retrofit2.http.Part fileUp: okhttp3.MultipartBody.Part,
+        @retrofit2.http.Part("category") category: okhttp3.RequestBody,
+        @retrofit2.http.Part("biz") biz: okhttp3.RequestBody,
+        @retrofit2.http.Part("csrf") csrf: okhttp3.RequestBody
+    ): UploadCommentImageResponse
 
     /**
      * 获取表情包

@@ -1,10 +1,14 @@
 package com.android.purebilibili.feature.cast
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.android.purebilibili.core.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
-import java.net.DatagramSocket
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.MulticastSocket
@@ -40,6 +44,15 @@ object SsdpDiscovery {
         ST: urn:schemas-upnp-org:device:MediaRenderer:1
         
     """.trimIndent().replace("\n", "\r\n")
+
+    private val M_SEARCH_AV_TRANSPORT = """
+        M-SEARCH * HTTP/1.1
+        HOST: 239.255.255.250:1900
+        MAN: "ssdp:discover"
+        MX: 3
+        ST: urn:schemas-upnp-org:service:AVTransport:1
+        
+    """.trimIndent().replace("\n", "\r\n")
     
     data class SsdpDevice(
         val location: String,
@@ -53,35 +66,38 @@ object SsdpDiscovery {
      * @param timeoutMs 超时时间（毫秒）
      * @return 发现的设备列表
      */
-    suspend fun discover(timeoutMs: Int = 5000): List<SsdpDevice> = withContext(Dispatchers.IO) {
+    suspend fun discover(context: Context, timeoutMs: Int = 5000): List<SsdpDevice> = withContext(Dispatchers.IO) {
         val devices = mutableListOf<SsdpDevice>()
-        var socket: DatagramSocket? = null
+        var socket: MulticastSocket? = null
         
         try {
             Logger.i(TAG, "📺 [DLNA] Starting SSDP discovery (timeout: ${timeoutMs}ms)")
             
             // 创建 UDP socket
-            socket = DatagramSocket(null)
+            socket = MulticastSocket(null)
             socket.reuseAddress = true
             socket.broadcast = true
-            socket.soTimeout = timeoutMs
             socket.bind(InetSocketAddress(0))
-            
+            socket.timeToLive = 4
+            bindSocketToLocalNetworkInterface(context, socket)
+
             Logger.d(TAG, "📺 [DLNA] Socket bound to local port ${socket.localPort}")
             
             // 发送 M-SEARCH 请求
-            val searchData = M_SEARCH_ALL.toByteArray()
             val multicastAddress = InetAddress.getByName(SSDP_ADDRESS)
-            val searchPacket = DatagramPacket(searchData, searchData.size, multicastAddress, SSDP_PORT)
-            
-            socket.send(searchPacket)
-            Logger.i(TAG, "📺 [DLNA] M-SEARCH (ssdp:all) sent to multicast address")
-            
-            // 也发送一个针对 MediaRenderer 的搜索
-            val rendererData = M_SEARCH_RENDERER.toByteArray()
-            val rendererPacket = DatagramPacket(rendererData, rendererData.size, multicastAddress, SSDP_PORT)
-            socket.send(rendererPacket)
-            Logger.i(TAG, "📺 [DLNA] M-SEARCH (MediaRenderer) sent")
+            val payloads = resolveSsdpSearchPayloads()
+            val retryCount = 2
+            repeat(retryCount) { round ->
+                payloads.forEach { payload ->
+                    val data = payload.toByteArray()
+                    val packet = DatagramPacket(data, data.size, multicastAddress, SSDP_PORT)
+                    socket.send(packet)
+                }
+                if (round < retryCount - 1) {
+                    delay(250)
+                }
+            }
+            Logger.i(TAG, "📺 [DLNA] M-SEARCH sent (${payloads.size} targets x $retryCount rounds)")
             
             // 接收响应
             val buffer = ByteArray(2048)
@@ -91,6 +107,9 @@ object SsdpDiscovery {
             
             while (System.currentTimeMillis() - startTime < timeoutMs) {
                 try {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    val remaining = (timeoutMs - elapsed).toInt().coerceAtLeast(1)
+                    socket.soTimeout = remaining.coerceAtMost(1200)
                     val responsePacket = DatagramPacket(buffer, buffer.size)
                     socket.receive(responsePacket)
                     responseCount++
@@ -105,9 +124,8 @@ object SsdpDiscovery {
                         // 隐私安全日志：只显示设备类型和服务器信息，不显示完整 URL 和 IP
                         Logger.i(TAG, "📺 [DLNA] Found device: server=${device.server.take(50)}, type=${device.st.substringAfterLast(":")}")
                     }
-                } catch (e: java.net.SocketTimeoutException) {
-                    // 超时，结束接收
-                    break
+                } catch (_: java.net.SocketTimeoutException) {
+                    // 分段超时，继续直到总超时
                 }
             }
             
@@ -121,6 +139,58 @@ object SsdpDiscovery {
         }
         
         devices
+    }
+
+    internal fun resolveSsdpSearchPayloads(): List<String> = listOf(
+        M_SEARCH_ALL,
+        M_SEARCH_RENDERER,
+        M_SEARCH_AV_TRANSPORT
+    )
+
+    private fun bindSocketToLocalNetworkInterface(context: Context, socket: MulticastSocket) {
+        try {
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val activeNetwork = connectivityManager.activeNetwork
+            if (activeNetwork == null) {
+                Logger.w(TAG, "📺 [DLNA] No active network while binding SSDP socket")
+                return
+            }
+
+            val caps = connectivityManager.getNetworkCapabilities(activeNetwork)
+            val isLocalNetwork =
+                caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+            if (!isLocalNetwork) {
+                Logger.w(TAG, "📺 [DLNA] Active network is not WiFi/Ethernet; discovery may fail")
+            }
+
+            val linkProperties = connectivityManager.getLinkProperties(activeNetwork)
+            val ipv4Address = linkProperties
+                ?.linkAddresses
+                ?.map { it.address }
+                ?.firstOrNull { address -> address is Inet4Address && !address.isLoopbackAddress }
+                as? Inet4Address
+
+            if (ipv4Address == null) {
+                Logger.w(TAG, "📺 [DLNA] No IPv4 address found on active network")
+                return
+            }
+
+            val networkInterface = NetworkInterface.getByInetAddress(ipv4Address)
+            if (networkInterface == null) {
+                Logger.w(TAG, "📺 [DLNA] No network interface for IPv4 address ${ipv4Address.hostAddress}")
+                return
+            }
+
+            socket.networkInterface = networkInterface
+            Logger.i(
+                TAG,
+                "📺 [DLNA] SSDP socket bound to interface=${networkInterface.displayName}, ip=${ipv4Address.hostAddress}"
+            )
+        } catch (e: Exception) {
+            Logger.w(TAG, "📺 [DLNA] Failed to bind SSDP socket to local interface: ${e.message}")
+        }
     }
     
     private fun parseResponse(response: String): SsdpDevice? {

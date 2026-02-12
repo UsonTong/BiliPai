@@ -435,6 +435,9 @@ fun HomeScreen(
         windowSizeClass = windowSizeClass,
         tabletUseSidebar = tabletUseSidebar
     )
+    val isHomeDrawerEnabled = com.android.purebilibili.core.util.shouldEnableHomeDrawer(
+        useSideNavigation = useSideNavigation
+    )
     
     //  📱 [切换导航模式] 处理函数
     val onToggleNavigationMode: () -> Unit = {
@@ -710,28 +713,8 @@ fun HomeScreen(
     }
 
     //  Scaffold 内容封装 (用于 Panel 左右布局复用)
-    val scaffoldContent = @Composable {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = true, // 允许侧滑打开
-            drawerContent = {
-                MineSideDrawer(
-                    drawerState = drawerState,
-                    user = state.user,
-                    onLogout = { /* 登出后由 ProfileScreen 处理 */ },
-                    onHistoryClick = onHistoryClick,
-                    onFavoriteClick = onFavoriteClick,
-                    onDownloadClick = onDownloadClick,
-                    onWatchLaterClick = onWatchLaterClick,
-                    onInboxClick = onInboxClick,
-                    onSettingsClick = onSettingsClick,
-                    onProfileClick = onProfileClick,
-                    hazeState = hazeState, // 传递毛玻璃状态
-                    isBlurEnabled = isHeaderBlurEnabled // [新增] 使用顶部模糊开关作为全局状态
-                )
-            }
-        ) {
-            Scaffold(
+    val scaffoldLayout: @Composable () -> Unit = {
+        Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(nestedScrollConnection),
@@ -928,7 +911,7 @@ fun HomeScreen(
             isHeaderCollapseEnabled = isHeaderCollapseEnabled,
             user = state.user,
             onAvatarClick = { 
-                if (state.user.isLogin) {
+                if (state.user.isLogin && isHomeDrawerEnabled) {
                     coroutineScope.launch { drawerState.open() }
                 } else {
                     onAvatarClick() 
@@ -1041,8 +1024,35 @@ fun HomeScreen(
             )
             }
         }
+    }
 
-    } // Close ModalNavigationDrawer
+    val scaffoldContent: @Composable () -> Unit = {
+        if (isHomeDrawerEnabled) {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                gesturesEnabled = true,
+                drawerContent = {
+                    MineSideDrawer(
+                        drawerState = drawerState,
+                        user = state.user,
+                        onLogout = { /* 登出后由 ProfileScreen 处理 */ },
+                        onHistoryClick = onHistoryClick,
+                        onFavoriteClick = onFavoriteClick,
+                        onDownloadClick = onDownloadClick,
+                        onWatchLaterClick = onWatchLaterClick,
+                        onInboxClick = onInboxClick,
+                        onSettingsClick = onSettingsClick,
+                        onProfileClick = onProfileClick,
+                        hazeState = hazeState,
+                        isBlurEnabled = isHeaderBlurEnabled
+                    )
+                }
+            ) {
+                scaffoldLayout()
+            }
+        } else {
+            scaffoldLayout()
+        }
     }
 
     

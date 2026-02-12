@@ -66,6 +66,7 @@ import com.android.purebilibili.core.util.rememberHapticFeedback
 import com.android.purebilibili.feature.cast.DeviceListDialog
 import com.android.purebilibili.feature.cast.DlnaManager
 import com.android.purebilibili.feature.cast.LocalProxyServer
+import com.android.purebilibili.feature.cast.SsdpCastClient
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -745,6 +746,24 @@ fun VideoPlayerOverlay(
                     val proxyUrl = LocalProxyServer.getProxyUrl(context, currentVideoUrl)
                     // Cast!
                     DlnaManager.cast(device, proxyUrl, videoTitle, videoOwnerName)
+                },
+                onSsdpDeviceSelected = { ssdpDevice ->
+                    showCastDialog = false
+                    val proxyUrl = LocalProxyServer.getProxyUrl(context, currentVideoUrl)
+                    scope.launch {
+                        val result = SsdpCastClient.cast(
+                            device = ssdpDevice,
+                            mediaUrl = proxyUrl,
+                            title = videoTitle,
+                            creator = videoOwnerName
+                        )
+                        val message = if (result.isSuccess) {
+                            "已发送投屏指令"
+                        } else {
+                            "投屏失败：${result.exceptionOrNull()?.message ?: "未知错误"}"
+                        }
+                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         }

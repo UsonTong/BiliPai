@@ -30,6 +30,7 @@ object DlnaManager {
     
     // UPnP Service Interface
     private var upnpService: AndroidUpnpService? = null
+    private var isServiceBound = false
     
     // WiFi Multicast Lock (Android 默认禁用多播以省电，需要手动获取锁)
     private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
@@ -82,11 +83,16 @@ object DlnaManager {
         override fun onServiceDisconnected(className: ComponentName) {
             upnpService = null
             _isConnected.value = false
+            isServiceBound = false
             Logger.d(TAG, "Cling Service Disconnected")
         }
     }
 
     fun bindService(context: Context) {
+        if (isServiceBound) {
+            Logger.d(TAG, "📺 [Cling] bindService ignored: already bound")
+            return
+        }
         // 获取 WiFi 多播锁，这是 UPnP 发现的关键！
         try {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
@@ -99,26 +105,29 @@ object DlnaManager {
         }
         
         val intent = Intent(context, AndroidUpnpServiceImpl::class.java)
-        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        isServiceBound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        if (!isServiceBound) {
+            Logger.e(TAG, "📺 [Cling] Failed to bind AndroidUpnpService")
+            releaseMulticastLock()
+        }
     }
 
     fun unbindService(context: Context) {
         if (upnpService != null) {
             upnpService?.registry?.removeListener(registryListener)
-            context.unbindService(serviceConnection)
-            upnpService = null
-            _isConnected.value = false
         }
-        // 释放多播锁
-        try {
-            if (multicastLock?.isHeld == true) {
-                multicastLock?.release()
-                Logger.d(TAG, "MulticastLock released")
+        if (isServiceBound) {
+            try {
+                context.unbindService(serviceConnection)
+            } catch (e: IllegalArgumentException) {
+                Logger.w(TAG, "📺 [Cling] unbindService ignored: ${e.message}")
             }
-        } catch (e: Exception) {
-            Logger.e(TAG, "Failed to release multicast lock", e)
+            isServiceBound = false
         }
-        multicastLock = null
+        upnpService = null
+        _isConnected.value = false
+        _devices.value = emptyList()
+        releaseMulticastLock()
     }
     
     fun refresh() {
@@ -202,6 +211,18 @@ object DlnaManager {
                 Logger.e(TAG, "Stop command failed: $defaultMsg")
             }
         })
+    }
+
+    private fun releaseMulticastLock() {
+        try {
+            if (multicastLock?.isHeld == true) {
+                multicastLock?.release()
+                Logger.d(TAG, "MulticastLock released")
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "Failed to release multicast lock", e)
+        }
+        multicastLock = null
     }
 
     private fun createMetadata(url: String, title: String, creator: String): String {

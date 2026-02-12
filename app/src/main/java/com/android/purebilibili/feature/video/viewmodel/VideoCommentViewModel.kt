@@ -45,7 +45,12 @@ data class CommentUiState(
     // [新增] 删除与动画状态
     val dissolvingIds: Set<Long> = emptySet(), // 正在播放消散动画的评论 ID
     // [新增] 当前登录用户 Mid (直接暴露以便 UI 判断是否显示删除按钮)
-    val currentMid: Long = 0
+    val currentMid: Long = 0,
+    // [新增] 评论输入控制
+    val rootInputHint: String = "进来唠会嗑呗~",
+    val childInputHint: String = "回复一下吧~",
+    val canUploadImage: Boolean = true,
+    val canInputComment: Boolean = true
 )
 
 // 二级评论状态 (从 PlayerViewModel 移过来)
@@ -220,7 +225,11 @@ class VideoCommentViewModel : ViewModel() {
                     isRepliesLoading = false,
                     repliesError = null,
                     isRepliesEnd = isEnd,
-                    nextPage = pageToLoad + 1
+                    nextPage = pageToLoad + 1,
+                    rootInputHint = data.control?.rootInputText?.takeIf { it.isNotBlank() } ?: current.rootInputHint,
+                    childInputHint = data.control?.childInputText?.takeIf { it.isNotBlank() } ?: current.childInputHint,
+                    canUploadImage = data.control?.canUploadPicture ?: current.canUploadImage,
+                    canInputComment = data.control?.inputDisable?.not() ?: current.canInputComment
                 )
             }.onFailure { e ->
                 android.util.Log.e("CommentVM", " loadComments error: ${e.message}")

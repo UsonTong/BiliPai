@@ -9,3 +9,10 @@ internal fun shouldUseSidebarNavigationForLayout(
 ): Boolean {
     return tabletUseSidebar && windowSizeClass.shouldUseSideNavigation
 }
+
+/**
+ * 首页侧边抽屉仅在底栏导航模式下启用，避免与平板侧栏模式叠层冲突。
+ */
+internal fun shouldEnableHomeDrawer(useSideNavigation: Boolean): Boolean {
+    return !useSideNavigation
+}

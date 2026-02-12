@@ -52,6 +52,11 @@ import androidx.compose.ui.semantics.contentDescription
 // 显式导入 collectAsState 以避免 ambiguity 或 missing reference
 import androidx.compose.runtime.collectAsState
 
+internal fun shouldOpenLongPressMenu(
+    hasPreviewAction: Boolean,
+    hasMenuAction: Boolean
+): Boolean = !hasPreviewAction && hasMenuAction
+
 /**
  *  官方 B 站风格视频卡片
  * 采用与 Bilibili 官方 App 一致的设计：
@@ -75,6 +80,7 @@ fun ElegantVideoCard(
     onDismiss: (() -> Unit)? = null,    //  [新增] 删除/过滤回调（长按触发）
     onWatchLater: (() -> Unit)? = null,  //  [新增] 稍后再看回调
     onUnfavorite: (() -> Unit)? = null,  //  [新增] 取消收藏回调
+    dismissMenuText: String = "\uD83D\uDEAB 不感兴趣", //  [新增] 自定义长按菜单删除文案
     onLongClick: ((VideoItem) -> Unit)? = null, // [Feature] Long Press Preview
     onClick: (String, Long) -> Unit
 ) {
@@ -184,7 +190,9 @@ fun ElegantVideoCard(
                 )
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 //  [交互优化] 封面区域：点击跳转 (带按压反馈)
-                .pointerInput(Unit) {
+                .pointerInput(onLongClick, onDismiss, onWatchLater, onUnfavorite) {
+                    val hasPreviewAction = onLongClick != null
+                    val hasLongPressMenu = onDismiss != null || onWatchLater != null || onUnfavorite != null
                     detectTapGestures(
                         onPress = {
                             isPressed = true
@@ -192,9 +200,12 @@ fun ElegantVideoCard(
                             isPressed = false
                         },
                         onLongPress = {
-                            if (onLongClick != null) {
+                            if (hasPreviewAction) {
                                 haptic(HapticType.HEAVY)
                                 onLongClick(video)
+                            } else if (shouldOpenLongPressMenu(hasPreviewAction, hasLongPressMenu)) {
+                                haptic(HapticType.HEAVY)
+                                showDismissMenu = true
                             }
                         },
                         onTap = {
@@ -316,6 +327,7 @@ fun ElegantVideoCard(
                 modifier = titleModifier
                     //  [交互优化] 标题区域：长按弹出菜单，点击跳转 (带按压反馈)
                     .pointerInput(onDismiss, onWatchLater, onUnfavorite) {
+                        val hasPreviewAction = onLongClick != null
                         val hasLongPressMenu = onDismiss != null || onWatchLater != null || onUnfavorite != null
                         detectTapGestures(
                             onPress = {
@@ -324,10 +336,10 @@ fun ElegantVideoCard(
                                 isPressed = false
                             },
                             onLongPress = {
-                                if (onLongClick != null) {
+                                if (hasPreviewAction) {
                                   haptic(HapticType.HEAVY)
                                   onLongClick(video)
-                                } else if (hasLongPressMenu) {
+                                } else if (shouldOpenLongPressMenu(hasPreviewAction, hasLongPressMenu)) {
                                     haptic(HapticType.HEAVY)
                                     showDismissMenu = true
                                 }
@@ -629,7 +641,7 @@ fun ElegantVideoCard(
             DropdownMenuItem(
                 text = { 
                     Text(
-                        "🚫 不感兴趣",
+                        dismissMenuText,
                         color = MaterialTheme.colorScheme.onSurface
                     ) 
                 },

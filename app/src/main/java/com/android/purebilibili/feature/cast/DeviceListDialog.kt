@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.fourthline.cling.model.meta.Device
@@ -26,6 +27,7 @@ fun DeviceListDialog(
     val devices by DlnaManager.devices.collectAsState()
     val isConnected by DlnaManager.isConnected.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // 手动 SSDP 发现结果
     var ssdpDevices by remember { mutableStateOf<List<SsdpDiscovery.SsdpDevice>>(emptyList()) }
@@ -39,7 +41,7 @@ fun DeviceListDialog(
         // 同时进行手动 SSDP 发现
         isSearching = true
         scope.launch {
-            ssdpDevices = SsdpDiscovery.discover(5000)
+            ssdpDevices = SsdpDiscovery.discover(context, 5000)
             isSearching = false
         }
     }
@@ -48,7 +50,7 @@ fun DeviceListDialog(
         DlnaManager.refresh()
         scope.launch {
             isSearching = true
-            ssdpDevices = SsdpDiscovery.discover(5000)
+            ssdpDevices = SsdpDiscovery.discover(context, 5000)
             isSearching = false
         }
     }
@@ -92,7 +94,7 @@ fun DeviceListDialog(
                     // Cling 发现的设备
                     items(devices) { device ->
                         ListItem(
-                            headlineContent = { Text(device.details.friendlyName ?: "Unknown Device") },
+                            headlineContent = { Text(device.details?.friendlyName ?: "Unknown Device") },
                             supportingContent = { Text(device.displayString.ifEmpty { device.type.type }) },
                             leadingContent = { Icon(Icons.Rounded.Tv, null) },
                             modifier = Modifier
@@ -102,7 +104,7 @@ fun DeviceListDialog(
                     }
                     // 手动 SSDP 发现的设备（排除已被 Cling 发现的）
                     val clingLocations = devices.mapNotNull { 
-                        it.details?.presentationURI?.toString() 
+                        it.details?.presentationURI?.toString()
                     }.toSet()
                     
                     val uniqueSsdpDevices = ssdpDevices.filter { ssdp ->
@@ -132,7 +134,6 @@ fun DeviceListDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val context = androidx.compose.ui.platform.LocalContext.current
                 // 左侧导出日志按钮
                 TextButton(
                     onClick = {

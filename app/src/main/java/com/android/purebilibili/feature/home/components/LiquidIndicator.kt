@@ -64,6 +64,7 @@ fun LiquidIndicator(
     indicatorWidthMultiplier: Float = 1.42f,
     indicatorMinWidth: Dp = 104.dp,
     indicatorMaxWidth: Dp = 136.dp,
+    maxWidthToItemRatio: Float = Float.POSITIVE_INFINITY,
     indicatorHeight: Dp = 54.dp,
     lensIntensityBoost: Float = 1f,
     edgeWarpBoost: Float = 1f,
@@ -92,17 +93,22 @@ fun LiquidIndicator(
         )
     }
     
-    // 默认保持底栏宽胶囊；顶部可通过参数做轻量化适配
-    val indicatorWidth = (itemWidth * indicatorWidthMultiplier)
-        .coerceIn(indicatorMinWidth, indicatorMaxWidth)
-    
+    val itemWidthPx = with(density) { itemWidth.toPx() }
+    val indicatorWidthPx = resolveLiquidIndicatorWidthPx(
+        itemWidthPx = itemWidthPx,
+        widthMultiplier = indicatorWidthMultiplier,
+        minWidthPx = with(density) { indicatorMinWidth.toPx() },
+        maxWidthPx = with(density) { indicatorMaxWidth.toPx() },
+        maxWidthToItemRatio = maxWidthToItemRatio
+    )
+    val indicatorWidth = with(density) { indicatorWidthPx.toDp() }
+
     // [优化] 使用 graphicsLayer 进行位移，避免 Layout 重排
     // 计算位置 (Px)
-    val itemWidthPx = with(density) { itemWidth.toPx() }
     val startPaddingPx = with(density) { startPadding.toPx() }
     val edgeInsetPx = with(density) { edgeInset.toPx() }
     // 居中偏移：(Item宽度 - 指示器宽度) / 2
-    val centerOffsetPx = with(density) { (itemWidth.toPx() - indicatorWidth.toPx()) / 2 }
+    val centerOffsetPx = (itemWidthPx - indicatorWidthPx) / 2f
     
     // 速度形变
     val deformation = lensProfile.motionFraction * (0.34f * styleTuning.deformationMultiplier)
@@ -132,7 +138,7 @@ fun LiquidIndicator(
                     translationX = resolveIndicatorTranslationXPx(
                         position = position,
                         itemWidthPx = itemWidthPx,
-                        indicatorWidthPx = with(density) { indicatorWidth.toPx() },
+                        indicatorWidthPx = indicatorWidthPx,
                         startPaddingPx = startPaddingPx,
                         containerWidthPx = containerWidthPx,
                         clampToBounds = clampToBounds,
@@ -372,6 +378,27 @@ internal fun resolveTopTabIndicatorWidthPx(
     val maxWidth = (itemWidthPx - horizontalInsetPx).coerceAtLeast(minBound)
     val desired = itemWidthPx * widthRatio
     return desired.coerceIn(minBound, maxWidth)
+}
+
+internal fun resolveLiquidIndicatorWidthPx(
+    itemWidthPx: Float,
+    widthMultiplier: Float,
+    minWidthPx: Float,
+    maxWidthPx: Float,
+    maxWidthToItemRatio: Float = Float.POSITIVE_INFINITY
+): Float {
+    if (itemWidthPx <= 0f) return 0f
+
+    val desiredWidth = itemWidthPx * widthMultiplier
+    val designMaxWidth = maxWidthPx.coerceAtLeast(0f)
+    val ratioCapWidth = if (maxWidthToItemRatio.isFinite() && maxWidthToItemRatio > 0f) {
+        itemWidthPx * maxWidthToItemRatio
+    } else {
+        Float.POSITIVE_INFINITY
+    }
+    val effectiveMaxWidth = minOf(designMaxWidth, ratioCapWidth)
+    val effectiveMinWidth = minWidthPx.coerceAtLeast(0f).coerceAtMost(effectiveMaxWidth)
+    return desiredWidth.coerceIn(effectiveMinWidth, effectiveMaxWidth)
 }
 
 internal fun resolveIndicatorTranslationXPx(

@@ -1585,9 +1585,12 @@ fun VideoDetailScreen(
             onDismiss = { viewModel.hideCommentInputDialog() },
             isSending = isSendingComment,
             replyToName = replyingToComment?.member?.uname,
+            inputHint = if (replyingToComment != null) commentState.childInputHint else commentState.rootInputHint,
+            canUploadImage = commentState.canUploadImage,
+            canInputComment = commentState.canInputComment,
             emotePackages = emotePackages, // [新增]
-            onSend = { message ->
-                viewModel.sendComment(message)
+            onSend = { message, imageUris ->
+                viewModel.sendComment(message, imageUris)
                 viewModel.hideCommentInputDialog()
             }
         )

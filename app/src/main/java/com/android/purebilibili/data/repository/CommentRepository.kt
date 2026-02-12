@@ -3,9 +3,16 @@ package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.network.WbiUtils
+import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.data.model.response.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.TreeMap
 
 /**
@@ -14,11 +21,20 @@ import java.util.TreeMap
  */
 object CommentRepository {
     private val api = NetworkModule.api
+    private val commentJson = Json { ignoreUnknownKeys = true }
 
     // WBI Key 缓存
     private var wbiKeysCache: Pair<String, String>? = null
     private var wbiKeysTimestamp: Long = 0
     private const val WBI_CACHE_DURATION = 1000 * 60 * 30 // 30分钟缓存
+
+    @Serializable
+    private data class CommentPicturePayload(
+        @SerialName("img_src") val imgSrc: String,
+        @SerialName("img_width") val imgWidth: Int,
+        @SerialName("img_height") val imgHeight: Int,
+        @SerialName("img_size") val imgSize: Float
+    )
 
     /**
      * 获取 WBI Keys（用于 WBI 签名）
@@ -230,25 +246,37 @@ object CommentRepository {
      * @param parent 父评论 rpid
      * @return 新评论的 rpid
      */
-    suspend fun addComment(aid: Long, message: String, root: Long = 0, parent: Long = 0): Result<ReplyItem?> = withContext(Dispatchers.IO) {
+    suspend fun addComment(
+        aid: Long,
+        message: String,
+        root: Long = 0,
+        parent: Long = 0,
+        pictures: List<ReplyPicture> = emptyList()
+    ): Result<ReplyItem?> = withContext(Dispatchers.IO) {
         try {
             val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
             if (csrf.isNullOrEmpty()) {
                 return@withContext Result.failure(Exception("请先登录"))
             }
+            val picturePayload = buildPicturesPayload(pictures)
             
             val response = api.addReply(
                 oid = aid,
                 type = 1,
                 message = message,
-                root = root,
-                parent = parent,
+                root = root.takeIf { it > 0L },
+                parent = parent.takeIf { it > 0L },
+                pictures = picturePayload,
                 csrf = csrf
             )
             
             if (response.code == 0) {
                 Result.success(response.data?.reply)
             } else {
+                Logger.e(
+                    "CommentRepo",
+                    "addComment failed: aid=$aid, root=$root, parent=$parent, pictureCount=${pictures.size}, code=${response.code}, message=${response.message}"
+                )
                 val errorMsg = when (response.code) {
                     -101 -> "请先登录"
                     -102 -> "账号被封禁"
@@ -264,8 +292,82 @@ object CommentRepository {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
+            Logger.e("CommentRepo", "addComment exception: aid=$aid, root=$root, parent=$parent", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * 上传评论图片，返回可用于评论 pictures 字段的元数据
+     */
+    suspend fun uploadCommentImage(
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<ReplyPicture> = withContext(Dispatchers.IO) {
+        try {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
+            if (csrf.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("请先登录"))
+            }
+
+            val mediaType = mimeType.toMediaType()
+            val fileBody = bytes.toRequestBody(mediaType)
+            val part = okhttp3.MultipartBody.Part.createFormData(
+                "file_up",
+                fileName.ifBlank { "comment_image.jpg" },
+                fileBody
+            )
+            val textMedia = "text/plain".toMediaType()
+            val categoryBody = "daily".toRequestBody(textMedia)
+            val bizBody = "new_dyn".toRequestBody(textMedia)
+            val csrfBody = csrf.toRequestBody(textMedia)
+
+            val response = api.uploadCommentImage(
+                fileUp = part,
+                category = categoryBody,
+                biz = bizBody,
+                csrf = csrfBody
+            )
+
+            if (response.code == 0 && response.data != null) {
+                val data = response.data
+                Result.success(
+                    ReplyPicture(
+                        imgSrc = data.imageUrl,
+                        imgWidth = data.imageWidth,
+                        imgHeight = data.imageHeight,
+                        imgSize = data.imgSize
+                    )
+                )
+            } else {
+                Logger.e(
+                    "CommentRepo",
+                    "uploadCommentImage failed: fileName=$fileName, mimeType=$mimeType, size=${bytes.size}, code=${response.code}, message=${response.message}"
+                )
+                Result.failure(Exception(response.message.ifEmpty { "图片上传失败 (${response.code})" }))
+            }
+        } catch (e: Exception) {
+            Logger.e(
+                "CommentRepo",
+                "uploadCommentImage exception: fileName=$fileName, mimeType=$mimeType, size=${bytes.size}",
+                e
+            )
+            Result.failure(e)
+        }
+    }
+
+    internal fun buildPicturesPayload(pictures: List<ReplyPicture>): String? {
+        if (pictures.isEmpty()) return null
+        val payload = pictures.map { picture ->
+            CommentPicturePayload(
+                imgSrc = picture.imgSrc,
+                imgWidth = picture.imgWidth,
+                imgHeight = picture.imgHeight,
+                imgSize = picture.imgSize
+            )
+        }
+        return commentJson.encodeToString(payload)
     }
     
     /**

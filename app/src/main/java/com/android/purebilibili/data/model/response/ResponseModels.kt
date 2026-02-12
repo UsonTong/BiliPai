@@ -30,7 +30,9 @@ data class ReplyData(
     //  [新增] WBI API 置顶信息（top.upper/admin/vote）
     val top: ReplyTop? = null,
     //  [新增] UP主信息（包含 UP 置顶评论）
-    val upper: ReplyUpper? = null
+    val upper: ReplyUpper? = null,
+    //  [新增] 评论输入控制（占位文案/图片上传开关）
+    val control: ReplyPageControl? = null
 ) {
     //  统一获取总评论数
     fun getAllCount(): Int = if (cursor.allCount > 0) cursor.allCount else page.count
@@ -56,6 +58,21 @@ data class ReplyData(
         topReplies?.let { result.addAll(it) }
         return result.distinctBy { it.rpid }
     }
+}
+
+@Serializable
+data class ReplyPageControl(
+    @SerialName("input_disable")
+    val inputDisable: Boolean = false,
+    @SerialName("root_input_text")
+    val rootInputText: String = "",
+    @SerialName("child_input_text")
+    val childInputText: String = "",
+    @SerialName("upload_picture_icon_state")
+    val uploadPictureIconState: Int = 0
+) {
+    val canUploadPicture: Boolean
+        get() = uploadPictureIconState == 1 && !inputDisable
 }
 
 //  [新增] UP 主信息
@@ -191,6 +208,21 @@ data class AddReplyData(
     val root: Long = 0,
     val parent: Long = 0,
     val reply: ReplyItem? = null
+)
+
+@Serializable
+data class UploadCommentImageResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: UploadCommentImageData? = null
+)
+
+@Serializable
+data class UploadCommentImageData(
+    @SerialName("image_url") val imageUrl: String = "",
+    @SerialName("image_width") val imageWidth: Int = 0,
+    @SerialName("image_height") val imageHeight: Int = 0,
+    @SerialName("img_size") val imgSize: Float = 0f
 )
 
 // [新增] 评论控制信息（IP属地等）

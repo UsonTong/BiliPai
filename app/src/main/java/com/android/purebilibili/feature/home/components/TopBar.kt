@@ -70,6 +70,15 @@ import androidx.compose.foundation.combinedClickable // [Added]
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 
+internal fun resolveFloatingIndicatorStartPaddingPx(
+    baseInsetPx: Float,
+    leftBiasPx: Float
+): Float = (baseInsetPx - leftBiasPx).coerceAtLeast(0f)
+
+internal fun resolveTopTabRowHorizontalPaddingDp(isFloatingStyle: Boolean): Float {
+    return if (isFloatingStyle) 0f else 4f
+}
+
 /**
  * Q弹点击效果
  */
@@ -242,16 +251,19 @@ fun CategoryTabRow(
     val topIndicatorWidthRatio = 0.78f
     val topIndicatorMinWidth = 48.dp
     val topIndicatorHorizontalInset = 16.dp
-    val floatingLiquidWidthMultiplier = 1.12f
-    val floatingLiquidMinWidth = 86.dp
-    val floatingLiquidMaxWidth = 112.dp
+    val floatingLiquidWidthMultiplier = 1.42f
+    val floatingLiquidMinWidth = 104.dp
+    val floatingLiquidMaxWidth = 136.dp
+    val floatingLiquidMaxWidthToItemRatio = 1.42f
     val floatingLiquidHeight = 52.dp
+    val floatingIndicatorEdgeInset = 0.dp
+    val floatingIndicatorLeftBias = 0.dp
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(tabRowHeight)
-            .padding(horizontal = 4.dp), 
+            .padding(horizontal = resolveTopTabRowHorizontalPaddingDp(isFloatingStyle).dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // [Refactor] 使用 BoxWithConstraints 动态计算宽度
@@ -309,12 +321,17 @@ fun CategoryTabRow(
                 derivedStateOf {
                     if (!isFloatingStyle) 0f
                     else {
-                        val edgePx = with(localDensity) { 1.dp.toPx() }
+                        val edgePx = with(localDensity) { floatingIndicatorEdgeInset.toPx() }
                         ((floatingIndicatorWidthPx - actualTabWidthPx) / 2f).coerceAtLeast(0f) + edgePx
                     }
                 }
             }
-            val floatingInsetDp = with(localDensity) { floatingInsetPx.toDp() }
+            val floatingAdjustedInsetDp = with(localDensity) {
+                resolveFloatingIndicatorStartPaddingPx(
+                    baseInsetPx = floatingInsetPx,
+                    leftBiasPx = floatingIndicatorLeftBias.toPx()
+                ).toDp()
+            }
 
             LaunchedEffect(isLiquidGlassEnabled) {
                 snapshotFlow { Pair(currentPosition, actualTabWidthPx) }
@@ -382,15 +399,16 @@ fun CategoryTabRow(
                             itemCount = categories.size,
                             isDragging = isInteracting,
                             velocity = indicatorVelocityPxPerSecond,
-                            startPadding = floatingInsetDp,
+                            startPadding = floatingAdjustedInsetDp,
                             modifier = Modifier.fillMaxSize(),
                             isLiquidGlassEnabled = isLiquidGlassEnabled,
                             clampToBounds = true,
-                            edgeInset = 1.dp,
+                            edgeInset = floatingIndicatorEdgeInset,
                             viewportShiftPx = scrollOffset,
                             indicatorWidthMultiplier = floatingLiquidWidthMultiplier,
                             indicatorMinWidth = floatingLiquidMinWidth,
                             indicatorMaxWidth = floatingLiquidMaxWidth,
+                            maxWidthToItemRatio = floatingLiquidMaxWidthToItemRatio,
                             indicatorHeight = floatingLiquidHeight,
                             lensIntensityBoost = if (isIos26Style) 0.98f else 1.22f,
                             edgeWarpBoost = if (isIos26Style) 0.96f else 1.20f,
@@ -440,7 +458,7 @@ fun CategoryTabRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start,
                         contentPadding = PaddingValues(
-                            horizontal = if (isFloatingStyle) floatingInsetDp else 0.dp
+                            horizontal = if (isFloatingStyle) floatingAdjustedInsetDp else 0.dp
                         )
                     ) {
                         itemsIndexed(categories) { index, category ->

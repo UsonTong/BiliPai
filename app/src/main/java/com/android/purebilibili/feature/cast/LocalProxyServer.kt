@@ -1,10 +1,18 @@
 package com.android.purebilibili.feature.cast
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.wifi.WifiManager
+import android.text.format.Formatter
+import com.android.purebilibili.core.util.Logger
 import fi.iki.elonen.NanoHTTPD
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.InputStream
-import android.util.Log
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.URLEncoder
 
 /**
  * 运行在手机上的轻量级 HTTP 代理服务器。
@@ -23,7 +31,7 @@ class LocalProxyServer(port: Int = 8901) : NanoHTTPD(port) {
         .followSslRedirects(true) // 虽然电视可能只发起 HTTP 请求，但我们需要从 B 站获取 HTTPS 数据
         .build()
 
-    override fun serve(session: IHTTPSession): Response {
+    override fun serve(session: IHTTPSession): NanoHTTPD.Response {
         val uri = session.uri
         // 仅处理 /proxy 路径的请求
         if (uri != "/proxy") {
@@ -37,8 +45,13 @@ class LocalProxyServer(port: Int = 8901) : NanoHTTPD(port) {
         if (targetUrl.isNullOrEmpty()) {
              return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Missing 'url' parameter")
         }
+        if (!isSupportedTargetUrl(targetUrl)) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Unsupported target URL")
+        }
+        val parsedTargetUrl = targetUrl.toHttpUrlOrNull()
+            ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Invalid target URL")
         
-        Log.d("LocalProxyServer", "正在代理请求: $targetUrl")
+        Logger.d("LocalProxyServer", "📺 [Proxy] 正在代理请求: $targetUrl")
 
         try {
             // 构建发往 Bilibili 的请求
@@ -47,35 +60,51 @@ class LocalProxyServer(port: Int = 8901) : NanoHTTPD(port) {
             val userAgent = params["ua"] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
             val request = Request.Builder()
-                .url(targetUrl)
+                .url(parsedTargetUrl)
                 .header("User-Agent", userAgent)
                 .header("Referer", referer)
-                .build()
+            session.headers["range"]?.takeIf { it.isNotBlank() }?.let { rangeHeader ->
+                request.header("Range", rangeHeader)
+            }
+            val upstreamRequest = request.build()
 
-            val response = client.newCall(request).execute()
+            val upstreamResponse = client.newCall(upstreamRequest).execute()
             
-            if (!response.isSuccessful) {
-                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Upstream Error: ${response.code}")
+            if (!upstreamResponse.isSuccessful) {
+                val body = upstreamResponse.body?.string().orEmpty()
+                upstreamResponse.close()
+                return newFixedLengthResponse(
+                    mapToNanoStatus(upstreamResponse.code),
+                    MIME_PLAINTEXT,
+                    "Upstream Error: ${upstreamResponse.code} ${body.take(120)}"
+                )
             }
 
             // 获取 B 站返回的视频流和元数据
-            val inputStream = response.body?.byteStream() ?: return newFixedLengthResponse(Response.Status.NO_CONTENT, MIME_PLAINTEXT, "")
-            val contentType = response.header("Content-Type") ?: "video/mp4"
-            val contentLength = response.body?.contentLength() ?: -1L
+            val body = upstreamResponse.body
+            if (body == null) {
+                upstreamResponse.close()
+                return newFixedLengthResponse(Response.Status.NO_CONTENT, MIME_PLAINTEXT, "")
+            }
+            val inputStream = UpstreamRelayInputStream(upstreamResponse, body.byteStream())
+            val contentType = upstreamResponse.header("Content-Type") ?: "video/mp4"
+            val contentLength = body.contentLength()
 
             // 构造返回给电视的响应
             // 使用 ChunkedResponse 以支持流式传输，避免将整个视频加载到内存中
-            val nanoResponse = newChunkedResponse(Response.Status.OK, contentType, inputStream)
+            val nanoResponse = newChunkedResponse(mapToNanoStatus(upstreamResponse.code), contentType, inputStream)
             
             // 转发关键响应头 (如 Content-Length)，这对播放器的进度条显示和拖动至关重要
             if (contentLength != -1L) {
                  nanoResponse.addHeader("Content-Length", contentLength.toString())
             }
+            upstreamResponse.header("Content-Range")?.let { nanoResponse.addHeader("Content-Range", it) }
+            upstreamResponse.header("Accept-Ranges")?.let { nanoResponse.addHeader("Accept-Ranges", it) }
             
             return nanoResponse
 
         } catch (e: Exception) {
-            Log.e("LocalProxyServer", "代理请求处理失败", e)
+            Logger.e("LocalProxyServer", "📺 [Proxy] 代理请求处理失败", e)
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error: ${e.message}")
         }
     }
@@ -89,16 +118,74 @@ class LocalProxyServer(port: Int = 8901) : NanoHTTPD(port) {
          * @param targetUrl 实际的 B 站视频 URL
          * @return 代理服务器的完整 URL
          */
-        fun getProxyUrl(context: android.content.Context, targetUrl: String): String {
-            // 获取本机 IP 地址
-            val wifiManager = context.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            // 注意：这种获取 IP 的方式在 IPv6 或复杂网络下可能不准确，但通常适用于家庭 Wi-Fi 环境
-            val ipAddress = android.text.format.Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
+        fun getProxyUrl(context: Context, targetUrl: String): String {
+            val ipAddress = resolveLocalIpv4Address(context)
             
             // 对目标 URL 进行编码，作为参数传递
-            val encodedUrl = java.net.URLEncoder.encode(targetUrl, "UTF-8")
+            val encodedUrl = URLEncoder.encode(targetUrl, "UTF-8")
             
             return "http://$ipAddress:$PORT/proxy?url=$encodedUrl"
+        }
+
+        internal fun pickBestIpv4Address(addresses: List<InetAddress>): String? {
+            return addresses.asSequence()
+                .filterIsInstance<Inet4Address>()
+                .firstOrNull { !it.isLoopbackAddress }
+                ?.hostAddress
+        }
+
+        internal fun isSupportedTargetUrl(url: String): Boolean {
+            val scheme = url.toHttpUrlOrNull()?.scheme ?: return false
+            return scheme.equals("http", ignoreCase = true) || scheme.equals("https", ignoreCase = true)
+        }
+
+        private fun resolveLocalIpv4Address(context: Context): String {
+            val connectivityManager =
+                context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val activeNetwork = connectivityManager.activeNetwork
+            val linkAddresses = connectivityManager.getLinkProperties(activeNetwork)
+                ?.linkAddresses
+                ?.map { it.address }
+                .orEmpty()
+            pickBestIpv4Address(linkAddresses)?.let { return it }
+
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val fallbackIp = Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
+            if (!fallbackIp.isNullOrBlank() && fallbackIp != "0.0.0.0") {
+                return fallbackIp
+            }
+            return "127.0.0.1"
+        }
+
+        private fun mapToNanoStatus(code: Int): Response.Status {
+            return when (code) {
+                200 -> Response.Status.OK
+                206 -> Response.Status.PARTIAL_CONTENT
+                400 -> Response.Status.BAD_REQUEST
+                401 -> Response.Status.UNAUTHORIZED
+                403 -> Response.Status.FORBIDDEN
+                404 -> Response.Status.NOT_FOUND
+                else -> Response.Status.INTERNAL_ERROR
+            }
+        }
+    }
+
+    private class UpstreamRelayInputStream(
+        private val upstreamResponse: okhttp3.Response,
+        private val delegate: InputStream
+    ) : InputStream() {
+        override fun read(): Int = delegate.read()
+
+        override fun read(b: ByteArray): Int = delegate.read(b)
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int = delegate.read(b, off, len)
+
+        override fun close() {
+            try {
+                delegate.close()
+            } finally {
+                upstreamResponse.close()
+            }
         }
     }
 }

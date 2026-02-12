@@ -2,6 +2,8 @@
 //  [重构] 简化版 PlayerViewModel - 使用 UseCase 层
 package com.android.purebilibili.feature.video.viewmodel
 
+import android.net.Uri
+import android.provider.OpenableColumns
 import com.android.purebilibili.feature.video.usecase.*
 
 import androidx.lifecycle.ViewModel
@@ -1503,7 +1505,7 @@ class PlayerViewModel : ViewModel() {
      * 发送评论
      * @param inputMessage 可选直接传入的内容，如果不传则使用 state 中的内容
      */
-    fun sendComment(inputMessage: String? = null) {
+    fun sendComment(inputMessage: String? = null, imageUris: List<Uri> = emptyList()) {
         if (inputMessage != null) {
             _commentInput.value = inputMessage
         }
@@ -1521,13 +1523,25 @@ class PlayerViewModel : ViewModel() {
             val replyTo = _replyingToComment.value
             val root = replyTo?.rpid ?: 0L
             val parent = replyTo?.rpid ?: 0L
+            val picturesResult = uploadCommentPictures(imageUris)
+            val pictures = picturesResult.getOrElse { uploadError ->
+                Logger.e(
+                    "PlayerVM",
+                    "Comment image upload failed: aid=${current.info.aid}, imageCount=${imageUris.size}, message=${uploadError.message}",
+                    uploadError
+                )
+                toast(uploadError.message ?: "图片上传失败")
+                _isSendingComment.value = false
+                return@launch
+            }
             
             com.android.purebilibili.data.repository.CommentRepository
                 .addComment(
                     aid = current.info.aid,
                     message = message,
                     root = root,
-                    parent = parent
+                    parent = parent,
+                    pictures = pictures
                 )
                 .onSuccess { reply ->
                     toast(if (replyTo != null) "回复成功" else "评论成功")
@@ -1538,11 +1552,60 @@ class PlayerViewModel : ViewModel() {
                     _commentSentEvent.send(reply)
                 }
                 .onFailure { error ->
+                    Logger.e(
+                        "PlayerVM",
+                        "Comment send failed: aid=${current.info.aid}, root=$root, parent=$parent, pictureCount=${pictures.size}, message=${error.message}",
+                        error
+                    )
                     toast(error.message ?: "发送失败")
                 }
             
             _isSendingComment.value = false
         }
+    }
+
+    private suspend fun uploadCommentPictures(imageUris: List<Uri>): Result<List<ReplyPicture>> {
+        if (imageUris.isEmpty()) return Result.success(emptyList())
+        val context = appContext ?: return Result.failure(Exception("应用上下文不可用"))
+        val selectedUris = imageUris.take(9)
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                selectedUris.mapIndexed { index, uri ->
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.readBytes()
+                    } ?: error("无法读取图片文件")
+
+                    if (bytes.isEmpty()) {
+                        error("图片内容为空")
+                    }
+                    if (bytes.size > 15 * 1024 * 1024) {
+                        error("图片过大（单张最大 15MB）")
+                    }
+
+                    val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    val fileName = queryDisplayName(context, uri)
+                        ?: "comment_${System.currentTimeMillis()}_${index + 1}.jpg"
+
+                    val uploadResult = com.android.purebilibili.data.repository.CommentRepository
+                        .uploadCommentImage(
+                            fileName = fileName,
+                            mimeType = mimeType,
+                            bytes = bytes
+                        )
+                    uploadResult.getOrElse { throw it }
+                }
+            }
+        }
+    }
+
+    private fun queryDisplayName(context: android.content.Context, uri: Uri): String? {
+        return runCatching {
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+                }
+        }.getOrNull()
     }
     
     // 评论发送成功事件

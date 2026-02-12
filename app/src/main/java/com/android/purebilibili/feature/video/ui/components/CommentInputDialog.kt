@@ -1,15 +1,22 @@
 // 文件路径: feature/video/ui/components/CommentInputDialog.kt
 package com.android.purebilibili.feature.video.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -53,9 +60,12 @@ import kotlinx.coroutines.delay
 fun CommentInputDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
-    onSend: (String) -> Unit,
+    onSend: (String, List<Uri>) -> Unit,
     isSending: Boolean = false,
     replyToName: String? = null,
+    inputHint: String = "进来唠会嗑呗~",
+    canUploadImage: Boolean = true,
+    canInputComment: Boolean = true,
     modifier: Modifier = Modifier,
     emotePackages: List<com.android.purebilibili.data.model.response.EmotePackage> = emptyList() // [新增] 表情包列表
 ) {
@@ -64,9 +74,19 @@ fun CommentInputDialog(
     var isForwardToDynamic by remember { mutableStateOf(false) } // 转发到动态
     var showEmojiPanel by remember { mutableStateOf(false) }    // 表情面板
     var currentTab by remember { mutableStateOf(0) } // 0=Kaomoji, 1=Emoji, 2+=API Packages
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = 9)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            selectedImageUris = (selectedImageUris + uris)
+                .distinct()
+                .take(9)
+        }
+    }
     
     // 重置状态
     LaunchedEffect(visible) {
@@ -74,14 +94,18 @@ fun CommentInputDialog(
             text = ""
             isForwardToDynamic = false
             showEmojiPanel = false
+            selectedImageUris = emptyList()
             delay(100)
-            focusRequester.requestFocus()
-            keyboardController?.show()
+            if (canInputComment) {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
         }
     }
     
     // 监听 emoji 面板开关，控制键盘
-    LaunchedEffect(showEmojiPanel) {
+    LaunchedEffect(showEmojiPanel, canInputComment) {
+        if (!canInputComment) return@LaunchedEffect
         if (showEmojiPanel) {
             keyboardController?.hide()
         } else if (visible) {
@@ -148,6 +172,7 @@ fun CommentInputDialog(
                             BasicTextField(
                                 value = text,
                                 onValueChange = { if (it.length <= 1000) text = it },
+                                enabled = canInputComment && !isSending,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .fillMaxHeight() // 填满 Box
@@ -163,8 +188,10 @@ fun CommentInputDialog(
                                         modifier = Modifier.fillMaxSize()
                                     ) {
                                         if (text.isEmpty()) {
+                                            val fallbackHint = "进来唠会嗑呗~"
+                                            val resolvedHint = inputHint.ifBlank { fallbackHint }
                                             Text(
-                                                text = if (replyToName != null) "回复 @$replyToName: 进来唠会嗑呗~" else "进来唠会嗑呗~",
+                                                text = if (replyToName != null) "回复 @$replyToName: $resolvedHint" else resolvedHint,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                 fontSize = 16.sp
                                             )
@@ -185,6 +212,65 @@ fun CommentInputDialog(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+
+                        if (selectedImageUris.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "已选 ${selectedImageUris.size}/9 张",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            LazyRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(selectedImageUris, key = { it.toString() }) { uri ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .border(
+                                                width = 1.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                    ) {
+                                        AsyncImage(
+                                            model = uri,
+                                            contentDescription = "已选图片",
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(999.dp),
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(3.dp)
+                                                .clickable {
+                                                    selectedImageUris = selectedImageUris.filterNot { it == uri }
+                                                }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Close,
+                                                contentDescription = "移除",
+                                                modifier = Modifier
+                                                    .size(14.dp)
+                                                    .padding(1.dp),
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         
                         // 2. 底部工具栏
                         Row(
@@ -198,7 +284,7 @@ fun CommentInputDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .clickable { isForwardToDynamic = !isForwardToDynamic }
+                                    .clickable(enabled = canInputComment && !isSending) { isForwardToDynamic = !isForwardToDynamic }
                                     .padding(4.dp)
                             ) {
                                 // 模拟 RadioButton/Checkbox
@@ -219,7 +305,10 @@ fun CommentInputDialog(
                             Spacer(modifier = Modifier.width(12.dp))
                             
                             // 图标栏: 表情 @ 图片
-                            IconButton(onClick = { showEmojiPanel = !showEmojiPanel }) {
+                            IconButton(
+                                onClick = { showEmojiPanel = !showEmojiPanel },
+                                enabled = canInputComment && !isSending
+                            ) {
                                 Icon(
                                     imageVector = Icons.Filled.Face,
                                     contentDescription = "Emoji",
@@ -228,11 +317,14 @@ fun CommentInputDialog(
                                 )
                             }
                             
-                            IconButton(onClick = { 
-                                text += "@" 
-                                // 切换回键盘
-                                showEmojiPanel = false
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    text += "@"
+                                    // 切换回键盘
+                                    showEmojiPanel = false
+                                },
+                                enabled = canInputComment && !isSending
+                            ) {
                                 Icon(
                                     imageVector = Icons.Filled.Email,
                                     contentDescription = "At",
@@ -242,13 +334,21 @@ fun CommentInputDialog(
                             }
                             
                             IconButton(
-                                onClick = { /* TODO: Pick Image */ },
-                                enabled = false // 暂不支持
+                                onClick = {
+                                    imagePickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                                enabled = canUploadImage && canInputComment && !isSending
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.AddCircle,
                                     contentDescription = "Add",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    tint = if (canUploadImage) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                    },
                                     modifier = Modifier.size(26.dp)
                                 )
                             }
@@ -258,12 +358,12 @@ fun CommentInputDialog(
                             // 发送按钮
                             Button(
                                 onClick = {
-                                    if (text.isNotBlank() && !isSending) {
+                                    if (text.isNotBlank() && !isSending && canInputComment) {
                                         android.util.Log.d("CommentInputDialog", "📤 Sending comment: $text")
-                                        onSend(text.trim())
+                                        onSend(text.trim(), selectedImageUris)
                                     }
                                 },
-                                enabled = text.isNotBlank() && !isSending,
+                                enabled = text.isNotBlank() && !isSending && canInputComment,
                                 shape = RoundedCornerShape(20.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary, // 应该是粉色
@@ -286,6 +386,22 @@ fun CommentInputDialog(
                                     )
                                 }
                             }
+                        }
+
+                        if (!canInputComment) {
+                            Text(
+                                text = "当前评论区暂不可评论",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        } else if (!canUploadImage) {
+                            Text(
+                                text = "当前评论区不支持图片评论",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
                         }
                         
                         // 3. 表情面板區域

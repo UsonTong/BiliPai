@@ -358,6 +358,7 @@ fun WatchLaterScreen(
                                     animationEnabled = true, // 保留首页卡片动画
                                     transitionEnabled = true, // 共享元素过渡
                                     showPublishTime = true,
+                                    dismissMenuText = "\uD83D\uDDD1\uFE0F 删除",
                                     // 触发 Thanos 响指动画 (开始消散)
                                     onDismiss = { viewModel.startVideoDissolve(item.bvid) },  
                                     onClick = { bvid, _ -> onVideoClick(bvid, 0L) }

@@ -42,4 +42,14 @@ class NavigationUiPolicyTest {
 
         assertFalse(shouldUseSidebarNavigationForLayout(windowSizeClass, tabletUseSidebar = false))
     }
+
+    @Test
+    fun homeDrawerDisabledWhenSidebarNavigationEnabled() {
+        assertFalse(shouldEnableHomeDrawer(useSideNavigation = true))
+    }
+
+    @Test
+    fun homeDrawerEnabledWhenUsingBottomNavigation() {
+        assertTrue(shouldEnableHomeDrawer(useSideNavigation = false))
+    }
 }
