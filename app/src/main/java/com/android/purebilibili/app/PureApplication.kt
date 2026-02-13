@@ -318,7 +318,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 // alias 映射 - 必须与 AndroidManifest.xml 中声明的完全一致
                 val allAliases = listOf(
                     // 默认系列
-                    "default" to "${packageName}.MainActivityAliasYuki", // 默认使用 Yuki (兼容旧逻辑 if "default" passed)
+                    "default" to "${packageName}.MainActivityAlias3DLauncher", // 兼容旧键名，统一指向默认 3D
                     "icon_3d" to "${packageName}.MainActivityAlias3DLauncher",
                     "icon_blue" to "${packageName}.MainActivityAliasBlue",
                     "icon_neon" to "${packageName}.MainActivityAliasNeon",
@@ -343,6 +343,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                     "Flat" to "${packageName}.MainActivityAliasFlat",
                     "Neon" to "${packageName}.MainActivityAliasNeon"
                 )
+                val allUniqueAliases = allAliases.map { it.second }.distinct()
                 
                 //  [重装检测] 检查目标alias是否可用
                 // 找到需要启用的 alias
@@ -373,7 +374,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                         android.content.pm.PackageManager.DONT_KILL_APP
                     )
                     // 禁用其他所有alias
-                    allAliases.filter { it.second != "${packageName}.MainActivityAlias3DLauncher" }.forEach { (_, aliasFullName) ->
+                    allUniqueAliases.filter { it != "${packageName}.MainActivityAlias3DLauncher" }.forEach { aliasFullName ->
                         pm.setComponentEnabledSetting(
                             android.content.ComponentName(packageName, aliasFullName),
                             android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
@@ -385,7 +386,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 }
                 
                 // 同步所有 alias 状态：只有目标启用，其他禁用
-                allAliases.forEach { (_, aliasFullName) ->
+                allUniqueAliases.forEach { aliasFullName ->
                     try {
                         val currentState = pm.getComponentEnabledSetting(
                             android.content.ComponentName(packageName, aliasFullName)

@@ -433,9 +433,12 @@ fun AboutSection(
     easterEggEnabled: Boolean,
     onLicenseClick: () -> Unit,
     onGithubClick: () -> Unit,
+    onCheckUpdateClick: () -> Unit,
     onVersionClick: () -> Unit,
     onReplayOnboardingClick: () -> Unit,
     onEasterEggChange: (Boolean) -> Unit,
+    updateStatusText: String = "点击检查",
+    isCheckingUpdate: Boolean = false,
     versionClickCount: Int = 0,
     versionClickThreshold: Int = EasterEggs.VERSION_EASTER_EGG_THRESHOLD
 ) {
@@ -481,6 +484,14 @@ fun AboutSection(
             onClick = onGithubClick,
             iconTint = iOSPurple,
             enableCopy = true
+        )
+        SettingsDivider(startIndent = 66.dp)
+        SettingClickableItem(
+            icon = CupertinoIcons.Default.ArrowTriangle2Circlepath,
+            title = "检查更新",
+            value = if (isCheckingUpdate) "检查中..." else updateStatusText,
+            onClick = onCheckUpdateClick,
+            iconTint = iOSBlue
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(

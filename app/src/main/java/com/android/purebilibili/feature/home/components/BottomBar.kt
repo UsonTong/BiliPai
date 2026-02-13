@@ -360,15 +360,8 @@ fun FrostedBottomBar(
         val barShape = if (isFloating) RoundedCornerShape(floatingCornerRadius + 8.dp) else RoundedCornerShape(0.dp)
         
         // 垂直偏移
-        val contentVerticalOffset = when {
-            isFloating && labelMode == 0 -> 0.dp
-            isFloating && labelMode == 1 -> 2.dp
-            isFloating && labelMode == 2 -> 2.dp
-            !isFloating && labelMode == 0 -> 2.dp
-            !isFloating && labelMode == 1 -> 0.dp
-            !isFloating && labelMode == 2 -> 0.dp
-            else -> 0.dp
-        }
+        // 统一对齐策略：所有模式使用同一基线，避免图标与文字上下错位
+        val contentVerticalOffset = 0.dp
 
     // [Fix] 确保指示器互斥显示的最终逻辑
     // 当底栏停靠时，强制禁用液态玻璃（Liquid Glass），仅使用标准磨砂（Frosted Glass）
@@ -994,7 +987,9 @@ private fun BottomBarItem(
                     style = MaterialTheme.typography.labelSmall,
                     color = iconColor,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    fontSize = if (isTablet) 12.sp else 10.sp
+                    fontSize = if (isTablet) 12.sp else 10.sp,
+                    lineHeight = if (isTablet) 12.sp else 10.sp,
+                    maxLines = 1
                 )
             }
             2 -> { // Text Only

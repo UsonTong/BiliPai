@@ -87,13 +87,8 @@ class DanmakuConfig {
      */
     private fun getMaxLines(viewHeight: Int, fontSize: Float, strokeWidth: Float): Int {
         if (viewHeight <= 0) {
-             // 视图高度未知时的回退逻辑 (旧逻辑，稍微放宽一点)
-             return when {
-                displayAreaRatio <= 0.25f -> 4
-                displayAreaRatio <= 0.5f -> 8
-                displayAreaRatio <= 0.75f -> 12
-                else -> 16
-            }
+             // 视图高度未知时使用兜底行数，避免仅显示一行
+             return resolveDanmakuFallbackMaxLines(displayAreaRatio)
         }
         
         // 估算行高：字体大小 + 描边(上下各半? 通常加上 padding) + 行间距
@@ -103,9 +98,10 @@ class DanmakuConfig {
         
         val totalLines = (viewHeight / estimatedLineHeight).toInt()
         val visibleLines = (totalLines * displayAreaRatio).toInt()
-        
-        // 至少显示 1 行
-        return visibleLines.coerceAtLeast(1).also {
+        val minLines = resolveDanmakuMinimumVisibleLines(displayAreaRatio)
+
+        // 竖屏小播放器场景下避免退化成 1 行
+        return visibleLines.coerceAtLeast(minLines).also {
              android.util.Log.i("DanmakuConfig", "DisplayArea: height=$viewHeight, fontSize=$fontSize, ratio=$displayAreaRatio -> total=$totalLines, visible=$it")
         }
     }
@@ -124,5 +120,23 @@ class DanmakuConfig {
                 (24 * context.resources.displayMetrics.density).toInt()
             }
         }
+    }
+}
+
+internal fun resolveDanmakuMinimumVisibleLines(displayAreaRatio: Float): Int {
+    return when {
+        displayAreaRatio <= 0.25f -> 2
+        displayAreaRatio <= 0.5f -> 3
+        displayAreaRatio <= 0.75f -> 5
+        else -> 6
+    }
+}
+
+internal fun resolveDanmakuFallbackMaxLines(displayAreaRatio: Float): Int {
+    return when {
+        displayAreaRatio <= 0.25f -> 4
+        displayAreaRatio <= 0.5f -> 8
+        displayAreaRatio <= 0.75f -> 12
+        else -> 16
     }
 }

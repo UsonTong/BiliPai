@@ -107,6 +107,9 @@ fun SettingsScreen(
     var showDirectoryPicker by remember { mutableStateOf(false) }
     // [新增] 打赏对话框
     var showDonateDialog by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateStatusText by remember { mutableStateOf("点击检查") }
+    var updateCheckResult by remember { mutableStateOf<AppUpdateCheckResult?>(null) }
     
     // [新增] 黑名单页面状态
     var showBlockedList by remember { mutableStateOf(false) }
@@ -168,6 +171,29 @@ fun SettingsScreen(
     val onTwitterClick: () -> Unit = { uriHandler.openUri("https://x.com/YangY_0x00") }
     val onGithubClick: () -> Unit = { uriHandler.openUri(GITHUB_URL) }
     val onBlockedListClickAction: () -> Unit = { showBlockedList = true }
+    val onCheckUpdateAction: () -> Unit = {
+        if (isCheckingUpdate) {
+            Toast.makeText(context, "正在检查更新，请稍候", Toast.LENGTH_SHORT).show()
+        } else {
+            scope.launch {
+                isCheckingUpdate = true
+                updateStatusText = "检查中..."
+                val result = AppUpdateChecker.check(com.android.purebilibili.BuildConfig.VERSION_NAME)
+                result.onSuccess { info ->
+                    updateStatusText = info.message
+                    if (info.isUpdateAvailable) {
+                        updateCheckResult = info
+                    } else {
+                        Toast.makeText(context, info.message, Toast.LENGTH_SHORT).show()
+                    }
+                }.onFailure { error ->
+                    updateStatusText = "检查失败"
+                    Toast.makeText(context, error.message ?: "更新检查失败，请稍后重试", Toast.LENGTH_SHORT).show()
+                }
+                isCheckingUpdate = false
+            }
+        }
+    }
 
     // Effects
     LaunchedEffect(showCacheAnimation) {
@@ -313,6 +339,33 @@ fun SettingsScreen(
         DonateDialog(onDismiss = { showDonateDialog = false })
     }
 
+    updateCheckResult?.let { info ->
+        val notesPreview = info.releaseNotes.trim().let { notes ->
+            if (notes.isBlank()) "暂无更新说明" else notes.take(240)
+        }
+        com.android.purebilibili.core.ui.IOSAlertDialog(
+            onDismissRequest = { updateCheckResult = null },
+            title = { Text("发现新版本 v${info.latestVersion}") },
+            text = {
+                Text(
+                    "当前版本 v${info.currentVersion}\n\n$notesPreview",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                    updateCheckResult = null
+                    uriHandler.openUri(info.releaseUrl)
+                }) { Text("前往下载") }
+            },
+            dismissButton = {
+                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                    updateCheckResult = null
+                }) { Text("稍后") }
+            }
+        )
+    }
+
     val onOpenLinksAction: () -> Unit = {
         try {
             val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -350,6 +403,7 @@ fun SettingsScreen(
                     onExportLogsClick = onExportLogsAction,
                     onLicenseClick = onOpenSourceLicensesClick,
                     onGithubClick = onGithubClick,
+                    onCheckUpdateClick = onCheckUpdateAction,
                     onVersionClick = onVersionClickAction,
                     onReplayOnboardingClick = onReplayOnboardingClick,
                     onTipsClick = onTipsClick, // [Feature]
@@ -371,6 +425,8 @@ fun SettingsScreen(
                     versionClickCount = versionClickCount,
                     versionClickThreshold = versionClickThreshold,
                     easterEggEnabled = easterEggEnabled,
+                    updateStatusText = updateStatusText,
+                    isCheckingUpdate = isCheckingUpdate,
                     onDonateClick = { showDonateDialog = true },
                     onOpenLinksClick = onOpenLinksAction,
                     onBlockedListClick = onBlockedListClickAction, // Pass to tablet layout
@@ -403,6 +459,7 @@ fun SettingsScreen(
                     onExportLogsClick = onExportLogsAction,
                     onLicenseClick = onOpenSourceLicensesClick,
                     onGithubClick = onGithubClick,
+                    onCheckUpdateClick = onCheckUpdateAction,
                     onVersionClick = onVersionClickAction,
                     onTipsClick = onTipsClick, // [Feature]
                     onReplayOnboardingClick = onReplayOnboardingClick,
@@ -424,6 +481,8 @@ fun SettingsScreen(
                     versionClickCount = versionClickCount,
                     versionClickThreshold = versionClickThreshold,
                     easterEggEnabled = easterEggEnabled,
+                    updateStatusText = updateStatusText,
+                    isCheckingUpdate = isCheckingUpdate,
                     feedApiType = feedApiType,
                     onFeedApiTypeChange = { type ->
                         scope.launch {
@@ -475,6 +534,7 @@ private fun MobileSettingsLayout(
     onExportLogsClick: () -> Unit,
     onLicenseClick: () -> Unit,
     onGithubClick: () -> Unit,
+    onCheckUpdateClick: () -> Unit,
     onVersionClick: () -> Unit,
     onReplayOnboardingClick: () -> Unit,
     onTelegramClick: () -> Unit,
@@ -502,6 +562,8 @@ private fun MobileSettingsLayout(
     versionClickCount: Int,
     versionClickThreshold: Int,
     easterEggEnabled: Boolean,
+    updateStatusText: String,
+    isCheckingUpdate: Boolean,
     feedApiType: SettingsManager.FeedApiType,
     onFeedApiTypeChange: (SettingsManager.FeedApiType) -> Unit,
     incrementalTimelineRefreshEnabled: Boolean,
@@ -711,9 +773,12 @@ private fun MobileSettingsLayout(
                                         easterEggEnabled = easterEggEnabled,
                                         onLicenseClick = onLicenseClick,
                                         onGithubClick = onGithubClick,
+                                        onCheckUpdateClick = onCheckUpdateClick,
                                         onVersionClick = onVersionClick,
                                         onReplayOnboardingClick = onReplayOnboardingClick,
                                         onEasterEggChange = onEasterEggChange,
+                                        updateStatusText = updateStatusText,
+                                        isCheckingUpdate = isCheckingUpdate,
                                         versionClickCount = versionClickCount,
                                         versionClickThreshold = versionClickThreshold
                                     )

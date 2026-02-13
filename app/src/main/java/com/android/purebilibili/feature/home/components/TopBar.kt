@@ -695,13 +695,14 @@ fun CategoryTabItem(
                  onClick = { onClick() },
                  onDoubleClick = onDoubleTap
              )
-             .padding(horizontal = 8.dp, vertical = 6.dp),
+             .padding(horizontal = 8.dp, vertical = 4.dp)
+             .heightIn(min = 34.dp),
          contentAlignment = Alignment.Center
      ) {
          if (showIcon && showText) {
-             Row(
-                 horizontalArrangement = Arrangement.Center,
-                 verticalAlignment = Alignment.CenterVertically,
+             Column(
+                 horizontalAlignment = Alignment.CenterHorizontally,
+                 verticalArrangement = Arrangement.Center,
                  modifier = Modifier.graphicsLayer {
                      scaleX = targetScale
                      scaleY = targetScale
@@ -712,14 +713,15 @@ fun CategoryTabItem(
                      imageVector = icon,
                      contentDescription = null,
                      tint = contentColor,
-                     modifier = Modifier.size(14.dp)
+                     modifier = Modifier.size(13.dp)
                  )
-                 Spacer(modifier = Modifier.width(4.dp))
+                 Spacer(modifier = Modifier.height(1.dp))
                  Text(
                      text = category,
                      color = contentColor,
-                     fontSize = 14.sp,
+                     fontSize = 12.sp,
                      fontWeight = fontWeight,
+                     lineHeight = 12.sp,
                      maxLines = 1,
                      overflow = TextOverflow.Ellipsis
                  )

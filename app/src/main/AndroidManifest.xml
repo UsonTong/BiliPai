@@ -55,12 +55,7 @@
             android:theme="@style/Theme.PureBiliBili"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|smallestScreenSize|uiMode"
             android:supportsPictureInPicture="true">
-            <!-- 🔥 不在 Launcher 显示，只通过 activity-alias 启动 -->
-            <!-- Android Studio 需要在 Run Configuration 中选择 "Default Activity" -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            <!-- 仅通过 activity-alias 暴露桌面入口，避免安装后出现双图标 -->
             
             <!-- 🔗 Deep Link: Video (/video/) -->
             <intent-filter android:autoVerify="true">

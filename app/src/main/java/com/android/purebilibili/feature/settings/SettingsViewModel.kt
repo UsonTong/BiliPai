@@ -373,7 +373,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             // [修复] 键必须与 IconSettingsScreen.kt 中的 IconOption.key 一致
             val allAliases = listOf(
                 // 默认系列
-                "default" to "${packageName}.MainActivityAliasYuki",  // 默认使用 Yuki 图标
+                "default" to "${packageName}.MainActivityAlias3DLauncher",  // 兼容旧键名，统一回到默认 3D
                 "icon_blue" to "${packageName}.MainActivityAliasBlue",
                 "icon_neon" to "${packageName}.MainActivityAliasNeon",
                 "icon_retro" to "${packageName}.MainActivityAliasRetro",
@@ -426,11 +426,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     android.content.pm.PackageManager.DONT_KILL_APP
                 )
                 android.util.Log.d("SettingsViewModel", "Enabled alias: $targetAlias")
-                
-                // 第二步：短暂延迟，让启动器处理启用操作
-                kotlinx.coroutines.delay(300)
-                
-                // 第三步：禁用所有其他 alias
+
+                // 第二步：立即禁用其他 alias，避免部分桌面出现“双图标”残留
                 allUniqueAliases
                     .filter { it != targetAlias }
                     .forEach { aliasFullName ->
