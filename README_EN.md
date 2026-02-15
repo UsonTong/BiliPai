@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-02-12 · Synced to v5.3.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-02-15 · Synced to v5.3.4 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-5.3.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-5.3.4-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -52,6 +52,7 @@
 | **Picture-in-Picture** | Floating window playback for multitasking |
 | **Audio Mode** | 🆕 Dedicated audio player with immersive/vinyl modes, lyrics, and playlist management |
 | **Background Play** | Continue listening when screen is off or in background |
+| **Playback Order** | Supports Stop After Current / In-order / Single Loop / List Loop / Auto Continue, with quick toggle in landscape and portrait |
 | **Playback History** | Automatically resume playback from where you left off |
 | **TV Login** | Scan QR code to login as TV client to unlock high quality |
 | **Plugin System** | Built-in SponsorBlock, AdBlock, Danmaku Enhancement, Eye Protection, and Today Watch plugins |
@@ -64,7 +65,7 @@
 | **AdBlock** | Smartly filter commercial content from recommendation feeds |
 | **Danmaku Plus** | Keyword blocking and highlighting for personalized danmaku experience |
 | **Eye Protection** | Scheduled eye care, 3 presets + DIY tuning, real-time preview, warm filter, humane reminders with snooze |
-| **🆕 Today Watch** | Local recommendation plugin with Relax/Learn modes, UP ranking, reason tags, night-aware ranking, and startup exposure |
+| **🆕 Today Watch** | Local recommendation plugin with Relax/Learn modes, collapse/expand, independent refresh, UP ranking, and reason tags |
 | **Plugin Center** | Unified management for all plugins with independent configurations |
 | **🆕 External Plugins** | Support loading dynamic JSON rule plugins via URL |
 
@@ -230,6 +231,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 | **Filtering** | Switch between All / Video Only |
 | **GIF Support** | Perfect rendering of GIF images in dynamic posts |
 | **Image Download** | Long press to preview and save to gallery |
+| **Image Preview** | Global non-dialog overlay with iOS-style open/close motion and stable fixed dismiss-back transition |
 | **@ Highlighting** | Auto-highlight @User mentions |
 
 ### 📥 Offline Cache
@@ -378,14 +380,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v5.3.0 · 2026-02-12)
+### Latest (v5.3.4 · 2026-02-15)
 
-- ✨ **Today Watch Plugin**: Added local daily recommendation card with Relax/Learn modes, UP ranking, queue, and explanation tags.
-- ✨ **Recommendation Signal Upgrade**: Added eye-care linkage, creator-profile fusion, and negative-feedback penalties.
-- 🛠 **Cold Start Discoverability**: Fixed issue where Today Watch could be generated but outside initial viewport.
-- 🛠 **Refresh Hint Lifecycle**: Fixed issue where “new items” hint could occasionally remain visible.
-- ✨ **Eye Protection 2.0**: Rebuilt eye-care plugin with presets + DIY, real-time preview, reminder + snooze, and humane copy.
-- 🛠 **Quality Switch Reliability**: Improved DASH quality option source, cache exact-match behavior, and fallback feedback messages.
+- ✨ **Today Watch Interaction Upgrade**: Added collapse/expand and independent refresh without forcing a home feed sync refresh.
+- ✨ **Playback Order Modes**: Added Stop After Current / In-order / Single Loop / List Loop / Auto Continue, available in both landscape and portrait.
+- 🛠 **Portrait Flow Fixes**: Fixed returning to the wrong first item after opening uploader space, and fixed occasional “audio-only” continuation in portrait series flow.
+- 🛠 **Player Detail Polish**: Fixed action-bar alignment, replaced duplicated top-left quality entry with danmaku toggle, and filtered unreadable command payload danmaku.
+- 🎬 **Image Preview Rework**: Migrated to a global non-dialog overlay, refined iOS-style motion, and unified back behavior to fixed dismiss transition to avoid stuck mid-state.
 
 ---
 
