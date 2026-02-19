@@ -775,15 +775,37 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 val up = if (isLiked) 2 else 1  // 1=点赞, 2=取消
                 
                 val response = com.android.purebilibili.core.network.NetworkModule.dynamicApi
-                    .likeDynamic(dynamicId = dynamicId, up = up, csrf = csrf)
+                    .likeDynamic(
+                        csrf = csrf,
+                        body = com.android.purebilibili.core.network.DynamicThumbRequest(
+                            dyn_id_str = dynamicId,
+                            up = up
+                        )
+                    )
                 if (response.code == 0) {
+                    val toLiked = !isLiked
                     // 更新本地状态
-                    _likedDynamics.value = if (isLiked) {
-                        _likedDynamics.value - dynamicId
-                    } else {
+                    _likedDynamics.value = if (toLiked) {
                         _likedDynamics.value + dynamicId
+                    } else {
+                        _likedDynamics.value - dynamicId
                     }
-                    onResult(true, if (isLiked) "已取消" else "已点赞")
+
+                    val currentState = _uiState.value
+                    _uiState.value = currentState.copy(
+                        items = applyDynamicLikeCountChange(
+                            items = currentState.items,
+                            dynamicId = dynamicId,
+                            toLiked = toLiked
+                        ),
+                        userItems = applyDynamicLikeCountChange(
+                            items = currentState.userItems,
+                            dynamicId = dynamicId,
+                            toLiked = toLiked
+                        )
+                    )
+
+                    onResult(true, if (toLiked) "已点赞" else "已取消")
                 } else {
                     onResult(false, response.message ?: "操作失败")
                 }

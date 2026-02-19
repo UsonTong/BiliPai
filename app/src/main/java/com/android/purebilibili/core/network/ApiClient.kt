@@ -709,6 +709,14 @@ interface StoryApi {
 }
 
 //  动态 API
+@kotlinx.serialization.Serializable
+data class DynamicThumbRequest(
+    val dyn_id_str: String,
+    val up: Int,
+    val spmid: String = "333.1369.0.0",
+    val from_spmid: String = "333.999.0.0"
+)
+
 interface DynamicApi {
     //  添加 features 参数以获取 rich_text_nodes 表情数据
     @GET("x/polymer/web-dynamic/v1/feed/all")
@@ -748,12 +756,11 @@ interface DynamicApi {
     ): SimpleApiResponse
     
     //  [修复] 点赞动态 - 使用新版 API
-    @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/dynamic/feed/dyn/thumb")
     suspend fun likeDynamic(
-        @retrofit2.http.Field("dyn_id_str") dynamicId: String,  // 使用 dyn_id_str 参数
-        @retrofit2.http.Field("up") up: Int,  // 1=点赞, 2=取消
-        @retrofit2.http.Field("csrf") csrf: String
+        @Query("csrf") csrf: String,
+        @Query("csrf_token") csrfToken: String = csrf,
+        @retrofit2.http.Body body: DynamicThumbRequest
     ): SimpleApiResponse
     
     //  [新增] 转发动态
