@@ -1,6 +1,6 @@
 # 🧩 社区插件
 
-欢迎来到 BiliPai 社区插件目录！这里收录了由社区开发者贡献的 JSON 规则插件。
+欢迎来到 BiliPai 社区插件目录！这里收录了由社区开发者贡献的规则插件（`.json` / `.bp`）。
 
 ## 📥 如何安装
 
@@ -11,7 +11,7 @@
 ## 📝 如何贡献
 
 1. Fork 本仓库
-2. 在 `plugins/community/` 目录下创建你的插件 JSON 文件
+2. 在 `plugins/community/` 目录下创建你的插件规则文件（`.json` 或 `.bp`，内容均为 JSON）
 3. 更新此 README 添加你的插件信息
 4. 提交 Pull Request
 
@@ -35,7 +35,7 @@
 
 | 插件名称 | 描述 | 作者 | 链接 |
 |----------|------|------|------|
-| *期待你的贡献* | - | - | - |
+| BP 示例过滤插件 | 示例 .bp 插件：过滤低质短视频与营销关键词，带 iconUrl | BiliPai Community Demo | [Raw](https://raw.githubusercontent.com/jay3-yy/BiliPai/main/plugins/community/bp_demo_focus_filter.bp) |
 
 ---
 
