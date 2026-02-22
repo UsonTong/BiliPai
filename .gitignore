@@ -75,6 +75,8 @@ BiliPai_BusinessCode_Backup/
 # Docs / plans should not be pushed
 docs/
 **/docs/
+docs/plans/
+**/docs/plans/
 *.md
 !README.md
 !AGENTS.md
