@@ -639,15 +639,16 @@ class MainActivity : ComponentActivity() {
                 themeColorIndex = themeColorIndex, //  传入主题色索引
 
             ) {
-                //  📐 [平板适配] 提供全局 WindowSizeClass
-                androidx.compose.runtime.CompositionLocalProvider(
-                    com.android.purebilibili.core.util.LocalWindowSizeClass provides windowSizeClass
-                ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)  // 📐 [修复] 防止平板端返回后出现黑边
-                ) {
+                com.android.purebilibili.core.ui.blur.ProvideUnifiedBlurIntensity {
+                    //  📐 [平板适配] 提供全局 WindowSizeClass
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.android.purebilibili.core.util.LocalWindowSizeClass provides windowSizeClass
+                    ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)  // 📐 [修复] 防止平板端返回后出现黑边
+                    ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
@@ -785,8 +786,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    }
+                    }  // 📐 CompositionLocalProvider 结束
                 }
-                }  // 📐 CompositionLocalProvider 结束
             }
         }
     }

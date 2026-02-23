@@ -29,5 +29,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "BiliPai"
 include(":app")
+include(":baselineprofile")
 
  

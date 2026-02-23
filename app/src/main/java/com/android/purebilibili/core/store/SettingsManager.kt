@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.android.purebilibili.core.ui.blur.BlurIntensity
@@ -15,6 +16,7 @@ import com.android.purebilibili.feature.video.danmaku.normalizeDanmakuOpacity
 import com.android.purebilibili.feature.video.danmaku.parseDanmakuBlockRules
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.math.abs
 
@@ -81,6 +83,42 @@ data class HomeSettings(
     // 当 Flow 加载完成后，如果实际值是 false，LaunchedEffect 会再次触发并显示弹窗
     val crashTrackingConsentShown: Boolean = true
 )
+
+data class DanmakuSettings(
+    val enabled: Boolean = true,
+    val opacity: Float = DANMAKU_DEFAULT_OPACITY,
+    val fontScale: Float = 1.0f,
+    val speed: Float = 1.0f,
+    val displayArea: Float = 0.5f,
+    val mergeDuplicates: Boolean = true,
+    val allowScroll: Boolean = true,
+    val allowTop: Boolean = true,
+    val allowBottom: Boolean = true,
+    val allowColorful: Boolean = true,
+    val allowSpecial: Boolean = true,
+    val smartOcclusion: Boolean = false,
+    val blockRulesRaw: String = "",
+    val blockRules: List<String> = emptyList()
+)
+
+data class AppNavigationSettings(
+    val bottomBarVisibilityMode: SettingsManager.BottomBarVisibilityMode = SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE,
+    val orderedVisibleTabIds: List<String> = listOf("HOME", "DYNAMIC", "HISTORY", "PROFILE"),
+    val bottomBarItemColors: Map<String, Int> = emptyMap(),
+    val tabletUseSidebar: Boolean = false
+)
+
+internal fun mapHomeSettingsFromPreferences(preferences: Preferences): HomeSettings {
+    return SettingsManager.mapHomeSettingsFromPreferences(preferences)
+}
+
+internal fun mapDanmakuSettingsFromPreferences(preferences: Preferences): DanmakuSettings {
+    return SettingsManager.mapDanmakuSettingsFromPreferences(preferences)
+}
+
+internal fun mapAppNavigationSettingsFromPreferences(preferences: Preferences): AppNavigationSettings {
+    return SettingsManager.mapAppNavigationSettingsFromPreferences(preferences)
+}
 
 object SettingsManager {
     // 键定义
@@ -169,6 +207,8 @@ object SettingsManager {
     private val KEY_BOTTOM_BAR_ORDER = stringPreferencesKey("bottom_bar_order")  // 逗号分隔的项目顺序
     private val KEY_BOTTOM_BAR_VISIBLE_TABS = stringPreferencesKey("bottom_bar_visible_tabs")  // 逗号分隔的可见项目
     private val KEY_BOTTOM_BAR_ITEM_COLORS = stringPreferencesKey("bottom_bar_item_colors")  //  格式: HOME:0,DYNAMIC:1,...
+    private const val DEFAULT_BOTTOM_BAR_ORDER = "HOME,DYNAMIC,HISTORY,PROFILE"
+    private const val DEFAULT_BOTTOM_BAR_VISIBLE_TABS = "HOME,DYNAMIC,HISTORY,PROFILE"
     //  [新增] 评论默认排序（1=回复,2=最新,3=最热,4=点赞）
     private val KEY_COMMENT_DEFAULT_SORT_MODE = intPreferencesKey("comment_default_sort_mode")
     //  [新增] 离开播放页后停止播放（优先于小窗/画中画模式）
@@ -181,88 +221,32 @@ object SettingsManager {
      *  合并首页相关设置为单一 Flow
      * 避免 HomeScreen 中多个 collectAsState 导致频繁重组
      */
-    fun getHomeSettings(context: Context): Flow<HomeSettings> {
-        val displayModeFlow = context.settingsDataStore.data.map { it[KEY_DISPLAY_MODE] ?: 0 }
-        val bottomBarFloatingFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_FLOATING] ?: true }
-        val bottomBarLabelModeFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_LABEL_MODE] ?: 0 }  // 默认图标+文字
-        val topTabLabelModeFlow = context.settingsDataStore.data.map { it[KEY_TOP_TAB_LABEL_MODE] ?: TopTabLabelMode.TEXT_ONLY }
-        val headerBlurFlow = context.settingsDataStore.data.map { it[KEY_HEADER_BLUR_ENABLED] ?: true }
-        val headerCollapseFlow = context.settingsDataStore.data.map { it[KEY_HEADER_COLLAPSE_ENABLED] ?: true } // [New]
-        val bottomBarBlurFlow = context.settingsDataStore.data.map { it[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true }
-        val liquidGlassFlow = context.settingsDataStore.data.map { it[KEY_LIQUID_GLASS_ENABLED] ?: true } // [New]
-        // Resolve KEY_LIQUID_GLASS_STYLE here since it is defined below
-        val liquidGlassStyleFlow = context.settingsDataStore.data.map { 
-             val styleVal = it[intPreferencesKey("liquid_glass_style")] ?: 0 
-             LiquidGlassStyle.fromValue(styleVal)
-        }
-        val crashConsentFlow = context.settingsDataStore.data.map { it[KEY_CRASH_TRACKING_CONSENT_SHOWN] ?: false }
-        val cardAnimationFlow = context.settingsDataStore.data.map { it[KEY_CARD_ANIMATION_ENABLED] ?: false }
-        val cardTransitionFlow = context.settingsDataStore.data.map { it[KEY_CARD_TRANSITION_ENABLED] ?: true }  // 默认开启
-        val compactVideoStatsFlow = context.settingsDataStore.data.map { it[KEY_COMPACT_VIDEO_STATS_ON_COVER] ?: true }
-        
-        // 🔧 Kotlin combine() 最多支持 5 个参数，这里我们满了，需要重组 flow 或者使用 combine 的 list 重载
-        // Since we added liquidGlassFlow, we have 6 flows in total now for 'firstFive'.
-        // Let's grouping: (Display, Floating, Label) + (HeaderBlur, BottomBlur, LiquidGlass, Style)
-        
-        val gridColumnCountFlow = context.settingsDataStore.data.map { it[KEY_GRID_COLUMN_COUNT] ?: 0 }
+    internal fun mapHomeSettingsFromPreferences(preferences: Preferences): HomeSettings {
+        return HomeSettings(
+            displayMode = preferences[KEY_DISPLAY_MODE] ?: 0,
+            isBottomBarFloating = preferences[KEY_BOTTOM_BAR_FLOATING] ?: true,
+            bottomBarLabelMode = preferences[KEY_BOTTOM_BAR_LABEL_MODE] ?: BottomBarLabelMode.ICON_AND_TEXT,
+            topTabLabelMode = preferences[KEY_TOP_TAB_LABEL_MODE] ?: TopTabLabelMode.TEXT_ONLY,
+            isHeaderBlurEnabled = preferences[KEY_HEADER_BLUR_ENABLED] ?: true,
+            isHeaderCollapseEnabled = preferences[KEY_HEADER_COLLAPSE_ENABLED] ?: true,
+            isBottomBarBlurEnabled = preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true,
+            isLiquidGlassEnabled = preferences[KEY_LIQUID_GLASS_ENABLED] ?: true,
+            liquidGlassStyle = LiquidGlassStyle.fromValue(
+                preferences[KEY_LIQUID_GLASS_STYLE] ?: LiquidGlassStyle.CLASSIC.value
+            ),
+            gridColumnCount = preferences[KEY_GRID_COLUMN_COUNT] ?: 0,
+            cardAnimationEnabled = preferences[KEY_CARD_ANIMATION_ENABLED] ?: false,
+            cardTransitionEnabled = preferences[KEY_CARD_TRANSITION_ENABLED] ?: true,
+            compactVideoStatsOnCover = preferences[KEY_COMPACT_VIDEO_STATS_ON_COVER] ?: true,
+            // 保持现有运行时行为：首次未配置时按 false 返回
+            crashTrackingConsentShown = preferences[KEY_CRASH_TRACKING_CONSENT_SHOWN] ?: false
+        )
+    }
 
-        val layoutSettingsFlow = combine(
-            displayModeFlow,
-            bottomBarFloatingFlow,
-            bottomBarLabelModeFlow,
-            topTabLabelModeFlow,
-            gridColumnCountFlow
-        ) { d, f, bottomMode, topMode, g ->
-            data class Layout(val d: Int, val f: Boolean, val bottomMode: Int, val topMode: Int, val g: Int)
-            Layout(d, f, bottomMode, topMode, g)
-        }
-        val visualSettingsFlow = combine(headerBlurFlow, headerCollapseFlow, bottomBarBlurFlow, liquidGlassFlow, liquidGlassStyleFlow) { h, c, b, l, s -> 
-            data class Visual(val h: Boolean, val c: Boolean, val b: Boolean, val l: Boolean, val s: LiquidGlassStyle)
-            Visual(h, c, b, l, s)
-        }
-        
-        val coreSettingsFlow = combine(layoutSettingsFlow, visualSettingsFlow) { layout, visual ->
-             HomeSettings(
-                displayMode = layout.d,
-                isBottomBarFloating = layout.f,
-                bottomBarLabelMode = layout.bottomMode,
-                topTabLabelMode = layout.topMode,
-                gridColumnCount = layout.g, // [New]
-                isHeaderBlurEnabled = visual.h,
-                isHeaderCollapseEnabled = visual.c, // [New]
-                isBottomBarBlurEnabled = visual.b,
-                isLiquidGlassEnabled = visual.l, // [New]
-                liquidGlassStyle = visual.s, // [New]
-                cardAnimationEnabled = false, // placeholder
-                cardTransitionEnabled = false,
-                compactVideoStatsOnCover = true,
-                crashTrackingConsentShown = false
-            )
-        }
-        
-        val extraFlow = combine(
-            crashConsentFlow,
-            cardAnimationFlow,
-            cardTransitionFlow,
-            compactVideoStatsFlow
-        ) { consent, cardAnim, cardTransition, compactStats ->
-            data class Extra(
-                val consent: Boolean,
-                val cardAnim: Boolean,
-                val cardTransition: Boolean,
-                val compactStats: Boolean
-            )
-            Extra(consent, cardAnim, cardTransition, compactStats)
-        }
-        
-        return combine(coreSettingsFlow, extraFlow) { settings, extra ->
-            settings.copy(
-                crashTrackingConsentShown = extra.consent,
-                cardAnimationEnabled = extra.cardAnim,
-                cardTransitionEnabled = extra.cardTransition,
-                compactVideoStatsOnCover = extra.compactStats
-            )
-        }
+    fun getHomeSettings(context: Context): Flow<HomeSettings> {
+        return context.settingsDataStore.data
+            .map(::mapHomeSettingsFromPreferences)
+            .distinctUntilChanged()
     }
 
     // --- Auto Play on Enter (Click to Play) ---
@@ -751,18 +735,21 @@ object SettingsManager {
             }
         }
 
+    private fun parseBottomBarItemColors(colorString: String): Map<String, Int> {
+        if (colorString.isBlank()) return emptyMap()
+        return colorString.split(",").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size == 2) {
+                parts[0] to (parts[1].toIntOrNull() ?: 0)
+            } else {
+                null
+            }
+        }.toMap()
+    }
+
     //  [新增] 获取底栏项目颜色配置
     fun getBottomBarItemColors(context: Context): Flow<Map<String, Int>> = context.settingsDataStore.data
-        .map { preferences ->
-            val colorString = preferences[KEY_BOTTOM_BAR_ITEM_COLORS] ?: ""
-            // 解析 "HOME:0,DYNAMIC:1" 格式
-            colorString.split(",").mapNotNull { entry ->
-                val parts = entry.split(":")
-                if (parts.size == 2) {
-                    parts[0] to (parts[1].toIntOrNull() ?: 0)
-                } else null
-            }.toMap()
-        }
+        .map { preferences -> parseBottomBarItemColors(preferences[KEY_BOTTOM_BAR_ITEM_COLORS] ?: "") }
 
     suspend fun setBlurIntensity(context: Context, intensity: BlurIntensity) {
         context.settingsDataStore.edit { preferences -> 
@@ -791,8 +778,37 @@ object SettingsManager {
     private val KEY_DANMAKU_ALLOW_SPECIAL = booleanPreferencesKey("danmaku_allow_special")
     private val KEY_DANMAKU_SMART_OCCLUSION = booleanPreferencesKey("danmaku_smart_occlusion")
     private val KEY_DANMAKU_BLOCK_RULES = stringPreferencesKey("danmaku_block_rules")
+    private val KEY_DANMAKU_MERGE_DUPLICATES = booleanPreferencesKey("danmaku_merge_duplicates")
     private val KEY_DANMAKU_DEFAULTS_VERSION = intPreferencesKey("danmaku_defaults_version")
     private val KEY_HOME_VISUAL_DEFAULTS_VERSION = intPreferencesKey("home_visual_defaults_version")
+
+    internal fun mapDanmakuSettingsFromPreferences(preferences: Preferences): DanmakuSettings {
+        val blockRulesRaw = preferences[KEY_DANMAKU_BLOCK_RULES] ?: ""
+        return DanmakuSettings(
+            enabled = preferences[KEY_DANMAKU_ENABLED] ?: true,
+            opacity = normalizeDanmakuOpacity(
+                preferences[KEY_DANMAKU_OPACITY] ?: DEFAULT_DANMAKU_OPACITY
+            ),
+            fontScale = preferences[KEY_DANMAKU_FONT_SCALE] ?: DEFAULT_DANMAKU_FONT_SCALE,
+            speed = preferences[KEY_DANMAKU_SPEED] ?: DEFAULT_DANMAKU_SPEED,
+            displayArea = preferences[KEY_DANMAKU_AREA] ?: DEFAULT_DANMAKU_AREA,
+            mergeDuplicates = preferences[KEY_DANMAKU_MERGE_DUPLICATES] ?: true,
+            allowScroll = preferences[KEY_DANMAKU_ALLOW_SCROLL] ?: true,
+            allowTop = preferences[KEY_DANMAKU_ALLOW_TOP] ?: true,
+            allowBottom = preferences[KEY_DANMAKU_ALLOW_BOTTOM] ?: true,
+            allowColorful = preferences[KEY_DANMAKU_ALLOW_COLORFUL] ?: true,
+            allowSpecial = preferences[KEY_DANMAKU_ALLOW_SPECIAL] ?: true,
+            smartOcclusion = preferences[KEY_DANMAKU_SMART_OCCLUSION] ?: false,
+            blockRulesRaw = blockRulesRaw,
+            blockRules = parseDanmakuBlockRules(blockRulesRaw)
+        )
+    }
+
+    fun getDanmakuSettings(context: Context): Flow<DanmakuSettings> {
+        return context.settingsDataStore.data
+            .map(::mapDanmakuSettingsFromPreferences)
+            .distinctUntilChanged()
+    }
     
     // --- 弹幕开关 ---
     fun getDanmakuEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -913,8 +929,6 @@ object SettingsManager {
     }
     
     // --- 弹幕合并重复 (默认开启) ---
-    private val KEY_DANMAKU_MERGE_DUPLICATES = booleanPreferencesKey("danmaku_merge_duplicates")
-    
     fun getDanmakuMergeDuplicates(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_DANMAKU_MERGE_DUPLICATES] ?: true }
         
@@ -1546,7 +1560,7 @@ object SettingsManager {
     //  [新增] --- 底栏顺序配置 ---
     // 默认顺序: HOME,DYNAMIC,HISTORY,PROFILE
     fun getBottomBarOrder(context: Context): Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
-        val orderString = prefs[KEY_BOTTOM_BAR_ORDER] ?: "HOME,DYNAMIC,HISTORY,PROFILE"
+        val orderString = prefs[KEY_BOTTOM_BAR_ORDER] ?: DEFAULT_BOTTOM_BAR_ORDER
         orderString.split(",").filter { it.isNotBlank() }
     }
     
@@ -1560,7 +1574,7 @@ object SettingsManager {
     // 默认可见: HOME,DYNAMIC,HISTORY,PROFILE
     // 可选项: HOME,DYNAMIC,HISTORY,PROFILE,FAVORITE,LIVE,WATCHLATER
     fun getBottomBarVisibleTabs(context: Context): Flow<Set<String>> = context.settingsDataStore.data.map { prefs ->
-        val tabsString = prefs[KEY_BOTTOM_BAR_VISIBLE_TABS] ?: "HOME,DYNAMIC,HISTORY,PROFILE"
+        val tabsString = prefs[KEY_BOTTOM_BAR_VISIBLE_TABS] ?: DEFAULT_BOTTOM_BAR_VISIBLE_TABS
         tabsString.split(",").filter { it.isNotBlank() }.toSet()
     }
     
@@ -1572,8 +1586,8 @@ object SettingsManager {
     
     //  [新增] 获取有序的可见底栏项目列表
     fun getOrderedVisibleTabs(context: Context): Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
-        val orderString = prefs[KEY_BOTTOM_BAR_ORDER] ?: "HOME,DYNAMIC,HISTORY,PROFILE"
-        val tabsString = prefs[KEY_BOTTOM_BAR_VISIBLE_TABS] ?: "HOME,DYNAMIC,HISTORY,PROFILE"
+        val orderString = prefs[KEY_BOTTOM_BAR_ORDER] ?: DEFAULT_BOTTOM_BAR_ORDER
+        val tabsString = prefs[KEY_BOTTOM_BAR_VISIBLE_TABS] ?: DEFAULT_BOTTOM_BAR_VISIBLE_TABS
         val order = orderString.split(",").filter { it.isNotBlank() }
         val visibleSet = tabsString.split(",").filter { it.isNotBlank() }.toSet()
         order.filter { it in visibleSet }
@@ -1693,6 +1707,27 @@ object SettingsManager {
      */
     fun getTabletUseSidebar(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_TABLET_NAVIGATION_MODE] ?: false }  // 默认使用底栏
+
+    internal fun mapAppNavigationSettingsFromPreferences(preferences: Preferences): AppNavigationSettings {
+        val orderString = preferences[KEY_BOTTOM_BAR_ORDER] ?: DEFAULT_BOTTOM_BAR_ORDER
+        val tabsString = preferences[KEY_BOTTOM_BAR_VISIBLE_TABS] ?: DEFAULT_BOTTOM_BAR_VISIBLE_TABS
+        val order = orderString.split(",").filter { it.isNotBlank() }
+        val visibleSet = tabsString.split(",").filter { it.isNotBlank() }.toSet()
+        return AppNavigationSettings(
+            bottomBarVisibilityMode = BottomBarVisibilityMode.fromValue(
+                preferences[KEY_BOTTOM_BAR_VISIBILITY_MODE] ?: BottomBarVisibilityMode.ALWAYS_VISIBLE.value
+            ),
+            orderedVisibleTabIds = order.filter { it in visibleSet },
+            bottomBarItemColors = parseBottomBarItemColors(preferences[KEY_BOTTOM_BAR_ITEM_COLORS] ?: ""),
+            tabletUseSidebar = preferences[KEY_TABLET_NAVIGATION_MODE] ?: false
+        )
+    }
+
+    fun getAppNavigationSettings(context: Context): Flow<AppNavigationSettings> {
+        return context.settingsDataStore.data
+            .map(::mapAppNavigationSettingsFromPreferences)
+            .distinctUntilChanged()
+    }
 
     suspend fun setTabletUseSidebar(context: Context, useSidebar: Boolean) {
         context.settingsDataStore.edit { preferences -> 

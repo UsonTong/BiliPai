@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.SettingsManager
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
@@ -233,6 +234,9 @@ fun FullscreenPlayerOverlay(
     
     // 监听播放器状态
     LaunchedEffect(player, showControls, gestureMode) {
+        if (!shouldPollFullscreenPlayerProgress(playerExists = player != null)) {
+            return@LaunchedEffect
+        }
         while (isActive) {
             player?.let {
                 isPlaying = it.isPlaying
@@ -242,7 +246,11 @@ fun FullscreenPlayerOverlay(
                     currentProgress = (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
                 }
             }
-            val pollInterval = if (showControls || gestureMode == FullscreenGestureMode.Seek) 100L else 250L
+            val pollInterval = resolveFullscreenPlayerPollingIntervalMs(
+                isPlaying = isPlaying,
+                showControls = showControls,
+                isSeekingGesture = gestureMode == FullscreenGestureMode.Seek
+            )
             delay(pollInterval)
         }
     }
@@ -386,51 +394,23 @@ fun FullscreenPlayerOverlay(
                 )
             }
     ) {
-        //  弹幕开关设置
-        val danmakuEnabled by SettingsManager
-            .getDanmakuEnabled(context)
-            .collectAsState(initial = true)
-        
-        //  弹幕设置（全局持久化）
-        val danmakuOpacity by SettingsManager
-            .getDanmakuOpacity(context)
-            .collectAsState(initial = 0.85f)
-        val danmakuFontScale by SettingsManager
-            .getDanmakuFontScale(context)
-            .collectAsState(initial = 1.0f)
-        val danmakuSpeed by SettingsManager
-            .getDanmakuSpeed(context)
-            .collectAsState(initial = 1.0f)
-        val danmakuDisplayArea by SettingsManager
-            .getDanmakuArea(context)
-            .collectAsState(initial = 0.5f)
-        val danmakuMergeDuplicates by SettingsManager
-            .getDanmakuMergeDuplicates(context)
-            .collectAsState(initial = true)
-        val danmakuAllowScroll by SettingsManager
-            .getDanmakuAllowScroll(context)
-            .collectAsState(initial = true)
-        val danmakuAllowTop by SettingsManager
-            .getDanmakuAllowTop(context)
-            .collectAsState(initial = true)
-        val danmakuAllowBottom by SettingsManager
-            .getDanmakuAllowBottom(context)
-            .collectAsState(initial = true)
-        val danmakuAllowColorful by SettingsManager
-            .getDanmakuAllowColorful(context)
-            .collectAsState(initial = true)
-        val danmakuAllowSpecial by SettingsManager
-            .getDanmakuAllowSpecial(context)
-            .collectAsState(initial = true)
-        val danmakuSmartOcclusion by SettingsManager
-            .getDanmakuSmartOcclusion(context)
-            .collectAsState(initial = false)
-        val danmakuBlockRulesRaw by SettingsManager
-            .getDanmakuBlockRulesRaw(context)
-            .collectAsState(initial = "")
-        val danmakuBlockRules by SettingsManager
-            .getDanmakuBlockRules(context)
-            .collectAsState(initial = emptyList())
+        val danmakuSettings by SettingsManager
+            .getDanmakuSettings(context)
+            .collectAsState(initial = DanmakuSettings())
+        val danmakuEnabled = danmakuSettings.enabled
+        val danmakuOpacity = danmakuSettings.opacity
+        val danmakuFontScale = danmakuSettings.fontScale
+        val danmakuSpeed = danmakuSettings.speed
+        val danmakuDisplayArea = danmakuSettings.displayArea
+        val danmakuMergeDuplicates = danmakuSettings.mergeDuplicates
+        val danmakuAllowScroll = danmakuSettings.allowScroll
+        val danmakuAllowTop = danmakuSettings.allowTop
+        val danmakuAllowBottom = danmakuSettings.allowBottom
+        val danmakuAllowColorful = danmakuSettings.allowColorful
+        val danmakuAllowSpecial = danmakuSettings.allowSpecial
+        val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
+        val danmakuBlockRulesRaw = danmakuSettings.blockRulesRaw
+        val danmakuBlockRules = danmakuSettings.blockRules
         val faceDetector = remember { createFaceOcclusionDetector() }
         DisposableEffect(faceDetector) {
             onDispose {

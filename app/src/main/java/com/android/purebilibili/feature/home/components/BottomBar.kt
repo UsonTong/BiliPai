@@ -198,9 +198,7 @@ fun FrostedBottomBar(
     val isTablet = windowSizeClass.isTablet
     
     // 背景颜色
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val blurIntensity by com.android.purebilibili.core.store.SettingsManager.getBlurIntensity(context)
-        .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
+    val blurIntensity = com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity()
     
     // [Fix] Background Color for Legibility
     // 使用半透明背景以保证文字在视频上的可读性，同时保留毛玻璃效果

@@ -19,12 +19,9 @@ import androidx.compose.ui.unit.sp
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.android.purebilibili.core.ui.blur.unifiedBlur
-import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.blur.BlurStyles
-import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import dev.chrisbanes.haze.HazeState
 
 //  动态页面布局模式
@@ -50,8 +47,7 @@ fun DynamicTopBarWithTabs(
     val statusBarHeight = WindowInsets.statusBars.getTop(density).let { with(density) { it.toDp() } }
     
     //  读取当前模糊强度以确定背景透明度
-    val blurIntensity by SettingsManager.getBlurIntensity(androidx.compose.ui.platform.LocalContext.current)
-        .collectAsState(initial = BlurIntensity.THIN)
+    val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
     
     //  使用 blurIntensity 对应的背景透明度实现毛玻璃质感

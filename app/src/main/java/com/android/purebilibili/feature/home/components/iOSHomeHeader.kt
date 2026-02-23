@@ -45,10 +45,9 @@ import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.store.LiquidGlassStyle
 import dev.chrisbanes.haze.HazeState
-import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.blur.BlurStyles
-import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
 
 /**
@@ -91,8 +90,7 @@ fun iOSHomeHeader(
     val isGlassEnabled = homeSettings?.isLiquidGlassEnabled == true
 
     //  读取当前模糊强度以确定背景透明度
-    val blurIntensity by SettingsManager.getBlurIntensity(LocalContext.current)
-        .collectAsState(initial = BlurIntensity.THIN)
+    val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity) * 0.8f // Slightly more transparent for glass
     
     val targetHeaderColor = if (isGlassEnabled) {

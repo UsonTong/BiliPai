@@ -18,10 +18,13 @@ import com.android.purebilibili.data.repository.DynamicRepository
 import com.android.purebilibili.data.repository.LiveRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -43,6 +46,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     //  [新增] 缓存关注列表
     private var cachedFollowings: List<FollowingUser> = emptyList()
     private var incrementalTimelineRefreshEnabled: Boolean = false
+    private var lastFollowingsLoadMs: Long = 0L
+    private var isFollowingsLoading: Boolean = false
+    private var cacheSaveJob: Job? = null
 
     private val _uiState = MutableStateFlow(DynamicUiState())
     val uiState: StateFlow<DynamicUiState> = _uiState.asStateFlow()
@@ -132,11 +138,17 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
     private fun saveDynamicCache(items: List<DynamicItem>) {
         if (items.isEmpty()) return
-        val payload = json.encodeToString(items.take(MAX_CACHE_ITEMS))
-        cachePrefs.edit()
-            .putString(KEY_DYNAMIC_CACHE, payload)
-            .putLong(KEY_DYNAMIC_CACHE_TIME, System.currentTimeMillis())
-            .apply()
+        val snapshot = items.take(MAX_CACHE_ITEMS)
+        cacheSaveJob?.cancel()
+        cacheSaveJob = viewModelScope.launch(Dispatchers.Default) {
+            val payload = json.encodeToString(snapshot)
+            withContext(Dispatchers.IO) {
+                cachePrefs.edit()
+                    .putString(KEY_DYNAMIC_CACHE, payload)
+                    .putLong(KEY_DYNAMIC_CACHE_TIME, System.currentTimeMillis())
+                    .apply()
+            }
+        }
     }
 
     private fun refreshInBackground() {
@@ -147,18 +159,20 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         if (showRefreshIndicator) {
             _isRefreshing.value = true
         }
-        coroutineScope {
-            val dynamicJob = async {
-                loadDynamicFeedInternal(refresh = true, showLoading = _uiState.value.items.isEmpty())
+        try {
+            coroutineScope {
+                val dynamicJob = async {
+                    loadDynamicFeedInternal(refresh = true, showLoading = _uiState.value.items.isEmpty())
+                }
+                val liveJob = async { loadFollowedUsersInternal() }
+                dynamicJob.await()
+                liveJob.await()
             }
-            val liveJob = async { loadFollowedUsersInternal() }
-            val followingsJob = async { loadAllFollowings() }
-            dynamicJob.await()
-            liveJob.await()
-            followingsJob.await()
-        }
-        if (showRefreshIndicator) {
-            _isRefreshing.value = false
+            requestFollowingsRefreshIfStale()
+        } finally {
+            if (showRefreshIndicator) {
+                _isRefreshing.value = false
+            }
         }
     }
 
@@ -179,7 +193,13 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     /**
      *  [新增] 加载完整的关注列表
      */
-    private suspend fun loadAllFollowings() {
+    private suspend fun loadAllFollowings(force: Boolean = false) {
+        if (isFollowingsLoading) return
+        val now = System.currentTimeMillis()
+        if (!force && !shouldReloadFollowings(nowMs = now, lastLoadMs = lastFollowingsLoadMs)) {
+            return
+        }
+        isFollowingsLoading = true
         try {
             // 先获取当前用户 mid
             val navResponse = NetworkModule.api.getNavInfo()
@@ -195,9 +215,20 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             }
             
             cachedFollowings = allFollowings
+            lastFollowingsLoadMs = now
             rebuildFollowedUsers()
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            isFollowingsLoading = false
+        }
+    }
+
+    private fun requestFollowingsRefreshIfStale() {
+        val now = System.currentTimeMillis()
+        if (!shouldReloadFollowings(nowMs = now, lastLoadMs = lastFollowingsLoadMs)) return
+        viewModelScope.launch {
+            loadAllFollowings(force = true)
         }
     }
 
@@ -339,7 +370,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             
             result.fold(
                 onSuccess = { items ->
-                    val currentItems = if (refresh) emptyList() else _uiState.value.userItems
+                    val currentState = _uiState.value
+                    val currentItems = if (refresh) emptyList() else currentState.userItems
                     val mergedItems = currentItems + items
                     _uiState.value = _uiState.value.copy(
                         userItems = mergedItems,
@@ -356,7 +388,6 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 }
             )
         } finally {
-            kotlinx.coroutines.delay(300)
             isLoadingLocked = false
         }
     }
@@ -481,7 +512,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
             result.fold(
                 onSuccess = { items ->
-                    val currentItems = _uiState.value.items
+                    val currentState = _uiState.value
+                    val currentItems = currentState.items
                     val mergedItems = when {
                         refresh && incrementalTimelineRefreshEnabled -> prependDistinctByKey(
                             existing = currentItems,
@@ -495,11 +527,27 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                             keySelector = ::dynamicItemKey
                         )
                     }
+                    val boundary = when {
+                        refresh && incrementalTimelineRefreshEnabled -> resolveIncrementalRefreshBoundary(
+                            existingKeys = currentItems.map(::dynamicItemKey),
+                            mergedKeys = mergedItems.map(::dynamicItemKey)
+                        )
+                        refresh -> IncrementalRefreshBoundary(
+                            boundaryKey = null,
+                            prependedCount = 0
+                        )
+                        else -> IncrementalRefreshBoundary(
+                            boundaryKey = currentState.incrementalRefreshBoundaryKey,
+                            prependedCount = currentState.incrementalPrependedCount
+                        )
+                    }
                     _uiState.value = _uiState.value.copy(
                         items = mergedItems,
                         isLoading = false,
                         error = null,
-                        hasMore = DynamicRepository.hasMoreData()
+                        hasMore = DynamicRepository.hasMoreData(),
+                        incrementalRefreshBoundaryKey = boundary.boundaryKey,
+                        incrementalPrependedCount = boundary.prependedCount
                     )
                     saveDynamicCache(mergedItems)
                     rebuildFollowedUsers()
@@ -512,13 +560,12 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 }
             )
         } finally {
-            //  延迟解锁，防止快速连续请求
-            kotlinx.coroutines.delay(300)
             isLoadingLocked = false
         }
     }
     
     fun refresh() {
+        if (!shouldStartDynamicRefresh(_isRefreshing.value, isLoadingLocked)) return
         viewModelScope.launch { refreshData(showRefreshIndicator = true) }
     }
     
@@ -528,10 +575,12 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun dynamicItemKey(item: DynamicItem): String {
-        if (item.id_str.isNotBlank()) return item.id_str
-        val authorMid = item.modules.module_author?.mid ?: 0L
-        val pubTs = item.modules.module_author?.pub_ts ?: 0L
-        return "${item.type}-$authorMid-$pubTs"
+        return dynamicFeedItemKey(item)
+    }
+
+    override fun onCleared() {
+        cacheSaveJob?.cancel()
+        super.onCleared()
     }
     
     // ====================  动态评论/点赞/转发功能 ====================
@@ -873,5 +922,7 @@ data class DynamicUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val hasMore: Boolean = true,
-    val hasUserMore: Boolean = true //  [新增] UP主动态是否有更多
+    val hasUserMore: Boolean = true, //  [新增] UP主动态是否有更多
+    val incrementalRefreshBoundaryKey: String? = null,
+    val incrementalPrependedCount: Int = 0
 )

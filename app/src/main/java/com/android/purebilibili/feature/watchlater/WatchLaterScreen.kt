@@ -391,8 +391,7 @@ fun WatchLaterScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .hazeSource(state = hazeState) // 内容作为模糊源
-                .then(if (globalHazeState != null) Modifier.hazeSource(globalHazeState) else Modifier) // [新增]
+                .hazeSource(state = hazeState) // 内容作为模糊源（全局源由根层提供）
         ) {
             when {
                 state.isLoading -> {

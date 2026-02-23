@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.settings
+package com.android.purebilibili.feature.settings.webdav
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey

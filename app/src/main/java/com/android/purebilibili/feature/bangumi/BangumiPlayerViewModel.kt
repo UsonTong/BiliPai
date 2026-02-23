@@ -3,9 +3,9 @@ package com.android.purebilibili.feature.bangumi
 
 import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.ExoPlayer
+import com.android.purebilibili.core.player.BasePlayerViewModel
 import com.android.purebilibili.data.model.response.*
 import com.android.purebilibili.data.repository.BangumiRepository
-import com.android.purebilibili.feature.player.BasePlayerViewModel
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager

@@ -1,5 +1,4 @@
-// 文件路径: feature/player/BasePlayerViewModel.kt
-package com.android.purebilibili.feature.player
+package com.android.purebilibili.core.player
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -12,9 +11,10 @@ import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.data.model.response.SponsorSegment
+import com.android.purebilibili.data.repository.DanmakuRepository
 import com.android.purebilibili.data.repository.SponsorBlockRepository
-import com.android.purebilibili.data.repository.VideoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,9 +85,9 @@ abstract class BasePlayerViewModel : ViewModel() {
                 val segments = SponsorBlockRepository.getSegments(bvid)
                 _sponsorSegments.value = segments
                 skippedSegmentIds.clear()
-                com.android.purebilibili.core.util.Logger.d(TAG, " SponsorBlock: loaded ${segments.size} segments for $bvid")
+                Logger.d(TAG, " SponsorBlock: loaded ${segments.size} segments for $bvid")
             } catch (e: Exception) {
-                com.android.purebilibili.core.util.Logger.w(TAG, " SponsorBlock: load failed: ${e.message}")
+                Logger.w(TAG, " SponsorBlock: load failed: ${e.message}")
             }
         }
     }
@@ -191,10 +191,10 @@ abstract class BasePlayerViewModel : ViewModel() {
     ) {
         val player = exoPlayer
         if (player == null) {
-            com.android.purebilibili.core.util.Logger.e(TAG, "❌ playDashVideo: exoPlayer is NULL! Cannot play video.")
+            Logger.e(TAG, "❌ playDashVideo: exoPlayer is NULL! Cannot play video.")
             return
         }
-        com.android.purebilibili.core.util.Logger.d(TAG, "▶️ playDashVideo: referer=$referer, seekTo=${seekToMs}ms, reset=$resetPlayer, video=${videoUrl.take(50)}...")
+        Logger.d(TAG, "▶️ playDashVideo: referer=$referer, seekTo=${seekToMs}ms, reset=$resetPlayer, video=${videoUrl.take(50)}...")
         
         player.volume = 1.0f
         
@@ -216,7 +216,7 @@ abstract class BasePlayerViewModel : ViewModel() {
             player.seekTo(seekToMs)
         }
         player.playWhenReady = true
-        com.android.purebilibili.core.util.Logger.d(TAG, "✅ playDashVideo: Player prepared and started, playWhenReady=true")
+        Logger.d(TAG, "✅ playDashVideo: Player prepared and started, playWhenReady=true")
     }
 
     /**
@@ -258,7 +258,7 @@ abstract class BasePlayerViewModel : ViewModel() {
             player.seekTo(seekToMs)
         }
         player.playWhenReady = true
-        com.android.purebilibili.core.util.Logger.d(TAG, "✅ playSegmentedVideo: segmentCount=${cleanUrls.size}, seekTo=${seekToMs}ms")
+        Logger.d(TAG, "✅ playSegmentedVideo: segmentCount=${cleanUrls.size}, seekTo=${seekToMs}ms")
     }
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -284,7 +284,7 @@ abstract class BasePlayerViewModel : ViewModel() {
      */
     protected fun playVideo(url: String, seekToMs: Long = 0L) {
         val player = exoPlayer ?: return
-        com.android.purebilibili.core.util.Logger.d(TAG, " playVideo: seekTo=${seekToMs}ms, url=${url.take(50)}...")
+        Logger.d(TAG, " playVideo: seekTo=${seekToMs}ms, url=${url.take(50)}...")
         
         player.volume = 1.0f
         
@@ -307,10 +307,10 @@ abstract class BasePlayerViewModel : ViewModel() {
      */
     protected fun loadDanmaku(cid: Long) {
         viewModelScope.launch {
-            val data = com.android.purebilibili.data.repository.DanmakuRepository.getDanmakuRawData(cid)
+            val data = DanmakuRepository.getDanmakuRawData(cid)
             if (data != null) {
                 _danmakuData.value = data
-                com.android.purebilibili.core.util.Logger.d(TAG, "📝 Danmaku loaded: ${data.size} bytes for cid=$cid")
+                Logger.d(TAG, "📝 Danmaku loaded: ${data.size} bytes for cid=$cid")
             }
         }
     }

@@ -9,6 +9,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import androidx.profileinstaller.ProfileInstaller
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
@@ -44,6 +45,8 @@ internal fun shouldBlockStartupForHomeVisualDefaultsMigration(): Boolean = false
 internal fun shouldDeferPlaylistRestoreAtStartup(): Boolean = true
 internal fun shouldDeferTelemetryInitAtStartup(): Boolean = true
 internal fun deferredNonCriticalStartupDelayMs(): Long = 900L
+internal fun shouldRequestDex2OatProfileInstall(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.N
+internal fun dex2OatProfileInstallDelayMs(): Long = 2_500L
 internal fun shouldClearImageMemoryCacheOnTrimLevel(level: Int): Boolean {
     return when (level) {
         ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
@@ -131,6 +134,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         createNotificationChannel()
         
         initTelemetry() // [优化] 埋点初始化支持延后到首屏阶段之后
+        scheduleDex2OatProfileInstall()
         
         //  [冷启动优化] 延迟非关键初始化到主线程空闲时 (IdleHandler 确保首帧绘制后再执行)
         Looper.myQueue().addIdleHandler {
@@ -205,6 +209,19 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         initCrashlytics()
         initAnalytics()
         attachTelemetryListener()
+    }
+
+    private fun scheduleDex2OatProfileInstall() {
+        if (!shouldRequestDex2OatProfileInstall(Build.VERSION.SDK_INT)) return
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching {
+                ProfileInstaller.writeProfile(this)
+            }.onSuccess {
+                Logger.d(TAG, "📦 Requested ART profile installation for dex2oat")
+            }.onFailure { throwable ->
+                Logger.w(TAG, "⚠️ ART profile installation request failed", throwable)
+            }
+        }, dex2OatProfileInstallDelayMs())
     }
 
     private fun attachTelemetryListener() {

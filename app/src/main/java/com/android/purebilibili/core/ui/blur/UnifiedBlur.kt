@@ -2,8 +2,10 @@
 package com.android.purebilibili.core.ui.blur
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalContext
@@ -11,6 +13,41 @@ import com.android.purebilibili.core.store.SettingsManager
 import androidx.compose.ui.draw.clip
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+
+private val LocalUnifiedBlurIntensity = staticCompositionLocalOf<BlurIntensity?> { null }
+
+internal fun resolveUnifiedBlurIntensity(
+    provided: BlurIntensity?,
+    fallback: BlurIntensity
+): BlurIntensity {
+    return provided ?: fallback
+}
+
+@Composable
+fun ProvideUnifiedBlurIntensity(
+    content: @Composable () -> Unit
+) {
+    val context = LocalContext.current
+    val blurIntensity by SettingsManager.getBlurIntensity(context)
+        .collectAsState(initial = BlurIntensity.THIN)
+    CompositionLocalProvider(
+        LocalUnifiedBlurIntensity provides blurIntensity,
+        content = content
+    )
+}
+
+@Composable
+fun currentUnifiedBlurIntensity(): BlurIntensity {
+    val providedBlurIntensity = LocalUnifiedBlurIntensity.current
+    if (providedBlurIntensity != null) {
+        return providedBlurIntensity
+    }
+
+    val context = LocalContext.current
+    val fallbackBlurIntensity by SettingsManager.getBlurIntensity(context)
+        .collectAsState(initial = BlurIntensity.THIN)
+    return fallbackBlurIntensity
+}
 
 /**
  *  统一的模糊Modifier
@@ -28,12 +65,8 @@ fun Modifier.unifiedBlur(
     shape: androidx.compose.ui.graphics.Shape? = null
 ): Modifier = composed {
     if (!enabled) return@composed this
-    
-    val context = LocalContext.current
-    
-    //  读取用户设置的模糊强度
-    val blurIntensity by SettingsManager.getBlurIntensity(context)
-        .collectAsState(initial = BlurIntensity.THIN)
+
+    val blurIntensity = currentUnifiedBlurIntensity()
     
     // 根据用户选择获取对应的模糊样式
     val blurStyle = BlurStyles.getBlurStyle(blurIntensity)

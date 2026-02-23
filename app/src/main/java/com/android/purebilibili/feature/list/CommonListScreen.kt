@@ -13,8 +13,8 @@ import androidx.compose.ui.platform.LocalDensity // [New]
 import androidx.compose.ui.zIndex // [New]
 import androidx.compose.ui.layout.onGloballyPositioned // [New]
 import com.android.purebilibili.core.store.SettingsManager // [New]
-import com.android.purebilibili.core.ui.blur.BlurIntensity // [New]
 import com.android.purebilibili.core.ui.blur.BlurStyles // [New]
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
@@ -226,7 +226,7 @@ fun CommonListScreen(
     
     // [Feature] Header Blur Optimization
     val isHeaderBlurEnabled by SettingsManager.getHeaderBlurEnabled(context).collectAsState(initial = true)
-    val blurIntensity by SettingsManager.getBlurIntensity(context).collectAsState(initial = BlurIntensity.THIN)
+    val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
     
     // 决定顶栏背景 (使用私有的 localHazeState)
@@ -249,11 +249,10 @@ fun CommonListScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // 1. 底层：内容区域
-            // [关键] 同时向本地和全局 HazeState 提供像素源
+            // [Haze Audit] 全局源已在 AppNavigation 根层提供，这里仅保留本地源
             val contentModifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = localHazeState)
-                .then(if (globalHazeState != null) Modifier.hazeSource(state = globalHazeState) else Modifier)
 
             Box(modifier = contentModifier) {
                 when (favoriteContentMode) {

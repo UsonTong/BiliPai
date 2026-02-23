@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -58,9 +59,8 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.blur.unifiedBlur
-import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.blur.BlurStyles
-import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -146,6 +146,25 @@ fun DynamicScreen(
             items = items.filter { it.type == "DYNAMIC_TYPE_AV" }
         }
         items.distinctBy { it.id_str }
+    }
+    val oldContentDividerLabel = remember(selectedTab) {
+        if (selectedTab == 1) "以下是之前的视频" else "以下是之前的动态"
+    }
+    val oldContentDividerIndex = remember(
+        filteredItems,
+        selectedUserId,
+        state.incrementalRefreshBoundaryKey,
+        state.incrementalPrependedCount
+    ) {
+        if (selectedUserId != null) {
+            -1
+        } else {
+            resolveOldContentDividerIndex(
+                displayKeys = filteredItems.map(::dynamicFeedItemKey),
+                boundaryKey = state.incrementalRefreshBoundaryKey,
+                showDivider = state.incrementalPrependedCount > 0
+            )
+        }
     }
     
     //  [修改] 判断是否加载更多（区分全部动态和用户动态）
@@ -304,6 +323,8 @@ fun DynamicScreen(
                                     listState = listState,
                                     statusBarHeight = statusBarHeight,
                                     topPaddingExtra = 100.dp,  // 顶栏高度
+                                    oldContentDividerIndex = oldContentDividerIndex,
+                                    oldContentDividerLabel = oldContentDividerLabel,
                                     onVideoClick = onVideoClick,
                                     onUserClick = onUserClick,
                                     onLiveClick = onLiveClick,
@@ -315,11 +336,10 @@ fun DynamicScreen(
                                         viewModel.likeDynamic(dynamicId) { _, msg ->
                                             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                                         }
-                                    },
-                                    likedDynamics = likedDynamics,
-                                    modifier = Modifier
-                                        .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用
-                                        .then(if (globalHazeState != null) Modifier.hazeSource(globalHazeState) else Modifier) // 全局 hazeSource - 底栏使用
+                                 },
+                                 likedDynamics = likedDynamics,
+                                 modifier = Modifier
+                                        .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用（全局源由根层提供）
                                 )
                                 
                                 // 顶栏
@@ -356,6 +376,8 @@ fun DynamicScreen(
                                  listState = listState,
                                  statusBarHeight = statusBarHeight,
                                  topPaddingExtra = 220.dp,  // 顶栏 + 横向用户列表高度
+                                 oldContentDividerIndex = oldContentDividerIndex,
+                                 oldContentDividerLabel = oldContentDividerLabel,
                                  onVideoClick = onVideoClick,
                                  onUserClick = onUserClick,
                                  onLiveClick = onLiveClick,
@@ -370,15 +392,13 @@ fun DynamicScreen(
                                  },
                                  likedDynamics = likedDynamics,
                                  modifier = Modifier
-                                     .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用
-                                     .then(if (globalHazeState != null) Modifier.hazeSource(globalHazeState) else Modifier) // 全局 hazeSource - 底栏使用
+                                     .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用（全局源由根层提供）
                              )
                              
                              // 顶部区域：顶栏 + 横向用户列表
                              Column(modifier = Modifier.align(Alignment.TopCenter)) {
                                  // 获取模糊设置
-                                 val blurIntensity by SettingsManager.getBlurIntensity(context)
-                                     .collectAsState(initial = BlurIntensity.THIN)
+                                 val blurIntensity = currentUnifiedBlurIntensity()
                                  val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
                                  val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
 
@@ -470,6 +490,8 @@ private fun DynamicList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     statusBarHeight: androidx.compose.ui.unit.Dp,
     topPaddingExtra: androidx.compose.ui.unit.Dp,
+    oldContentDividerIndex: Int,
+    oldContentDividerLabel: String,
     onVideoClick: (String) -> Unit,
     onUserClick: (Long) -> Unit,
     onLiveClick: (Long, String, String) -> Unit,
@@ -502,7 +524,10 @@ private fun DynamicList(
         }
         
         // 动态卡片列表
-        items(filteredItems, key = { "dynamic_${it.id_str}" }) { item ->
+        itemsIndexed(filteredItems, key = { _, item -> "dynamic_${dynamicFeedItemKey(item)}" }) { index, item ->
+            if (oldContentDividerIndex == index) {
+                OldContentDivider(label = oldContentDividerLabel)
+            }
             DynamicCardV2(
                 item = item,
                 onVideoClick = onVideoClick,
@@ -542,6 +567,31 @@ private fun DynamicList(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun OldContentDivider(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+            fontSize = 12.sp
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
 

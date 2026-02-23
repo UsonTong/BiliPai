@@ -75,6 +75,7 @@ import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
 // import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi (Removed)
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
+import com.android.purebilibili.core.store.AppNavigationSettings
 import com.android.purebilibili.core.store.SettingsManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier // 确保 Modifier 被导入
@@ -115,11 +116,17 @@ fun AppNavigation(
     val homeViewModel: HomeViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
     
-    //  读取卡片过渡动画设置（在 Composable 作用域内）
+    // 单一首页视觉配置源：减少根导航层多路 DataStore 收集导致的全局重组。
     val context = androidx.compose.ui.platform.LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val cardTransitionEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getCardTransitionEnabled(context).collectAsState(initial = true)
+    val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(
+        initial = com.android.purebilibili.core.store.HomeSettings()
+    )
+    val appearance = remember(homeSettings) { resolveAppNavigationAppearance(homeSettings) }
+    val cardTransitionEnabled = appearance.cardTransitionEnabled
+    val isBottomBarBlurEnabled = appearance.bottomBarBlurEnabled
+    val bottomBarLabelMode = appearance.bottomBarLabelMode
+    val isBottomBarFloating = appearance.bottomBarFloating
 
     // 🔒 [防抖] 全局导航防抖机制 - 防止快速点击导致页面重复加载
     val lastNavigationTime = androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
@@ -192,14 +199,11 @@ fun AppNavigation(
         val currentRoute = navBackStackEntry?.destination?.route
         val currentBottomNavItem = BottomNavItem.entries.find { it.route == currentRoute } ?: BottomNavItem.HOME
 
-        // 设置状态
-        val bottomBarVisibilityMode by SettingsManager.getBottomBarVisibilityMode(context).collectAsState(initial = SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE)
-        val isBottomBarBlurEnabled by SettingsManager.getBottomBarBlurEnabled(context).collectAsState(initial = true)
-        val bottomBarLabelMode by SettingsManager.getBottomBarLabelMode(context).collectAsState(initial = SettingsManager.BottomBarLabelMode.SELECTED)
-        val isBottomBarFloating by SettingsManager.getBottomBarFloating(context).collectAsState(initial = true)
-        
-        // [修复] 使用有序的可见项目列表
-        val orderedVisibleTabIds by SettingsManager.getOrderedVisibleTabs(context).collectAsState(initial = listOf("HOME", "DYNAMIC", "HISTORY", "PROFILE"))
+        val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsState(
+            initial = AppNavigationSettings()
+        )
+        val bottomBarVisibilityMode = appNavigationSettings.bottomBarVisibilityMode
+        val orderedVisibleTabIds = appNavigationSettings.orderedVisibleTabIds
         val visibleBottomBarItems = remember(orderedVisibleTabIds) {
             orderedVisibleTabIds.mapNotNull { id -> 
                 BottomNavItem.entries.find { it.name == id }
@@ -208,17 +212,13 @@ fun AppNavigation(
         val visibleBottomBarRoutes = remember(visibleBottomBarItems) {
             visibleBottomBarItems.map { it.route }.toSet()
         }
-        
-        val bottomBarItemColors by SettingsManager.getBottomBarItemColors(context).collectAsState(initial = emptyMap<String, Int>())
-        
-        // [新增] 获取首页设置 (包含 Liquid Glass 等视觉配置)
-        val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(initial = com.android.purebilibili.core.store.HomeSettings())
 
+        val bottomBarItemColors = appNavigationSettings.bottomBarItemColors
         // 平板侧边栏模式 (替代 WindowSizeClass)
         val windowSizeClass = LocalWindowSizeClass.current
-        
+
         // [修复] 平板模式下，仅当用户开启侧边栏设置时才使用侧边导航
-        val tabletUseSidebar by SettingsManager.getTabletUseSidebar(context).collectAsState(initial = false)
+        val tabletUseSidebar = appNavigationSettings.tabletUseSidebar
         
         // 统一侧边栏判定策略：600dp+ 且用户开启侧边栏
         val useSideNavigation = shouldUseSidebarNavigationForLayout(windowSizeClass, tabletUseSidebar)
@@ -263,7 +263,13 @@ fun AppNavigation(
             bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.ALWAYS_HIDDEN &&
             (bottomBarVisibilityMode == SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE || isBottomBarVisible)
 
-        val setBottomBarVisible: (Boolean) -> Unit = remember { { visible -> isBottomBarVisible = visible } }
+        val setBottomBarVisible: (Boolean) -> Unit = remember {
+            { visible ->
+                if (isBottomBarVisible != visible) {
+                    isBottomBarVisible = visible
+                }
+            }
+        }
 
         // [新增] 首页回顶事件通道 (Channel based event bus)
         val homeScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
@@ -1071,7 +1077,7 @@ fun AppNavigation(
             enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
         ) {
-            com.android.purebilibili.feature.settings.WebDavBackupScreen(
+            com.android.purebilibili.feature.settings.webdav.WebDavBackupScreen(
                 onBack = { navController.popBackStack() }
             )
         }

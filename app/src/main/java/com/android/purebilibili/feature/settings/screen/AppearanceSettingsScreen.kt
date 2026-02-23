@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
@@ -38,6 +40,7 @@ import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
 
@@ -150,6 +153,11 @@ fun AppearanceSettingsContent(
         )
     }
     val scope = rememberCoroutineScope()
+    val navigationBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val contentBottomPadding = resolveAppearanceBottomPadding(
+        navigationBarsBottom = navigationBarBottomPadding,
+        expandableSectionEnabled = true
+    )
     val compactVideoStatsOnCover by SettingsManager
         .getCompactVideoStatsOnCover(context)
         .collectAsState(initial = true)
@@ -157,8 +165,8 @@ fun AppearanceSettingsContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize(),
-        //  [修复] 添加底部导航栏内边距，确保沉浸式效果
-        contentPadding = WindowInsets.navigationBars.asPaddingValues()
+        // [Fix] 为可展开配置项增加安全底部留白，避免“小屏+展开”时显示不全
+        contentPadding = PaddingValues(bottom = contentBottomPadding)
     ) {
         
         //  主题与颜色
@@ -602,11 +610,22 @@ fun AppearanceSettingsContent(
                     IOSGroup {
                         val displayMode = state.displayMode
                         var isExpanded by remember { mutableStateOf(false) }
+                        val displayModeBringIntoViewRequester = remember { BringIntoViewRequester() }
+                        LaunchedEffect(isExpanded) {
+                            if (shouldBringDisplayModeIntoView(isExpanded)) {
+                                delay(120)
+                                displayModeBringIntoViewRequester.bringIntoView()
+                            }
+                        }
                         
                         // 当前选中模式的名称
                         val currentModeName = DisplayMode.entries.find { it.value == displayMode }?.title ?: "双列网格"
                         
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .bringIntoViewRequester(displayModeBringIntoViewRequester)
+                        ) {
                             // 标题行 - 可点击展开/收起
                             Row(
                                 modifier = Modifier

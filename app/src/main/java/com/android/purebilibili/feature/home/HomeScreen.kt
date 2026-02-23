@@ -768,8 +768,12 @@ fun HomeScreen(
                 
                 // Update Global Scroll Offset (accumulate)
                 // [优化] 仅当开启流体玻璃特效时才更新全局滚动状态，避免不必要的重组开销
-                if (isLiquidGlassEnabled) {
-                    globalScrollOffset.value -= delta // Scroll down = positive offset
+                resolveNextHomeGlobalScrollOffset(
+                    currentOffset = globalScrollOffset.value,
+                    scrollDeltaY = delta,
+                    liquidGlassEnabled = isLiquidGlassEnabled
+                )?.let { nextOffset ->
+                    globalScrollOffset.value = nextOffset
                 }
                 
                 // Header Collapse Logic

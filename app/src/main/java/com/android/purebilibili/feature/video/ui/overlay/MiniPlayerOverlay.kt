@@ -2,8 +2,8 @@
 package com.android.purebilibili.feature.video.ui.overlay
 
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
-
 import com.android.purebilibili.core.util.Logger
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -66,10 +66,14 @@ fun MiniPlayerOverlay(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     
-    //  [调试] 打印当前模式状态
+    //  [调试] 仅在状态变化时记录，避免组合阶段高频日志
     val currentMode = miniPlayerManager.getCurrentMode()
-    com.android.purebilibili.core.util.Logger.d("MiniPlayerOverlay", 
-        " Overlay: mode=$currentMode, isMiniMode=${miniPlayerManager.isMiniMode}, isActive=${miniPlayerManager.isActive}")
+    LaunchedEffect(currentMode, miniPlayerManager.isMiniMode, miniPlayerManager.isActive) {
+        Logger.d(
+            "MiniPlayerOverlay",
+            "Overlay state changed: mode=$currentMode, isMiniMode=${miniPlayerManager.isMiniMode}, isActive=${miniPlayerManager.isActive}"
+        )
+    }
     
     //  [简化] 小窗可见性由 AnimatedVisibility 的 isMiniMode && isActive 控制
     // 不再需要额外的模式检查
@@ -152,18 +156,24 @@ fun MiniPlayerOverlay(
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     
-    // 持续监听播放器状态 ( 优化：降低轮询频率)
-    LaunchedEffect(player) {
+    val shouldPollProgress = shouldPollMiniPlayerProgress(
+        playerExists = player != null,
+        isMiniMode = miniPlayerManager.isMiniMode,
+        isActive = miniPlayerManager.isActive
+    )
+    // 仅在小窗真实可用时轮询播放器状态，避免后台空转。
+    LaunchedEffect(player, shouldPollProgress, isDraggingProgress) {
+        if (!shouldPollProgress) return@LaunchedEffect
         while (true) {
-            player?.let {
-                isPlaying = it.isPlaying
-                duration = it.duration.coerceAtLeast(1L)
-                currentPosition = it.currentPosition
-                if (!isDraggingProgress) {
-                    currentProgress = (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-                }
+            val currentPlayer = player ?: break
+            val currentIsPlaying = currentPlayer.isPlaying
+            isPlaying = currentIsPlaying
+            duration = currentPlayer.duration.coerceAtLeast(1L)
+            currentPosition = currentPlayer.currentPosition
+            if (!isDraggingProgress) {
+                currentProgress = (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
             }
-            delay(300) //  从 200ms 改为 300ms，减少 CPU 消耗
+            delay(resolveMiniPlayerPollingIntervalMs(isPlaying = currentIsPlaying))
         }
     }
     

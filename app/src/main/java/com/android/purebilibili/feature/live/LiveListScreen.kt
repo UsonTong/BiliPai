@@ -354,7 +354,7 @@ fun LiveListScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .responsiveContentWidth(maxWidth = 1000.dp) // 📐 [Tablet Adaptation] Limit content width
-                .then(if (globalHazeState != null) Modifier.hazeSource(globalHazeState) else Modifier) // [新增]
+                // [Haze Audit] 全局源已在 AppNavigation 根层提供
         ) {
             when {
                 state.isLoading -> {

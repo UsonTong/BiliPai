@@ -21,11 +21,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.HandThumbsup
 import io.github.alexzhirkevich.cupertino.icons.outlined.Star
 import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.core.ui.blur.unifiedBlur
-import com.android.purebilibili.core.ui.blur.BlurStyles
-import com.android.purebilibili.core.store.SettingsManager
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.feature.home.components.resolveBottomBarSurfaceColor
 
 @Composable
@@ -41,9 +37,7 @@ fun BottomInputBar(
     onCommentClick: () -> Unit,
     hazeState: HazeState? = null
 ) {
-    val context = LocalContext.current
-    val blurIntensity by SettingsManager.getBlurIntensity(context)
-        .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
+    val blurIntensity = currentUnifiedBlurIntensity()
     
     val barColor = resolveBottomBarSurfaceColor(
         surfaceColor = MaterialTheme.colorScheme.surface,

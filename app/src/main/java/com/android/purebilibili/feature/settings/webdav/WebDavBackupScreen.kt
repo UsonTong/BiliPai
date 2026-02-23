@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.settings
+package com.android.purebilibili.feature.settings.webdav
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

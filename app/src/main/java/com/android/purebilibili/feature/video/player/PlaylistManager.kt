@@ -5,6 +5,8 @@ import android.content.Context
 import com.android.purebilibili.core.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
@@ -49,6 +51,30 @@ enum class ExternalPlaylistSource {
     UNKNOWN
 }
 
+data class PlaylistUiState(
+    val playMode: PlayMode = PlayMode.SEQUENTIAL,
+    val playlist: List<PlaylistItem> = emptyList(),
+    val currentIndex: Int = -1,
+    val isExternalPlaylist: Boolean = false,
+    val externalPlaylistSource: ExternalPlaylistSource = ExternalPlaylistSource.NONE
+)
+
+internal fun resolvePlaylistUiState(
+    playMode: PlayMode,
+    playlist: List<PlaylistItem>,
+    currentIndex: Int,
+    isExternalPlaylist: Boolean,
+    externalPlaylistSource: ExternalPlaylistSource
+): PlaylistUiState {
+    return PlaylistUiState(
+        playMode = playMode,
+        playlist = playlist,
+        currentIndex = currentIndex,
+        isExternalPlaylist = isExternalPlaylist,
+        externalPlaylistSource = externalPlaylistSource
+    )
+}
+
 /**
  *  播放列表管理器
  * 
@@ -82,6 +108,22 @@ object PlaylistManager {
 
     private val _externalPlaylistSource = MutableStateFlow(ExternalPlaylistSource.NONE)
     val externalPlaylistSource = _externalPlaylistSource.asStateFlow()
+
+    val uiState = combine(
+        playMode,
+        playlist,
+        currentIndex,
+        isExternalPlaylist,
+        externalPlaylistSource
+    ) { playMode, playlist, currentIndex, isExternalPlaylist, externalPlaylistSource ->
+        resolvePlaylistUiState(
+            playMode = playMode,
+            playlist = playlist,
+            currentIndex = currentIndex,
+            isExternalPlaylist = isExternalPlaylist,
+            externalPlaylistSource = externalPlaylistSource
+        )
+    }.distinctUntilChanged()
     
     // 已播放的随机索引（用于随机模式历史）
     private val shuffleHistory = mutableListOf<Int>()

@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.settings
+package com.android.purebilibili.feature.settings.webdav
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

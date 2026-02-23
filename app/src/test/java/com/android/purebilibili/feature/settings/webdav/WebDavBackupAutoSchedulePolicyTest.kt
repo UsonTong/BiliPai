@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.settings
+package com.android.purebilibili.feature.settings.webdav
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

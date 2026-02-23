@@ -50,9 +50,7 @@ fun FrostedSideBar(
     val haptic = rememberHapticFeedback()
     
     // 读取模糊设置
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val blurIntensity by com.android.purebilibili.core.store.SettingsManager.getBlurIntensity(context)
-        .collectAsState(initial = com.android.purebilibili.core.ui.blur.BlurIntensity.THIN)
+    val blurIntensity = com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity()
     val backgroundAlpha = com.android.purebilibili.core.ui.blur.BlurStyles.getBackgroundAlpha(blurIntensity)
 
     val sideBarWidth = 80.dp

@@ -36,12 +36,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import androidx.compose.runtime.collectAsState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import com.android.purebilibili.core.store.SettingsManager
-import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.BlurStyles
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.feature.dynamic.SidebarUser
 
@@ -75,8 +73,7 @@ fun DynamicSidebar(
     val sidebarHazeState = remember { HazeState() }
     
     // 读取模糊强度设置
-    val blurIntensity by SettingsManager.getBlurIntensity(LocalContext.current)
-        .collectAsState(initial = BlurIntensity.THIN)
+    val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
     
     // 侧边栏容器 - Glassmorphism 升级版
