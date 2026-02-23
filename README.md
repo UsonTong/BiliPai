@@ -32,6 +32,9 @@
   <a href="https://x.com/YangY_0x00"><img src="https://img.shields.io/badge/X-Follow-000000?style=flat-square&logo=x" alt="X"></a>
 </p>
 
+> [!IMPORTANT]
+> 应用内默认设置为通用场景，可能不适合所有用户。建议进入 **设置** 按个人习惯手动调整（如外观、动画、播放设置等）。
+
 ## 📸 应用预览
 
 <p align="center">
