@@ -119,6 +119,7 @@ import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.player.PlaybackService
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
+import com.android.purebilibili.feature.video.player.PlaylistUiState
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
 // 📱 [新增] 竖屏全屏
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
@@ -350,12 +351,13 @@ fun VideoDetailScreen(
     
     // 📱 [优化] isPortraitFullscreen 和 isVerticalVideo 现在从 playerState 获取（见 playerState 定义后）
     
-    // 🔁 [新增] 播放模式状态
-    val currentPlayMode by com.android.purebilibili.feature.video.player.PlaylistManager.playMode.collectAsState()
-    val playlistItems by PlaylistManager.playlist.collectAsState()
-    val playlistCurrentIndex by PlaylistManager.currentIndex.collectAsState()
-    val isExternalPlaylist by PlaylistManager.isExternalPlaylist.collectAsState()
-    val externalPlaylistSource by PlaylistManager.externalPlaylistSource.collectAsState()
+    // 🔁 [优化] 合并播放队列状态订阅，减少同帧多次重组
+    val playlistUiState by PlaylistManager.uiState.collectAsState(initial = PlaylistUiState())
+    val currentPlayMode = playlistUiState.playMode
+    val playlistItems = playlistUiState.playlist
+    val playlistCurrentIndex = playlistUiState.currentIndex
+    val isExternalPlaylist = playlistUiState.isExternalPlaylist
+    val externalPlaylistSource = playlistUiState.externalPlaylistSource
     val shouldShowWatchLaterQueueBar = shouldShowWatchLaterQueueBarByPolicy(
         isExternalPlaylist = isExternalPlaylist,
         externalPlaylistSource = externalPlaylistSource,
@@ -1575,7 +1577,7 @@ fun VideoDetailScreen(
                                                         onFavoriteLongClick = { viewModel.showFavoriteFolderDialog() },
                                                         selectedFavoriteFolderIds = selectedFavoriteFolderIds,
                                                         isSavingFavoriteFolders = isSavingFavoriteFolders,
-                                                        onFavoriteFolderToggle = { folder -> viewModel.toggleFavoriteFolderSelection(folder.id) },
+                                                        onFavoriteFolderToggle = { folder -> viewModel.toggleFavoriteFolderSelection(folder) },
                                                         onSaveFavoriteFolders = { viewModel.saveFavoriteFolderSelection() },
                                                         onDismissFavoriteFolderDialog = { viewModel.dismissFavoriteFolderDialog() },
                                                         onCreateFavoriteFolder = { title, intro, isPrivate -> 
@@ -2330,7 +2332,7 @@ fun VideoDetailScreen(
                 isLoading = isFavoriteFoldersLoading,
                 selectedFolderIds = selectedFavoriteFolderIds,
                 isSaving = isSavingFavoriteFolders,
-                onFolderToggle = { folder -> viewModel.toggleFavoriteFolderSelection(folder.id) },
+                onFolderToggle = { folder -> viewModel.toggleFavoriteFolderSelection(folder) },
                 onSaveClick = { viewModel.saveFavoriteFolderSelection() },
                 onDismissRequest = { viewModel.dismissFavoriteFolderDialog() },
                 onCreateFolder = { title, intro, isPrivate ->

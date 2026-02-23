@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.video.viewmodel
 
+import com.android.purebilibili.data.model.response.FavFolder
+import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -36,5 +38,19 @@ class FavoriteFolderSelectionPolicyTest {
 
         assertEquals(emptySet(), mutation.addFolderIds)
         assertEquals(setOf(1L, 2L), mutation.removeFolderIds)
+    }
+
+    @Test
+    fun `should prefer fid when resolving folder media id`() {
+        val folder = FavFolder(id = 100L, fid = 200L)
+
+        assertEquals(200L, resolveFavoriteFolderMediaId(folder))
+    }
+
+    @Test
+    fun `should fallback to id when fid is invalid`() {
+        val folder = FavFolder(id = 321L, fid = 0L)
+
+        assertEquals(321L, resolveFavoriteFolderMediaId(folder))
     }
 }

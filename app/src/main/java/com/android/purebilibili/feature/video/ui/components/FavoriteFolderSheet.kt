@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.data.model.response.FavFolder
+import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +95,7 @@ fun FavoriteFolderSheet(
                     items(folders) { folder ->
                         FavoriteFolderItem(
                             folder = folder,
-                            selected = selectedFolderIds.contains(folder.id),
+                            selected = selectedFolderIds.contains(resolveFavoriteFolderMediaId(folder)),
                             onClick = { onFolderToggle(folder) }
                         )
                     }

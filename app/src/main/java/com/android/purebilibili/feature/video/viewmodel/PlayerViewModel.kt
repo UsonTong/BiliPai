@@ -52,6 +52,7 @@ import com.android.purebilibili.feature.video.interaction.resolveInteractiveQues
 import com.android.purebilibili.feature.video.interaction.applyInteractiveNativeAction
 import com.android.purebilibili.feature.video.interaction.evaluateInteractiveChoiceCondition
 import com.android.purebilibili.feature.video.interaction.shouldTriggerInteractiveQuestion
+import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaId
 
 // ========== UI State ==========
 sealed class PlayerUiState {
@@ -461,13 +462,18 @@ class PlayerViewModel : ViewModel() {
                     val selectedFromServer = folders
                         .asSequence()
                         .filter { it.fav_state == 1 }
-                        .map { it.id }
+                        .map { resolveFavoriteFolderMediaId(it) }
+                        .filter { it > 0L }
                         .toSet()
 
                     lastSavedFavoriteFolderIds = selectedFromServer
 
                     _favoriteSelectedFolderIds.value = if (keepCurrentSelection) {
-                        val availableFolderIds = folders.asSequence().map { it.id }.toSet()
+                        val availableFolderIds = folders
+                            .asSequence()
+                            .map { resolveFavoriteFolderMediaId(it) }
+                            .filter { it > 0L }
+                            .toSet()
                         val keptSelection = _favoriteSelectedFolderIds.value.intersect(availableFolderIds)
                         if (keptSelection.isEmpty() && selectedFromServer.isNotEmpty()) {
                             selectedFromServer
@@ -489,6 +495,7 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun toggleFavoriteFolderSelection(folderId: Long) {
+        if (folderId <= 0L) return
         _favoriteSelectedFolderIds.update { selected ->
             if (selected.contains(folderId)) {
                 selected - folderId
@@ -496,6 +503,10 @@ class PlayerViewModel : ViewModel() {
                 selected + folderId
             }
         }
+    }
+
+    fun toggleFavoriteFolderSelection(folder: com.android.purebilibili.data.model.response.FavFolder) {
+        toggleFavoriteFolderSelection(resolveFavoriteFolderMediaId(folder))
     }
 
     fun saveFavoriteFolderSelection() {
@@ -527,7 +538,7 @@ class PlayerViewModel : ViewModel() {
                 _favoriteFolders.update { folders ->
                     folders.map { folder ->
                         folder.copy(
-                            fav_state = if (selectedFolderIds.contains(folder.id)) 1 else 0
+                            fav_state = if (selectedFolderIds.contains(resolveFavoriteFolderMediaId(folder))) 1 else 0
                         )
                     }
                 }
