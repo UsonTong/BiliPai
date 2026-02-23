@@ -41,6 +41,7 @@ import com.android.purebilibili.feature.video.ui.components.AspectRatioMenu
 import com.android.purebilibili.feature.video.ui.components.VideoSettingsPanel
 import com.android.purebilibili.feature.video.ui.components.ChapterListPanel
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.data.repository.VideoRepository
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -110,6 +111,8 @@ fun VideoPlayerOverlay(
     videoOwnerFace: String = "",
     videoDuration: Int = 0,
     videoTitle: String = "",
+    currentAid: Long = 0L,
+    currentQuality: Int = 80,
     currentVideoUrl: String = "",
     currentAudioUrl: String = "", 
     // 🔒 [新增] 屏幕锁定
@@ -856,8 +859,21 @@ fun VideoPlayerOverlay(
         
         // --- 12. 📺 投屏对话框 ---
         if (showCastDialog) {
-            suspend fun buildProxyUrlOrNull(): String? = withContext(Dispatchers.IO) {
+            suspend fun resolveCastUrlOrNull(): String? = withContext(Dispatchers.IO) {
+                val tvCastUrl = runCatching {
+                    VideoRepository.getTvCastPlayUrl(
+                        aid = currentAid,
+                        cid = cid,
+                        qn = currentQuality
+                    )
+                }.getOrNull()
+
+                if (!tvCastUrl.isNullOrBlank()) {
+                    return@withContext tvCastUrl
+                }
+
                 runCatching {
+                    if (currentVideoUrl.isBlank()) return@runCatching null
                     LocalProxyServer.ensureStarted()
                     LocalProxyServer.getProxyUrl(context, currentVideoUrl)
                 }.getOrNull()
@@ -868,25 +884,25 @@ fun VideoPlayerOverlay(
                 onDeviceSelected = { device ->
                     showCastDialog = false
                     scope.launch {
-                        val proxyUrl = buildProxyUrlOrNull()
-                        if (proxyUrl == null) {
-                            android.widget.Toast.makeText(context, "代理服务启动失败", android.widget.Toast.LENGTH_SHORT).show()
+                        val castUrl = resolveCastUrlOrNull()
+                        if (castUrl == null) {
+                            android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
                             return@launch
                         }
-                        DlnaManager.cast(device, proxyUrl, videoTitle, videoOwnerName)
+                        DlnaManager.cast(device, castUrl, videoTitle, videoOwnerName)
                     }
                 },
                 onSsdpDeviceSelected = { ssdpDevice ->
                     showCastDialog = false
                     scope.launch {
-                        val proxyUrl = buildProxyUrlOrNull()
-                        if (proxyUrl == null) {
-                            android.widget.Toast.makeText(context, "代理服务启动失败", android.widget.Toast.LENGTH_SHORT).show()
+                        val castUrl = resolveCastUrlOrNull()
+                        if (castUrl == null) {
+                            android.widget.Toast.makeText(context, "投屏地址解析失败", android.widget.Toast.LENGTH_SHORT).show()
                             return@launch
                         }
                         val result = SsdpCastClient.cast(
                             device = ssdpDevice,
-                            mediaUrl = proxyUrl,
+                            mediaUrl = castUrl,
                             title = videoTitle,
                             creator = videoOwnerName
                         )

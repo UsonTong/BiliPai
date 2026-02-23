@@ -119,6 +119,7 @@ class VideoPlayerState(
     // 🎵 缓存元数据用于状态更新
     private var currentTitle: String = ""
     private var currentArtist: String = ""
+    private var currentCoverUrl: String = ""
     private var currentBitmap: Bitmap? = null
 
     private val playerListener = object : Player.Listener {
@@ -153,7 +154,7 @@ class VideoPlayerState(
             if (currentTitle.isNotEmpty()) {
                 scope.launch(Dispatchers.Main) {
                     // 使用统一的管理方法
-                    miniPlayerManager.updateMediaMetadata(currentTitle, currentArtist, "")
+                    miniPlayerManager.updateMediaMetadata(currentTitle, currentArtist, currentCoverUrl)
                 }
             }
         }
@@ -220,6 +221,7 @@ class VideoPlayerState(
         // 缓存元数据
         currentTitle = title
         currentArtist = artist
+        currentCoverUrl = coverUrl
         
         // 🎯 [核心修复] 将元数据同步到全局 MiniPlayerManager，由其统一推送通知
         // 这样即使当前 Activity 销毁，全局 Service 也能持有正确的元数据和 Session

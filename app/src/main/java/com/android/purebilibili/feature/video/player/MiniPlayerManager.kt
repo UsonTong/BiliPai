@@ -103,6 +103,27 @@ internal fun resolveNotificationIsPlaying(
     return playerIsPlaying ?: cachedIsPlaying
 }
 
+internal fun shouldRefreshNotificationOnPlaybackStateChange(
+    isActive: Boolean,
+    title: String
+): Boolean {
+    return isActive && title.isNotBlank()
+}
+
+internal fun resolveEffectiveNotificationCoverUrl(
+    incomingCoverUrl: String,
+    cachedCoverUrl: String
+): String {
+    return incomingCoverUrl.takeIf { it.isNotBlank() } ?: cachedCoverUrl
+}
+
+internal fun <T> resolveEffectiveNotificationArtwork(
+    incomingArtwork: T?,
+    cachedArtwork: T?
+): T? {
+    return incomingArtwork ?: cachedArtwork
+}
+
 internal fun resolveNotificationIconResByPriority(
     launcherIconRes: Int,
     fallbackIconKey: String
@@ -371,6 +392,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
     // [新增] 保存当前通知实例，供 PlaybackService 使用
     var currentNotification: android.app.Notification? = null
         private set
+    private var cachedArtworkBitmap: Bitmap? = null
     
     //  [新增] 缓存 UI 状态
     fun cacheUiState(state: PlayerUiState.Success) {
@@ -792,6 +814,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
         currentNotification = null
+        cachedArtworkBitmap = null
 
         try {
             val serviceIntent = Intent(context, PlaybackService::class.java).apply {
@@ -1020,6 +1043,25 @@ class MiniPlayerManager private constructor(private val context: Context) :
         override fun onIsPlayingChanged(playing: Boolean) {
             isPlaying = playing
             Logger.d(TAG, "isPlaying changed: $playing")
+            if (!shouldRefreshNotificationOnPlaybackStateChange(isActive = isActive, title = currentTitle)) {
+                return
+            }
+
+            val titleSnapshot = currentTitle
+            val ownerSnapshot = currentOwner
+            val coverSnapshot = currentCover
+            val artworkMissing = cachedArtworkBitmap == null && coverSnapshot.isNotBlank()
+
+            if (artworkMissing) {
+                scope.launch(Dispatchers.IO) {
+                    val bitmap = loadBitmap(coverSnapshot)
+                    launch(Dispatchers.Main) {
+                        pushNotification(titleSnapshot, ownerSnapshot, bitmap)
+                    }
+                }
+            } else {
+                pushNotification(titleSnapshot, ownerSnapshot, bitmap = null)
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1043,19 +1085,31 @@ class MiniPlayerManager private constructor(private val context: Context) :
         if (shouldRebindMediaSessionPlayer(mediaSession?.player, currentPlayer)) {
             updateMediaSession(currentPlayer)
         }
+        val previousCoverUrl = currentCover
+        val effectiveCoverUrl = resolveEffectiveNotificationCoverUrl(
+            incomingCoverUrl = coverUrl,
+            cachedCoverUrl = currentCover
+        )
+        currentTitle = title
+        currentOwner = artist
+        if (effectiveCoverUrl.isNotBlank()) {
+            currentCover = effectiveCoverUrl
+        }
         isPlaying = resolveNotificationIsPlaying(
             playerIsPlaying = currentPlayer.isPlaying,
             cachedIsPlaying = isPlaying
         )
         val currentItem = currentPlayer.currentMediaItem ?: return
 
-        val metadata = MediaMetadata.Builder()
+        val metadataBuilder = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
-            .setArtworkUri(Uri.parse(FormatUtils.fixImageUrl(coverUrl)))
             .setDisplayTitle(title)
             .setIsPlayable(true)
-            .build()
+        if (effectiveCoverUrl.isNotBlank()) {
+            metadataBuilder.setArtworkUri(Uri.parse(FormatUtils.fixImageUrl(effectiveCoverUrl)))
+        }
+        val metadata = metadataBuilder.build()
 
         val newItem = currentItem.buildUpon()
             .setMediaMetadata(metadata)
@@ -1064,8 +1118,14 @@ class MiniPlayerManager private constructor(private val context: Context) :
         currentPlayer.replaceMediaItem(currentPlayer.currentMediaItemIndex, newItem)
 
         // 异步加载封面并推送通知
+        val shouldReloadArtwork = effectiveCoverUrl.isNotBlank() &&
+            (cachedArtworkBitmap == null || previousCoverUrl != effectiveCoverUrl)
         scope.launch(Dispatchers.IO) {
-            val bitmap = loadBitmap(coverUrl)
+            val bitmap = if (shouldReloadArtwork) {
+                loadBitmap(effectiveCoverUrl)
+            } else {
+                null
+            }
             launch(Dispatchers.Main) {
                 pushNotification(title, artist, bitmap)
             }
@@ -1097,6 +1157,13 @@ class MiniPlayerManager private constructor(private val context: Context) :
             cachedIsPlaying = isPlaying
         )
         isPlaying = notificationIsPlaying
+        val effectiveArtworkBitmap = resolveEffectiveNotificationArtwork(
+            incomingArtwork = bitmap,
+            cachedArtwork = cachedArtworkBitmap
+        )
+        if (effectiveArtworkBitmap != null) {
+            cachedArtworkBitmap = effectiveArtworkBitmap
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
@@ -1122,7 +1189,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
             )
             .setContentTitle(title)
             .setContentText(artist)
-            .setLargeIcon(bitmap)
+            .setLargeIcon(effectiveArtworkBitmap)
             .setStyle(style)
             .setColor(THEME_COLOR)
             .setColorized(true)

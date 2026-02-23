@@ -546,6 +546,8 @@ fun PlaybackSettingsContent(
                         .getSwipeHidePlayerEnabled(context).collectAsState(initial = false)
                     val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+                    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
                     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
                         .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
                     
@@ -684,13 +686,32 @@ fun PlaybackSettingsContent(
                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "横屏滑动快进/快退步长",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = fullscreenSwipeSeekEnabled,
+                                    onCheckedChange = {
+                                        scope.launch {
+                                            com.android.purebilibili.core.store.SettingsManager
+                                                .setFullscreenSwipeSeekEnabled(context, it)
+                                        }
+                                    }
+                                )
+                            }
                             Text(
-                                text = "横屏滑动快进/快退步长",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "左右滑动时每档跳转秒数：当前 ${fullscreenSwipeSeekSeconds}s",
+                                text = if (fullscreenSwipeSeekEnabled) {
+                                    "左右滑动时每档跳转秒数：当前 ${fullscreenSwipeSeekSeconds}s"
+                                } else {
+                                    "已关闭固定步长（当前设定 ${fullscreenSwipeSeekSeconds}s，重新开启后生效）"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -701,7 +722,9 @@ fun PlaybackSettingsContent(
                                 listOf(10, 15, 20, 30).forEach { seconds ->
                                     FilterChip(
                                         selected = fullscreenSwipeSeekSeconds == seconds,
+                                        enabled = fullscreenSwipeSeekEnabled,
                                         onClick = {
+                                            if (!fullscreenSwipeSeekEnabled) return@FilterChip
                                             scope.launch {
                                                 com.android.purebilibili.core.store.SettingsManager
                                                     .setFullscreenSwipeSeekSeconds(context, seconds)

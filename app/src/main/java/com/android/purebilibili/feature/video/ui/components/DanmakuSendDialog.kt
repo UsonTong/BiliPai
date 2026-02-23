@@ -41,13 +41,15 @@ import kotlinx.coroutines.delay
 
 internal data class DanmakuSendDialogLayoutPolicy(
     val fillMaxWidthFraction: Float,
-    val bottomAligned: Boolean
+    val bottomAligned: Boolean,
+    val bottomLiftDp: Int
 )
 
 internal fun resolveDanmakuSendDialogLayoutPolicy(): DanmakuSendDialogLayoutPolicy {
     return DanmakuSendDialogLayoutPolicy(
         fillMaxWidthFraction = 1f,
-        bottomAligned = true
+        bottomAligned = true,
+        bottomLiftDp = 14
     )
 }
 
@@ -137,6 +139,7 @@ fun DanmakuSendDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = topReservedSpace)
+                    .padding(bottom = layoutPolicy.bottomLiftDp.dp)
                     .imePadding(),
                 verticalArrangement = if (layoutPolicy.bottomAligned) Arrangement.Bottom else Arrangement.Center
             ) {

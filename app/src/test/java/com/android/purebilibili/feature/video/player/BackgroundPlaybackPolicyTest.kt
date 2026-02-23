@@ -324,6 +324,64 @@ class BackgroundPlaybackPolicyTest {
     }
 
     @Test
+    fun playbackStateChangeShouldRefreshNotificationOnlyWhenMetadataReadyAndActive() {
+        assertTrue(
+            shouldRefreshNotificationOnPlaybackStateChange(
+                isActive = true,
+                title = "测试视频"
+            )
+        )
+        assertFalse(
+            shouldRefreshNotificationOnPlaybackStateChange(
+                isActive = false,
+                title = "测试视频"
+            )
+        )
+        assertFalse(
+            shouldRefreshNotificationOnPlaybackStateChange(
+                isActive = true,
+                title = ""
+            )
+        )
+    }
+
+    @Test
+    fun metadataCoverUrlShouldFallbackToCachedValueWhenIncomingCoverEmpty() {
+        assertEquals(
+            "https://example.com/cached.jpg",
+            resolveEffectiveNotificationCoverUrl(
+                incomingCoverUrl = "",
+                cachedCoverUrl = "https://example.com/cached.jpg"
+            )
+        )
+        assertEquals(
+            "https://example.com/new.jpg",
+            resolveEffectiveNotificationCoverUrl(
+                incomingCoverUrl = "https://example.com/new.jpg",
+                cachedCoverUrl = "https://example.com/cached.jpg"
+            )
+        )
+    }
+
+    @Test
+    fun notificationArtworkShouldKeepPreviousBitmapWhenIncomingArtworkMissing() {
+        assertEquals(
+            "cached-artwork",
+            resolveEffectiveNotificationArtwork(
+                incomingArtwork = null,
+                cachedArtwork = "cached-artwork"
+            )
+        )
+        assertEquals(
+            "new-artwork",
+            resolveEffectiveNotificationArtwork(
+                incomingArtwork = "new-artwork",
+                cachedArtwork = "cached-artwork"
+            )
+        )
+    }
+
+    @Test
     fun mediaSessionShouldRebindWhenPlaybackPlayerDiffers() {
         val sessionPlayer = Any()
         val playbackPlayer = Any()

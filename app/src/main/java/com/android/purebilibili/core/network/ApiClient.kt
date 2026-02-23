@@ -318,6 +318,10 @@ interface BilibiliApi {
     @GET("https://api.bilibili.com/x/player/playurl")
     suspend fun getPlayUrlApp(@QueryMap params: Map<String, String>): PlayUrlResponse
 
+    //  [新增] TV 投屏 playurl（投屏优先使用）
+    @GET("x/tv/playurl")
+    suspend fun getTvPlayUrl(@QueryMap params: Map<String, String>): PlayUrlResponse
+
     @GET("x/player/videoshot")
     suspend fun getVideoshot(
         @Query("bvid") bvid: String,

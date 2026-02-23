@@ -1627,6 +1627,7 @@ object SettingsManager {
     
     private val KEY_SWIPE_HIDE_PLAYER = booleanPreferencesKey("swipe_hide_player")
     private val KEY_PORTRAIT_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("portrait_swipe_to_fullscreen")
+    private val KEY_FULLSCREEN_SWIPE_SEEK_ENABLED = booleanPreferencesKey("fullscreen_swipe_seek_enabled")
     private val KEY_FULLSCREEN_SWIPE_SEEK_SECONDS = intPreferencesKey("fullscreen_swipe_seek_seconds")
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
     
@@ -1644,6 +1645,16 @@ object SettingsManager {
 
     suspend fun setPortraitSwipeToFullscreenEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_PORTRAIT_SWIPE_TO_FULLSCREEN] = value }
+    }
+
+    // --- 横屏左右滑动固定步长快进/快退开关（默认开启） ---
+    fun getFullscreenSwipeSeekEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_FULLSCREEN_SWIPE_SEEK_ENABLED] ?: true }
+
+    suspend fun setFullscreenSwipeSeekEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_FULLSCREEN_SWIPE_SEEK_ENABLED] = enabled
+        }
     }
 
     // --- 横屏左右滑动快进/快退步长（秒，默认 15） ---

@@ -631,6 +631,36 @@ object VideoRepository {
         result
     }
 
+    suspend fun getTvCastPlayUrl(
+        aid: Long,
+        cid: Long,
+        qn: Int
+    ): String? = withContext(Dispatchers.IO) {
+        if (aid <= 0L || cid <= 0L) return@withContext null
+
+        try {
+            val params = buildTvCastPlayUrlParams(
+                aid = aid,
+                cid = cid,
+                qn = qn,
+                accessToken = TokenManager.accessTokenCache
+            )
+            val signedParams = AppSignUtils.signForTvLogin(params)
+            val response = api.getTvPlayUrl(signedParams)
+            if (response.code != 0) {
+                com.android.purebilibili.core.util.Logger.w(
+                    "VideoRepo",
+                    " tvPlayUrl failed: code=${response.code}, msg=${response.message}"
+                )
+                return@withContext null
+            }
+            extractTvCastPlayableUrl(response.data)
+        } catch (e: Exception) {
+            com.android.purebilibili.core.util.Logger.w("VideoRepo", " tvPlayUrl exception: ${e.message}")
+            null
+        }
+    }
+
 
     private data class PlayUrlFetchResult(
         val data: PlayUrlData,

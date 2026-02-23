@@ -74,6 +74,22 @@ import kotlin.math.abs
 
 enum class VideoGestureMode { None, Brightness, Volume, Seek, SwipeToFullscreen }
 
+internal fun resolveHorizontalSeekDeltaMs(
+    isFullscreen: Boolean,
+    fullscreenSwipeSeekEnabled: Boolean,
+    totalDragDistanceX: Float,
+    containerWidthPx: Float,
+    fullscreenSwipeSeekSeconds: Int,
+    gestureSensitivity: Float
+): Long {
+    if (isFullscreen && fullscreenSwipeSeekEnabled) {
+        val stepWidthPx = (containerWidthPx / 8f).coerceAtLeast(1f)
+        val stepCount = (totalDragDistanceX / stepWidthPx).toInt()
+        return stepCount * fullscreenSwipeSeekSeconds * 1000L
+    }
+    return (totalDragDistanceX * 200f * gestureSensitivity).toLong()
+}
+
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun VideoPlayerSection(
@@ -199,6 +215,9 @@ fun VideoPlayerSection(
     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
         .getFullscreenSwipeSeekSeconds(context)
         .collectAsState(initial = 15)
+    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getFullscreenSwipeSeekEnabled(context)
+        .collectAsState(initial = true)
     
     //  [新增] 双击跳转视觉反馈状态
     var seekFeedbackText by remember { mutableStateOf<String?>(null) }
@@ -504,15 +523,14 @@ fun VideoPlayerSection(
                                 VideoGestureMode.Seek -> {
                                     // 距离已在上方累积，直接计算目标位置
                                     val duration = playerState.player.duration.coerceAtLeast(0L)
-                                    val seekDelta = if (isFullscreen) {
-                                        // 横屏时按固定秒数步长快进/快退，便于稳定控制。
-                                        val stepWidthPx = (size.width / 8f).coerceAtLeast(1f)
-                                        val stepCount = (totalDragDistanceX / stepWidthPx).toInt()
-                                        stepCount * fullscreenSwipeSeekSeconds * 1000L
-                                    } else {
-                                        // 竖屏保持原有线性拖动灵敏度体验。
-                                        (totalDragDistanceX * 200 * gestureSensitivity).toLong()
-                                    }
+                                    val seekDelta = resolveHorizontalSeekDeltaMs(
+                                        isFullscreen = isFullscreen,
+                                        fullscreenSwipeSeekEnabled = fullscreenSwipeSeekEnabled,
+                                        totalDragDistanceX = totalDragDistanceX,
+                                        containerWidthPx = size.width.toFloat(),
+                                        fullscreenSwipeSeekSeconds = fullscreenSwipeSeekSeconds,
+                                        gestureSensitivity = gestureSensitivity
+                                    )
                                     seekTargetTime = (startPosition + seekDelta).coerceIn(0L, duration)
                                 }
                                 VideoGestureMode.Brightness -> {
@@ -1463,6 +1481,8 @@ fun VideoPlayerSection(
                 videoOwnerFace = uiState.info.owner.face,
                 videoDuration = playerState.player.duration.toInt().coerceAtLeast(0),
                 videoTitle = uiState.info.title,
+                currentAid = uiState.info.aid,
+                currentQuality = uiState.currentQuality,
                 currentVideoUrl = uiState.playUrl,
                 currentAudioUrl = uiState.audioUrl ?: "",
                 coverUrl = uiState.info.pic,

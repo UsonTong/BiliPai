@@ -201,14 +201,20 @@ fun PortraitFullscreenOverlay(
                     // Original: Modifier.align(Alignment.BottomCenter)
                     
                     // Let's add a Spacer. Assuming Input Bar height ~50dp + margins.
-                    Spacer(modifier = Modifier.height(layoutPolicy.bottomInputSpacerHeightDp.dp))
+                    Spacer(
+                        modifier = Modifier.height(
+                            (layoutPolicy.bottomInputSpacerHeightDp + layoutPolicy.bottomInputLiftDp).dp
+                        )
+                    )
                 }
 
                 // 4. 底部输入栏 (Input Bar) - Keep strict bottom alignment (Overlay)
                 PortraitBottomInputBar(
                     onInputClick = onDanmakuInputClick,
                     onRotateClick = onRotateToLandscape,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = layoutPolicy.bottomInputLiftDp.dp)
                 )
             }
         }

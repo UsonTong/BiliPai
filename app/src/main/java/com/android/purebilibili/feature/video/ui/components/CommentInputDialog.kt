@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +50,30 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import kotlinx.coroutines.delay
+
+internal data class CommentInputDialogLayoutPolicy(
+    val inputBoxMinHeightDp: Int,
+    val inputBoxMaxHeightDp: Int,
+    val emojiPanelHeightDp: Int
+)
+
+internal fun resolveCommentInputDialogLayoutPolicy(
+    isLandscape: Boolean
+): CommentInputDialogLayoutPolicy {
+    return if (isLandscape) {
+        CommentInputDialogLayoutPolicy(
+            inputBoxMinHeightDp = 64,
+            inputBoxMaxHeightDp = 112,
+            emojiPanelHeightDp = 196
+        )
+    } else {
+        CommentInputDialogLayoutPolicy(
+            inputBoxMinHeightDp = 100,
+            inputBoxMaxHeightDp = 180,
+            emojiPanelHeightDp = 280
+        )
+    }
+}
 
 /**
  * 评论输入对话框
@@ -69,6 +94,12 @@ fun CommentInputDialog(
     modifier: Modifier = Modifier,
     emotePackages: List<com.android.purebilibili.data.model.response.EmotePackage> = emptyList() // [新增] 表情包列表
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val layoutPolicy = remember(isLandscape) {
+        resolveCommentInputDialogLayoutPolicy(isLandscape = isLandscape)
+    }
+
     // 状态
     var text by remember { mutableStateOf("") }
     var isForwardToDynamic by remember { mutableStateOf(false) } // 转发到动态
@@ -165,7 +196,10 @@ fun CommentInputDialog(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 100.dp, max = 180.dp) // 最小/最大高度
+                                .heightIn(
+                                    min = layoutPolicy.inputBoxMinHeightDp.dp,
+                                    max = layoutPolicy.inputBoxMaxHeightDp.dp
+                                )
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                                 .padding(12.dp)
                         ) {
@@ -413,7 +447,7 @@ fun CommentInputDialog(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(280.dp) // 增加高度以容纳 Tab
+                                    .height(layoutPolicy.emojiPanelHeightDp.dp)
                                     .padding(top = 8.dp)
                             ) {
                                 // 顶部标签栏 (可滚动)

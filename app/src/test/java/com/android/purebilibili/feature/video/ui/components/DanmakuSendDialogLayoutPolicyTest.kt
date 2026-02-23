@@ -12,5 +12,6 @@ class DanmakuSendDialogLayoutPolicyTest {
 
         assertTrue(policy.bottomAligned)
         assertEquals(1f, policy.fillMaxWidthFraction)
+        assertEquals(14, policy.bottomLiftDp)
     }
 }

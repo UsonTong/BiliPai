@@ -17,6 +17,7 @@ class PortraitFullscreenOverlayLayoutPolicyTest {
         assertEquals(10, policy.topHorizontalPaddingDp)
         assertEquals(20, policy.topActionIconSizeDp)
         assertEquals(52, policy.bottomInputSpacerHeightDp)
+        assertEquals(4, policy.bottomInputLiftDp)
         assertEquals(15, policy.titleFontSp)
     }
 
@@ -30,6 +31,7 @@ class PortraitFullscreenOverlayLayoutPolicyTest {
         assertEquals(16, policy.topHorizontalPaddingDp)
         assertEquals(23, policy.topActionIconSizeDp)
         assertEquals(54, policy.bottomInputSpacerHeightDp)
+        assertEquals(4, policy.bottomInputLiftDp)
         assertEquals(15, policy.titleFontSp)
     }
 
@@ -43,6 +45,7 @@ class PortraitFullscreenOverlayLayoutPolicyTest {
         assertEquals(18, policy.topHorizontalPaddingDp)
         assertEquals(24, policy.topActionIconSizeDp)
         assertEquals(56, policy.bottomInputSpacerHeightDp)
+        assertEquals(5, policy.bottomInputLiftDp)
         assertEquals(16, policy.titleFontSp)
     }
 
@@ -56,6 +59,7 @@ class PortraitFullscreenOverlayLayoutPolicyTest {
         assertEquals(24, policy.topHorizontalPaddingDp)
         assertEquals(28, policy.topActionIconSizeDp)
         assertEquals(64, policy.bottomInputSpacerHeightDp)
+        assertEquals(6, policy.bottomInputLiftDp)
         assertEquals(18, policy.titleFontSp)
     }
 }
