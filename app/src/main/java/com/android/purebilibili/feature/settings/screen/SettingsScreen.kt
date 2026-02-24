@@ -1,10 +1,7 @@
 package com.android.purebilibili.feature.settings
 
-import android.app.AppOpsManager
-import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Process
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -91,6 +88,7 @@ fun SettingsScreen(
     val analyticsEnabled by SettingsManager.getAnalyticsEnabled(context).collectAsState(initial = true)
     val easterEggEnabled by SettingsManager.getEasterEggEnabled(context).collectAsState(initial = true)
     val customDownloadPath by SettingsManager.getDownloadPath(context).collectAsState(initial = null)
+    val downloadExportTreeUri by SettingsManager.getDownloadExportTreeUri(context).collectAsState(initial = null)
     val feedApiType by SettingsManager.getFeedApiType(context).collectAsState(
         initial = SettingsManager.FeedApiType.WEB
     )
@@ -104,10 +102,6 @@ fun SettingsScreen(
     var versionClickCount by remember { mutableIntStateOf(0) }
     var showEasterEggDialog by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
-    // [新增] 权限引导弹窗状态
-    var showPermissionDialog by remember { mutableStateOf(false) }
-    // [新增] 目录选择对话框状态
-    var showDirectoryPicker by remember { mutableStateOf(false) }
     // [新增] 打赏对话框
     var showDonateDialog by remember { mutableStateOf(false) }
     var showReleaseDisclaimerDialog by remember { mutableStateOf(false) }
@@ -123,6 +117,22 @@ fun SettingsScreen(
 
     // Directory Picker - 使用文件系统 API
     val defaultPath = remember { SettingsManager.getDefaultDownloadPath(context) }
+    val downloadFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+
+        val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+        }
+
+        scope.launch {
+            SettingsManager.setDownloadExportTreeUri(context, uri.toString())
+            SettingsManager.setDownloadPath(context, null)
+        }
+        Toast.makeText(context, "已设置导出目录", Toast.LENGTH_SHORT).show()
+    }
 
     // Callbacks
     val onClearCacheAction = { showCacheDialog = true }
@@ -271,73 +281,37 @@ fun SettingsScreen(
                     Text("默认位置（应用私有目录）：", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(defaultPath.substringAfterLast("Android/"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(" 默认位置随应用卸载而删除，选择自定义位置可保留下载文件", style = MaterialTheme.typography.bodySmall, color = com.android.purebilibili.core.theme.iOSOrange)
+                    Text(
+                        "可选：通过系统文件夹授权设置导出目录（无需“管理所有文件”权限）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = com.android.purebilibili.core.theme.iOSOrange
+                    )
+                    if (!downloadExportTreeUri.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "当前导出目录：已设置",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             },
             confirmButton = {
                 com.android.purebilibili.core.ui.IOSDialogAction(onClick = { 
-                    // [修复] 检查 MANAGE_EXTERNAL_STORAGE 权限
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
-                        showPathDialog = false
-                        showPermissionDialog = true
-                    } else {
-                        showPathDialog = false
-                        showDirectoryPicker = true  // [修复] 使用 DirectorySelectionDialog
-                    }
-                }) { Text("选择自定义目录") }
+                    showPathDialog = false
+                    downloadFolderPicker.launch(null)
+                }) { Text("选择导出目录") }
             },
             dismissButton = { 
                 com.android.purebilibili.core.ui.IOSDialogAction(onClick = { 
-                    scope.launch { SettingsManager.setDownloadPath(context, null) }
-                    showPathDialog = false
-                    Toast.makeText(context, "已重置为默认路径", Toast.LENGTH_SHORT).show()
-                }) { Text("使用默认") } 
-            }
-        )
-    }
-    
-    // [新增] 权限引导弹窗
-    if (showPermissionDialog) {
-        com.android.purebilibili.core.ui.IOSAlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
-            title = { Text("需要权限", fontWeight = FontWeight.Bold) },
-            text = { 
-                Text("为了将视频下载到自定义目录（如 /Download/BiliPai），应用需要“管理所有文件”的权限。\n\n请在接下来的系统设置中允许此权限。")
-            },
-            confirmButton = {
-                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
-                    showPermissionDialog = false
-                    try {
-                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = android.net.Uri.parse("package:${context.packageName}")
-                        }
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        try {
-                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "无法打开设置页面，请手动授权", Toast.LENGTH_LONG).show()
-                        }
+                    scope.launch {
+                        SettingsManager.setDownloadPath(context, null)
+                        SettingsManager.setDownloadExportTreeUri(context, null)
                     }
-                }) { Text("去授权", color = MaterialTheme.colorScheme.primary) }
-            },
-            dismissButton = {
-                com.android.purebilibili.core.ui.IOSDialogAction(onClick = { showPermissionDialog = false }) { Text("取消") }
+                    showPathDialog = false
+                    Toast.makeText(context, "已恢复仅应用内存储", Toast.LENGTH_SHORT).show()
+                }) { Text("仅使用默认") } 
             }
-        )
-    }
-    
-    // [新增] 目录选择对话框（使用 File API）
-    if (showDirectoryPicker) {
-        com.android.purebilibili.feature.download.DirectorySelectionDialog(
-            initialPath = android.os.Environment.getExternalStorageDirectory().absolutePath,
-            onPathSelected = { path ->
-                scope.launch { SettingsManager.setDownloadPath(context, path) }
-                Toast.makeText(context, "下载路径已更新: $path", Toast.LENGTH_SHORT).show()
-                showDirectoryPicker = false
-            },
-            onDismiss = { showDirectoryPicker = false }
         )
     }
     
@@ -441,7 +415,7 @@ fun SettingsScreen(
                     onAnalyticsChange = onAnalyticsChange,
                     onEasterEggChange = onEasterEggChange,
                     privacyModeEnabled = privacyModeEnabled,
-                    customDownloadPath = customDownloadPath,
+                    customDownloadPath = downloadExportTreeUri ?: customDownloadPath,
                     cacheSize = state.cacheSize,
                     crashTrackingEnabled = crashTrackingEnabled,
                     analyticsEnabled = analyticsEnabled,
@@ -499,7 +473,7 @@ fun SettingsScreen(
                     onAnalyticsChange = onAnalyticsChange,
                     onEasterEggChange = onEasterEggChange,
                     privacyModeEnabled = privacyModeEnabled,
-                    customDownloadPath = customDownloadPath,
+                    customDownloadPath = downloadExportTreeUri ?: customDownloadPath,
                     cacheSize = state.cacheSize,
                     crashTrackingEnabled = crashTrackingEnabled,
                     analyticsEnabled = analyticsEnabled,

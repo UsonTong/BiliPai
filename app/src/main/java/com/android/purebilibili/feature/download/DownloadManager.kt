@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.download
 
 import android.content.Context
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +13,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  *  视频下载管理器
@@ -146,6 +147,7 @@ object DownloadManager {
         // 删除文件
         val task = _tasks.value[taskId]
         task?.filePath?.let { File(it).delete() }
+        task?.exportedFileUri?.let { deleteExportedFile(context, it) }
         getVideoFile(taskId).delete()
         getAudioFile(taskId).delete()
         
@@ -216,12 +218,23 @@ object DownloadManager {
         videoFile.delete()
         audioFile.delete()
         
+        val exportedUri = appContext?.let { context ->
+            exportToUserSelectedDirectory(
+                context = context,
+                sourceFile = outputFile,
+                title = task.title,
+                qualityDesc = task.qualityDesc,
+                isAudioOnly = task.isAudioOnly
+            )
+        }
+
         // 5. 更新状态
         updateTask(task.id) { 
             it.copy(
                 status = DownloadStatus.COMPLETED, 
                 progress = 1f,
                 filePath = outputFile.absolutePath,
+                exportedFileUri = exportedUri,
                 fileSize = outputFile.length()
             ) 
         }
@@ -530,8 +543,14 @@ object DownloadManager {
     
     private fun getTaskDir(taskId: String): File {
         val task = _tasks.value[taskId]
-        // 优先使用任务指定的目录，否则使用默认目录
-        val dir = task?.customSaveDir?.let { File(it) } ?: getDownloadDir()
+        val appScopedRoot = appContext?.getExternalFilesDir(null)?.absolutePath
+        val legacyCustomPath = if (appScopedRoot != null) {
+            sanitizeLegacyCustomPath(task?.customSaveDir, appScopedRoot)
+        } else {
+            null
+        }
+
+        val dir = legacyCustomPath?.let { File(it) } ?: getDownloadDir()
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -611,7 +630,11 @@ object DownloadManager {
         if (customPath.isNullOrBlank()) return defaultDir
         
         return try {
-            val customFile = File(customPath)
+            val sanitizedPath = sanitizeLegacyCustomPath(
+                customPath = customPath,
+                appScopedRoot = context.getExternalFilesDir(null)?.absolutePath.orEmpty()
+            ) ?: return defaultDir
+            val customFile = File(sanitizedPath)
             if ((customFile.exists() || customFile.mkdirs()) && customFile.canWrite()) {
                 com.android.purebilibili.core.util.Logger.d("DownloadManager", "✅ Resolved custom dir: ${customFile.absolutePath}")
                 customFile
@@ -668,5 +691,60 @@ object DownloadManager {
             com.android.purebilibili.core.util.Logger.e("DownloadManager", "Failed to save image", e)
             return@withContext false
         }
+    }
+
+    private fun deleteExportedFile(context: Context, exportedUri: String) {
+        runCatching {
+            DocumentFile.fromSingleUri(context, Uri.parse(exportedUri))?.delete()
+        }.onFailure { e ->
+            com.android.purebilibili.core.util.Logger.w(
+                "DownloadManager",
+                "⚠️ Failed to delete exported file: $exportedUri",
+                e
+            )
+        }
+    }
+
+    private fun exportToUserSelectedDirectory(
+        context: Context,
+        sourceFile: File,
+        title: String,
+        qualityDesc: String,
+        isAudioOnly: Boolean
+    ): String? {
+        val treeUriString = com.android.purebilibili.core.store.SettingsManager
+            .getDownloadExportTreeUriSync(context)
+            ?: return null
+
+        return runCatching {
+            val treeUri = Uri.parse(treeUriString)
+            val treeDoc = DocumentFile.fromTreeUri(context, treeUri)
+                ?: return@runCatching null
+
+            val extension = if (isAudioOnly) "m4a" else "mp4"
+            val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
+            val displayName = buildSafeExportDisplayName(
+                title = title,
+                qualityDesc = qualityDesc,
+                extension = extension
+            )
+
+            treeDoc.findFile(displayName)?.delete()
+            val target = treeDoc.createFile(mimeType, displayName)
+                ?: return@runCatching null
+
+            sourceFile.inputStream().use { input ->
+                context.contentResolver.openOutputStream(target.uri, "w")?.use { output ->
+                    input.copyTo(output)
+                } ?: return@runCatching null
+            }
+            target.uri.toString()
+        }.onFailure { e ->
+            com.android.purebilibili.core.util.Logger.w(
+                "DownloadManager",
+                "⚠️ Failed to export to SAF directory",
+                e
+            )
+        }.getOrNull()
     }
 }

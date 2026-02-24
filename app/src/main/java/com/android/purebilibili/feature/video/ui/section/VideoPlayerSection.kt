@@ -143,6 +143,8 @@ fun VideoPlayerSection(
     // [New] Codec & Audio Params
     currentCodec: String = "hev1", 
     onCodecChange: (String) -> Unit = {},
+    currentSecondCodec: String = "avc1",
+    onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
     // [New] Audio Language
@@ -1532,6 +1534,8 @@ fun VideoPlayerSection(
                 // [New] Codec & Audio
                 currentCodec = currentCodec,
                 onCodecChange = onCodecChange,
+                currentSecondCodec = currentSecondCodec,
+                onSecondCodecChange = onSecondCodecChange,
                 currentAudioQuality = currentAudioQuality,
                 onAudioQualityChange = onAudioQualityChange,
                 // [New] AI Audio

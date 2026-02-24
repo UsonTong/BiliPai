@@ -1,5 +1,7 @@
 package com.android.purebilibili.data.model.response
 
+import com.android.purebilibili.core.util.ClosestTargetFallback
+import com.android.purebilibili.core.util.findClosestTarget
 import com.android.purebilibili.data.model.VideoDecodeFormat
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -167,7 +169,13 @@ data class Flac(
 typealias DashMedia = DashVideo
 
 //  扩展函数：获取最佳视频流
-fun Dash.getBestVideo(targetQn: Int, preferCodec: String = "hev1", isHevcSupported: Boolean = true, isAv1Supported: Boolean = false): DashVideo? {
+fun Dash.getBestVideo(
+    targetQn: Int,
+    preferCodec: String = "hev1",
+    secondPreferCodec: String = "avc1",
+    isHevcSupported: Boolean = true,
+    isAv1Supported: Boolean = false
+): DashVideo? {
     if (video.isEmpty()) {
         android.util.Log.w("VideoResponse", " getBestVideo: video list is empty!")
         return null
@@ -184,10 +192,11 @@ fun Dash.getBestVideo(targetQn: Int, preferCodec: String = "hev1", isHevcSupport
     val grouped = validVideos.groupBy { it.id }
     
     // 1. 找到匹配画质的视频列表
-    val targetVideos = grouped[targetQn] 
-        ?: grouped.entries.filter { it.key <= targetQn }.maxByOrNull { it.key }?.value
-        ?: grouped.entries.minByOrNull { kotlin.math.abs(it.key - targetQn) }?.value
-        ?: validVideos
+    val targetQualityId = grouped.keys.toList().findClosestTarget(
+        target = targetQn,
+        fallback = ClosestTargetFallback.NEAREST_HIGHER
+    )
+    val targetVideos = targetQualityId?.let { grouped[it] } ?: validVideos
     
     // 2. 根据编码格式偏好进行排序选择
     // 权重策略：
@@ -218,6 +227,8 @@ fun Dash.getBestVideo(targetQn: Int, preferCodec: String = "hev1", isHevcSupport
             // 精确匹配用户偏好
             if (codecs.contains(preferCodec, ignoreCase = true)) {
                 score += 10
+            } else if (secondPreferCodec.isNotBlank() && codecs.contains(secondPreferCodec, ignoreCase = true)) {
+                score += 6
             }
             
             // 编码效率加分 (AV1 > HEVC > AVC)
@@ -259,19 +270,15 @@ fun Dash.getBestAudio(preferQuality: Int = -1): DashAudio? {
             return flac.audio
         }
         
-        // 3. [优化] 如果没找到精确匹配，尝试找最接近的音质
-        // 而不是直接回退到最高音质 (maxByOrNull)
-        // Bilibili常见音质ID对应关系: 30280(192k), 30232(132k), 30216(64k)
-        
-        // 如果用户想要低音质(30216)但没有，应优先给 30232 而不是 30280
-        val sortedAudios = validAudios.sortedBy { it.id }
-        
-        // 找在此 ID 附近的 (优先找更高级的，如果没有则找更低级的?)
-        // 策略：找绝对差值最小的
-        val closest = validAudios.minByOrNull { kotlin.math.abs(it.id - preferQuality) }
+        // 3. [统一策略] 使用 findClosestTarget：优先 <= 偏好的最高档，没有则取最近更高档
+        val closestId = validAudios.map { it.id }.findClosestTarget(
+            target = preferQuality,
+            fallback = ClosestTargetFallback.NEAREST_HIGHER
+        )
+        val closest = closestId?.let { targetId -> validAudios.find { it.id == targetId } }
         if (closest != null) {
-             com.android.purebilibili.core.util.Logger.d("VideoResponse", " getBestAudio: exact match failed for $preferQuality, using closest match ${closest.id}")
-             return closest
+            com.android.purebilibili.core.util.Logger.d("VideoResponse", " getBestAudio: exact match failed for $preferQuality, using closest match ${closest.id}")
+            return closest
         }
     }
     

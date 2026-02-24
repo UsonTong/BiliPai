@@ -125,6 +125,10 @@ fun PlaybackSettingsContent(
         .getDefaultPlaybackSpeed(context).collectAsState(initial = 1.0f)
     val rememberLastPlaybackSpeed by com.android.purebilibili.core.store.SettingsManager
         .getRememberLastPlaybackSpeed(context).collectAsState(initial = false)
+    val videoCodecPreference by com.android.purebilibili.core.store.SettingsManager
+        .getVideoCodec(context).collectAsState(initial = "hev1")
+    val videoSecondCodecPreference by com.android.purebilibili.core.store.SettingsManager
+        .getVideoSecondCodec(context).collectAsState(initial = "avc1")
     
     // ... [保留原有逻辑: checkPipPermission, gotoPipSettings] ...
     
@@ -204,6 +208,18 @@ fun PlaybackSettingsContent(
             }
             item {
                 Box(modifier = Modifier.staggeredEntrance(1, isVisible, motionTier = effectiveMotionTier)) {
+                    val scope = rememberCoroutineScope()
+                    val codecOptions = listOf(
+                        PlaybackSegmentOption("avc1", "AVC"),
+                        PlaybackSegmentOption("hev1", "HEVC"),
+                        PlaybackSegmentOption("av01", "AV1")
+                    )
+                    fun codecDescription(codec: String): String = when (codec) {
+                        "avc1" -> "兼容性最佳"
+                        "hev1" -> "推荐，画质与体积更平衡"
+                        "av01" -> "高压缩，设备要求更高"
+                        else -> "未知"
+                    }
                     IOSGroup {
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.Cpu,
@@ -216,6 +232,32 @@ fun PlaybackSettingsContent(
                                 com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("hw_decode", it.toString())
                             },
                             iconTint = iOSGreen
+                        )
+                        Divider()
+                        IOSSlidingSegmentedSetting(
+                            title = "首选编码：${resolveSelectionLabel(codecOptions, videoCodecPreference, fallbackLabel = "AVC")}",
+                            subtitle = codecDescription(videoCodecPreference),
+                            options = codecOptions,
+                            selectedValue = videoCodecPreference,
+                            onSelectionChange = { codec ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setVideoCodec(context, codec)
+                                }
+                            }
+                        )
+                        Divider()
+                        IOSSlidingSegmentedSetting(
+                            title = "次选编码：${resolveSelectionLabel(codecOptions, videoSecondCodecPreference, fallbackLabel = "HEVC")}",
+                            subtitle = codecDescription(videoSecondCodecPreference),
+                            options = codecOptions,
+                            selectedValue = videoSecondCodecPreference,
+                            onSelectionChange = { codec ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setVideoSecondCodec(context, codec)
+                                }
+                            }
                         )
                     }
                 }
@@ -259,25 +301,25 @@ fun PlaybackSettingsContent(
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.3f, 1.5f, 2.0f).forEach { speed ->
-                                    FilterChip(
-                                        selected = defaultPlaybackSpeed == speed,
-                                        onClick = {
-                                            scope.launch {
-                                                com.android.purebilibili.core.store.SettingsManager
-                                                    .setDefaultPlaybackSpeed(context, speed)
-                                            }
-                                        },
-                                        label = {
-                                            Text(if (speed == 1.0f) "正常" else "${speed}x")
-                                        }
-                                    )
+                            val speedOptions = listOf(
+                                PlaybackSegmentOption(0.5f, "0.5x"),
+                                PlaybackSegmentOption(0.75f, "0.75x"),
+                                PlaybackSegmentOption(1.0f, "1x"),
+                                PlaybackSegmentOption(1.25f, "1.25x"),
+                                PlaybackSegmentOption(1.3f, "1.3x"),
+                                PlaybackSegmentOption(1.5f, "1.5x"),
+                                PlaybackSegmentOption(2.0f, "2x")
+                            )
+                            IOSSlidingSegmentedControl(
+                                options = speedOptions,
+                                selectedValue = defaultPlaybackSpeed,
+                                onSelectionChange = { speed ->
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setDefaultPlaybackSpeed(context, speed)
+                                    }
                                 }
-                            }
+                            )
                         }
                     }
                 }
@@ -292,16 +334,11 @@ fun PlaybackSettingsContent(
             item {
                 Box(modifier = Modifier.staggeredEntrance(7, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
-                    var isExpanded by remember { mutableStateOf(false) }
-
-                    LaunchedEffect(stopPlaybackOnExit) {
-                        if (stopPlaybackOnExit) {
-                            isExpanded = false
-                        }
-                    }
-
-                    // 小窗播放模式（3 种）
-                    val modeOptions = com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.entries
+                    val miniPlayerOptions = listOf(
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF, "默认"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY, "应用内小窗"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP, "画中画")
+                    )
                     
                     IOSGroup {
                         IOSSwitchItem(
@@ -318,86 +355,28 @@ fun PlaybackSettingsContent(
                             iconTint = iOSOrange
                         )
                         Divider()
-
-                        //  点击展开模式选择
-                        IOSClickableItem(
-                            icon = CupertinoIcons.Default.Pip,
-                            title = "后台播放模式",
-                            value = if (stopPlaybackOnExit) "已覆盖：离开即停止" else miniPlayerMode.label,
-                            onClick = if (stopPlaybackOnExit) null else ({ isExpanded = !isExpanded }),
-                            iconTint = if (stopPlaybackOnExit) iOSSystemGray else iOSTeal,
-                            textColor = if (stopPlaybackOnExit) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        IOSSlidingSegmentedSetting(
+                            title = "后台播放模式：${if (stopPlaybackOnExit) "已覆盖" else miniPlayerMode.label}",
+                            subtitle = if (stopPlaybackOnExit) {
+                                "已由“离开播放页后停止”覆盖，后台模式暂不生效"
                             } else {
-                                MaterialTheme.colorScheme.onSurface
+                                miniPlayerMode.description
                             },
-                            showChevron = !stopPlaybackOnExit
-                        )
-                        
-                        //  展开的模式选择列表
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = isExpanded && !stopPlaybackOnExit,
-                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                modeOptions.forEach { mode ->
-                                    val isSelected = mode == miniPlayerMode
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                            )
-                                            .clickable {
-                                                scope.launch {
-                                                    com.android.purebilibili.core.store.SettingsManager
-                                                        .setMiniPlayerMode(context, mode)
-                                                }
-                                                // 如果选择系统PiP，检查权限
-                                                if (mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
-                                                    if (!checkPipPermission()) {
-                                                        showPipPermissionDialog = true
-                                                    }
-                                                }
-                                                isExpanded = false
-                                            }
-                                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                mode.label,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary 
-                                                        else MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                mode.description,
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                            )
-                                        }
-                                        if (isSelected) {
-                                            Icon(
-                                                CupertinoIcons.Default.Checkmark,
-                                                contentDescription = "已选择",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
+                            options = miniPlayerOptions,
+                            selectedValue = miniPlayerMode,
+                            enabled = !stopPlaybackOnExit,
+                            onSelectionChange = { mode ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setMiniPlayerMode(context, mode)
+                                }
+                                if (mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP &&
+                                    !checkPipPermission()
+                                ) {
+                                    showPipPermissionDialog = true
                                 }
                             }
-                        }
+                        )
                         
                         //  权限提示（仅当选择系统PiP且无权限时显示）
                         if (!stopPlaybackOnExit &&
@@ -598,34 +577,25 @@ fun PlaybackSettingsContent(
                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "选择播放顺序",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
+                            val playbackOrderOptions = listOf(
+                                PlaybackSegmentOption(PlaybackCompletionBehavior.STOP_AFTER_CURRENT, "暂停"),
+                                PlaybackSegmentOption(PlaybackCompletionBehavior.PLAY_IN_ORDER, "顺序"),
+                                PlaybackSegmentOption(PlaybackCompletionBehavior.REPEAT_ONE, "单循"),
+                                PlaybackSegmentOption(PlaybackCompletionBehavior.LOOP_PLAYLIST, "列表循"),
+                                PlaybackSegmentOption(PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC, "自动")
                             )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                listOf(
-                                    PlaybackCompletionBehavior.STOP_AFTER_CURRENT,
-                                    PlaybackCompletionBehavior.PLAY_IN_ORDER,
-                                    PlaybackCompletionBehavior.REPEAT_ONE,
-                                    PlaybackCompletionBehavior.LOOP_PLAYLIST,
-                                    PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC
-                                ).forEach { behavior ->
-                                    FilterChip(
-                                        selected = playbackCompletionBehavior == behavior,
-                                        onClick = {
-                                            scope.launch {
-                                                com.android.purebilibili.core.store.SettingsManager
-                                                    .setPlaybackCompletionBehavior(context, behavior)
-                                            }
-                                        },
-                                        label = { Text(behavior.label) }
-                                    )
+                            IOSSlidingSegmentedSetting(
+                                title = "选择播放顺序：${playbackCompletionBehavior.label}",
+                                subtitle = "稍后再看推荐选择“顺序播放”",
+                                options = playbackOrderOptions,
+                                selectedValue = playbackCompletionBehavior,
+                                onSelectionChange = { behavior ->
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setPlaybackCompletionBehavior(context, behavior)
+                                    }
                                 }
-                            }
+                            )
                             Text(
                                 text = "稍后再看推荐选择“顺序播放”即可连续播放下一条，不需要退出重选。",
                                 style = MaterialTheme.typography.bodySmall,
@@ -715,25 +685,24 @@ fun PlaybackSettingsContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                listOf(10, 15, 20, 30).forEach { seconds ->
-                                    FilterChip(
-                                        selected = fullscreenSwipeSeekSeconds == seconds,
-                                        enabled = fullscreenSwipeSeekEnabled,
-                                        onClick = {
-                                            if (!fullscreenSwipeSeekEnabled) return@FilterChip
-                                            scope.launch {
-                                                com.android.purebilibili.core.store.SettingsManager
-                                                    .setFullscreenSwipeSeekSeconds(context, seconds)
-                                            }
-                                        },
-                                        label = { Text("${seconds}s") }
-                                    )
+                            val seekStepOptions = listOf(
+                                PlaybackSegmentOption(10, "10s"),
+                                PlaybackSegmentOption(15, "15s"),
+                                PlaybackSegmentOption(20, "20s"),
+                                PlaybackSegmentOption(30, "30s")
+                            )
+                            IOSSlidingSegmentedControl(
+                                options = seekStepOptions,
+                                selectedValue = fullscreenSwipeSeekSeconds,
+                                enabled = fullscreenSwipeSeekEnabled,
+                                onSelectionChange = { seconds ->
+                                    if (!fullscreenSwipeSeekEnabled) return@IOSSlidingSegmentedControl
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setFullscreenSwipeSeekSeconds(context, seconds)
+                                    }
                                 }
-                            }
+                            )
                         }
                         
                         // 🔄 [新增] 自动横竖屏切换
@@ -777,14 +746,18 @@ fun PlaybackSettingsContent(
                     
                     // 画质选项列表
                     val qualityOptions = listOf(
-                        116 to "1080P60",
-                        80 to "1080P",
-                        64 to "720P",
-                        32 to "480P",
-                        16 to "360P"
+                        PlaybackSegmentOption(116, "1080P60"),
+                        PlaybackSegmentOption(80, "1080P"),
+                        PlaybackSegmentOption(64, "720P"),
+                        PlaybackSegmentOption(32, "480P"),
+                        PlaybackSegmentOption(16, "360P")
                     )
                     
-                    fun getQualityLabel(id: Int) = qualityOptions.find { it.first == id }?.second ?: "720P"
+                    fun getQualityLabel(id: Int): String = resolveSelectionLabel(
+                        options = qualityOptions,
+                        selectedValue = id,
+                        fallbackLabel = "720P"
+                    )
                     
                     IOSGroup {
                         // 🚀 自动最高画质开关（置顶）
@@ -804,66 +777,25 @@ fun PlaybackSettingsContent(
                         
                         Divider()
 
-                        // WiFi 画质选择
-                        var wifiExpanded by remember { mutableStateOf(false) }
-                        Column {
-                            IOSClickableItem(
-                                icon = CupertinoIcons.Default.Wifi,
-                                title = "WiFi 默认画质",
-                                value = getQualityLabel(wifiQuality),
-                                onClick = { wifiExpanded = !wifiExpanded },
-                                iconTint = com.android.purebilibili.core.theme.iOSBlue
-                            )
-                            
-                            //  展开动画
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = wifiExpanded,
-                                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    qualityOptions.forEach { (id, label) ->
-                                        val isSelected = id == wifiQuality
-                                        androidx.compose.foundation.layout.Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                                                .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                                )
-                                                .clickable {
-                                                    scope.launch { 
-                                                        com.android.purebilibili.core.store.SettingsManager
-                                                            .setWifiQuality(context, id)
-                                                    }
-                                                    wifiExpanded = false
-                                                }
-                                                .padding(vertical = 10.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                label,
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary 
-                                                        else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
+                        IOSSlidingSegmentedSetting(
+                            title = "WiFi 默认画质：${getQualityLabel(wifiQuality)}",
+                            subtitle = if (autoHighestQuality) {
+                                "已开启自动最高画质，此选项将暂时不生效"
+                            } else {
+                                "仅 WiFi 环境生效"
+                            },
+                            options = qualityOptions,
+                            selectedValue = wifiQuality,
+                            enabled = !autoHighestQuality,
+                            onSelectionChange = { qualityId ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setWifiQuality(context, qualityId)
                                 }
                             }
-                        }
+                        )
                         
                         Divider()
-                        
-                        // 流量画质选择
-                        var mobileExpanded by remember { mutableStateOf(false) }
                         
                         // 📉 读取省流量模式，用于显示提示
                         val dataSaverModeForHint by com.android.purebilibili.core.store.SettingsManager
@@ -871,77 +803,43 @@ fun PlaybackSettingsContent(
                                 initial = com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY
                             )
                         val isDataSaverActive = dataSaverModeForHint != com.android.purebilibili.core.store.SettingsManager.DataSaverMode.OFF
-                        // 📉 计算实际生效画质（省流量时限制最高480P）
-                        val effectiveQuality = if (isDataSaverActive && mobileQuality > 32) 32 else mobileQuality
+                        val effectiveQuality = resolveEffectiveMobileQuality(
+                            rawMobileQuality = mobileQuality,
+                            isDataSaverActive = isDataSaverActive
+                        )
                         val effectiveQualityLabel = getQualityLabel(effectiveQuality)
                         
-                        Column {
-                            IOSClickableItem(
-                                icon = CupertinoIcons.Default.ArrowDownCircle,
-                                title = "流量 默认画质",
-                                value = getQualityLabel(mobileQuality) + if (isDataSaverActive && mobileQuality > 32) " → $effectiveQualityLabel" else "",
-                                onClick = { mobileExpanded = !mobileExpanded },
-                                iconTint = iOSOrange
-                            )
-                            
-                            // 📉 省流量限制提示
-                            if (isDataSaverActive && mobileQuality > 32) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 56.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "省流量模式已限制为最高480P",
-                                        fontSize = 11.sp,
-                                        color = iOSGreen.copy(alpha = 0.8f)
-                                    )
+                        IOSSlidingSegmentedSetting(
+                            title = "流量 默认画质：${getQualityLabel(mobileQuality)}",
+                            subtitle = when {
+                                autoHighestQuality -> "已开启自动最高画质，此选项将暂时不生效"
+                                isDataSaverActive && mobileQuality > effectiveQuality ->
+                                    "省流量模式当前实际最高为 $effectiveQualityLabel"
+                                else -> "仅移动网络环境生效"
+                            },
+                            options = qualityOptions,
+                            selectedValue = mobileQuality,
+                            enabled = !autoHighestQuality,
+                            onSelectionChange = { qualityId ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setMobileQuality(context, qualityId)
                                 }
                             }
-                            
-                            //  展开动画
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = mobileExpanded,
-                                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                        )
+
+                        if (isDataSaverActive && mobileQuality > effectiveQuality) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    qualityOptions.forEach { (id, label) ->
-                                        val isSelected = id == mobileQuality
-                                        androidx.compose.foundation.layout.Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                                                .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                                )
-                                                .clickable {
-                                                    scope.launch { 
-                                                        com.android.purebilibili.core.store.SettingsManager
-                                                            .setMobileQuality(context, id)
-                                                    }
-                                                    mobileExpanded = false
-                                                }
-                                                .padding(vertical = 10.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                label,
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary 
-                                                        else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
-                                }
+                                Text(
+                                    text = "省流量模式已限制为最高480P",
+                                    fontSize = 11.sp,
+                                    color = iOSGreen.copy(alpha = 0.8f)
+                                )
                             }
                         }
                     }
@@ -961,79 +859,25 @@ fun PlaybackSettingsContent(
                         .getDataSaverMode(context).collectAsState(
                             initial = com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY
                         )
-                    
-                    // 模式选项
-                    val modeOptions = com.android.purebilibili.core.store.SettingsManager.DataSaverMode.entries
-                    var isExpanded by remember { mutableStateOf(false) }
+                    val dataSaverModeOptions = listOf(
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.DataSaverMode.OFF, "关闭"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY, "仅移动数据"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.DataSaverMode.ALWAYS, "始终开启")
+                    )
                     
                     IOSGroup {
-                        //  点击展开模式选择
-                        IOSClickableItem(
-                            icon = CupertinoIcons.Default.Leaf,
-                            title = "省流量模式",
-                            value = dataSaverMode.label,
-                            onClick = { isExpanded = !isExpanded },
-                            iconTint = iOSGreen
-                        )
-                        
-                        //  展开的模式选择列表
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = isExpanded,
-                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                modeOptions.forEach { mode ->
-                                    val isSelected = mode == dataSaverMode
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                            )
-                                            .clickable {
-                                                scope.launch {
-                                                    com.android.purebilibili.core.store.SettingsManager
-                                                        .setDataSaverMode(context, mode)
-                                                }
-                                                isExpanded = false
-                                            }
-                                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                mode.label,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary 
-                                                        else MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                mode.description,
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                            )
-                                        }
-                                        if (isSelected) {
-                                            Icon(
-                                                CupertinoIcons.Default.Checkmark,
-                                                contentDescription = "已选择",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
+                        IOSSlidingSegmentedSetting(
+                            title = "省流量模式：${dataSaverMode.label}",
+                            subtitle = dataSaverMode.description,
+                            options = dataSaverModeOptions,
+                            selectedValue = dataSaverMode,
+                            onSelectionChange = { mode ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setDataSaverMode(context, mode)
                                 }
                             }
-                        }
+                        )
                         
                         //  功能说明
                         Divider()

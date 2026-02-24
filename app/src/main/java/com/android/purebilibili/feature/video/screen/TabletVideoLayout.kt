@@ -82,6 +82,8 @@ fun TabletVideoLayout(
     // [New] Codec & Audio Params
     currentCodec: String = "hev1", 
     onCodecChange: (String) -> Unit = {},
+    currentSecondCodec: String = "avc1",
+    onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
     transitionEnabled: Boolean = false, //  卡片过渡动画开关
@@ -194,6 +196,8 @@ fun TabletVideoLayout(
                             // [New] Codec & Audio
                             currentCodec = currentCodec,
                             onCodecChange = onCodecChange,
+                            currentSecondCodec = currentSecondCodec,
+                            onSecondCodecChange = onSecondCodecChange,
                             currentAudioQuality = currentAudioQuality,
                             onAudioQualityChange = onAudioQualityChange,
                             // [New Actions]

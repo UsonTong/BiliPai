@@ -20,10 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
 
 /**
  *  下载画质选择对话框
@@ -33,42 +29,9 @@ fun DownloadQualityDialog(
     title: String,
     qualityOptions: List<Pair<Int, String>>,  // (qualityId, qualityLabel)
     currentQuality: Int,
-    defaultPath: String,
-    onQualitySelected: (Int, String) -> Unit,
+    onQualitySelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    var savePath by remember { mutableStateOf(defaultPath) }
-    
-    // 系统文件夹选择器 (SAF)
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            try {
-                val contentResolver = context.contentResolver
-                val takeFlags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or 
-                                android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                // 尝试获取持久权限
-                try {
-                    contentResolver.takePersistableUriPermission(it, takeFlags)
-                } catch (e: Exception) {
-                    // 忽略权限获取失败（可能是临时访问）
-                }
-                
-                // 将 URI 转换为绝对路径
-                val path = com.android.purebilibili.core.util.FileUtils.getPathFromUri(context, it)
-                if (path != null) {
-                    savePath = path
-                } else {
-                     android.widget.Toast.makeText(context, "无法获取绝对路径，请选择内部存储目录", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -113,67 +76,6 @@ fun DownloadQualityDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 📂 [新增] 存储路径输入框
-                OutlinedTextField(
-                    value = savePath,
-                    onValueChange = { savePath = it },
-                    label = { Text("存储位置") },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
-                    modifier = Modifier.fillMaxWidth().height(64.dp),
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp),
-                    trailingIcon = {
-                        IconButton(onClick = { launcher.launch(null) }) {
-                            Icon(
-                                imageVector = Icons.Filled.Folder,
-                                contentDescription = "选择文件夹",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                )
-                
-                // 辅助操作栏 (恢复默认 / 补授权限)
-                Row(
-                    modifier = Modifier.fillMaxWidth(), 
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 1. 恢复默认路径按钮 (当路径被修改后显示)
-                    if (savePath != defaultPath) {
-                        TextButton(
-                            onClick = { savePath = defaultPath },
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Text("恢复默认", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    
-                    // 2. 权限补授按钮 (Android 11+ 缺少所有文件访问权限时显示)
-                    val hasPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                        android.os.Environment.isExternalStorageManager()
-                    } else true
-                    
-                    if (!hasPermission) {
-                        TextButton(
-                            onClick = {
-                                try {
-                                    val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                                    intent.data = android.net.Uri.parse("package:${context.packageName}")
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Text("⚠️ 授权写入", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
                 // 画质列表
                 qualityOptions.forEach { (qualityId, qualityLabel) ->
                     val isSelected = qualityId == currentQuality
@@ -187,7 +89,7 @@ fun DownloadQualityDialog(
                                 if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             )
-                            .clickable { onQualitySelected(qualityId, savePath) }
+                            .clickable { onQualitySelected(qualityId) }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically

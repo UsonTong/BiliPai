@@ -75,6 +75,8 @@ fun VideoSettingsPanel(
     // Passed from PlayerViewModel/SettingsManager
     currentCodec: String = "hev1", 
     onCodecChange: (String) -> Unit = {},
+    currentSecondCodec: String = "avc1",
+    onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
     // [New] 音频语言 (AI Translation)
@@ -424,6 +426,69 @@ fun VideoSettingsPanel(
                             val isSelected = currentCodec == codec
                             Surface(
                                 onClick = { onCodecChange(codec) },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                SettingsDivider()
+            }
+
+            // [New] 次选编码格式选择
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.Cpu,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "次选编码",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        val secondCodecLabel = when(currentSecondCodec) {
+                            "avc1" -> "AVC (兼容)"
+                            "hev1" -> "HEVC (高效)"
+                            "av01" -> "AV1 (高压缩)"
+                            else -> "未知"
+                        }
+                        Text(
+                            text = secondCodecLabel,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val codecs = listOf("avc1" to "AVC (H.264)", "hev1" to "HEVC (H.265)", "av01" to "AV1")
+                        codecs.forEach { (codec, label) ->
+                            val isSelected = currentSecondCodec == codec
+                            Surface(
+                                onClick = { onSecondCodecChange(codec) },
                                 shape = RoundedCornerShape(16.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.height(32.dp)

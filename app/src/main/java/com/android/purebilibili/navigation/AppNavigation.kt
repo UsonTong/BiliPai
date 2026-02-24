@@ -184,9 +184,6 @@ fun AppNavigation(
         }
     }
 
-    // 动画时长
-    val animDuration = 350
-
     // 🚀 [新手引导] 检查是否首次启动
     // 如果是首次启动，则进入 OnboardingScreen，否则进入 HomeScreen
     val welcomePrefs = androidx.compose.runtime.remember { context.getSharedPreferences("app_welcome", android.content.Context.MODE_PRIVATE) }
@@ -232,6 +229,12 @@ fun AppNavigation(
         // [修复] 平板模式下(宽度>=600dp)，进入设置页(Settings.route)时隐藏底栏
         // 因为平板设置页使用 SplitLayout，已经有自己的内部导航结构，不需要底栏
         val isTabletLayout = windowSizeClass.isTablet
+        val navMotionSpec = remember(isTabletLayout, cardTransitionEnabled) {
+            resolveAppNavigationMotionSpec(
+                isTabletLayout = isTabletLayout,
+                cardTransitionEnabled = cardTransitionEnabled
+            )
+        }
         val isSettingsScreen = currentRoute == ScreenRoutes.Settings.route
         val shouldHideBottomBarOnTablet = isTabletLayout && isSettingsScreen
 
@@ -313,8 +316,8 @@ fun AppNavigation(
         // --- 0. [新增] 新手引导页 ---
         composable(
             route = ScreenRoutes.Onboarding.route,
-            exitTransition = { fadeOut(animationSpec = tween(400)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(400)) }
+            exitTransition = { fadeOut(animationSpec = tween(navMotionSpec.slowFadeDurationMillis)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis)) }
         ) {
             com.android.purebilibili.feature.onboarding.OnboardingScreen(
                 onFinish = {
@@ -331,7 +334,7 @@ fun AppNavigation(
         composable(
             route = ScreenRoutes.Home.route,
             //  进入视频详情页时的退出动画
-            exitTransition = { fadeOut(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis)) },
             //  [修复] 从设置页返回时使用右滑动画
             popEnterTransition = { 
                 val fromRoute = initialState.destination.route
@@ -343,14 +346,14 @@ fun AppNavigation(
                     toRoute = ScreenRoutes.Home.route
                 )
                 if (fromSettings) {
-                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration))
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis))
                 } else if (useSeamlessBackTransition) {
                     fadeIn(
-                        animationSpec = tween(220),
+                        animationSpec = tween(navMotionSpec.mediumFadeDurationMillis),
                         initialAlpha = 0.96f
                     )
                 } else {
-                    fadeIn(animationSpec = tween(250))
+                    fadeIn(animationSpec = tween(navMotionSpec.mediumFadeDurationMillis))
                 }
             }
         ) {
@@ -405,12 +408,12 @@ fun AppNavigation(
             enterTransition = { 
                 // [Hero Animation] 如果启用了卡片过渡，使用简单的淡入，让 SharedElement 成为主角
                 if (cardTransitionEnabled) {
-                    fadeIn(animationSpec = tween(300))
+                    fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis))
                 } else {
                     // 未启用卡片过渡时，使用常规的推入动画
                     slideIntoContainer(
                         AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
+                        animationSpec = tween(navMotionSpec.slowFadeDurationMillis)
                     )
                 }
             },
@@ -429,19 +432,19 @@ fun AppNavigation(
                     )
                 } else if (cardTransitionEnabled) {
                     // 🔧 [修复] 使用简单淡出，避免与 sharedBounds 共享元素动画冲突
-                    fadeOut(animationSpec = tween(250))
+                    fadeOut(animationSpec = tween(navMotionSpec.mediumFadeDurationMillis))
                 } else {
                     //  位置感知滑出动画
                     if (CardPositionManager.isSingleColumnCard) {
                         //  单列卡片（故事卡片）：往下滑出
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration))
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis))
                     } else {
                         //  双列卡片：返回到原来卡片的方向
                         val isCardOnLeft = (CardPositionManager.lastClickedCardCenter?.x ?: 0.5f) < 0.5f
                         if (isCardOnLeft) {
-                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration))
+                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis))
                         } else {
-                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration))
+                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis))
                         }
                     }
                 }
@@ -449,24 +452,24 @@ fun AppNavigation(
             // [新增] 前进退出动画 (A -> B, A is exiting)
             exitTransition = {
                 if (cardTransitionEnabled) {
-                     fadeOut(animationSpec = tween(300))
+                     fadeOut(animationSpec = tween(navMotionSpec.slowFadeDurationMillis))
                 } else {
-                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration))
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis))
                 }
             },
             // [新增] 返回进入动画 (B -> A, A is re-entering)
             popEnterTransition = {
                 if (cardTransitionEnabled) {
-                     fadeIn(animationSpec = tween(300))
+                     fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis))
                 } else {
-                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) // Reverse of slideOutLeft? Or usually Right?
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) // Reverse of slideOutLeft? Or usually Right?
                     // Standard back nav usually slides from left to right (content entering from left) if we pushed from right.
                     // But here we slid OUT to Left. So we slide IN from Left?
                     // Actually standard Android is: Push: Enter Right, Exit Left. Pop: Enter Left, Exit Right.
                     // So popEnter should be SlideDirection.Right (content moving towards Right? No, coming FROM Left).
                     // SlideDirection.Right means "towards right".
                     // slideIntoContainer(Right) -> moves from Left edge towards Right. Correct.
-                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration))
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis))
                 }
             }
         ) { backStackEntry ->
@@ -537,6 +540,8 @@ fun AppNavigation(
                     isVisible = true,
                     startInFullscreen = startFullscreen,  //  传递全屏参数
                     transitionEnabled = cardTransitionEnabled,  //  传递过渡动画开关
+                    transitionEnterDurationMillis = navMotionSpec.slowFadeDurationMillis,
+                    transitionMaxBlurRadiusPx = navMotionSpec.maxBackdropBlurRadius,
                     onBack = { 
                         //  标记正在返回，跳过首页卡片入场动画
                         CardPositionManager.markReturning()
@@ -591,9 +596,9 @@ fun AppNavigation(
         composable(
             route = ScreenRoutes.AudioMode.route,
             //  从底部滑入
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
             //  向下滑出
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             //  [关键] 共享 PlayerViewModel
             // 尝试获取前一个页面 (VideoDetailScreen) 的 ViewModel
@@ -625,10 +630,10 @@ fun AppNavigation(
         // --- 3. 个人中心 ---
         composable(
             route = ScreenRoutes.Profile.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
@@ -649,8 +654,8 @@ fun AppNavigation(
         // --- 4. 历史记录 ---
         composable(
             route = ScreenRoutes.History.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             val historyViewModel: HistoryViewModel = viewModel()
             
@@ -711,8 +716,8 @@ fun AppNavigation(
         // --- 5. 收藏 ---
         composable(
             route = ScreenRoutes.Favorite.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             val favoriteViewModel: FavoriteViewModel = viewModel()
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
@@ -728,8 +733,8 @@ fun AppNavigation(
         // --- 5.3  [新增] 稍后再看 ---
         composable(
             route = ScreenRoutes.WatchLater.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 com.android.purebilibili.feature.watchlater.WatchLaterScreen(
@@ -743,8 +748,8 @@ fun AppNavigation(
         // --- 5.4  [新增] 直播列表 ---
         composable(
             route = ScreenRoutes.LiveList.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 com.android.purebilibili.feature.live.LiveListScreen(
@@ -763,8 +768,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("mid") { type = NavType.LongType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val mid = backStackEntry.arguments?.getLong("mid") ?: 0L
             com.android.purebilibili.feature.following.FollowingListScreen(
@@ -777,8 +782,8 @@ fun AppNavigation(
         // --- 5.6  离线缓存列表 ---
         composable(
             route = ScreenRoutes.DownloadList.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.download.DownloadListScreen(
                 onBack = { navController.popBackStack() },
@@ -796,8 +801,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("taskId") { type = NavType.StringType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val taskId = android.net.Uri.decode(backStackEntry.arguments?.getString("taskId") ?: "")
             com.android.purebilibili.feature.download.OfflineVideoPlayerScreen(
@@ -810,8 +815,8 @@ fun AppNavigation(
         // --- 6. 动态页面 ---
         composable(
             route = ScreenRoutes.Dynamic.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 DynamicScreen(
@@ -837,8 +842,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("dynamicId") { type = NavType.StringType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val dynamicId = android.net.Uri.decode(backStackEntry.arguments?.getString("dynamicId") ?: "")
             com.android.purebilibili.feature.dynamic.DynamicDetailScreen(
@@ -855,8 +860,8 @@ fun AppNavigation(
         // --- 6.5  [新增] 竖屏短视频 (故事模式) ---
         composable(
             route = ScreenRoutes.Story.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.story.StoryScreen(
                 onBack = { navController.popBackStack() },
@@ -867,12 +872,12 @@ fun AppNavigation(
         // --- 7. 搜索 (核心修复) ---
         composable(
             route = ScreenRoutes.Search.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
             //  进入视频详情页时的退出动画（与首页一致）
-            exitTransition = { fadeOut(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis)) },
             //  从视频详情页返回时的动画（与首页一致，让卡片回到原位）
-            popEnterTransition = { fadeIn(animationSpec = tween(250)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            popEnterTransition = { fadeIn(animationSpec = tween(navMotionSpec.mediumFadeDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             //  从 homeViewModel 获取最新的用户状态 (包括头像)
             val homeState by homeViewModel.uiState.collectAsState()
@@ -907,8 +912,8 @@ fun AppNavigation(
         // --- Settings & Login ---
         composable(
             route = ScreenRoutes.Settings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
@@ -928,8 +933,8 @@ fun AppNavigation(
         // [Feature] Tips Screen
         composable(
             route = ScreenRoutes.TipsSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.TipsSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -938,8 +943,8 @@ fun AppNavigation(
 
         composable(
             route = ScreenRoutes.Login.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             LoginScreen(
                 onClose = { navController.popBackStack() },
@@ -953,8 +958,8 @@ fun AppNavigation(
         // --- 11. WebView ---
         composable(
             route = ScreenRoutes.Web.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val url = android.net.Uri.decode(backStackEntry.arguments?.getString("url") ?: "")
             val title = android.net.Uri.decode(backStackEntry.arguments?.getString("title") ?: "")
@@ -1000,8 +1005,8 @@ fun AppNavigation(
         // --- 8. 开源许可证 ---
         composable(
             route = ScreenRoutes.OpenSourceLicenses.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.OpenSourceLicensesScreen(
                 onBack = { navController.popBackStack() }
@@ -1011,8 +1016,8 @@ fun AppNavigation(
         // ---  外观设置二级页面 ---
         composable(
             route = ScreenRoutes.AppearanceSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             AppearanceSettingsScreen(
                 onBack = { navController.popBackStack() },
@@ -1027,8 +1032,8 @@ fun AppNavigation(
         // ---  图标设置页面 ---
         composable(
             route = ScreenRoutes.IconSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.IconSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -1038,8 +1043,8 @@ fun AppNavigation(
         // ---  动画设置页面 ---
         composable(
             route = ScreenRoutes.AnimationSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.AnimationSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -1049,8 +1054,8 @@ fun AppNavigation(
         // ---  播放设置二级页面 ---
         composable(
             route = ScreenRoutes.PlaybackSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             PlaybackSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -1060,8 +1065,8 @@ fun AppNavigation(
         // ---  权限管理页面 ---
         composable(
             route = ScreenRoutes.PermissionSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.PermissionSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -1078,8 +1083,8 @@ fun AppNavigation(
                     defaultValue = null
                 }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val initialImportUrl = backStackEntry.arguments
                 ?.getString("importUrl")
@@ -1093,8 +1098,8 @@ fun AppNavigation(
         // ---  底栏管理页面 ---
         composable(
             route = ScreenRoutes.BottomBarSettings.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.BottomBarSettingsScreen(
                 onBack = { navController.popBackStack() }
@@ -1104,8 +1109,8 @@ fun AppNavigation(
         // --- WebDAV 备份中心 ---
         composable(
             route = ScreenRoutes.WebDavBackup.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.settings.webdav.WebDavBackupScreen(
                 onBack = { navController.popBackStack() }
@@ -1118,8 +1123,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("mid") { type = NavType.LongType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val mid = backStackEntry.arguments?.getLong("mid") ?: 0L
             
@@ -1149,8 +1154,8 @@ fun AppNavigation(
                 navArgument("mid") { type = NavType.LongType },
                 navArgument("title") { type = NavType.StringType; defaultValue = "" }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val type = backStackEntry.arguments?.getString("type") ?: ""
             val id = backStackEntry.arguments?.getLong("id") ?: 0L
@@ -1182,12 +1187,12 @@ fun AppNavigation(
                 navArgument("uname") { type = NavType.StringType; defaultValue = "" }
             ),
             enterTransition = { 
-                if (cardTransitionEnabled) fadeIn(animationSpec = tween(300))
-                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration))
+                if (cardTransitionEnabled) fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis))
+                else slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis))
             },
             popExitTransition = { 
-                if (cardTransitionEnabled) fadeOut(animationSpec = tween(300))
-                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration))
+                if (cardTransitionEnabled) fadeOut(animationSpec = tween(navMotionSpec.slowFadeDurationMillis))
+                else slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis))
             }
         ) { backStackEntry ->
             val roomId = backStackEntry.arguments?.getLong("roomId") ?: 0L
@@ -1211,8 +1216,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("type") { type = NavType.IntType; defaultValue = 1 }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val initialType = backStackEntry.arguments?.getInt("type") ?: 1
             com.android.purebilibili.feature.bangumi.BangumiScreen(
@@ -1231,8 +1236,8 @@ fun AppNavigation(
                 navArgument("seasonId") { type = NavType.LongType },
                 navArgument("epId") { type = NavType.LongType; defaultValue = 0L }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val seasonId = backStackEntry.arguments?.getLong("seasonId") ?: 0L
             val epId = backStackEntry.arguments?.getLong("epId") ?: 0L
@@ -1261,8 +1266,8 @@ fun AppNavigation(
                 navArgument("seasonId") { type = NavType.LongType },
                 navArgument("epId") { type = NavType.LongType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val seasonId = backStackEntry.arguments?.getLong("seasonId") ?: 0L
             val epId = backStackEntry.arguments?.getLong("epId") ?: 0L
@@ -1277,8 +1282,8 @@ fun AppNavigation(
         // --- 14.  分区页面 ---
         composable(
             route = ScreenRoutes.Partition.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.partition.PartitionScreen(
                 onBack = { navController.popBackStack() },
@@ -1296,8 +1301,8 @@ fun AppNavigation(
                 navArgument("tid") { type = NavType.IntType },
                 navArgument("name") { type = NavType.StringType; defaultValue = "" }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val tid = backStackEntry.arguments?.getInt("tid") ?: 0
             val name = Uri.decode(backStackEntry.arguments?.getString("name") ?: "")
@@ -1312,8 +1317,8 @@ fun AppNavigation(
         // --- [新增] 私信收件箱 ---
         composable(
             route = ScreenRoutes.Inbox.route,
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) {
             com.android.purebilibili.feature.message.InboxScreen(
                 onBack = { navController.popBackStack() },
@@ -1331,8 +1336,8 @@ fun AppNavigation(
                 navArgument("sessionType") { type = NavType.IntType },
                 navArgument("name") { type = NavType.StringType; defaultValue = "" }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val talkerId = backStackEntry.arguments?.getLong("talkerId") ?: 0L
             val sessionType = backStackEntry.arguments?.getInt("sessionType") ?: 1
@@ -1354,8 +1359,8 @@ fun AppNavigation(
             arguments = listOf(
                 navArgument("sid") { type = NavType.LongType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val sid = backStackEntry.arguments?.getLong("sid") ?: 0L
             com.android.purebilibili.feature.audio.screen.MusicDetailScreen(
@@ -1372,8 +1377,8 @@ fun AppNavigation(
                 navArgument("bvid") { type = NavType.StringType },
                 navArgument("cid") { type = NavType.LongType }
             ),
-            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(animDuration)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(animDuration)) }
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(navMotionSpec.slideDurationMillis)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(navMotionSpec.slideDurationMillis)) }
         ) { backStackEntry ->
             val title = android.net.Uri.decode(backStackEntry.arguments?.getString("title") ?: "")
             val bvid = android.net.Uri.decode(backStackEntry.arguments?.getString("bvid") ?: "")
@@ -1403,12 +1408,12 @@ fun AppNavigation(
                             // [UX优化] 物理弹簧进场 (Spring Entrance)
                             animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
                             initialOffsetY = { it }
-                        ) + fadeIn(animationSpec = tween(300)),
+                        ) + fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis)),
                         exit = slideOutVertically(
                             // [UX优化] 物理弹簧出场 (Spring Exit)
                             animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
                             targetOffsetY = { it }
-                        ) + fadeOut(animationSpec = tween(200))
+                        ) + fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis))
                     ) {
                         if (isBottomBarFloating) {
                             // 悬浮式底栏

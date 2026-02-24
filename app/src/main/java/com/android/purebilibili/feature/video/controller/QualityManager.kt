@@ -1,6 +1,8 @@
 // File: feature/video/controller/QualityManager.kt
 package com.android.purebilibili.feature.video.controller
 
+import com.android.purebilibili.core.util.ClosestTargetFallback
+import com.android.purebilibili.core.util.findClosestTarget
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.data.model.response.DashAudio
 import com.android.purebilibili.data.model.response.DashVideo
@@ -47,32 +49,15 @@ class QualityManager {
         availableVideos: List<DashVideo>
     ): DashVideo? {
         if (availableVideos.isEmpty()) return null
-        
-        // 1. Exact match
-        val exactMatch = availableVideos.find { it.id == targetQn }
-        if (exactMatch != null) {
-            Logger.d(TAG, "Exact match found: qn=$targetQn")
-            return exactMatch
-        }
-        
-        // 2. Downgrade: find highest quality below target
-        val lowerQualities = availableVideos.filter { it.id <= targetQn }
-        if (lowerQualities.isNotEmpty()) {
-            val best = lowerQualities.maxByOrNull { it.id }
-            Logger.d(TAG, "Downgrade to: qn=${best?.id} (target was $targetQn)")
-            return best
-        }
-        
-        // 3. Upgrade: find lowest quality above target
-        val higherQualities = availableVideos.filter { it.id > targetQn }
-        if (higherQualities.isNotEmpty()) {
-            val best = higherQualities.minByOrNull { it.id }
-            Logger.d(TAG, "Upgrade to: qn=${best?.id} (target was $targetQn)")
-            return best
-        }
-        
-        // 4. Fallback: return any available
-        return availableVideos.firstOrNull()
+
+        val targetId = availableVideos.map { it.id }.distinct().findClosestTarget(
+            target = targetQn,
+            fallback = ClosestTargetFallback.NEAREST_HIGHER
+        ) ?: return availableVideos.firstOrNull()
+
+        val selected = availableVideos.firstOrNull { it.id == targetId } ?: availableVideos.firstOrNull()
+        Logger.d(TAG, "Resolved quality: target=$targetQn -> selected=${selected?.id}")
+        return selected
     }
     
     /**
@@ -158,7 +143,9 @@ class QualityManager {
     fun checkQualityPermission(
         qualityId: Int,
         isLoggedIn: Boolean,
-        isVip: Boolean
+        isVip: Boolean,
+        isHdrSupported: Boolean = true,
+        isDolbyVisionSupported: Boolean = true
     ): QualityPermissionResult {
         // [New] 检查是否开启“解锁高画质” - REVERTED
         // if (context != null) ...
@@ -175,6 +162,14 @@ class QualityManager {
             requiresLogin(qualityId) && !isLoggedIn -> {
                 Logger.d(TAG, "Quality $qualityId requires login, user isLoggedIn=$isLoggedIn")
                 QualityPermissionResult.RequiresLogin(label)
+            }
+            qualityId == 126 && !isDolbyVisionSupported -> {
+                Logger.d(TAG, "Quality $qualityId not supported by device: dolbyVision=$isDolbyVisionSupported")
+                QualityPermissionResult.UnsupportedByDevice(label)
+            }
+            qualityId == 125 && !isHdrSupported -> {
+                Logger.d(TAG, "Quality $qualityId not supported by device: hdr=$isHdrSupported")
+                QualityPermissionResult.UnsupportedByDevice(label)
             }
             // 有权限
             else -> {
@@ -196,7 +191,9 @@ class QualityManager {
     fun getMaxAvailableQuality(
         availableQualities: List<Int>,
         isLoggedIn: Boolean,
-        isVip: Boolean
+        isVip: Boolean,
+        isHdrSupported: Boolean = true,
+        isDolbyVisionSupported: Boolean = true
     ): Int {
         if (availableQualities.isEmpty()) return 64
         
@@ -204,7 +201,13 @@ class QualityManager {
         val sortedQualities = availableQualities.sortedDescending()
         
         for (quality in sortedQualities) {
-            val permission = checkQualityPermission(quality, isLoggedIn, isVip)
+            val permission = checkQualityPermission(
+                qualityId = quality,
+                isLoggedIn = isLoggedIn,
+                isVip = isVip,
+                isHdrSupported = isHdrSupported,
+                isDolbyVisionSupported = isDolbyVisionSupported
+            )
             if (permission is QualityPermissionResult.Permitted) {
                 Logger.d(TAG, "Max available quality for user: $quality")
                 return quality
@@ -230,6 +233,9 @@ sealed class QualityPermissionResult {
     
     /** 需要登录 */
     data class RequiresLogin(val qualityLabel: String) : QualityPermissionResult()
+
+    /** 当前设备不支持该画质 */
+    data class UnsupportedByDevice(val qualityLabel: String) : QualityPermissionResult()
 }
 
 /**

@@ -197,6 +197,8 @@ fun VideoPlayerOverlay(
     // [New] Codec & Audio Params
     currentCodec: String = "hev1",
     onCodecChange: (String) -> Unit = {},
+    currentSecondCodec: String = "avc1",
+    onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
     // [New] AI Audio Translation
@@ -778,6 +780,11 @@ fun VideoPlayerOverlay(
                 currentCodec = currentCodec,
                 onCodecChange = { codec ->
                     onCodecChange(codec)
+                    showVideoSettings = false
+                },
+                currentSecondCodec = currentSecondCodec,
+                onSecondCodecChange = { codec ->
+                    onSecondCodecChange(codec)
                     showVideoSettings = false
                 },
                 currentAudioQuality = currentAudioQuality,

@@ -665,6 +665,11 @@ class PlayerViewModel : ViewModel() {
             com.android.purebilibili.core.store.SettingsManager.getVideoCodec(context)
                 .collect { _videoCodecPreference.value = it }
         }
+
+        viewModelScope.launch {
+            com.android.purebilibili.core.store.SettingsManager.getVideoSecondCodec(context)
+                .collect { _videoSecondCodecPreference.value = it }
+        }
         
         viewModelScope.launch {
             com.android.purebilibili.core.store.SettingsManager.getAudioQuality(context)
@@ -1005,6 +1010,15 @@ class PlayerViewModel : ViewModel() {
                     com.android.purebilibili.core.store.SettingsManager.getVideoCodecSync(it)
                 } ?: "hev1"
                 val videoCodecPreference = videoCodecOverride ?: settingsCodecPreference
+                val videoSecondCodecPreference = appContext?.let {
+                    com.android.purebilibili.core.store.SettingsManager.getVideoSecondCodecSync(it)
+                } ?: "avc1"
+                val isHdrSupported = appContext?.let {
+                    com.android.purebilibili.core.util.MediaUtils.isHdrSupported(it)
+                } ?: com.android.purebilibili.core.util.MediaUtils.isHdrSupported()
+                val isDolbyVisionSupported = appContext?.let {
+                    com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported(it)
+                } ?: com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported()
                 
                 // [Added] Determine auto-play behavior
                 // If autoPlay arg is present, use it. Otherwise reset to "Click to Play" setting
@@ -1042,13 +1056,16 @@ class PlayerViewModel : ViewModel() {
                 // 🛡️ [修复] 增加超时保护，防止加载无限挂起
                 val result = kotlinx.coroutines.withTimeout(15000L) {
                     playbackUseCase.loadVideo(
-                        bvid, 
-                        aid, 
-                        finalQuality, 
-                        audioQualityPreference,
-                        videoCodecPreference,
-                        audioLang,  // [New] Pass audioLang
-                        shouldAutoPlay  // Pass to UseCase (even if unused there)
+                        bvid = bvid,
+                        aid = aid,
+                        defaultQuality = finalQuality,
+                        audioQualityPreference = audioQualityPreference,
+                        videoCodecPreference = videoCodecPreference,
+                        videoSecondCodecPreference = videoSecondCodecPreference,
+                        audioLang = audioLang,  // [New] Pass audioLang
+                        playWhenReady = shouldAutoPlay,
+                        isHdrSupportedOverride = isHdrSupported,
+                        isDolbyVisionSupportedOverride = isDolbyVisionSupported
                     )
                 }
 
@@ -2024,6 +2041,9 @@ class PlayerViewModel : ViewModel() {
     // Preferences StateFlows (Initialized in initWithContext)
     private val _videoCodecPreference = MutableStateFlow("hev1")
     val videoCodecPreference = _videoCodecPreference.asStateFlow()
+
+    private val _videoSecondCodecPreference = MutableStateFlow("avc1")
+    val videoSecondCodecPreference = _videoSecondCodecPreference.asStateFlow()
     
     private val _audioQualityPreference = MutableStateFlow(-1)
     val audioQualityPreference = _audioQualityPreference.asStateFlow()
@@ -2034,6 +2054,16 @@ class PlayerViewModel : ViewModel() {
             appContext?.let { 
                 com.android.purebilibili.core.store.SettingsManager.setVideoCodec(it, codec)
                 // Reload to apply changes if playing
+                reloadVideo()
+            }
+        }
+    }
+
+    fun setVideoSecondCodec(codec: String) {
+        _videoSecondCodecPreference.value = codec // Optimistic update
+        viewModelScope.launch {
+            appContext?.let {
+                com.android.purebilibili.core.store.SettingsManager.setVideoSecondCodec(it, codec)
                 reloadVideo()
             }
         }
@@ -2709,7 +2739,7 @@ class PlayerViewModel : ViewModel() {
         _showDownloadDialog.value = false
     }
     
-    fun downloadWithQuality(qualityId: Int, customPath: String? = null) {
+    fun downloadWithQuality(qualityId: Int) {
         val current = _uiState.value as? PlayerUiState.Success ?: return
         _showDownloadDialog.value = false
         
@@ -2759,14 +2789,12 @@ class PlayerViewModel : ViewModel() {
                 quality = qualityId,
                 qualityDesc = qualityDesc,
                 videoUrl = videoUrl,
-                audioUrl = audioUrl ?: "",
-                customSaveDir = customPath // 📂 [新增] 支持指定下载目录
+                audioUrl = audioUrl ?: ""
             )
             
             val added = com.android.purebilibili.feature.download.DownloadManager.addTask(task)
             if (added) {
-                val pathMsg = if (customPath != null) "至 $customPath" else ""
-                toast("开始下载: ${current.info.title} [$qualityDesc] $pathMsg")
+                toast("开始下载: ${current.info.title} [$qualityDesc]")
                 // 开始监听下载进度
                 com.android.purebilibili.feature.download.DownloadManager.tasks.collect { tasks ->
                     val downloadTask = tasks[task.id]
@@ -2784,10 +2812,21 @@ class PlayerViewModel : ViewModel() {
         val current = _uiState.value as? PlayerUiState.Success ?: return
         if (current.isQualitySwitching) { toast("正在切换中..."); return }
         if (current.currentQuality == qualityId) { toast("已是当前清晰度"); return }
+
+        val isHdrSupported = appContext?.let {
+            com.android.purebilibili.core.util.MediaUtils.isHdrSupported(it)
+        } ?: com.android.purebilibili.core.util.MediaUtils.isHdrSupported()
+        val isDolbyVisionSupported = appContext?.let {
+            com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported(it)
+        } ?: com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported()
         
         //  [新增] 权限检查
         val permissionResult = qualityManager.checkQualityPermission(
-            qualityId, current.isLoggedIn, current.isVip
+            qualityId = qualityId,
+            isLoggedIn = current.isLoggedIn,
+            isVip = current.isVip,
+            isHdrSupported = isHdrSupported,
+            isDolbyVisionSupported = isDolbyVisionSupported
         )
         
         when (permissionResult) {
@@ -2795,7 +2834,11 @@ class PlayerViewModel : ViewModel() {
                 toast("${permissionResult.qualityLabel} 需要大会员")
                 // 自动降级到最高可用画质
                 val fallbackQuality = qualityManager.getMaxAvailableQuality(
-                    current.qualityIds, current.isLoggedIn, current.isVip
+                    availableQualities = current.qualityIds,
+                    isLoggedIn = current.isLoggedIn,
+                    isVip = current.isVip,
+                    isHdrSupported = isHdrSupported,
+                    isDolbyVisionSupported = isDolbyVisionSupported
                 )
                 if (fallbackQuality != current.currentQuality) {
                     changeQuality(fallbackQuality, currentPos)
@@ -2804,6 +2847,20 @@ class PlayerViewModel : ViewModel() {
             }
             is QualityPermissionResult.RequiresLogin -> {
                 toast("${permissionResult.qualityLabel} 需要登录")
+                return
+            }
+            is QualityPermissionResult.UnsupportedByDevice -> {
+                toast("${permissionResult.qualityLabel} 当前设备不支持")
+                val fallbackQuality = qualityManager.getMaxAvailableQuality(
+                    availableQualities = current.qualityIds,
+                    isLoggedIn = current.isLoggedIn,
+                    isVip = current.isVip,
+                    isHdrSupported = isHdrSupported,
+                    isDolbyVisionSupported = isDolbyVisionSupported
+                )
+                if (fallbackQuality != current.currentQuality && fallbackQuality != qualityId) {
+                    changeQuality(fallbackQuality, currentPos)
+                }
                 return
             }
             is QualityPermissionResult.Permitted -> {
@@ -2865,6 +2922,9 @@ class PlayerViewModel : ViewModel() {
                     val videoCodecPreference = appContext?.let { 
                         com.android.purebilibili.core.store.SettingsManager.getVideoCodecSync(it) 
                     } ?: "hev1"
+                    val videoSecondCodecPreference = appContext?.let {
+                        com.android.purebilibili.core.store.SettingsManager.getVideoSecondCodecSync(it)
+                    } ?: "avc1"
                     val audioQualityPreference = appContext?.let { 
                         com.android.purebilibili.core.store.SettingsManager.getAudioQualitySync(it) 
                     } ?: -1
@@ -2875,6 +2935,7 @@ class PlayerViewModel : ViewModel() {
                     val dashVideo = playUrlData.dash?.getBestVideo(
                         current.currentQuality,
                         preferCodec = videoCodecPreference,
+                        secondPreferCodec = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
                         isAv1Supported = isAv1Supported
                     )
@@ -2945,6 +3006,9 @@ class PlayerViewModel : ViewModel() {
             val videoCodecPreference = appContext?.let {
                 com.android.purebilibili.core.store.SettingsManager.getVideoCodecSync(it)
             } ?: "hev1"
+            val videoSecondCodecPreference = appContext?.let {
+                com.android.purebilibili.core.store.SettingsManager.getVideoSecondCodecSync(it)
+            } ?: "avc1"
             val audioQualityPreference = appContext?.let {
                 com.android.purebilibili.core.store.SettingsManager.getAudioQualitySync(it)
             } ?: -1
@@ -2955,6 +3019,7 @@ class PlayerViewModel : ViewModel() {
             val dashVideo = playUrlData.dash?.getBestVideo(
                 current.currentQuality,
                 preferCodec = videoCodecPreference,
+                secondPreferCodec = videoSecondCodecPreference,
                 isHevcSupported = isHevcSupported,
                 isAv1Supported = isAv1Supported
             )

@@ -1,6 +1,10 @@
 package com.android.purebilibili.core.util
 
+import android.content.Context
+import android.hardware.display.DisplayManager
 import android.media.MediaCodecList
+import android.os.Build
+import android.view.Display
 
 object MediaUtils {
     /**
@@ -22,20 +26,82 @@ object MediaUtils {
      * Check if HDR (HDR10/HLG) video is supported
      * HDR requires both decoder support and display capability
      */
-    fun isHdrSupported(): Boolean {
+    fun isHdrSupported(context: Context? = null): Boolean {
         // HDR10 uses HEVC with specific profile
-        // Check for HEVC support first, then assume HDR display is available on modern devices
-        return hasDecoder("video/hevc") && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+        // Check for HEVC support first, then verify display HDR capability when context is available
+        if (!hasDecoder("video/hevc") || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return false
+        }
+        if (context == null) {
+            return true
+        }
+        return hasHdrDisplaySupport(context)
     }
     
     /**
      * Check if Dolby Vision is supported
      * Dolby Vision requires specific hardware decoder
      */
-    fun isDolbyVisionSupported(): Boolean {
+    fun isDolbyVisionSupported(context: Context? = null): Boolean {
         // Dolby Vision MIME type
         val hasDolbyDecoder = hasDecoder("video/dolby-vision") || hasDecoder("video/dvhe") || hasDecoder("video/dvav")
-        return hasDolbyDecoder && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+        if (!hasDolbyDecoder || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return false
+        }
+        if (context == null) {
+            return true
+        }
+        return hasDolbyVisionDisplaySupport(context)
+    }
+
+    private fun hasHdrDisplaySupport(context: Context): Boolean {
+        return supportsGenericHdrTypes(getSupportedHdrTypes(context))
+    }
+
+    private fun hasDolbyVisionDisplaySupport(context: Context): Boolean {
+        return supportsDolbyVisionType(getSupportedHdrTypes(context))
+    }
+
+    private fun getSupportedHdrTypes(context: Context): IntArray? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return null
+        }
+
+        return try {
+            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+            val display = displayManager?.getDisplay(Display.DEFAULT_DISPLAY)
+            display?.hdrCapabilities?.supportedHdrTypes
+        } catch (e: Exception) {
+            Logger.e("MediaUtils", "Failed to read display HDR capabilities", e)
+            null
+        }
+    }
+
+    internal fun supportsGenericHdrTypes(supportedHdrTypes: IntArray?): Boolean {
+        if (supportedHdrTypes == null || supportedHdrTypes.isEmpty()) {
+            return false
+        }
+        for (type in supportedHdrTypes) {
+            if (type == Display.HdrCapabilities.HDR_TYPE_HDR10 ||
+                type == Display.HdrCapabilities.HDR_TYPE_HLG
+            ) {
+                return true
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                type == Display.HdrCapabilities.HDR_TYPE_HDR10_PLUS
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    internal fun supportsDolbyVisionType(supportedHdrTypes: IntArray?): Boolean {
+        val types = supportedHdrTypes ?: return false
+        if (types.isEmpty()) {
+            return false
+        }
+        return types.contains(Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION)
     }
 
     private fun hasDecoder(mimeType: String): Boolean {

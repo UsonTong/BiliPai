@@ -7,11 +7,15 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.os.Build
 import android.view.Window
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -215,6 +221,33 @@ internal fun resolveDanmakuDialogTopReservePx(
     return (playerBottomPx ?: fallbackPlayerBottomPx).coerceAtLeast(0)
 }
 
+internal data class VideoDetailEntryVisualFrame(
+    val contentAlpha: Float,
+    val scrimAlpha: Float,
+    val blurRadiusPx: Float
+)
+
+internal fun resolveVideoDetailEntryVisualFrame(
+    rawProgress: Float,
+    transitionEnabled: Boolean,
+    maxBlurRadiusPx: Float
+): VideoDetailEntryVisualFrame {
+    if (!transitionEnabled) {
+        return VideoDetailEntryVisualFrame(
+            contentAlpha = 1f,
+            scrimAlpha = 0f,
+            blurRadiusPx = 0f
+        )
+    }
+
+    val progress = rawProgress.coerceIn(0f, 1f)
+    return VideoDetailEntryVisualFrame(
+        contentAlpha = (0.9f + progress * 0.1f).coerceIn(0f, 1f),
+        scrimAlpha = (1f - progress) * 0.08f,
+        blurRadiusPx = (maxBlurRadiusPx.coerceAtLeast(0f) * (1f - progress)).coerceAtLeast(0f)
+    )
+}
+
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -225,6 +258,8 @@ fun VideoDetailScreen(
     coverUrl: String = "",
     startInFullscreen: Boolean = false,
     transitionEnabled: Boolean = false,
+    transitionEnterDurationMillis: Int = 320,
+    transitionMaxBlurRadiusPx: Float = 20f,
     onBack: () -> Unit,
     onNavigateToAudioMode: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
@@ -265,15 +300,41 @@ fun VideoDetailScreen(
         runCatching { uriHandler.openUri(url) }
     }
     
-    // 🎭 [性能优化] 转场动画完成状态
-    // 延迟加载重型组件（如评论区），确保转场动画流畅无卡顿
-    var isTransitionFinished by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(Unit) {
-        // 等待转场动画结束 (350ms + small buffer)
-        // 配合 AppNavigation 中的 enterTransition duration
-        kotlinx.coroutines.delay(400) 
+    // 🎭 [性能优化] 进场视觉帧 + 重型组件延迟加载
+    var isTransitionFinished by remember { mutableStateOf(!transitionEnabled) }
+    val entryVisualProgress = remember(transitionEnabled) {
+        Animatable(if (transitionEnabled) 0f else 1f)
+    }
+
+    LaunchedEffect(transitionEnabled, transitionEnterDurationMillis) {
+        if (!transitionEnabled) {
+            entryVisualProgress.snapTo(1f)
+            isTransitionFinished = true
+            return@LaunchedEffect
+        }
+
+        entryVisualProgress.snapTo(0f)
+        isTransitionFinished = false
+        entryVisualProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = transitionEnterDurationMillis.coerceAtLeast(120),
+                easing = FastOutSlowInEasing
+            )
+        )
         isTransitionFinished = true
+    }
+
+    val entryVisualFrame = remember(
+        entryVisualProgress.value,
+        transitionEnabled,
+        transitionMaxBlurRadiusPx
+    ) {
+        resolveVideoDetailEntryVisualFrame(
+            rawProgress = entryVisualProgress.value,
+            transitionEnabled = transitionEnabled,
+            maxBlurRadiusPx = transitionMaxBlurRadiusPx
+        )
     }
     
     // 🔄 [Seamless Playback] Internal BVID state to support seamless switching in portrait mode
@@ -344,6 +405,7 @@ fun VideoDetailScreen(
     
     // [New] Codec & Audio Preferences
     val codecPreference by viewModel.videoCodecPreference.collectAsState(initial = "hev1")
+    val secondCodecPreference by viewModel.videoSecondCodecPreference.collectAsState(initial = "avc1")
     val audioQualityPreference by viewModel.audioQualityPreference.collectAsState(initial = -1)
     
     //  [PiP修复] 记录视频播放器在屏幕上的位置，用于PiP窗口只显示视频区域
@@ -1083,6 +1145,8 @@ fun VideoDetailScreen(
                 // [New] Codec & Audio (Fullscreen)
                 currentCodec = codecPreference,
                 onCodecChange = { viewModel.setVideoCodec(it) },
+                currentSecondCodec = secondCodecPreference,
+                onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                 currentAudioQuality = audioQualityPreference,
                 onAudioQualityChange = { viewModel.setAudioQuality(it) },
                 // [New] Audio Language
@@ -1208,6 +1272,8 @@ fun VideoDetailScreen(
                         // [New] Codec & Audio
                         currentCodec = codecPreference,
                         onCodecChange = { viewModel.setVideoCodec(it) },
+                        currentSecondCodec = secondCodecPreference,
+                        onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                         currentAudioQuality = audioQualityPreference,
                         onAudioQualityChange = { viewModel.setAudioQuality(it) },
                         onRelatedVideoClick = onVideoClick,
@@ -1401,6 +1467,8 @@ fun VideoDetailScreen(
                                 // [New] Codec & Audio
                                 currentCodec = codecPreference,
                                 onCodecChange = { viewModel.setVideoCodec(it) },
+                                currentSecondCodec = secondCodecPreference,
+                                onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                                 currentAudioQuality = audioQualityPreference,
                                 onAudioQualityChange = { viewModel.setAudioQuality(it) },
                                 // [New] Audio Language
@@ -1461,9 +1529,9 @@ fun VideoDetailScreen(
                                     targetState = success.info.bvid,
                                     transitionSpec = {
                                         // 左右滑动 + 淡入淡出过渡动画
-                                        (slideInHorizontally { width -> width / 4 } + fadeIn(animationSpec = tween(300)))
+                                        (slideInHorizontally { width -> width / 4 } + fadeIn(animationSpec = tween(transitionEnterDurationMillis.coerceAtLeast(180))))
                                             .togetherWith(
-                                                slideOutHorizontally { width -> -width / 4 } + fadeOut(animationSpec = tween(300))
+                                                slideOutHorizontally { width -> -width / 4 } + fadeOut(animationSpec = tween(transitionEnterDurationMillis.coerceAtLeast(180)))
                                             )
                                     },
                                     label = "video_content_transition"
@@ -1475,13 +1543,27 @@ fun VideoDetailScreen(
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
+                                                .graphicsLayer {
+                                                    alpha = entryVisualFrame.contentAlpha
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                                        entryVisualFrame.blurRadiusPx > 0.01f
+                                                    ) {
+                                                        renderEffect = RenderEffect.createBlurEffect(
+                                                            entryVisualFrame.blurRadiusPx,
+                                                            entryVisualFrame.blurRadiusPx,
+                                                            Shader.TileMode.CLAMP
+                                                        ).asComposeRenderEffect()
+                                                    } else {
+                                                        renderEffect = null
+                                                    }
+                                                }
                                                 .hazeSource(hazeState)
                                         ) {
                                             // [性能优化] 延迟显示下方内容，优先保证进场动画流畅
                                             // 配合 isTransitionFinished 状态
                                             androidx.compose.animation.AnimatedVisibility(
                                                 visible = isTransitionFinished,
-                                                enter = fadeIn(tween(300))
+                                                enter = fadeIn(tween(transitionEnterDurationMillis.coerceAtLeast(180)))
                                             ) {
                                                 Box(modifier = Modifier.fillMaxSize()) {
                                                     // [新增] 计算播放器是否已折叠 (容差 10px)
@@ -1634,6 +1716,13 @@ fun VideoDetailScreen(
                                                         )
                                                     }
                                                 }
+                                            }
+                                            if (entryVisualFrame.scrimAlpha > 0.001f) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .background(Color.Black.copy(alpha = entryVisualFrame.scrimAlpha))
+                                                )
                                             }
                                     }
                                 }
@@ -2249,15 +2338,13 @@ fun VideoDetailScreen(
                 .zip(successForDownload.qualityLabels)
                 .sortedByDescending { it.first }
             val highestQuality = sortedQualityOptions.firstOrNull()?.first ?: successForDownload.currentQuality
-            val defaultPath = remember { com.android.purebilibili.feature.download.DownloadManager.getDownloadDir().absolutePath }
             
             com.android.purebilibili.feature.download.DownloadQualityDialog(
                 title = successForDownload.info.title,
                 qualityOptions = sortedQualityOptions,
                 currentQuality = highestQuality,
-                defaultPath = defaultPath,
-                onQualitySelected = { quality, path -> 
-                    viewModel.downloadWithQuality(quality, path) 
+                onQualitySelected = { quality ->
+                    viewModel.downloadWithQuality(quality)
                     showQualitySelection = false
                 },
                 onDismiss = { showQualitySelection = false }

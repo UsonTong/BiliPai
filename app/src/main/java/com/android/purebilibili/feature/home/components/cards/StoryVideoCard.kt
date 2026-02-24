@@ -74,6 +74,7 @@ fun StoryVideoCard(
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val cardCornerRadius = iOSCornerRadius.ExtraLarge * cornerRadiusScale  // 20.dp * scale
     val smallCornerRadius = iOSCornerRadius.Small * cornerRadiusScale - 2.dp  // 8.dp * scale
+    val durationBadgeStyle = remember { resolveVideoCardDurationBadgeVisualStyle() }
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
@@ -207,7 +208,7 @@ fun StoryVideoCard(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(8.dp),
-                color = Color.Black.copy(alpha = 0.75f),
+                color = Color.Black.copy(alpha = durationBadgeStyle.backgroundAlpha),
                 shape = RoundedCornerShape(6.dp)
             ) {
                 Text(
@@ -215,6 +216,13 @@ fun StoryVideoCard(
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color.Black.copy(alpha = durationBadgeStyle.textShadowAlpha),
+                            offset = androidx.compose.ui.geometry.Offset(0f, 1f),
+                            blurRadius = durationBadgeStyle.textShadowBlurRadiusPx
+                        )
+                    ),
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                 )
             }

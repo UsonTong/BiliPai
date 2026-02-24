@@ -120,9 +120,12 @@ class VideoPlaybackUseCase(
         audioQualityPreference: Int = -1,
 
         videoCodecPreference: String = "hev1",
+        videoSecondCodecPreference: String = "avc1",
         audioLang: String? = null, // [New] AI Translation Language
 
         playWhenReady: Boolean = true,  // [Added] Control auto-play
+        isHdrSupportedOverride: Boolean? = null,
+        isDolbyVisionSupportedOverride: Boolean? = null,
         onProgress: (String) -> Unit = {}
     ): VideoLoadResult {
         try {
@@ -178,8 +181,10 @@ class VideoPlaybackUseCase(
                         val acceptQualities = playData.accept_quality ?: emptyList()
                         
                         // 检测设备 HDR 支持能力
-                        val isHdrSupported = com.android.purebilibili.core.util.MediaUtils.isHdrSupported()
-                        val isDolbyVisionSupported = com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported()
+                        val isHdrSupported = isHdrSupportedOverride
+                            ?: com.android.purebilibili.core.util.MediaUtils.isHdrSupported()
+                        val isDolbyVisionSupported = isDolbyVisionSupportedOverride
+                            ?: com.android.purebilibili.core.util.MediaUtils.isDolbyVisionSupported()
                         
                         // 根据设备能力过滤画质（不再硬编码 <= 120）
                         val deviceSafeQualities = acceptQualities.filter { qn ->
@@ -241,6 +246,7 @@ class VideoPlaybackUseCase(
                     val dashVideo = playData.dash?.getBestVideo(
                         targetQn, 
                         preferCodec = videoCodecPreference,
+                        secondPreferCodec = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
                         isAv1Supported = isAv1Supported
                     )

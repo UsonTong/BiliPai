@@ -14,10 +14,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 //  Cupertino Icons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -97,6 +99,7 @@ fun ElegantVideoCard(
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val cardCornerRadius = 12.dp * cornerRadiusScale  // HIG 标准圆角
     val smallCornerRadius = iOSCornerRadius.Tiny * cornerRadiusScale  // 4.dp * scale
+    val durationBadgeStyle = remember { resolveVideoCardDurationBadgeVisualStyle() }
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
@@ -350,13 +353,20 @@ fun ElegantVideoCard(
                     .align(Alignment.BottomEnd)
                     .padding(6.dp),
                 shape = RoundedCornerShape(smallCornerRadius),
-                color = Color.Black.copy(alpha = 0.7f)
+                color = Color.Black.copy(alpha = durationBadgeStyle.backgroundAlpha)
             ) {
                 Text(
                     text = FormatUtils.formatDuration(video.duration),
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = durationBadgeStyle.textShadowAlpha),
+                            offset = Offset(0f, 1f),
+                            blurRadius = durationBadgeStyle.textShadowBlurRadiusPx
+                        )
+                    ),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }

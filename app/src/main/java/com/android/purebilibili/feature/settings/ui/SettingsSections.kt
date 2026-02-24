@@ -277,7 +277,7 @@ fun FeedApiSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = CupertinoIcons.Default.AntennaRadiowavesLeftAndRight,
+                    imageVector = CupertinoIcons.Default.RectangleStack,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                     tint = iOSOrange
@@ -298,36 +298,12 @@ fun FeedApiSection(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // 选项卡
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                com.android.purebilibili.core.store.SettingsManager.FeedApiType.entries.forEach { type ->
-                    val isSelected = feedApiType == type
-                    val color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(color)
-                            .clickable { onFeedApiTypeChange(type) }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = type.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold 
-                                        else androidx.compose.ui.text.font.FontWeight.Medium,
-                            color = contentColor
-                        )
-                    }
-                }
-            }
+
+            IOSSlidingSegmentedControl(
+                options = resolveFeedApiSegmentOptions(),
+                selectedValue = feedApiType,
+                onSelectionChange = onFeedApiTypeChange
+            )
         }
         SettingsDivider(startIndent = 66.dp)
         FeedSwitchItem(

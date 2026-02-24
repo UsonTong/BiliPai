@@ -180,33 +180,15 @@ fun AppearanceSettingsContent(
                 IOSGroup {
                     // 主题模式选择 (横向卡片)
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            AppThemeMode.entries.forEach { mode ->
-                                val isSelected = state.themeMode == mode
-                                val color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                                val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                                
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(color)
-                                        .clickable { viewModel.setThemeMode(mode) }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = mode.label,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = contentColor
-                                    )
-                                }
+                        IOSSlidingSegmentedSetting(
+                            title = "主题模式：${state.themeMode.label}",
+                            subtitle = "支持点击或左右滑动切换",
+                            options = resolveThemeModeSegmentOptions(),
+                            selectedValue = state.themeMode,
+                            onSelectionChange = { mode ->
+                                viewModel.setThemeMode(mode)
                             }
-                        }
+                        )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         Divider()

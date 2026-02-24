@@ -78,6 +78,7 @@ fun GlassVideoCard(
     val coverCornerRadius = iOSCornerRadius.Large * cornerRadiusScale + 2.dp  // 16.dp * scale
     val tagCornerRadius = iOSCornerRadius.Small * cornerRadiusScale  // 10.dp * scale
     val smallTagRadius = iOSCornerRadius.ExtraSmall * cornerRadiusScale  // 6.dp * scale
+    val durationBadgeStyle = remember { resolveVideoCardDurationBadgeVisualStyle() }
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
@@ -265,7 +266,7 @@ fun GlassVideoCard(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(10.dp),
-                            color = Color.Black.copy(alpha = 0.7f),
+                            color = Color.Black.copy(alpha = durationBadgeStyle.backgroundAlpha),
                             shape = RoundedCornerShape(tagCornerRadius)
                         ) {
                             Text(
@@ -273,6 +274,13 @@ fun GlassVideoCard(
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    shadow = androidx.compose.ui.graphics.Shadow(
+                                        color = Color.Black.copy(alpha = durationBadgeStyle.textShadowAlpha),
+                                        offset = androidx.compose.ui.geometry.Offset(0f, 1f),
+                                        blurRadius = durationBadgeStyle.textShadowBlurRadiusPx
+                                    )
+                                ),
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }

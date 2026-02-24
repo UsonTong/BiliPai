@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -186,24 +185,15 @@ fun PermissionSettingsContent(
                 isNormal = false,
                 alwaysGranted = false
             ),
-             //  存储权限 (Android 11+ 所有文件访问 / Android 9- 读写 / Android 10 自动)
+             // 📁 存储写入（使用 MediaStore/SAF，不申请所有文件访问）
             PermissionInfo(
-                name = "存储空间",
-                permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                } else {
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                },
-                description = "用于下载视频和保存图片到自定义目录",
+                name = "媒体文件写入",
+                permission = "scoped_storage",
+                description = "保存图片/截图时使用系统媒体库，下载导出使用系统文件夹授权",
                 icon = CupertinoIcons.Default.Folder,
                 iconTint = iOSPink,
-                isNormal = false,
-                alwaysGranted = Build.VERSION.SDK_INT == Build.VERSION_CODES.Q, // Android 10 也是 scoped storage，通常无需权限
-                customCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    { Environment.isExternalStorageManager() }
-                } else {
-                    null
-                }
+                isNormal = true,
+                alwaysGranted = true
             ),
 
         )
@@ -267,21 +257,7 @@ fun PermissionSettingsContent(
                                 info = info,
                                 isGranted = permissionStates[info.permission] ?: false,
                                 onOpenSettings = {
-                                    // Android 11+ 存储权限跳转到专属设置页
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                                        info.permission == Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                                    ) {
-                                        try {
-                                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                                                data = Uri.fromParts("package", context.packageName, null)
-                                            }
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            openAppSettings(context)
-                                        }
-                                    } else {
-                                        openAppSettings(context)
-                                    }
+                                    openAppSettings(context)
                                 }
                             )
                         }

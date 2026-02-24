@@ -1140,6 +1140,7 @@ object SettingsManager {
     private val KEY_MOBILE_QUALITY = intPreferencesKey("mobile_default_quality")
     //  [New] Video Codec & Audio Quality
     private val KEY_VIDEO_CODEC = stringPreferencesKey("video_codec_preference")
+    private val KEY_VIDEO_SECOND_CODEC = stringPreferencesKey("video_second_codec_preference")
     private val KEY_AUDIO_QUALITY = intPreferencesKey("audio_quality_preference")
     
     // --- WiFi 默认画质 (默认 80 = 1080P) ---
@@ -1213,6 +1214,21 @@ object SettingsManager {
     fun getVideoCodecSync(context: Context): String {
         return context.getSharedPreferences("quality_settings", Context.MODE_PRIVATE)
             .getString("video_codec", "hev1") ?: "hev1"
+    }
+
+    // --- Secondary Video Codec Preference (Default: AVC/avc1) ---
+    fun getVideoSecondCodec(context: Context): Flow<String> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_VIDEO_SECOND_CODEC] ?: "avc1" }
+
+    suspend fun setVideoSecondCodec(context: Context, value: String) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_VIDEO_SECOND_CODEC] = value }
+        context.getSharedPreferences("quality_settings", Context.MODE_PRIVATE)
+            .edit().putString("video_second_codec", value).apply()
+    }
+
+    fun getVideoSecondCodecSync(context: Context): String {
+        return context.getSharedPreferences("quality_settings", Context.MODE_PRIVATE)
+            .getString("video_second_codec", "avc1") ?: "avc1"
     }
 
     // --- Audio Quality Preference (Default: 30280 = 192K) ---
@@ -1451,6 +1467,7 @@ object SettingsManager {
     // ==========  下载路径设置 ==========
     
     private val KEY_DOWNLOAD_PATH = stringPreferencesKey("download_path")
+    private val KEY_DOWNLOAD_EXPORT_TREE_URI = stringPreferencesKey("download_export_tree_uri")
     
     /**
      *  获取用户自定义下载路径
@@ -1477,6 +1494,23 @@ object SettingsManager {
         context.getSharedPreferences("download_prefs", Context.MODE_PRIVATE)
             .edit().putString("path", path).commit() // commit 确保立即写入
     }
+
+    fun getDownloadExportTreeUri(context: Context): Flow<String?> = context.settingsDataStore.data
+        .map { preferences ->
+            preferences[KEY_DOWNLOAD_EXPORT_TREE_URI]
+        }
+
+    suspend fun setDownloadExportTreeUri(context: Context, uri: String?) {
+        context.settingsDataStore.edit { preferences ->
+            if (uri != null) {
+                preferences[KEY_DOWNLOAD_EXPORT_TREE_URI] = uri
+            } else {
+                preferences.remove(KEY_DOWNLOAD_EXPORT_TREE_URI)
+            }
+        }
+        context.getSharedPreferences("download_prefs", Context.MODE_PRIVATE)
+            .edit().putString("tree_uri", uri).commit()
+    }
     
     /**
      * [修复] 同步获取自定义下载路径
@@ -1485,6 +1519,11 @@ object SettingsManager {
     fun getDownloadPathSync(context: Context): String? {
         return context.getSharedPreferences("download_prefs", Context.MODE_PRIVATE)
             .getString("path", null)
+    }
+
+    fun getDownloadExportTreeUriSync(context: Context): String? {
+        return context.getSharedPreferences("download_prefs", Context.MODE_PRIVATE)
+            .getString("tree_uri", null)
     }
     
     /**

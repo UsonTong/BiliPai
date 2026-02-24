@@ -2,6 +2,8 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import android.content.ContentValues
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -29,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -259,6 +262,7 @@ private fun ImagePreviewOverlayContent(
             val constraints = this
             val fullWidth = constraints.maxWidth
             val fullHeight = constraints.maxHeight
+            val maxBlurRadiusPx = with(density) { 18.dp.toPx() }
             
             val rawProgress = animateTrigger.value
             
@@ -270,6 +274,11 @@ private fun ImagePreviewOverlayContent(
                 rawProgress = rawProgress,
                 hasSourceRect = shouldUseRectAnim,
                 sourceCornerRadiusDp = 12f
+            )
+            val visualFrame = resolveImagePreviewVisualFrame(
+                visualProgress = transitionFrame.visualProgress,
+                transitionEnabled = true,
+                maxBlurRadiusPx = maxBlurRadiusPx
             )
             
             val targetLeft = 0.dp
@@ -297,7 +306,7 @@ private fun ImagePreviewOverlayContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = transitionFrame.visualProgress))
+                    .background(Color.Black.copy(alpha = visualFrame.backdropAlpha))
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = { triggerDismiss() }
@@ -312,6 +321,18 @@ private fun ImagePreviewOverlayContent(
                      .size(width = currentWidth, height = currentHeight)
                      .clip(RoundedCornerShape(transitionFrame.cornerRadiusDp.dp))
                      .graphicsLayer {
+                         alpha = visualFrame.contentAlpha
+                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                             visualFrame.blurRadiusPx > 0.01f
+                         ) {
+                             renderEffect = RenderEffect.createBlurEffect(
+                                 visualFrame.blurRadiusPx,
+                                 visualFrame.blurRadiusPx,
+                                 Shader.TileMode.CLAMP
+                             ).asComposeRenderEffect()
+                         } else {
+                             renderEffect = null
+                         }
                          if (!shouldUseRectAnim) {
                              scaleX = transitionFrame.fallbackScale
                              scaleY = transitionFrame.fallbackScale

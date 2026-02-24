@@ -11,6 +11,12 @@ internal data class ImagePreviewTransitionFrame(
     val fallbackScale: Float
 )
 
+internal data class ImagePreviewVisualFrame(
+    val contentAlpha: Float,
+    val backdropAlpha: Float,
+    val blurRadiusPx: Float
+)
+
 internal data class ImagePreviewDismissMotion(
     val overshootTarget: Float,
     val settleTarget: Float
@@ -34,6 +40,27 @@ internal fun resolveImagePreviewTransitionFrame(
         visualProgress = visualProgress,
         cornerRadiusDp = cornerRadiusDp,
         fallbackScale = fallbackScale
+    )
+}
+
+internal fun resolveImagePreviewVisualFrame(
+    visualProgress: Float,
+    transitionEnabled: Boolean,
+    maxBlurRadiusPx: Float
+): ImagePreviewVisualFrame {
+    val progress = visualProgress.coerceIn(0f, 1f)
+    if (!transitionEnabled) {
+        return ImagePreviewVisualFrame(
+            contentAlpha = 1f,
+            backdropAlpha = progress,
+            blurRadiusPx = 0f
+        )
+    }
+
+    return ImagePreviewVisualFrame(
+        contentAlpha = lerpFloat(0.9f, 1f, progress),
+        backdropAlpha = progress,
+        blurRadiusPx = maxBlurRadiusPx.coerceAtLeast(0f) * (1f - progress)
     )
 }
 

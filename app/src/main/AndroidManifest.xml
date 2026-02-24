@@ -14,9 +14,6 @@
     <uses-permission 
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <!-- 🔐 所有文件访问权限 (Android 11+ 用于自定义下载目录) -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-    
     <!-- 📺 DLNA 投屏所需网络权限 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
