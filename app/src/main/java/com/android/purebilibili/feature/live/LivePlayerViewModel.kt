@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
+import com.android.purebilibili.core.util.CrashReporter
 import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.data.repository.LiveRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -116,9 +117,11 @@ class LivePlayerViewModel : ViewModel() {
      */
     fun loadLiveStream(roomId: Long, qn: Int = 10000) {
         currentRoomId = roomId
+        CrashReporter.markLivePlaybackStage("load_stream_request")
         
         viewModelScope.launch {
             _uiState.value = LivePlayerState.Loading
+            CrashReporter.markLivePlaybackStage("load_stream_loading")
             
             // 并行加载直播流和直播间详情
             val playUrlDeferred = async { LiveRepository.getLivePlayUrlWithQuality(roomId, qn) }
@@ -252,11 +255,25 @@ class LivePlayerViewModel : ViewModel() {
                         anchorInfo = anchorInfo, // 填入解析好的数据
                         isFollowing = isFollowing
                     )
+                    CrashReporter.markLivePlaybackStage("stream_url_ready")
                 } else {
                     _uiState.value = LivePlayerState.Error("无法获取直播流地址")
+                    CrashReporter.markLivePlaybackStage("stream_url_empty")
+                    CrashReporter.reportLiveError(
+                        roomId = roomId,
+                        errorType = "play_url_empty",
+                        errorMessage = "resolved play url is null"
+                    )
                 }
             }.onFailure { e ->
                 _uiState.value = LivePlayerState.Error(e.message ?: "加载失败")
+                CrashReporter.markLivePlaybackStage("load_stream_failed")
+                CrashReporter.reportLiveError(
+                    roomId = roomId,
+                    errorType = "load_stream_failed",
+                    errorMessage = e.message ?: "load failed",
+                    exception = e
+                )
             }
 
             // 启动弹幕连接
@@ -358,11 +375,23 @@ class LivePlayerViewModel : ViewModel() {
                         currentQuality = qn,  //  [修复] 使用用户请求的 qn 值
                         qualityList = newQualityList
                     )
+                    CrashReporter.markLivePlaybackStage("quality_changed_$qn")
                 } else {
                     android.util.Log.e("LivePlayer", " changeQuality: No URL found")
+                    CrashReporter.reportLiveError(
+                        roomId = currentRoomId,
+                        errorType = "change_quality_no_url",
+                        errorMessage = "qn=$qn has no playable url"
+                    )
                 }
             }.onFailure { e ->
                 android.util.Log.e("LivePlayer", " changeQuality failed: ${e.message}")
+                CrashReporter.reportLiveError(
+                    roomId = currentRoomId,
+                    errorType = "change_quality_failed",
+                    errorMessage = e.message ?: "change quality failed",
+                    exception = e
+                )
             }
         }
     
@@ -388,6 +417,7 @@ class LivePlayerViewModel : ViewModel() {
         if (nextIndex < currentState.allPlayUrls.size) {
             val nextUrl = currentState.allPlayUrls[nextIndex]
             android.util.Log.d("LivePlayer", " Trying next CDN URL (index=$nextIndex): ${nextUrl.take(80)}...")
+            CrashReporter.markLivePlaybackStage("switch_cdn_$nextIndex")
             
             _uiState.value = currentState.copy(
                 playUrl = nextUrl,
@@ -397,6 +427,11 @@ class LivePlayerViewModel : ViewModel() {
             android.util.Log.e("LivePlayer", " No more CDN URLs to try (tried all ${currentState.allPlayUrls.size})")
             // 所有 URL 都失败了，显示错误
             _uiState.value = LivePlayerState.Error("所有 CDN 均无法连接，请稍后重试")
+            CrashReporter.reportLiveError(
+                roomId = currentRoomId,
+                errorType = "cdn_exhausted",
+                errorMessage = "all ${currentState.allPlayUrls.size} urls failed"
+            )
         }
     }
     
@@ -467,6 +502,7 @@ class LivePlayerViewModel : ViewModel() {
             val result = DanmakuRepository.startLiveDanmaku(this, roomId)
             result.onSuccess { client ->
                 danmakuClient = client
+                CrashReporter.markLivePlaybackStage("danmaku_connected")
                 
                 // 监听弹幕消息
                 danmakuCollectJob = launch(Dispatchers.Default) {
@@ -476,6 +512,12 @@ class LivePlayerViewModel : ViewModel() {
                 }
             }.onFailure { e ->
                 android.util.Log.e("LivePlayer", "🔥 Danmaku connection failed: ${e.message}")
+                CrashReporter.reportLiveError(
+                    roomId = roomId,
+                    errorType = "danmaku_connect_failed",
+                    errorMessage = e.message ?: "danmaku connect failed",
+                    exception = e
+                )
             }
         }
     }
@@ -634,5 +676,6 @@ class LivePlayerViewModel : ViewModel() {
         super.onCleared()
         danmakuCollectJob?.cancel()
         danmakuClient?.disconnect()
+        CrashReporter.markLiveSessionEnd("view_model_cleared")
     }
 }

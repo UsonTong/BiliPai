@@ -62,6 +62,9 @@ fun SplashWallpaperPickerSheet(
 
     var selectedUrl by remember { mutableStateOf<String?>(null) }
     var saveToGallery by remember { mutableStateOf(false) }
+    var showSplashAdjustmentSheet by remember { mutableStateOf(false) }
+    val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(0f)
+    val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(0f)
 
     // 初始化加载
     LaunchedEffect(Unit) {
@@ -205,6 +208,29 @@ fun SplashWallpaperPickerSheet(
                 Column(modifier = Modifier.padding(16.dp)) {
                     val isSaving = saveState is WallpaperSaveState.Loading
 
+                    if (showSplashAdjustmentSheet && selectedUrl != null) {
+                        WallpaperAdjustmentSheet(
+                            imageUri = fixWallpaperUrl(selectedUrl),
+                            initialMobileBias = initialSplashMobileBias,
+                            initialTabletBias = initialSplashTabletBias,
+                            onDismiss = { showSplashAdjustmentSheet = false },
+                            onSave = { mBias, tBias ->
+                                showSplashAdjustmentSheet = false
+                                selectedUrl?.let { url ->
+                                    viewModel.setAsSplashWallpaper(
+                                        url = url,
+                                        saveToGallery = saveToGallery,
+                                        mobileBias = mBias,
+                                        tabletBias = tBias
+                                    ) {
+                                        onDismiss()
+                                        Toast.makeText(context, "开屏壁纸设置成功", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+
                     // 保存到相册开关
                     Row(
                         modifier = Modifier
@@ -229,12 +255,7 @@ fun SplashWallpaperPickerSheet(
                     // 确认按钮
                     Button(
                         onClick = {
-                            selectedUrl?.let { url ->
-                                viewModel.setAsSplashWallpaper(url, saveToGallery) {
-                                    onDismiss()
-                                    Toast.makeText(context, "开屏壁纸设置成功", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                            showSplashAdjustmentSheet = true
                         },
                         enabled = selectedUrl != null && !isSaving,
                         modifier = Modifier

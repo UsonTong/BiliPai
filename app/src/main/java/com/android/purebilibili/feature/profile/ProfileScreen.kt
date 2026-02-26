@@ -56,7 +56,10 @@ import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.BiliGradientButton
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
+import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperLayout
+import com.android.purebilibili.core.ui.wallpaper.resolveProfileWallpaperLayout
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.util.WindowWidthSizeClass
 import com.android.purebilibili.core.ui.components.IOSGroup
 import com.android.purebilibili.core.ui.components.IOSClickableItem
 import com.android.purebilibili.core.ui.components.IOSDivider
@@ -73,7 +76,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
-import androidx.compose.ui.draw.blur
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -354,6 +356,14 @@ fun ProfileScreen(
 }
 
 // [New] Reusable Background Component
+internal fun resolveProfileTopBannerHeightDp(widthSizeClass: WindowWidthSizeClass): Float {
+    return when (widthSizeClass) {
+        WindowWidthSizeClass.Compact -> 420f
+        WindowWidthSizeClass.Medium -> 380f
+        WindowWidthSizeClass.Expanded -> 340f
+    }
+}
+
 @Composable
 private fun BoxScope.ProfileBackground(
     user: UserState,
@@ -363,40 +373,101 @@ private fun BoxScope.ProfileBackground(
     val isTablet = windowSizeClass.shouldUseSplitLayout
     val isImmersive = user.topPhoto.isNotEmpty()
     val bgAlignmentBias by viewModel.getProfileBgAlignment(isTablet).collectAsState(0f)
+    val profileWallpaperLayout = remember(windowSizeClass.widthSizeClass) {
+        resolveProfileWallpaperLayout(windowSizeClass.widthSizeClass)
+    }
 
     if (isImmersive) {
-        // 1. 底层：高斯模糊填充 (填补图片不够长的区域)
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(user.topPhoto)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(60.dp) // Android 12+ 原生模糊
-        )
-        
-        // 2. 顶层：清晰头部图 (Header Banner)
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(user.topPhoto)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias), // [New] Apply user alignment
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(320.dp) // [Modified] 增加高度以适应沉浸式 (260 -> 320)
-                .align(Alignment.TopCenter)
-        )
-        
-        // 3. 遮罩：渐变黑遮罩 (增加缓动层级)
+        when (profileWallpaperLayout) {
+            ProfileWallpaperLayout.TOP_BANNER_BLUR_BG -> {
+                // 1. 底层：高斯模糊填充 (填补图片不够长的区域)
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.topPhoto)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(60.dp)
+                )
+
+                // 2. 中层：保留模糊前提下，增加轻量清晰细节覆盖，补充更多壁纸信息
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.topPhoto)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.14f)
+                )
+
+                // 3. 顶层：清晰头部图 (Header Banner)
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.topPhoto)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass).dp)
+                        .align(Alignment.TopCenter)
+                )
+            }
+
+            ProfileWallpaperLayout.POSTER_CARD_BLUR_BG -> {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.topPhoto)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(58.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.18f))
+                )
+                Card(
+                    shape = RoundedCornerShape(28.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 14.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = if (windowSizeClass.isExpandedScreen) 72.dp else 84.dp)
+                        .fillMaxWidth(if (windowSizeClass.isExpandedScreen) 0.28f else 0.4f)
+                        .widthIn(min = 210.dp, max = 360.dp)
+                        .aspectRatio(9f / 16f)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(user.topPhoto)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // 遮罩：渐变黑遮罩 (增加缓动层级)
         val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val gradientColors = if (isDarkTheme) {
-             listOf(
+            listOf(
                 Color.Black.copy(alpha = 0.6f),
                 Color.Black.copy(alpha = 0.3f),
                 Color.Transparent,
@@ -404,15 +475,15 @@ private fun BoxScope.ProfileBackground(
                 Color.Black.copy(alpha = 0.8f)
             )
         } else {
-             listOf(
-                Color.Black.copy(alpha = 0.3f), // Lighter top
+            listOf(
+                Color.Black.copy(alpha = 0.3f),
                 Color.Black.copy(alpha = 0.1f),
                 Color.Transparent,
                 Color.Black.copy(alpha = 0.05f),
-                Color.Black.copy(alpha = 0.4f)  // Lighter bottom
+                Color.Black.copy(alpha = 0.4f)
             )
         }
-        
+
         Box(
             modifier = Modifier
                 .fillMaxSize()

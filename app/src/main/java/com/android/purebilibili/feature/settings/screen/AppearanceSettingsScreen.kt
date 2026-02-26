@@ -402,6 +402,7 @@ fun AppearanceSettingsContent(
             Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = effectiveMotionTier)) {
                 IOSGroup {
                     val isSplashEnabled by com.android.purebilibili.core.store.SettingsManager.isSplashEnabled(context).collectAsState(initial = false)
+                    val splashIconAnimationEnabled by com.android.purebilibili.core.store.SettingsManager.getSplashIconAnimationEnabled(context).collectAsState(initial = true)
                     val splashWallpaperUri by com.android.purebilibili.core.store.SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = null)
                     
                     // 开关项
@@ -412,6 +413,16 @@ fun AppearanceSettingsContent(
                         checked = isSplashEnabled,
                         onCheckedChange = { viewModel.toggleSplashEnabled(it) },
                         iconTint = com.android.purebilibili.core.theme.iOSBlue
+                    )
+
+                    Divider()
+                    IOSSwitchItem(
+                        icon = CupertinoIcons.Default.WandAndStars,
+                        title = "开屏图标动画",
+                        subtitle = "启动时播放图标飞出动画",
+                        checked = splashIconAnimationEnabled,
+                        onCheckedChange = { viewModel.toggleSplashIconAnimationEnabled(it) },
+                        iconTint = com.android.purebilibili.core.theme.iOSPink
                     )
                     
                     // 当开启时，显示选择壁纸入口

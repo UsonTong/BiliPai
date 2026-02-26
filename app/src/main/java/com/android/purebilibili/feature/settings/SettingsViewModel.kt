@@ -476,6 +476,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     // [New] Splash Screen
     fun toggleSplashEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashEnabled(context, value) } }
+    fun toggleSplashIconAnimationEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashIconAnimationEnabled(context, value) } }
 
     // [New] 触感反馈
     fun toggleHapticFeedback(value: Boolean) { viewModelScope.launch { SettingsManager.setHapticFeedbackEnabled(context, value) } }

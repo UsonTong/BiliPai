@@ -46,6 +46,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.core.util.AnalyticsHelper
+import com.android.purebilibili.core.util.CrashReporter
 import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.feature.live.components.LiveChatSection
 import com.android.purebilibili.feature.live.components.LandscapeChatOverlay
@@ -116,6 +117,15 @@ fun LivePlayerScreen(
         if (isFullscreen) toggleFullscreen()
     }
 
+    DisposableEffect(roomId) {
+        CrashReporter.setLastScreen("live_player")
+        CrashReporter.markLiveSessionStart(roomId = roomId, title = title, uname = uname)
+        CrashReporter.markLivePlaybackStage("screen_enter")
+        onDispose {
+            CrashReporter.markLiveSessionEnd("screen_dispose")
+        }
+    }
+
     // 播放器相关逻辑
     // ... (保持不变)
     val dataSourceFactory = remember(roomId) {
@@ -146,6 +156,13 @@ fun LivePlayerScreen(
         val listener = object : Player.Listener {
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Logger.e(TAG, "ExoPlayer Error: ${error.message}")
+                CrashReporter.markLivePlaybackStage("player_error")
+                CrashReporter.reportLiveError(
+                    roomId = roomId,
+                    errorType = "exo_player_error",
+                    errorMessage = error.message ?: "unknown",
+                    exception = error
+                )
                 if (error.cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
                     val cause = error.cause as androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
                     if (cause.responseCode == 403) viewModel.tryNextUrl()
@@ -153,6 +170,7 @@ fun LivePlayerScreen(
             }
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                CrashReporter.markLivePlaybackStage(if (playing) "playing" else "not_playing")
             }
         }
         exoPlayer.addListener(listener)
@@ -165,6 +183,7 @@ fun LivePlayerScreen(
     val playUrl = (uiState as? LivePlayerState.Success)?.playUrl
     LaunchedEffect(playUrl) {
         if (!playUrl.isNullOrEmpty()) {
+            CrashReporter.markLivePlaybackStage("prepare_media_source")
             try {
                 val mediaSource = if (playUrl.contains(".m3u8") || playUrl.contains("hls")) {
                     HlsMediaSource.Factory(dataSourceFactory).createMediaSource(MediaItem.fromUri(playUrl))
@@ -175,8 +194,16 @@ fun LivePlayerScreen(
                 }
                 exoPlayer.setMediaSource(mediaSource)
                 exoPlayer.prepare()
+                CrashReporter.markLivePlaybackStage("media_source_prepared")
             } catch (e: Exception) {
                 Logger.e(TAG, "Play failed", e)
+                CrashReporter.markLivePlaybackStage("prepare_media_source_failed")
+                CrashReporter.reportLiveError(
+                    roomId = roomId,
+                    errorType = "media_prepare_failed",
+                    errorMessage = e.message ?: "play failed",
+                    exception = e
+                )
             }
             // 埋点
             AnalyticsHelper.logLivePlay(roomId, title, uname)
@@ -187,8 +214,14 @@ fun LivePlayerScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
-                Lifecycle.Event.ON_RESUME -> exoPlayer.play()
+                Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                    CrashReporter.markLivePlaybackStage("lifecycle_pause")
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                    CrashReporter.markLivePlaybackStage("lifecycle_resume")
+                }
                 else -> {}
             }
         }

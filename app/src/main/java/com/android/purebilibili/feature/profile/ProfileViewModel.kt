@@ -387,7 +387,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val _splashSaveState = MutableStateFlow<WallpaperSaveState>(WallpaperSaveState.Idle)
     val splashSaveState = _splashSaveState.asStateFlow()
 
-    fun setAsSplashWallpaper(url: String, saveToGallery: Boolean = false, onComplete: () -> Unit = {}) {
+    fun getSplashAlignment(isTablet: Boolean) = SettingsManager.getSplashAlignment(getApplication(), isTablet)
+
+    fun setAsSplashWallpaper(
+        url: String,
+        saveToGallery: Boolean = false,
+        mobileBias: Float? = null,
+        tabletBias: Float? = null,
+        onComplete: () -> Unit = {}
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             _splashSaveState.value = WallpaperSaveState.Loading
             try {
@@ -419,6 +427,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     val savedUri = Uri.fromFile(destFile).toString()
                     SettingsManager.setSplashWallpaperUri(context, savedUri)
                     SettingsManager.setSplashEnabled(context, true)
+                    mobileBias?.let { SettingsManager.setSplashAlignment(context, isTablet = false, bias = it) }
+                    tabletBias?.let { SettingsManager.setSplashAlignment(context, isTablet = true, bias = it) }
 
                     // 3. Save to Gallery if requested
                     if (saveToGallery) {

@@ -23,7 +23,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -34,8 +36,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.ContentScale
 import androidx.media3.ui.PlayerView
@@ -44,6 +46,9 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.theme.PureBiliBiliTheme
 import com.android.purebilibili.core.ui.SharedTransitionProvider
+import com.android.purebilibili.core.ui.wallpaper.SplashWallpaperLayout
+import com.android.purebilibili.core.ui.wallpaper.resolveSplashWallpaperLayout
+import com.android.purebilibili.core.util.WindowWidthSizeClass
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.feature.plugin.EyeProtectionOverlay
 import com.android.purebilibili.feature.settings.AppUpdateAutoCheckGate
@@ -160,15 +165,23 @@ internal fun resolveLaunchIconResId(context: Context, launchIntent: android.cont
 
 internal fun shouldShowCustomSplashOverlay(
     customSplashEnabled: Boolean,
-    splashUri: String,
-    splashFlyoutEnabled: Boolean
+    splashUri: String
 ): Boolean {
-    if (splashFlyoutEnabled) return false
+    // Flyout animation and custom splash wallpaper can coexist:
+    // system splash flyout exits first, then custom wallpaper overlay fades out.
     return customSplashEnabled && splashUri.isNotEmpty()
 }
 
-internal fun shouldReadCustomSplashPreferences(splashFlyoutEnabled: Boolean): Boolean {
-    return !splashFlyoutEnabled
+internal fun shouldReadCustomSplashPreferences(): Boolean {
+    return true
+}
+
+internal fun resolveSplashWallpaperAlignmentBias(
+    isTabletLayout: Boolean,
+    mobileBias: Float,
+    tabletBias: Float
+): Float {
+    return if (isTabletLayout) tabletBias else mobileBias
 }
 
 internal fun shouldStartLocalProxyOnAppLaunch(): Boolean = false
@@ -176,8 +189,10 @@ internal fun shouldStartLocalProxyOnAppLaunch(): Boolean = false
 internal fun shouldEnableSplashFlyoutAnimation(
     sdkInt: Int,
     hasCompletedOnboarding: Boolean,
-    hasAcceptedReleaseDisclaimer: Boolean
+    hasAcceptedReleaseDisclaimer: Boolean,
+    splashIconAnimationEnabled: Boolean
 ): Boolean {
+    if (!splashIconAnimationEnabled) return false
     if (sdkInt < Build.VERSION_CODES.S) return false
     return hasCompletedOnboarding && hasAcceptedReleaseDisclaimer
 }
@@ -194,6 +209,32 @@ internal fun splashExitTranslateYDp(): Float = 220f
 internal fun splashExitScaleEnd(): Float = 1.12f
 internal fun splashExitBlurRadiusEnd(): Float = 32f
 internal fun splashMaxKeepOnScreenMs(): Long = 1000L
+internal fun customSplashHoldDurationMs(): Long = 1900L
+internal fun customSplashFadeDurationMs(): Int = 1450
+
+internal fun customSplashShouldRender(
+    showSplash: Boolean,
+    overlayAlpha: Float
+): Boolean = showSplash || overlayAlpha > 0.01f
+
+internal fun customSplashFadeProgress(overlayAlpha: Float): Float {
+    return (1f - overlayAlpha).coerceIn(0f, 1f)
+}
+
+internal fun customSplashOverlayScale(fadeProgress: Float): Float {
+    val normalized = fadeProgress.coerceIn(0f, 1f)
+    return 1f + (0.024f * normalized.pow(1.08f))
+}
+
+internal fun customSplashOverlayScrimAlpha(fadeProgress: Float): Float {
+    val normalized = fadeProgress.coerceIn(0f, 1f)
+    return (0.14f * normalized.pow(1.2f)).coerceIn(0f, 0.16f)
+}
+
+internal fun customSplashExtraBlurDp(fadeProgress: Float): Float {
+    val normalized = fadeProgress.coerceIn(0f, 1f)
+    return (14f * normalized.pow(1.1f)).coerceAtLeast(0f)
+}
 
 internal fun splashExitTravelDistancePx(
     splashHeightPx: Int,
@@ -284,7 +325,8 @@ class MainActivity : ComponentActivity() {
         val splashFlyoutEnabled = shouldEnableSplashFlyoutAnimation(
             sdkInt = Build.VERSION.SDK_INT,
             hasCompletedOnboarding = welcomePrefs.getBoolean(KEY_FIRST_LAUNCH, false),
-            hasAcceptedReleaseDisclaimer = welcomePrefs.getBoolean(RELEASE_DISCLAIMER_ACK_KEY, false)
+            hasAcceptedReleaseDisclaimer = welcomePrefs.getBoolean(RELEASE_DISCLAIMER_ACK_KEY, false),
+            splashIconAnimationEnabled = SettingsManager.isSplashIconAnimationEnabledSync(this)
         )
         val splashFlyoutIconResId = resolveLaunchIconResId(this, intent)
         splashFlyoutEnabledAtCreate = splashFlyoutEnabled
@@ -749,26 +791,22 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     // [New] Custom Splash Wallpaper Overlay
-                    val readCustomSplashPrefs = remember(splashFlyoutEnabled) {
-                        shouldReadCustomSplashPreferences(splashFlyoutEnabled)
+                    val readCustomSplashPrefs = remember { shouldReadCustomSplashPreferences() }
+                    val splashUri = remember(readCustomSplashPrefs) { SettingsManager.getSplashWallpaperUriSync(context) }
+                    val splashAlignmentBias = remember(readCustomSplashPrefs, windowSizeClass.widthSizeClass) {
+                        val mobileBias = SettingsManager.getSplashAlignmentSync(context, isTablet = false)
+                        val tabletBias = SettingsManager.getSplashAlignmentSync(context, isTablet = true)
+                        resolveSplashWallpaperAlignmentBias(
+                            isTabletLayout = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact,
+                            mobileBias = mobileBias,
+                            tabletBias = tabletBias
+                        )
                     }
-                    val splashUri = remember(readCustomSplashPrefs) {
-                        if (readCustomSplashPrefs) {
-                            SettingsManager.getSplashWallpaperUriSync(context)
-                        } else {
-                            ""
-                        }
-                    }
-                    val showCustomSplashInitially = remember(readCustomSplashPrefs, splashUri) {
-                        if (!readCustomSplashPrefs) {
-                            false
-                        } else {
-                            shouldShowCustomSplashOverlay(
-                                customSplashEnabled = SettingsManager.isSplashEnabledSync(context),
-                                splashUri = splashUri,
-                                splashFlyoutEnabled = splashFlyoutEnabled
-                            )
-                        }
+                    val showCustomSplashInitially = remember(splashUri) {
+                        shouldShowCustomSplashOverlay(
+                            customSplashEnabled = SettingsManager.isSplashEnabledSync(context),
+                            splashUri = splashUri
+                        )
                     }
                     var showSplash by remember { mutableStateOf(showCustomSplashInitially) }
                     // [Optimization] If we delayed enough in splash screen, we might want to skip custom splash or show it briefly?
@@ -779,29 +817,119 @@ class MainActivity : ComponentActivity() {
                     // User request: "当用户看见遮罩的时候，异步加载首页视频". Mask usually means System Splash (Icon) OR Custom Wallpaper.
                     // Implementing delay on System Splash ensures data is likely ready when ANY content shows.
 
-                    LaunchedEffect(Unit) {
-                        if (showSplash) {
-                            kotlinx.coroutines.delay(2000) // Display seconds
-                            showSplash = false 
+                    LaunchedEffect(showCustomSplashInitially) {
+                        if (showCustomSplashInitially) {
+                            showSplash = true
+                            kotlinx.coroutines.delay(customSplashHoldDurationMs())
+                            showSplash = false
                         } else {
                             showSplash = false
                         }
                     }
-                    
-                    AnimatedVisibility(
-                        visible = showSplash && splashUri.isNotEmpty(),
-                        exit = fadeOut(animationSpec = tween(1000)),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                            AsyncImage(
-                                model = splashUri,
-                                contentDescription = "Splash Wallpaper",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                    val splashOverlayAlpha by animateFloatAsState(
+                        targetValue = if (showSplash) 1f else 0f,
+                        animationSpec = tween(
+                            durationMillis = customSplashFadeDurationMs(),
+                            easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+                        ),
+                        label = "customSplashOverlayAlpha"
+                    )
+                    val splashFadeProgress = customSplashFadeProgress(splashOverlayAlpha)
+                    val splashOverlayScale = customSplashOverlayScale(splashFadeProgress)
+                    val splashExtraBlur = customSplashExtraBlurDp(splashFadeProgress)
+                    val splashTailScrimAlpha = customSplashOverlayScrimAlpha(splashFadeProgress)
+
+                    if (customSplashShouldRender(showSplash, splashOverlayAlpha) && splashUri.isNotEmpty()) {
+                        val splashWallpaperLayout = remember(windowSizeClass.widthSizeClass) {
+                            resolveSplashWallpaperLayout(windowSizeClass.widthSizeClass)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(alpha = splashOverlayAlpha)
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            when (splashWallpaperLayout) {
+                                SplashWallpaperLayout.FULL_CROP -> {
+                                    AsyncImage(
+                                        model = splashUri,
+                                        contentDescription = "Splash Wallpaper",
+                                        alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(
+                                                scaleX = splashOverlayScale,
+                                                scaleY = splashOverlayScale
+                                            )
+                                            .blur(splashExtraBlur.dp)
+                                    )
+                                }
+
+                                SplashWallpaperLayout.POSTER_CARD_BLUR_BG -> {
+                                    AsyncImage(
+                                        model = splashUri,
+                                        contentDescription = null,
+                                        alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer(
+                                                scaleX = splashOverlayScale,
+                                                scaleY = splashOverlayScale
+                                            )
+                                            .blur((56f + splashExtraBlur).dp)
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                Color.Black.copy(
+                                                    alpha = (0.16f + splashTailScrimAlpha * 0.5f).coerceAtMost(0.26f)
+                                                )
+                                            )
+                                    )
+                                    Card(
+                                        shape = RoundedCornerShape(26.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+                                        modifier = Modifier
+                                            .align(Alignment.Center)
+                                            .graphicsLayer(
+                                                scaleX = 1f + (splashFadeProgress * 0.015f),
+                                                scaleY = 1f + (splashFadeProgress * 0.015f)
+                                            )
+                                            .fillMaxWidth(
+                                                if (windowSizeClass.widthSizeClass == com.android.purebilibili.core.util.WindowWidthSizeClass.Expanded) {
+                                                    0.34f
+                                                } else {
+                                                    0.48f
+                                                }
+                                            )
+                                            .widthIn(min = 190.dp, max = 340.dp)
+                                            .aspectRatio(9f / 16f)
+                                    ) {
+                                        AsyncImage(
+                                            model = splashUri,
+                                            contentDescription = "Splash Wallpaper Poster",
+                                            alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .graphicsLayer(
+                                                    scaleX = splashOverlayScale,
+                                                    scaleY = splashOverlayScale
+                                                )
+                                                .blur((splashExtraBlur * 0.35f).dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = splashTailScrimAlpha))
                             )
-                            // Optional: Skip button or Branding?
-                            // For now, simple clear image.
                         }
                     }
 

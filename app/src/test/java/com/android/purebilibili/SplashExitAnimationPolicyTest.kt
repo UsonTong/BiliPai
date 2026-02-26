@@ -19,12 +19,11 @@ class SplashExitAnimationPolicyTest {
     }
 
     @Test
-    fun disablesCustomSplashOverlayWhenFlyoutEnabled() {
-        assertFalse(
+    fun allowsCustomSplashOverlayWhenFlyoutEnabledAndDataPresent() {
+        assertTrue(
             shouldShowCustomSplashOverlay(
                 customSplashEnabled = true,
-                splashUri = "content://splash.jpg",
-                splashFlyoutEnabled = true
+                splashUri = "content://splash.jpg"
             )
         )
     }
@@ -34,8 +33,7 @@ class SplashExitAnimationPolicyTest {
         assertTrue(
             shouldShowCustomSplashOverlay(
                 customSplashEnabled = true,
-                splashUri = "content://splash.jpg",
-                splashFlyoutEnabled = false
+                splashUri = "content://splash.jpg"
             )
         )
     }

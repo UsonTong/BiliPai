@@ -238,8 +238,11 @@ fun OfficialWallpaperSheet(
                         
                         // [New] Adjustment Sheet Logic
                         var showAdjustmentSheet by remember { mutableStateOf(false) }
+                        var showSplashAdjustmentSheet by remember { mutableStateOf(false) }
                         val initialMobileBias by viewModel.getProfileBgAlignment(false).collectAsState(0f)
                         val initialTabletBias by viewModel.getProfileBgAlignment(true).collectAsState(0f)
+                        val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(0f)
+                        val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(0f)
                         
                         // [New] Adjustment Sheet
                          if (showAdjustmentSheet && selectedUrl != null) {
@@ -260,6 +263,29 @@ fun OfficialWallpaperSheet(
                                  }
                              )
                          }
+
+                        if (showSplashAdjustmentSheet && selectedUrl != null) {
+                            WallpaperAdjustmentSheet(
+                                imageUri = fixWallpaperUrl(selectedUrl),
+                                initialMobileBias = initialSplashMobileBias,
+                                initialTabletBias = initialSplashTabletBias,
+                                onDismiss = { showSplashAdjustmentSheet = false },
+                                onSave = { mBias, tBias ->
+                                    showSplashAdjustmentSheet = false
+                                    selectedUrl?.let { url ->
+                                        viewModel.setAsSplashWallpaper(
+                                            url = url,
+                                            saveToGallery = saveToGallery,
+                                            mobileBias = mBias,
+                                            tabletBias = tBias
+                                        ) {
+                                            onDismiss()
+                                            Toast.makeText(context, "开屏壁纸设置成功", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                         
                         Button(
                             onClick = { 
@@ -288,12 +314,7 @@ fun OfficialWallpaperSheet(
                         // Set as Splash Screen
                         Button(
                             onClick = { 
-                                selectedUrl?.let { url ->
-                                    viewModel.setAsSplashWallpaper(url, saveToGallery) {
-                                        onDismiss()
-                                        Toast.makeText(context, "开屏壁纸设置成功", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                                showSplashAdjustmentSheet = true
                             },
                             enabled = selectedUrl != null && !isSaving,
                             modifier = Modifier

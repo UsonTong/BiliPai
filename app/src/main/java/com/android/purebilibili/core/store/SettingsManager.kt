@@ -158,6 +158,15 @@ object SettingsManager {
     //  [新增] 开屏壁纸
     private val KEY_SPLASH_WALLPAPER_URI = stringPreferencesKey("splash_wallpaper_uri")
     private val KEY_SPLASH_ENABLED = booleanPreferencesKey("splash_enabled")
+    private val KEY_SPLASH_ICON_ANIMATION_ENABLED = booleanPreferencesKey("splash_icon_animation_enabled")
+    private val KEY_SPLASH_ALIGNMENT_MOBILE = floatPreferencesKey("splash_alignment_mobile")
+    private val KEY_SPLASH_ALIGNMENT_TABLET = floatPreferencesKey("splash_alignment_tablet")
+    private const val SPLASH_PREFS = "splash_prefs"
+    private const val SPLASH_PREFS_KEY_WALLPAPER_URI = "wallpaper_uri"
+    private const val SPLASH_PREFS_KEY_ENABLED = "enabled"
+    private const val SPLASH_PREFS_KEY_ICON_ANIMATION_ENABLED = "icon_animation_enabled"
+    private const val SPLASH_PREFS_KEY_ALIGNMENT_MOBILE = "alignment_mobile"
+    private const val SPLASH_PREFS_KEY_ALIGNMENT_TABLET = "alignment_tablet"
 
     //  [New] 解锁高画质 (Bypass client-side checks) - REVERTED
     // private val KEY_UNLOCK_HIGH_QUALITY = booleanPreferencesKey("unlock_high_quality")
@@ -585,30 +594,76 @@ object SettingsManager {
             preferences[KEY_SPLASH_WALLPAPER_URI] = uri 
         }
         // 同步到 SharedPreferences
-        context.getSharedPreferences("splash_prefs", Context.MODE_PRIVATE)
-            .edit().putString("wallpaper_uri", uri).apply()
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit().putString(SPLASH_PREFS_KEY_WALLPAPER_URI, uri).apply()
     }
     
     fun getSplashWallpaperUriSync(context: Context): String {
-        return context.getSharedPreferences("splash_prefs", Context.MODE_PRIVATE)
-            .getString("wallpaper_uri", "") ?: ""
+        return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getString(SPLASH_PREFS_KEY_WALLPAPER_URI, "") ?: ""
     }
     
     fun isSplashEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SPLASH_ENABLED] ?: false } // 默认关闭
+
+    fun getSplashIconAnimationEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SPLASH_ICON_ANIMATION_ENABLED] ?: true }
 
     suspend fun setSplashEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_SPLASH_ENABLED] = value 
         }
         // 同步到 SharedPreferences
-        context.getSharedPreferences("splash_prefs", Context.MODE_PRIVATE)
-            .edit().putBoolean("enabled", value).apply()
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(SPLASH_PREFS_KEY_ENABLED, value).apply()
     }
     
     fun isSplashEnabledSync(context: Context): Boolean {
-        return context.getSharedPreferences("splash_prefs", Context.MODE_PRIVATE)
-            .getBoolean("enabled", false)
+        return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(SPLASH_PREFS_KEY_ENABLED, false)
+    }
+
+    suspend fun setSplashIconAnimationEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SPLASH_ICON_ANIMATION_ENABLED] = value
+        }
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(SPLASH_PREFS_KEY_ICON_ANIMATION_ENABLED, value)
+            .apply()
+    }
+
+    fun isSplashIconAnimationEnabledSync(context: Context): Boolean {
+        return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(SPLASH_PREFS_KEY_ICON_ANIMATION_ENABLED, true)
+    }
+
+    fun getSplashAlignment(context: Context, isTablet: Boolean): Flow<Float> = context.settingsDataStore.data
+        .map { preferences ->
+            if (isTablet) {
+                preferences[KEY_SPLASH_ALIGNMENT_TABLET] ?: 0f
+            } else {
+                preferences[KEY_SPLASH_ALIGNMENT_MOBILE] ?: 0f
+            }
+        }
+
+    suspend fun setSplashAlignment(context: Context, isTablet: Boolean, bias: Float) {
+        val coerced = bias.coerceIn(-1f, 1f)
+        context.settingsDataStore.edit { preferences ->
+            val key = if (isTablet) KEY_SPLASH_ALIGNMENT_TABLET else KEY_SPLASH_ALIGNMENT_MOBILE
+            preferences[key] = coerced
+        }
+        val prefsKey = if (isTablet) SPLASH_PREFS_KEY_ALIGNMENT_TABLET else SPLASH_PREFS_KEY_ALIGNMENT_MOBILE
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putFloat(prefsKey, coerced)
+            .apply()
+    }
+
+    fun getSplashAlignmentSync(context: Context, isTablet: Boolean): Float {
+        val prefsKey = if (isTablet) SPLASH_PREFS_KEY_ALIGNMENT_TABLET else SPLASH_PREFS_KEY_ALIGNMENT_MOBILE
+        return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getFloat(prefsKey, 0f)
     }
 
 
