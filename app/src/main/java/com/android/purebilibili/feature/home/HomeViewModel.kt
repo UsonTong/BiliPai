@@ -33,7 +33,52 @@ internal fun trimIncrementalRefreshVideosToEvenCount(videos: List<VideoItem>): L
     return videos.dropLast(1)
 }
 
+internal data class HomeRefreshUndoSnapshot(
+    val videos: List<VideoItem>,
+    val pageIndex: Int,
+    val hasMore: Boolean
+)
+
+internal fun buildHomeRefreshUndoSnapshot(
+    refreshingCategory: HomeCategory,
+    recommendCategoryState: CategoryContent?,
+    fallbackVideos: List<VideoItem>,
+    maxItems: Int = 20
+): HomeRefreshUndoSnapshot? {
+    if (refreshingCategory != HomeCategory.RECOMMEND) return null
+    val sourceVideos = recommendCategoryState?.videos ?: fallbackVideos
+    if (sourceVideos.isEmpty()) return null
+    val sourcePageIndex = recommendCategoryState?.pageIndex ?: 1
+    val sourceHasMore = recommendCategoryState?.hasMore ?: true
+    return HomeRefreshUndoSnapshot(
+        videos = sourceVideos.take(maxItems.coerceAtLeast(1)),
+        pageIndex = sourcePageIndex,
+        hasMore = sourceHasMore
+    )
+}
+
+internal fun shouldExposeHomeRefreshUndo(
+    refreshingCategory: HomeCategory,
+    snapshot: HomeRefreshUndoSnapshot?
+): Boolean {
+    return refreshingCategory == HomeCategory.RECOMMEND && snapshot != null
+}
+
+internal fun applyHomeRefreshUndoSnapshot(
+    oldState: CategoryContent,
+    snapshot: HomeRefreshUndoSnapshot
+): CategoryContent {
+    return oldState.copy(
+        videos = snapshot.videos,
+        pageIndex = snapshot.pageIndex,
+        hasMore = snapshot.hasMore,
+        isLoading = false,
+        error = null
+    )
+}
+
 private const val HISTORY_SAMPLE_CACHE_TTL_MS = 10 * 60 * 1000L
+private const val HOME_REFRESH_UNDO_TIMEOUT_MS = 5_000L
 
 private fun TodayWatchPluginMode.toUiMode(): TodayWatchMode {
     return when (this) {
@@ -85,7 +130,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     //  [新增] 会话级去重集合 (避免重复推荐)
     private val sessionSeenBvids = mutableSetOf<String>()
     //  [新增] 刷新撤销快照
-    private var _undoSnapshot: List<VideoItem>? = null
+    private var _undoSnapshot: HomeRefreshUndoSnapshot? = null
+    private var undoDismissJob: Job? = null
 
     // [Feature] Blocked UPs
     private val blockedUpRepository = com.android.purebilibili.data.repository.BlockedUpRepository(application)
@@ -656,14 +702,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isRefreshing.value = true
             val refreshingCategory = _uiState.value.currentCategory
+            _undoSnapshot = buildHomeRefreshUndoSnapshot(
+                refreshingCategory = refreshingCategory,
+                recommendCategoryState = _uiState.value.categoryStates[HomeCategory.RECOMMEND],
+                fallbackVideos = _uiState.value.videos
+            )
             //  [新增] 刷新前保存推荐视频快照（用于撤销）
-            if (refreshingCategory == HomeCategory.RECOMMEND) {
-                val currentVideos = _uiState.value.categoryStates[HomeCategory.RECOMMEND]?.videos
-                    ?: _uiState.value.videos
-                if (currentVideos.isNotEmpty()) {
-                    _undoSnapshot = currentVideos.take(20) // 保存前 20 条足够恢复首屏
-                }
-            }
             val previousRecommendTopBvid = if (refreshingCategory == HomeCategory.RECOMMEND) {
                 (_uiState.value.categoryStates[HomeCategory.RECOMMEND]?.videos
                     ?: _uiState.value.videos).firstOrNull()?.bvid?.takeIf { it.isNotBlank() }
@@ -685,6 +729,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 oldAnchor
             }
+            val undoAvailable = shouldExposeHomeRefreshUndo(
+                refreshingCategory = refreshingCategory,
+                snapshot = _undoSnapshot
+            )
             _uiState.value = _uiState.value.copy(
                 refreshKey = System.currentTimeMillis(),
                 refreshMessage = refreshMessage,
@@ -693,8 +741,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 recommendOldContentAnchorBvid = newAnchor,
                 recommendOldContentStartIndex = newBoundary,
                 //  刷新成功且是推荐分类时标记可撤销
-                undoAvailable = refreshingCategory == HomeCategory.RECOMMEND && _undoSnapshot != null
+                undoAvailable = undoAvailable
             )
+            if (undoAvailable) {
+                scheduleUndoDismiss()
+            } else {
+                cancelUndoDismiss()
+            }
             _isRefreshing.value = false
         }
     }
@@ -709,8 +762,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     //  [新增] 撤销刷新：恢复刷新前的推荐视频列表
     fun undoRefresh() {
         val snapshot = _undoSnapshot ?: return
+        cancelUndoDismiss()
         updateCategoryState(HomeCategory.RECOMMEND) { oldState ->
-            oldState.copy(videos = snapshot)
+            applyHomeRefreshUndoSnapshot(oldState = oldState, snapshot = snapshot)
         }
         _undoSnapshot = null
         _uiState.value = _uiState.value.copy(
@@ -718,15 +772,29 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             recommendOldContentAnchorBvid = null,
             recommendOldContentStartIndex = null
         )
-        Logger.d("HomeVM", "↩️ Undo refresh: restored ${snapshot.size} videos")
+        Logger.d("HomeVM", "↩️ Undo refresh: restored ${snapshot.videos.size} videos")
     }
 
     //  [新增] 取消撤销（超时或用户主动忽略）
     fun dismissUndo() {
+        cancelUndoDismiss()
         _undoSnapshot = null
         if (_uiState.value.undoAvailable) {
             _uiState.value = _uiState.value.copy(undoAvailable = false)
         }
+    }
+
+    private fun scheduleUndoDismiss() {
+        cancelUndoDismiss()
+        undoDismissJob = viewModelScope.launch {
+            delay(HOME_REFRESH_UNDO_TIMEOUT_MS)
+            dismissUndo()
+        }
+    }
+
+    private fun cancelUndoDismiss() {
+        undoDismissJob?.cancel()
+        undoDismissJob = null
     }
 
     fun loadMore() {

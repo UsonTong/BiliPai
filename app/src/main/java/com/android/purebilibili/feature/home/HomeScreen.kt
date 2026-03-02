@@ -1228,12 +1228,6 @@ fun HomeScreen(
 
         //  [新增] 刷新撤销悬浮按钮（右下角，5秒后自动消失）
         val undoVisible = state.undoAvailable && state.currentCategory == HomeCategory.RECOMMEND
-        LaunchedEffect(undoVisible) {
-            if (undoVisible) {
-                kotlinx.coroutines.delay(5000)
-                viewModel.dismissUndo()
-            }
-        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
