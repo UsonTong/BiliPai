@@ -31,12 +31,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
+import com.android.purebilibili.core.store.BottomProgressBehavior
 import com.android.purebilibili.core.store.PlaybackCompletionBehavior
 import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSOrange
 import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
+import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
 import kotlinx.coroutines.launch
 import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
@@ -334,6 +337,9 @@ fun PlaybackSettingsContent(
             item {
                 Box(modifier = Modifier.staggeredEntrance(5, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
+                    val pipNoDanmakuEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getPipNoDanmakuEnabled(context)
+                        .collectAsState(initial = false)
                     val miniPlayerOptions = listOf(
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF, "默认"),
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY, "应用内小窗"),
@@ -417,6 +423,27 @@ fun PlaybackSettingsContent(
                                 )
                             }
                         }
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.TextBubble,
+                            title = "画中画不加载弹幕",
+                            subtitle = if (miniPlayerMode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
+                                if (pipNoDanmakuEnabled) "已开启：系统画中画中不显示弹幕" else "关闭后：系统画中画中也会显示弹幕"
+                            } else {
+                                "仅系统画中画模式下生效"
+                            },
+                            checked = pipNoDanmakuEnabled,
+                            onCheckedChange = {
+                                if (miniPlayerMode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
+                                    return@IOSSwitchItem
+                                }
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setPipNoDanmakuEnabled(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSPurple
+                        )
                     }
                 }
             }
@@ -525,6 +552,12 @@ fun PlaybackSettingsContent(
                         .getSwipeHidePlayerEnabled(context).collectAsState(initial = false)
                     val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+                    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getCenterSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+                    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
+                    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
                     val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
                     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
@@ -536,6 +569,16 @@ fun PlaybackSettingsContent(
                     val playbackCompletionBehavior by com.android.purebilibili.core.store.SettingsManager
                         .getPlaybackCompletionBehavior(context)
                         .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
+                    val subtitleFeatureEnabled = isSubtitleFeatureEnabledForUser()
+                    val subtitleAutoPreference by com.android.purebilibili.core.store.SettingsManager
+                        .getSubtitleAutoPreference(context)
+                        .collectAsState(initial = SubtitleAutoPreference.OFF)
+                    val subtitlePreferenceDescription = when (subtitleAutoPreference) {
+                        SubtitleAutoPreference.OFF -> "默认关闭字幕"
+                        SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
+                        SubtitleAutoPreference.WITHOUT_AI -> "仅自动启用非 AI 字幕"
+                        SubtitleAutoPreference.AUTO -> "静音时可自动启用 AI 字幕"
+                    }
                     
                     IOSGroup {
                         // --- Click to Play ---
@@ -602,7 +645,34 @@ fun PlaybackSettingsContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Divider()
+                        if (subtitleFeatureEnabled) {
+                            Divider()
+                            IOSSlidingSegmentedSetting(
+                                title = "自动启用字幕：${
+                                    when (subtitleAutoPreference) {
+                                        SubtitleAutoPreference.OFF -> "关闭"
+                                        SubtitleAutoPreference.ON -> "开启"
+                                        SubtitleAutoPreference.WITHOUT_AI -> "无 AI"
+                                        SubtitleAutoPreference.AUTO -> "自动"
+                                    }
+                                }",
+                                subtitle = subtitlePreferenceDescription,
+                                options = listOf(
+                                    PlaybackSegmentOption(SubtitleAutoPreference.OFF, "关闭"),
+                                    PlaybackSegmentOption(SubtitleAutoPreference.ON, "开启"),
+                                    PlaybackSegmentOption(SubtitleAutoPreference.WITHOUT_AI, "无 AI"),
+                                    PlaybackSegmentOption(SubtitleAutoPreference.AUTO, "自动")
+                                ),
+                                selectedValue = subtitleAutoPreference,
+                                onSelectionChange = { preference ->
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setSubtitleAutoPreference(context, preference)
+                                    }
+                                }
+                            )
+                            Divider()
+                        }
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.HandThumbsup,
                             title = "双击点赞",
@@ -635,9 +705,9 @@ fun PlaybackSettingsContent(
                             icon = CupertinoIcons.Default.ArrowLeftArrowRight,
                             title = "竖屏上滑进入全屏",
                             subtitle = if (portraitSwipeToFullscreenEnabled) {
-                                "开启后上滑可直接进入横屏全屏"
+                                "开启后在竖屏下向上滑动可快速进入全屏"
                             } else {
-                                "关闭后上滑不再强制进入全屏"
+                                "关闭后竖屏上滑不再触发进入全屏"
                             },
                             checked = portraitSwipeToFullscreenEnabled,
                             onCheckedChange = {
@@ -647,6 +717,63 @@ fun PlaybackSettingsContent(
                                 }
                             },
                             iconTint = iOSTeal
+                        )
+
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.HandDraw,
+                            title = "中部滑动切换全屏",
+                            subtitle = if (centerSwipeToFullscreenEnabled) {
+                                "开启后：播放器中部纵向滑动可切换进入/退出全屏（受手势反向影响）"
+                            } else {
+                                "关闭后：中部纵向滑动不再触发全屏切换"
+                            },
+                            checked = centerSwipeToFullscreenEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCenterSwipeToFullscreenEnabled(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSPurple
+                        )
+
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.SpeakerWave2,
+                            title = "左右侧滑动调节亮度/音量",
+                            subtitle = if (slideVolumeBrightnessEnabled) {
+                                "左侧上下滑调亮度，右侧上下滑调音量"
+                            } else {
+                                "关闭后仅保留中部全屏手势和左右拖动进度"
+                            },
+                            checked = slideVolumeBrightnessEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setSlideVolumeBrightnessEnabled(context, it)
+                                }
+                            },
+                            iconTint = iOSTeal
+                        )
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.SunMax,
+                            title = "调节系统亮度",
+                            subtitle = if (slideVolumeBrightnessEnabled) {
+                                "开启后亮度手势会尝试同步系统亮度（需系统允许）"
+                            } else {
+                                "依赖“左右侧滑动调节亮度/音量”开关"
+                            },
+                            checked = setSystemBrightnessEnabled,
+                            onCheckedChange = {
+                                if (!slideVolumeBrightnessEnabled) return@IOSSwitchItem
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setSetSystemBrightnessEnabled(context, it)
+                                }
+                            },
+                            iconTint = iOSOrange
                         )
 
                         Divider()
@@ -721,12 +848,30 @@ fun PlaybackSettingsContent(
                             .getShowFullscreenScreenshotButton(context).collectAsState(initial = true)
                         val showFullscreenBatteryLevel by com.android.purebilibili.core.store.SettingsManager
                             .getShowFullscreenBatteryLevel(context).collectAsState(initial = true)
+                        val showFullscreenActionItems by com.android.purebilibili.core.store.SettingsManager
+                            .getShowFullscreenActionItems(context).collectAsState(initial = true)
+                        val showOnlineCount by com.android.purebilibili.core.store.SettingsManager
+                            .getShowOnlineCount(context).collectAsState(initial = false)
+                        val bottomProgressBehavior by com.android.purebilibili.core.store.SettingsManager
+                            .getBottomProgressBehavior(context)
+                            .collectAsState(initial = BottomProgressBehavior.ALWAYS_SHOW)
+                        val isLargeScreenDevice = context.resources.configuration.smallestScreenWidthDp >= 600
                         val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
                             .getHorizontalAdaptationEnabled(context)
-                            .collectAsState(initial = context.resources.configuration.smallestScreenWidthDp >= 600)
+                            .collectAsState(initial = isLargeScreenDevice)
                         val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
                             .getFullscreenMode(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
+                        val fullscreenModeSubtitle = if (autoRotateEnabled) {
+                            "${fullscreenMode.description}；已开启自动横竖屏，日常会跟随设备方向自动进退全屏"
+                        } else {
+                            fullscreenMode.description
+                        }
+                        val horizontalAdaptationSubtitle = if (isLargeScreenDevice) {
+                            "启用横屏布局和横屏逻辑（平板/折叠屏建议开启）"
+                        } else {
+                            "主要用于平板/折叠屏，当前设备触发场景可能较少"
+                        }
 
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ArrowTriangle2CirclepathCamera,  // 旋转图标
@@ -745,7 +890,7 @@ fun PlaybackSettingsContent(
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ArrowLeftArrowRight,
                             title = "横屏适配",
-                            subtitle = "启用横屏布局和横屏逻辑（平板建议开启）",
+                            subtitle = horizontalAdaptationSubtitle,
                             checked = horizontalAdaptationEnabled,
                             onCheckedChange = {
                                 scope.launch {
@@ -758,15 +903,8 @@ fun PlaybackSettingsContent(
                         Divider()
                         IOSSlidingSegmentedSetting(
                             title = "默认全屏方向：${fullscreenMode.label}",
-                            subtitle = fullscreenMode.description,
-                            options = listOf(
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.AUTO, "自动"),
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.NONE, "不改"),
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.VERTICAL, "竖屏"),
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.HORIZONTAL, "横屏"),
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.RATIO, "比例"),
-                                PlaybackSegmentOption(com.android.purebilibili.core.store.FullscreenMode.GRAVITY, "重力")
-                            ),
+                            subtitle = fullscreenModeSubtitle,
+                            options = resolveFullscreenModeSegmentOptions(),
                             selectedValue = fullscreenMode,
                             onSelectionChange = { mode ->
                                 scope.launch {
@@ -858,6 +996,60 @@ fun PlaybackSettingsContent(
                                 }
                             },
                             iconTint = iOSGreen
+                        )
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.HandThumbsup,
+                            title = "全屏显示互动按钮",
+                            subtitle = if (showFullscreenActionItems) {
+                                "横屏顶部显示点赞/投币/分享等快捷操作"
+                            } else {
+                                "关闭后隐藏横屏顶部互动按钮，保留返回与更多入口"
+                            },
+                            checked = showFullscreenActionItems,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setShowFullscreenActionItems(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSPink
+                        )
+                        Divider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.ChartBar,
+                            title = "观看人数",
+                            subtitle = if (showOnlineCount) {
+                                "显示“xx人正在看”信息"
+                            } else {
+                                "关闭后隐藏观看人数展示"
+                            },
+                            checked = showOnlineCount,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setShowOnlineCount(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        Divider()
+                        IOSSlidingSegmentedSetting(
+                            title = "底部进度条展示：${bottomProgressBehavior.label}",
+                            subtitle = bottomProgressBehavior.description,
+                            options = listOf(
+                                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_SHOW, "始终展示"),
+                                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_HIDE, "始终隐藏"),
+                                PlaybackSegmentOption(BottomProgressBehavior.ONLY_SHOW_FULLSCREEN, "仅全屏展示"),
+                                PlaybackSegmentOption(BottomProgressBehavior.ONLY_HIDE_FULLSCREEN, "仅全屏隐藏")
+                            ),
+                            selectedValue = bottomProgressBehavior,
+                            onSelectionChange = { behavior ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setBottomProgressBehavior(context, behavior)
+                                }
+                            }
                         )
                     }
                 }

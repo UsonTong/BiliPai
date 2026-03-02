@@ -222,7 +222,6 @@ fun BottomControlBar(
     val subtitleSecondaryLabel = subtitleControlState.secondaryLabel
     val subtitleLargeTextEnabled = subtitleControlState.largeTextEnabled
     val onSubtitleDisplayModeChange = subtitleControlCallbacks.onDisplayModeChange
-    val onSubtitleEnabledChange = subtitleControlCallbacks.onEnabledChange
     val onSubtitleLargeTextChange = subtitleControlCallbacks.onLargeTextChange
 
     val configuration = LocalConfiguration.current
@@ -635,7 +634,6 @@ fun BottomControlBar(
                                 )
                                 showSubtitlePanel = false
                                 onSubtitleDisplayModeChange(option.mode)
-                                onSubtitleEnabledChange(option.mode != SubtitleDisplayMode.OFF)
                             }
                         )
                     }

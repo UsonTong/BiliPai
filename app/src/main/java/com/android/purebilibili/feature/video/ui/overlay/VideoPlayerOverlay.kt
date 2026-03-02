@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 import androidx.compose.ui.platform.LocalContext
+import com.android.purebilibili.core.store.BottomProgressBehavior
 import com.android.purebilibili.core.store.PlaybackCompletionBehavior
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.adaptive.MotionTier
@@ -164,6 +165,27 @@ internal fun resolvePageSelectorSheetOuterBottomPaddingDp(
     isFullscreen: Boolean
 ): Int {
     return if (isFullscreen) 0 else 8
+}
+
+internal fun shouldShowPersistentBottomProgressBar(
+    controlsVisible: Boolean,
+    isFullscreen: Boolean,
+    behavior: BottomProgressBehavior
+): Boolean {
+    if (controlsVisible) return false
+    return when (behavior) {
+        BottomProgressBehavior.ALWAYS_SHOW -> true
+        BottomProgressBehavior.ALWAYS_HIDE -> false
+        BottomProgressBehavior.ONLY_SHOW_FULLSCREEN -> isFullscreen
+        BottomProgressBehavior.ONLY_HIDE_FULLSCREEN -> !isFullscreen
+    }
+}
+
+internal fun resolveDisplayedOnlineCount(
+    onlineCount: String,
+    showOnlineCount: Boolean
+): String {
+    return if (showOnlineCount) onlineCount else ""
 }
 
 @Composable
@@ -307,6 +329,7 @@ fun VideoPlayerOverlay(
     coinCount: Int = 0,
     onToggleFollow: () -> Unit = {},
     onToggleLike: () -> Unit = {},
+    onDislike: () -> Unit = {},
     onCoin: () -> Unit = {},
     onToggleFavorite: () -> Unit = {},
     // 复用 onRelatedVideoClick 或 onVideoClick
@@ -345,6 +368,21 @@ fun VideoPlayerOverlay(
     val showFullscreenBatteryLevel by SettingsManager
         .getShowFullscreenBatteryLevel(context)
         .collectAsState(initial = true)
+    val showFullscreenActionItems by SettingsManager
+        .getShowFullscreenActionItems(context)
+        .collectAsState(initial = true)
+    val showOnlineCount by SettingsManager
+        .getShowOnlineCount(context)
+        .collectAsState(initial = false)
+    val bottomProgressBehavior by SettingsManager
+        .getBottomProgressBehavior(context)
+        .collectAsState(initial = BottomProgressBehavior.ALWAYS_SHOW)
+    val displayedOnlineCount = remember(onlineCount, showOnlineCount) {
+        resolveDisplayedOnlineCount(
+            onlineCount = onlineCount,
+            showOnlineCount = showOnlineCount
+        )
+    }
     val hasEpisodeEntry = remember(relatedVideos, ugcSeason) {
         shouldShowEpisodeEntryFromVideoData(
             relatedVideosCount = relatedVideos.size,
@@ -545,7 +583,13 @@ fun VideoPlayerOverlay(
         }
 
         // 控件隐藏时保留底部细进度条，便于持续感知当前播放进度
-        if (!isVisible) {
+        if (
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = isVisible,
+                isFullscreen = isFullscreen,
+                behavior = bottomProgressBehavior
+            )
+        ) {
             PersistentBottomProgressBar(
                 current = progressState.current,
                 duration = progressState.duration,
@@ -567,15 +611,16 @@ fun VideoPlayerOverlay(
                 if (isFullscreen) {
                     TopControlBar(
                         title = title,
-                        onlineCount = onlineCount,
+                        onlineCount = displayedOnlineCount,
                         isFullscreen = isFullscreen,
                         showBatteryLevel = showFullscreenBatteryLevel,
+                        showInteractiveActions = showFullscreenActionItems,
                         onBack = onBack,
                         // Interactions
                         isLiked = isLiked,
                         isCoined = isCoined,
                         onLikeClick = onToggleLike,
-                        onDislikeClick = {}, // TODO: Implement dislike
+                        onDislikeClick = onDislike,
                         onCoinClick = onCoin,
                         onShareClick = {
                             if (bvid.isNotEmpty()) {
@@ -590,7 +635,7 @@ fun VideoPlayerOverlay(
                     //  [新增] 竖屏模式顶部栏（返回 + 画质 + 设置 + 分享按钮）
                     val context = LocalContext.current
                     PortraitTopBar(
-                        onlineCount = onlineCount,
+                        onlineCount = displayedOnlineCount,
                         onBack = onBack,
                         onHome = onHomeClick,
                         onSettings = { showVideoSettings = true },

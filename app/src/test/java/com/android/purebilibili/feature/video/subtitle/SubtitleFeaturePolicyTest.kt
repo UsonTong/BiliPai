@@ -6,7 +6,7 @@ import kotlin.test.assertFalse
 class SubtitleFeaturePolicyTest {
 
     @Test
-    fun `subtitle feature is disabled for users by default`() {
+    fun `subtitle feature is disabled globally`() {
         assertFalse(isSubtitleFeatureEnabledForUser())
     }
 }

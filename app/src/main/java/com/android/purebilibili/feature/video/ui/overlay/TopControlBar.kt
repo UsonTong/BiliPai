@@ -42,6 +42,9 @@ import java.util.Date
 import java.util.Locale
 
 internal fun shouldShowDislikeInTopControlBar(widthDp: Int): Boolean = widthDp >= 980
+internal fun shouldShowInteractiveActionsInTopControlBar(
+    showFullscreenActionItems: Boolean
+): Boolean = showFullscreenActionItems
 
 /**
  * Top Control Bar Component
@@ -57,6 +60,7 @@ fun TopControlBar(
     onlineCount: String = "",
     isFullscreen: Boolean,
     showBatteryLevel: Boolean = false,
+    showInteractiveActions: Boolean = true,
     onBack: () -> Unit,
     // Interactions
     isLiked: Boolean = false,
@@ -77,7 +81,12 @@ fun TopControlBar(
         )
     }
     val showDislikeAction = remember(configuration.screenWidthDp) {
-        shouldShowDislikeInTopControlBar(widthDp = configuration.screenWidthDp)
+        showInteractiveActions && shouldShowDislikeInTopControlBar(widthDp = configuration.screenWidthDp)
+    }
+    val showInteractiveActionGroup = remember(showInteractiveActions) {
+        shouldShowInteractiveActionsInTopControlBar(
+            showFullscreenActionItems = showInteractiveActions
+        )
     }
     val currentTimeText by produceState(initialValue = formatCurrentTime()) {
         while (true) {
@@ -174,47 +183,49 @@ fun TopControlBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(layoutPolicy.actionSpacingDp.dp)
             ) {
-                // Like
-                ActionIcon(
-                    icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
-                    contentDescription = "点赞",
-                    isActive = isLiked,
-                    onClick = onLikeClick,
-                    buttonSizeDp = layoutPolicy.buttonSizeDp,
-                    iconSizeDp = layoutPolicy.iconSizeDp
-                )
-                
-                if (showDislikeAction) {
-                    // Dislike
+                if (showInteractiveActionGroup) {
+                    // Like
                     ActionIcon(
-                        icon = Icons.Outlined.ThumbDown,
-                        contentDescription = "不喜欢",
+                        icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+                        contentDescription = "点赞",
+                        isActive = isLiked,
+                        onClick = onLikeClick,
+                        buttonSizeDp = layoutPolicy.buttonSizeDp,
+                        iconSizeDp = layoutPolicy.iconSizeDp
+                    )
+
+                    if (showDislikeAction) {
+                        // Dislike
+                        ActionIcon(
+                            icon = Icons.Outlined.ThumbDown,
+                            contentDescription = "不喜欢",
+                            isActive = false,
+                            onClick = onDislikeClick,
+                            buttonSizeDp = layoutPolicy.buttonSizeDp,
+                            iconSizeDp = layoutPolicy.iconSizeDp
+                        )
+                    }
+
+                    // Coin
+                    ActionIcon(
+                        icon = AppIcons.BiliCoin,
+                        contentDescription = "投币",
+                        isActive = isCoined,
+                        onClick = onCoinClick,
+                        buttonSizeDp = layoutPolicy.buttonSizeDp,
+                        iconSizeDp = layoutPolicy.iconSizeDp
+                    )
+
+                    // Share
+                    ActionIcon(
+                        icon = Icons.Outlined.Share,
+                        contentDescription = "分享",
                         isActive = false,
-                        onClick = onDislikeClick,
+                        onClick = onShareClick,
                         buttonSizeDp = layoutPolicy.buttonSizeDp,
                         iconSizeDp = layoutPolicy.iconSizeDp
                     )
                 }
-                
-                // Coin
-                ActionIcon(
-                    icon = AppIcons.BiliCoin,
-                    contentDescription = "投币",
-                    isActive = isCoined,
-                    onClick = onCoinClick,
-                    buttonSizeDp = layoutPolicy.buttonSizeDp,
-                    iconSizeDp = layoutPolicy.iconSizeDp
-                )
-                
-                // Share
-                ActionIcon(
-                    icon = Icons.Outlined.Share,
-                    contentDescription = "分享",
-                    isActive = false,
-                    onClick = onShareClick,
-                    buttonSizeDp = layoutPolicy.buttonSizeDp,
-                    iconSizeDp = layoutPolicy.iconSizeDp
-                )
 
                 // Cast (Added back)
                 ActionIcon(

@@ -400,6 +400,7 @@ private fun CinemaStagePlayer(
                     isFavorited = success?.isFavorited ?: false,
                     onToggleFollow = { viewModel.toggleFollow() },
                     onToggleLike = { viewModel.toggleLike() },
+                    onDislike = { viewModel.markVideoNotInterested() },
                     onCoin = { viewModel.showCoinDialog() },
                     onToggleFavorite = { viewModel.toggleFavorite() },
                     onTriple = { viewModel.doTripleAction() }

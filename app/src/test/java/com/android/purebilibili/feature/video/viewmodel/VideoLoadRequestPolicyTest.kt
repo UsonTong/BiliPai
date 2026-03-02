@@ -139,6 +139,118 @@ class VideoLoadRequestPolicyTest {
     }
 
     @Test
+    fun `subtitle binding key prefers id_str then id then fallback`() {
+        assertEquals(
+            "abc123|zh-Hans",
+            buildSubtitleTrackBindingKey(
+                subtitleId = 42L,
+                subtitleIdStr = "abc123",
+                languageCode = "zh-Hans"
+            )
+        )
+        assertEquals(
+            "42|en-US",
+            buildSubtitleTrackBindingKey(
+                subtitleId = 42L,
+                subtitleIdStr = "",
+                languageCode = "en-US"
+            )
+        )
+        assertEquals(
+            "no-id|unknown",
+            buildSubtitleTrackBindingKey(
+                subtitleId = 0L,
+                subtitleIdStr = "",
+                languageCode = ""
+            )
+        )
+    }
+
+    @Test
+    fun `subtitle binding key distinguishes same language track by subtitle url path`() {
+        val keyA = buildSubtitleTrackBindingKey(
+            subtitleId = 0L,
+            subtitleIdStr = "",
+            languageCode = "zh-Hans",
+            subtitleUrl = "https://aisubtitle.hdslb.com/bfs/subtitle/track_a.json?auth_key=foo"
+        )
+        val keyB = buildSubtitleTrackBindingKey(
+            subtitleId = 0L,
+            subtitleIdStr = "",
+            languageCode = "zh-Hans",
+            subtitleUrl = "https://aisubtitle.hdslb.com/bfs/subtitle/track_b.json?auth_key=bar"
+        )
+
+        assertFalse(keyA == keyB)
+    }
+
+    @Test
+    fun `subtitle binding requires matching track key and language when provided`() {
+        assertTrue(
+            shouldApplySubtitleTrackBinding(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "123|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "zh-Hans"
+            )
+        )
+        assertFalse(
+            shouldApplySubtitleTrackBinding(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "124|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "zh-Hans"
+            )
+        )
+        assertFalse(
+            shouldApplySubtitleTrackBinding(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "123|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "en-US"
+            )
+        )
+    }
+
+    @Test
+    fun `subtitle binding mismatch reason distinguishes language and track`() {
+        assertEquals(
+            "language-mismatch expected=zh-Hans current=en-US",
+            resolveSubtitleTrackBindingMismatchReason(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "123|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "en-US"
+            )
+        )
+        assertEquals(
+            "track-key-mismatch expected=123|zh-Hans current=124|zh-Hans",
+            resolveSubtitleTrackBindingMismatchReason(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "124|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "zh-Hans"
+            )
+        )
+        assertNull(
+            resolveSubtitleTrackBindingMismatchReason(
+                expectedTrackKey = "123|zh-Hans",
+                currentTrackKey = "123|zh-Hans",
+                expectedLanguage = "zh-Hans",
+                currentLanguage = "zh-Hans"
+            )
+        )
+    }
+
+    @Test
+    fun `subtitle refresh retry only for auth-like http failures`() {
+        assertTrue(shouldRetrySubtitleLoadWithPlayerInfo("字幕请求失败: HTTP 403"))
+        assertTrue(shouldRetrySubtitleLoadWithPlayerInfo("字幕请求失败: HTTP 410"))
+        assertFalse(shouldRetrySubtitleLoadWithPlayerInfo("字幕请求失败: HTTP 500"))
+        assertFalse(shouldRetrySubtitleLoadWithPlayerInfo(null))
+    }
+
+    @Test
     fun `treats request as same playback only when bvid and cid both match`() {
         assertTrue(
             shouldTreatAsSamePlaybackRequest(
@@ -265,6 +377,8 @@ class VideoLoadRequestPolicyTest {
         assertFalse(cleared.subtitleEnabled)
         assertNull(cleared.subtitlePrimaryLanguage)
         assertNull(cleared.subtitleSecondaryLanguage)
+        assertNull(cleared.subtitlePrimaryTrackKey)
+        assertNull(cleared.subtitleSecondaryTrackKey)
         assertTrue(cleared.subtitlePrimaryCues.isEmpty())
         assertTrue(cleared.subtitleSecondaryCues.isEmpty())
     }

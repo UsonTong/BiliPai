@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.android.purebilibili.core.store.BottomProgressBehavior
 
 class VideoPlayerOverlayPolicyTest {
 
@@ -174,5 +175,88 @@ class VideoPlayerOverlayPolicyTest {
     fun pageSelectorSheetOuterBottomPadding_isZeroInFullscreen() {
         assertEquals(0, resolvePageSelectorSheetOuterBottomPaddingDp(isFullscreen = true))
         assertEquals(8, resolvePageSelectorSheetOuterBottomPaddingDp(isFullscreen = false))
+    }
+
+    @Test
+    fun persistentBottomProgressBarRespectsAlwaysShowBehavior() {
+        assertTrue(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = false,
+                behavior = BottomProgressBehavior.ALWAYS_SHOW
+            )
+        )
+        assertFalse(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = true,
+                isFullscreen = true,
+                behavior = BottomProgressBehavior.ALWAYS_SHOW
+            )
+        )
+    }
+
+    @Test
+    fun persistentBottomProgressBarRespectsAlwaysHideBehavior() {
+        assertFalse(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = true,
+                behavior = BottomProgressBehavior.ALWAYS_HIDE
+            )
+        )
+    }
+
+    @Test
+    fun persistentBottomProgressBarRespectsOnlyShowFullscreenBehavior() {
+        assertTrue(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = true,
+                behavior = BottomProgressBehavior.ONLY_SHOW_FULLSCREEN
+            )
+        )
+        assertFalse(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = false,
+                behavior = BottomProgressBehavior.ONLY_SHOW_FULLSCREEN
+            )
+        )
+    }
+
+    @Test
+    fun persistentBottomProgressBarRespectsOnlyHideFullscreenBehavior() {
+        assertTrue(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = false,
+                behavior = BottomProgressBehavior.ONLY_HIDE_FULLSCREEN
+            )
+        )
+        assertFalse(
+            shouldShowPersistentBottomProgressBar(
+                controlsVisible = false,
+                isFullscreen = true,
+                behavior = BottomProgressBehavior.ONLY_HIDE_FULLSCREEN
+            )
+        )
+    }
+
+    @Test
+    fun resolveDisplayedOnlineCountRespectsSetting() {
+        assertEquals(
+            "123人正在看",
+            resolveDisplayedOnlineCount(
+                onlineCount = "123人正在看",
+                showOnlineCount = true
+            )
+        )
+        assertEquals(
+            "",
+            resolveDisplayedOnlineCount(
+                onlineCount = "123人正在看",
+                showOnlineCount = false
+            )
+        )
     }
 }

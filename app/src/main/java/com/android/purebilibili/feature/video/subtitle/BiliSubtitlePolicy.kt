@@ -16,9 +16,14 @@ data class SubtitleCue(
 )
 
 data class SubtitleTrackMeta(
+    val id: Long = 0L,
+    val idStr: String = "",
     val lan: String,
     val lanDoc: String,
-    val subtitleUrl: String
+    val subtitleUrl: String,
+    val aiStatus: Int = 0,
+    val aiType: Int = 0,
+    val type: Int = 0
 )
 
 data class SubtitleLanguageSelection(
@@ -39,6 +44,19 @@ data class SubtitleDisplayOption(
     val enabled: Boolean
 )
 
+data class SubtitleControlAvailability(
+    val trackAvailable: Boolean,
+    val primarySelectable: Boolean,
+    val secondarySelectable: Boolean
+)
+
+enum class SubtitleAutoPreference {
+    OFF,
+    ON,
+    WITHOUT_AI,
+    AUTO
+}
+
 private val SUBTITLE_JSON = Json {
     ignoreUnknownKeys = true
     coerceInputValues = true
@@ -52,6 +70,50 @@ fun normalizeBilibiliSubtitleUrl(raw: String): String {
         trimmed.startsWith("http://") -> "https://${trimmed.removePrefix("http://")}"
         else -> trimmed
     }
+}
+
+fun isTrustedBilibiliSubtitleUrl(raw: String): Boolean {
+    val normalized = normalizeBilibiliSubtitleUrl(raw)
+    if (normalized.isBlank()) return false
+    val uri = runCatching { java.net.URI(normalized) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase().orEmpty()
+    if (host.isBlank()) return false
+
+    val trustedHost = host == "hdslb.com" ||
+        host.endsWith(".hdslb.com") ||
+        host == "bilibili.com" ||
+        host.endsWith(".bilibili.com")
+    if (!trustedHost) return false
+
+    val path = uri.path?.lowercase().orEmpty()
+    return path.contains("subtitle")
+}
+
+fun isLikelyAiSubtitleTrack(track: SubtitleTrackMeta): Boolean {
+    if (track.aiStatus > 0 || track.aiType > 0) return true
+    val label = track.lanDoc.lowercase()
+    return label.contains("ai") ||
+        label.contains("自动") ||
+        label.contains("机翻") ||
+        label.contains("机器")
+}
+
+private fun subtitleTrackPreferenceScore(track: SubtitleTrackMeta): Int {
+    var score = 0
+    if (!isLikelyAiSubtitleTrack(track)) score += 100
+    if (isTrustedBilibiliSubtitleUrl(track.subtitleUrl)) score += 20
+    if (track.lanDoc.contains("官方")) score += 8
+    if (track.id > 0L) score += 1
+    return score
+}
+
+fun orderSubtitleTracksByPreference(tracks: List<SubtitleTrackMeta>): List<SubtitleTrackMeta> {
+    if (tracks.size <= 1) return tracks
+    return tracks.sortedWith(
+        compareByDescending<SubtitleTrackMeta> { subtitleTrackPreferenceScore(it) }
+            .thenByDescending { it.id }
+            .thenBy { it.lanDoc }
+    )
 }
 
 fun parseBiliSubtitleBody(rawJson: String): List<SubtitleCue> {
@@ -78,7 +140,30 @@ fun parseBiliSubtitleBody(rawJson: String): List<SubtitleCue> {
     }
 }
 
-fun resolveDefaultSubtitleLanguages(tracks: List<SubtitleTrackMeta>): SubtitleLanguageSelection {
+private fun resolveLanguageFamily(languageCode: String?): String? {
+    val normalized = languageCode?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return normalized.substringBefore('-').lowercase()
+}
+
+private fun findTrackByPreferredLanguage(
+    tracks: List<SubtitleTrackMeta>,
+    preferredLanguage: String?
+): SubtitleTrackMeta? {
+    val preferred = preferredLanguage?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    tracks.firstOrNull { track ->
+        track.lan.equals(preferred, ignoreCase = true)
+    }?.let { return it }
+
+    val preferredFamily = resolveLanguageFamily(preferred) ?: return null
+    return tracks.firstOrNull { track ->
+        resolveLanguageFamily(track.lan) == preferredFamily
+    }
+}
+
+fun resolveDefaultSubtitleLanguages(
+    tracks: List<SubtitleTrackMeta>,
+    preferredPrimaryLanguage: String? = null
+): SubtitleLanguageSelection {
     if (tracks.isEmpty()) {
         return SubtitleLanguageSelection(
             primaryLanguage = null,
@@ -86,7 +171,10 @@ fun resolveDefaultSubtitleLanguages(tracks: List<SubtitleTrackMeta>): SubtitleLa
         )
     }
 
-    val primary = tracks.firstOrNull { track ->
+    val primary = findTrackByPreferredLanguage(
+        tracks = tracks,
+        preferredLanguage = preferredPrimaryLanguage
+    ) ?: tracks.firstOrNull { track ->
         track.lan.equals("zh-Hans", ignoreCase = true)
     } ?: tracks.firstOrNull { track ->
         track.lan.equals("zh-CN", ignoreCase = true)
@@ -94,13 +182,14 @@ fun resolveDefaultSubtitleLanguages(tracks: List<SubtitleTrackMeta>): SubtitleLa
         track.lan.startsWith("zh", ignoreCase = true)
     } ?: tracks.first()
 
-    val secondary = tracks.firstOrNull { track ->
+    val englishSecondary = tracks.firstOrNull { track ->
         track.lan.equals("en-US", ignoreCase = true)
     } ?: tracks.firstOrNull { track ->
         track.lan.equals("en-GB", ignoreCase = true)
     } ?: tracks.firstOrNull { track ->
         track.lan.startsWith("en", ignoreCase = true)
-    } ?: tracks.firstOrNull { track ->
+    }
+    val secondary = englishSecondary?.takeIf { it.lan != primary.lan } ?: tracks.firstOrNull { track ->
         track.lan != primary.lan
     }
 
@@ -143,6 +232,54 @@ fun normalizeSubtitleDisplayMode(
             )
         }
     }
+}
+
+fun resolveSubtitleDisplayModeByAutoPreference(
+    preference: SubtitleAutoPreference,
+    hasPrimaryTrack: Boolean,
+    hasSecondaryTrack: Boolean,
+    primaryTrackLikelyAi: Boolean,
+    secondaryTrackLikelyAi: Boolean,
+    isMuted: Boolean
+): SubtitleDisplayMode {
+    val defaultMode = resolveDefaultSubtitleDisplayMode(
+        hasPrimaryTrack = hasPrimaryTrack,
+        hasSecondaryTrack = hasSecondaryTrack
+    )
+    if (defaultMode == SubtitleDisplayMode.OFF) return SubtitleDisplayMode.OFF
+
+    val defaultModeLikelyAi = when (defaultMode) {
+        SubtitleDisplayMode.OFF -> false
+        SubtitleDisplayMode.PRIMARY_ONLY -> primaryTrackLikelyAi
+        SubtitleDisplayMode.SECONDARY_ONLY -> secondaryTrackLikelyAi
+        SubtitleDisplayMode.BILINGUAL -> primaryTrackLikelyAi && secondaryTrackLikelyAi
+    }
+
+    return when (preference) {
+        SubtitleAutoPreference.OFF -> SubtitleDisplayMode.OFF
+        SubtitleAutoPreference.ON -> defaultMode
+        SubtitleAutoPreference.WITHOUT_AI -> {
+            if (defaultModeLikelyAi) SubtitleDisplayMode.OFF else defaultMode
+        }
+        SubtitleAutoPreference.AUTO -> {
+            if (!defaultModeLikelyAi || isMuted) defaultMode else SubtitleDisplayMode.OFF
+        }
+    }
+}
+
+fun resolveSubtitleControlAvailability(
+    primaryTrackBound: Boolean,
+    secondaryTrackBound: Boolean,
+    primaryCueAvailable: Boolean,
+    secondaryCueAvailable: Boolean
+): SubtitleControlAvailability {
+    val primarySelectable = primaryTrackBound || primaryCueAvailable
+    val secondarySelectable = secondaryTrackBound || secondaryCueAvailable
+    return SubtitleControlAvailability(
+        trackAvailable = primarySelectable || secondarySelectable,
+        primarySelectable = primarySelectable,
+        secondarySelectable = secondarySelectable
+    )
 }
 
 fun resolveSubtitleDisplayOptions(

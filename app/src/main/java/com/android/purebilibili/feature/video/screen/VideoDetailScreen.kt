@@ -1197,12 +1197,22 @@ fun VideoDetailScreen(
                         ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     }
                 } else {
-                    userRequestedFullscreen = true
                     val targetOrientation = resolvePhoneFullscreenEnterOrientation(
                         fullscreenMode = fullscreenMode,
                         isVerticalVideo = isVerticalVideo
                     ) ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                    activity.requestedOrientation = targetOrientation
+                    if (shouldEnterPortraitFullscreenOnFullscreenToggle(
+                            targetOrientation = targetOrientation,
+                            portraitExperienceEnabled = portraitExperienceEnabled
+                        )
+                    ) {
+                        // 比例模式命中竖屏目标时，进入竖屏全屏覆盖层，避免点击后“无变化”。
+                        userRequestedFullscreen = false
+                        enterPortraitFullscreen()
+                    } else {
+                        userRequestedFullscreen = true
+                        activity.requestedOrientation = targetOrientation
+                    }
                 }
             }
         }
@@ -1371,6 +1381,7 @@ fun VideoDetailScreen(
                 isFavorited = (uiState as? PlayerUiState.Success)?.isFavorited ?: false,
                 onToggleFollow = { viewModel.toggleFollow() },
                 onToggleLike = { viewModel.toggleLike() },
+                onDislike = { viewModel.markVideoNotInterested() },
                 onCoin = { viewModel.showCoinDialog() },
                 onToggleFavorite = { viewModel.toggleFavorite() },
                 onTriple = { viewModel.doTripleAction() },
@@ -3049,11 +3060,6 @@ internal fun resolvePhoneFullscreenEnterOrientation(
             if (isVerticalVideo) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
-        com.android.purebilibili.core.store.FullscreenMode.RATIO -> {
-            if (isVerticalVideo) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
-        com.android.purebilibili.core.store.FullscreenMode.GRAVITY -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
     }
 }
 
@@ -3095,6 +3101,13 @@ internal fun resolvePhoneVideoRequestedOrientation(
     } else {
         ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
+}
+
+internal fun shouldEnterPortraitFullscreenOnFullscreenToggle(
+    targetOrientation: Int,
+    portraitExperienceEnabled: Boolean
+): Boolean {
+    return portraitExperienceEnabled && targetOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 }
 
 internal fun shouldEnableVideoCoverSharedTransition(

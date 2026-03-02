@@ -20,10 +20,13 @@ import okhttp3.CacheControl
 import okhttp3.Request
 import retrofit2.HttpException
 import java.io.InputStream
+import java.security.MessageDigest
 import java.util.TreeMap
+import java.util.concurrent.ConcurrentHashMap
 
 private const val HOME_PRELOAD_WAIT_MAX_MS = 1200L
 private const val HOME_PRELOAD_WAIT_STEP_MS = 35L
+private const val SUBTITLE_CUE_CACHE_MAX_ENTRIES = 512
 
 internal fun shouldPrimeBuvidForHomePreload(feedApiType: SettingsManager.FeedApiType): Boolean {
     return feedApiType == SettingsManager.FeedApiType.MOBILE
@@ -44,6 +47,23 @@ internal fun shouldReportHomeDataReadyForSplash(
     return hasCompletedPreload || hasPreloadedData
 }
 
+internal fun buildSubtitleCueCacheKey(
+    bvid: String,
+    cid: Long,
+    subtitleId: Long,
+    subtitleIdStr: String,
+    subtitleLan: String,
+    normalizedSubtitleUrl: String
+): String {
+    val urlHash = MessageDigest.getInstance("SHA-1")
+        .digest(normalizedSubtitleUrl.toByteArray(Charsets.UTF_8))
+        .joinToString(separator = "") { "%02x".format(it) }
+    val idPart = subtitleIdStr.takeIf { it.isNotBlank() }
+        ?: subtitleId.takeIf { it > 0L }?.toString()
+        ?: "no-id"
+    return "${bvid.ifBlank { "unknown" }}:${cid.coerceAtLeast(0L)}:${idPart}:${subtitleLan.ifBlank { "unknown" }}:$urlHash"
+}
+
 data class CreatorCardStats(
     val followerCount: Int,
     val videoCount: Int
@@ -52,6 +72,7 @@ data class CreatorCardStats(
 object VideoRepository {
     private val api = NetworkModule.api
     private val buvidApi = NetworkModule.buvidApi
+    private val subtitleCueCache = ConcurrentHashMap<String, List<SubtitleCue>>()
 
     private val QUALITY_CHAIN = listOf(120, 116, 112, 80, 74, 64, 32, 16)
     private const val APP_API_COOLDOWN_MS = 120_000L
@@ -1222,11 +1243,35 @@ object VideoRepository {
         }
     }
 
-    suspend fun getSubtitleCues(subtitleUrl: String): Result<List<SubtitleCue>> = withContext(Dispatchers.IO) {
+    suspend fun getSubtitleCues(
+        subtitleUrl: String,
+        bvid: String,
+        cid: Long,
+        subtitleId: Long = 0L,
+        subtitleIdStr: String = "",
+        subtitleLan: String = ""
+    ): Result<List<SubtitleCue>> = withContext(Dispatchers.IO) {
         try {
+            if (bvid.isBlank() || cid <= 0L) {
+                return@withContext Result.failure(
+                    IllegalArgumentException("字幕归属视频信息缺失: bvid=$bvid cid=$cid")
+                )
+            }
             val normalizedUrl = normalizeBilibiliSubtitleUrl(subtitleUrl)
             if (normalizedUrl.isBlank()) {
                 return@withContext Result.failure(IllegalArgumentException("字幕 URL 为空"))
+            }
+
+            val cacheKey = buildSubtitleCueCacheKey(
+                bvid = bvid,
+                cid = cid,
+                subtitleId = subtitleId,
+                subtitleIdStr = subtitleIdStr,
+                subtitleLan = subtitleLan,
+                normalizedSubtitleUrl = normalizedUrl
+            )
+            subtitleCueCache[cacheKey]?.let { cached ->
+                return@withContext Result.success(cached)
             }
 
             val request = Request.Builder()
@@ -1247,6 +1292,10 @@ object VideoRepository {
                 }
                 val rawJson = call.body?.string().orEmpty()
                 val cues = parseBiliSubtitleBody(rawJson)
+                if (subtitleCueCache.size >= SUBTITLE_CUE_CACHE_MAX_ENTRIES) {
+                    subtitleCueCache.clear()
+                }
+                subtitleCueCache[cacheKey] = cues
                 Result.success(cues)
             }
         } catch (e: Exception) {

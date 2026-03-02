@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.settings
 
+import com.android.purebilibili.core.store.FullscreenMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -64,6 +65,20 @@ class PlaybackSettingsSelectionPolicyTest {
                 optionCount = 5,
                 thresholdPx = 30f
             )
+        )
+    }
+
+    @Test
+    fun `resolveFullscreenModeSegmentOptions should expose only primary modes`() {
+        val modes = resolveFullscreenModeSegmentOptions().map { it.value }
+        assertEquals(
+            listOf(
+                FullscreenMode.AUTO,
+                FullscreenMode.NONE,
+                FullscreenMode.VERTICAL,
+                FullscreenMode.HORIZONTAL
+            ),
+            modes
         )
     }
 }

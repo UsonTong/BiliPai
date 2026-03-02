@@ -297,4 +297,34 @@ class VideoDetailLayoutModePolicyTest {
             )
         )
     }
+
+    @Test
+    fun fullscreenTogglePolicy_entersPortraitFullscreen_whenTargetIsPortraitAndExperienceEnabled() {
+        assertTrue(
+            shouldEnterPortraitFullscreenOnFullscreenToggle(
+                targetOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                portraitExperienceEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun fullscreenTogglePolicy_doesNotEnterPortraitFullscreen_whenExperienceDisabled() {
+        assertFalse(
+            shouldEnterPortraitFullscreenOnFullscreenToggle(
+                targetOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                portraitExperienceEnabled = false
+            )
+        )
+    }
+
+    @Test
+    fun fullscreenTogglePolicy_doesNotEnterPortraitFullscreen_whenTargetIsLandscape() {
+        assertFalse(
+            shouldEnterPortraitFullscreenOnFullscreenToggle(
+                targetOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                portraitExperienceEnabled = true
+            )
+        )
+    }
 }

@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.video.subtitle
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -15,6 +16,43 @@ class BiliSubtitlePolicyTest {
             "https://aisubtitle.hdslb.com/bfs/subtitle/abc.json",
             normalized
         )
+    }
+
+    @Test
+    fun isTrustedBilibiliSubtitleUrl_allowsBilibiliSubtitleHostOnly() {
+        assertTrue(
+            isTrustedBilibiliSubtitleUrl("//aisubtitle.hdslb.com/bfs/subtitle/abc.json")
+        )
+        assertFalse(
+            isTrustedBilibiliSubtitleUrl("https://example.com/bfs/subtitle/abc.json")
+        )
+    }
+
+    @Test
+    fun orderSubtitleTracksByPreference_prefersNonAiTrackForSameLanguage() {
+        val tracks = listOf(
+            SubtitleTrackMeta(
+                id = 1L,
+                lan = "zh-Hans",
+                lanDoc = "中文（自动生成）",
+                subtitleUrl = "https://aisubtitle.hdslb.com/bfs/subtitle/ai.json",
+                aiStatus = 1,
+                aiType = 1
+            ),
+            SubtitleTrackMeta(
+                id = 2L,
+                lan = "zh-Hans",
+                lanDoc = "中文（简体）",
+                subtitleUrl = "https://aisubtitle.hdslb.com/bfs/subtitle/official.json",
+                aiStatus = 0,
+                aiType = 0
+            )
+        )
+
+        val ordered = orderSubtitleTracksByPreference(tracks)
+        assertEquals(2L, ordered.first().id)
+        assertFalse(isLikelyAiSubtitleTrack(ordered.first()))
+        assertTrue(isLikelyAiSubtitleTrack(ordered.last()))
     }
 
     @Test
@@ -49,6 +87,23 @@ class BiliSubtitlePolicyTest {
         val selection = resolveDefaultSubtitleLanguages(tracks)
 
         assertEquals("zh-Hans", selection.primaryLanguage)
+        assertEquals("en-US", selection.secondaryLanguage)
+    }
+
+    @Test
+    fun resolveDefaultSubtitleLanguages_prefersPlayerInfoPrimaryLanguageWhenProvided() {
+        val tracks = listOf(
+            SubtitleTrackMeta(lan = "zh-Hans", lanDoc = "中文（简体）", subtitleUrl = "https://a"),
+            SubtitleTrackMeta(lan = "ja-JP", lanDoc = "日语", subtitleUrl = "https://b"),
+            SubtitleTrackMeta(lan = "en-US", lanDoc = "英语", subtitleUrl = "https://c")
+        )
+
+        val selection = resolveDefaultSubtitleLanguages(
+            tracks = tracks,
+            preferredPrimaryLanguage = "ja"
+        )
+
+        assertEquals("ja-JP", selection.primaryLanguage)
         assertEquals("en-US", selection.secondaryLanguage)
     }
 
@@ -142,5 +197,112 @@ class BiliSubtitlePolicyTest {
         assertEquals(SubtitleDisplayMode.BILINGUAL, options[3].mode)
         assertEquals("双语", options[3].label)
         assertTrue(options.all { it.enabled })
+    }
+
+    @Test
+    fun resolveSubtitleDisplayModeByAutoPreference_offAlwaysDisablesSubtitles() {
+        val mode = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.OFF,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = true,
+            primaryTrackLikelyAi = false,
+            secondaryTrackLikelyAi = false,
+            isMuted = false
+        )
+
+        assertEquals(SubtitleDisplayMode.OFF, mode)
+    }
+
+    @Test
+    fun resolveSubtitleDisplayModeByAutoPreference_onUsesDefaultTrackMode() {
+        val mode = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.ON,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = true,
+            primaryTrackLikelyAi = false,
+            secondaryTrackLikelyAi = true,
+            isMuted = false
+        )
+
+        assertEquals(SubtitleDisplayMode.BILINGUAL, mode)
+    }
+
+    @Test
+    fun resolveSubtitleDisplayModeByAutoPreference_withoutAiSkipsWhenDefaultTrackIsAi() {
+        val mode = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.WITHOUT_AI,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = false,
+            primaryTrackLikelyAi = true,
+            secondaryTrackLikelyAi = false,
+            isMuted = false
+        )
+
+        assertEquals(SubtitleDisplayMode.OFF, mode)
+    }
+
+    @Test
+    fun resolveSubtitleDisplayModeByAutoPreference_withoutAiKeepsWhenDefaultTrackIsNonAi() {
+        val mode = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.WITHOUT_AI,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = false,
+            primaryTrackLikelyAi = false,
+            secondaryTrackLikelyAi = false,
+            isMuted = false
+        )
+
+        assertEquals(SubtitleDisplayMode.PRIMARY_ONLY, mode)
+    }
+
+    @Test
+    fun resolveSubtitleDisplayModeByAutoPreference_autoEnablesAiOnlyWhenMuted() {
+        val unmuted = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.AUTO,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = false,
+            primaryTrackLikelyAi = true,
+            secondaryTrackLikelyAi = false,
+            isMuted = false
+        )
+        val muted = resolveSubtitleDisplayModeByAutoPreference(
+            preference = SubtitleAutoPreference.AUTO,
+            hasPrimaryTrack = true,
+            hasSecondaryTrack = false,
+            primaryTrackLikelyAi = true,
+            secondaryTrackLikelyAi = false,
+            isMuted = true
+        )
+
+        assertEquals(SubtitleDisplayMode.OFF, unmuted)
+        assertEquals(SubtitleDisplayMode.PRIMARY_ONLY, muted)
+    }
+
+    @Test
+    fun resolveSubtitleControlAvailability_usesTrackBindingWhenCueNotReady() {
+        val availability = resolveSubtitleControlAvailability(
+            primaryTrackBound = true,
+            secondaryTrackBound = false,
+            primaryCueAvailable = false,
+            secondaryCueAvailable = false
+        )
+
+        assertTrue(availability.trackAvailable)
+        assertTrue(availability.primarySelectable)
+        assertFalse(availability.secondarySelectable)
+    }
+
+    @Test
+    fun resolveSubtitleControlAvailability_combinesBindingAndCueAvailability() {
+        val availability = resolveSubtitleControlAvailability(
+            primaryTrackBound = false,
+            secondaryTrackBound = true,
+            primaryCueAvailable = true,
+            secondaryCueAvailable = false
+        )
+
+        assertTrue(availability.trackAvailable)
+        assertTrue(availability.primarySelectable)
+        assertTrue(availability.secondarySelectable)
     }
 }

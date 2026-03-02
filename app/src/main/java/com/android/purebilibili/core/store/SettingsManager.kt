@@ -14,6 +14,7 @@ import com.android.purebilibili.feature.settings.AppThemeMode
 import com.android.purebilibili.feature.video.danmaku.DANMAKU_DEFAULT_OPACITY
 import com.android.purebilibili.feature.video.danmaku.normalizeDanmakuOpacity
 import com.android.purebilibili.feature.video.danmaku.parseDanmakuBlockRules
+import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -55,13 +56,32 @@ enum class FullscreenMode(val value: Int, val label: String, val description: St
     AUTO(0, "自动", "按视频方向自动切换全屏方向"),
     NONE(1, "不改方向", "保持当前方向，仅切换全屏 UI"),
     VERTICAL(2, "竖屏", "进入全屏时保持竖屏"),
-    HORIZONTAL(3, "横屏", "进入全屏时切换到横屏"),
-    RATIO(4, "比例判断", "按屏幕比例和视频方向决定横竖"),
-    GRAVITY(5, "重力感应", "尽量跟随重力方向（受系统限制）");
+    HORIZONTAL(3, "横屏", "进入全屏时切换到横屏");
 
     companion object {
         fun fromValue(value: Int): FullscreenMode {
-            return entries.find { it.value == value } ?: AUTO
+            return when (value) {
+                // 兼容历史配置：已下线的模式统一回收为 AUTO，避免老用户进入无感知分支。
+                4, 5 -> AUTO
+                else -> entries.find { it.value == value } ?: AUTO
+            }
+        }
+    }
+}
+
+enum class BottomProgressBehavior(
+    val value: Int,
+    val label: String,
+    val description: String
+) {
+    ALWAYS_SHOW(0, "始终展示", "控件隐藏时始终显示底部细进度条"),
+    ALWAYS_HIDE(1, "始终隐藏", "不显示底部细进度条"),
+    ONLY_SHOW_FULLSCREEN(2, "仅全屏时展示", "仅横屏全屏且控件隐藏时显示"),
+    ONLY_HIDE_FULLSCREEN(3, "仅全屏时隐藏", "非全屏且控件隐藏时显示");
+
+    companion object {
+        fun fromValue(value: Int): BottomProgressBehavior {
+            return entries.find { it.value == value } ?: ALWAYS_SHOW
         }
     }
 }
@@ -147,6 +167,9 @@ object SettingsManager {
     private val KEY_HAPTIC_FEEDBACK_ENABLED = booleanPreferencesKey("haptic_feedback_enabled")
     //  [新增] 手势灵敏度和主题色
     private val KEY_GESTURE_SENSITIVITY = floatPreferencesKey("gesture_sensitivity")
+    private val KEY_SLIDE_VOLUME_BRIGHTNESS_ENABLED = booleanPreferencesKey("slide_volume_brightness_enabled")
+    private val KEY_SET_SYSTEM_BRIGHTNESS = booleanPreferencesKey("set_system_brightness")
+    private val KEY_PIP_NO_DANMAKU = booleanPreferencesKey("pip_no_danmaku")
     //  [新增] 双击跳转秒数 (可分开设置快进和后退)
     private val KEY_DOUBLE_TAP_SEEK_ENABLED = booleanPreferencesKey("double_tap_seek_enabled")
     private val KEY_SEEK_FORWARD_SECONDS = intPreferencesKey("seek_forward_seconds")
@@ -419,6 +442,33 @@ object SettingsManager {
     suspend fun setGestureSensitivity(context: Context, value: Float) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_GESTURE_SENSITIVITY] = value.coerceIn(0.5f, 2.0f) 
+        }
+    }
+
+    fun getSlideVolumeBrightnessEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SLIDE_VOLUME_BRIGHTNESS_ENABLED] ?: true }
+
+    suspend fun setSlideVolumeBrightnessEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SLIDE_VOLUME_BRIGHTNESS_ENABLED] = value
+        }
+    }
+
+    fun getSetSystemBrightnessEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SET_SYSTEM_BRIGHTNESS] ?: false }
+
+    suspend fun setSetSystemBrightnessEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SET_SYSTEM_BRIGHTNESS] = value
+        }
+    }
+
+    fun getPipNoDanmakuEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_PIP_NO_DANMAKU] ?: false }
+
+    suspend fun setPipNoDanmakuEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_PIP_NO_DANMAKU] = value
         }
     }
 
@@ -1777,6 +1827,7 @@ object SettingsManager {
     
     private val KEY_SWIPE_HIDE_PLAYER = booleanPreferencesKey("swipe_hide_player")
     private val KEY_PORTRAIT_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("portrait_swipe_to_fullscreen")
+    private val KEY_CENTER_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("center_swipe_to_fullscreen")
     private val KEY_FULLSCREEN_SWIPE_SEEK_ENABLED = booleanPreferencesKey("fullscreen_swipe_seek_enabled")
     private val KEY_FULLSCREEN_SWIPE_SEEK_SECONDS = intPreferencesKey("fullscreen_swipe_seek_seconds")
     private val KEY_FULLSCREEN_GESTURE_REVERSE = booleanPreferencesKey("fullscreen_gesture_reverse")
@@ -1785,6 +1836,10 @@ object SettingsManager {
     private val KEY_SHOW_FULLSCREEN_LOCK_BUTTON = booleanPreferencesKey("show_fullscreen_lock_button")
     private val KEY_SHOW_FULLSCREEN_SCREENSHOT_BUTTON = booleanPreferencesKey("show_fullscreen_screenshot_button")
     private val KEY_SHOW_FULLSCREEN_BATTERY_LEVEL = booleanPreferencesKey("show_fullscreen_battery_level")
+    private val KEY_SHOW_FULLSCREEN_ACTION_ITEMS = booleanPreferencesKey("show_fullscreen_action_items")
+    private val KEY_SHOW_ONLINE_COUNT = booleanPreferencesKey("show_online_count")
+    private val KEY_SUBTITLE_AUTO_PREFERENCE = intPreferencesKey("subtitle_auto_preference")
+    private val KEY_BOTTOM_PROGRESS_BEHAVIOR = intPreferencesKey("bottom_progress_behavior")
     private val KEY_HORIZONTAL_ADAPTATION = booleanPreferencesKey("horizontal_adaptation_enabled")
     private val KEY_FULLSCREEN_MODE = intPreferencesKey("fullscreen_mode")
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
@@ -1803,6 +1858,14 @@ object SettingsManager {
 
     suspend fun setPortraitSwipeToFullscreenEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_PORTRAIT_SWIPE_TO_FULLSCREEN] = value }
+    }
+
+    // --- 中部滑动切换全屏（默认开启） ---
+    fun getCenterSwipeToFullscreenEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_CENTER_SWIPE_TO_FULLSCREEN] ?: true }
+
+    suspend fun setCenterSwipeToFullscreenEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_CENTER_SWIPE_TO_FULLSCREEN] = value }
     }
 
     // --- 横屏左右滑动固定步长快进/快退开关（默认开启） ---
@@ -1887,6 +1950,50 @@ object SettingsManager {
     suspend fun setShowFullscreenBatteryLevel(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_SHOW_FULLSCREEN_BATTERY_LEVEL] = enabled
+        }
+    }
+
+    fun getShowFullscreenActionItems(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SHOW_FULLSCREEN_ACTION_ITEMS] ?: true }
+
+    suspend fun setShowFullscreenActionItems(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SHOW_FULLSCREEN_ACTION_ITEMS] = enabled
+        }
+    }
+
+    fun getShowOnlineCount(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SHOW_ONLINE_COUNT] ?: false }
+
+    suspend fun setShowOnlineCount(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SHOW_ONLINE_COUNT] = enabled
+        }
+    }
+
+    fun getSubtitleAutoPreference(context: Context): Flow<SubtitleAutoPreference> =
+        context.settingsDataStore.data.map { preferences ->
+            val raw = preferences[KEY_SUBTITLE_AUTO_PREFERENCE] ?: SubtitleAutoPreference.OFF.ordinal
+            SubtitleAutoPreference.entries.getOrElse(raw) { SubtitleAutoPreference.OFF }
+        }
+
+    suspend fun setSubtitleAutoPreference(context: Context, preference: SubtitleAutoPreference) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SUBTITLE_AUTO_PREFERENCE] = preference.ordinal
+        }
+    }
+
+    fun getBottomProgressBehavior(context: Context): Flow<BottomProgressBehavior> =
+        context.settingsDataStore.data.map { preferences ->
+            BottomProgressBehavior.fromValue(
+                preferences[KEY_BOTTOM_PROGRESS_BEHAVIOR]
+                    ?: BottomProgressBehavior.ALWAYS_SHOW.value
+            )
+        }
+
+    suspend fun setBottomProgressBehavior(context: Context, behavior: BottomProgressBehavior) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_BOTTOM_PROGRESS_BEHAVIOR] = behavior.value
         }
     }
 

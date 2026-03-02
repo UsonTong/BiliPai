@@ -79,9 +79,12 @@ import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
+import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
 import com.android.purebilibili.feature.video.subtitle.normalizeSubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.resolveDefaultSubtitleDisplayMode
+import com.android.purebilibili.feature.video.subtitle.resolveSubtitleControlAvailability
+import com.android.purebilibili.feature.video.subtitle.resolveSubtitleDisplayModeByAutoPreference
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitleTextAt
 import com.android.purebilibili.feature.video.subtitle.shouldRenderPrimarySubtitle
 import com.android.purebilibili.feature.video.subtitle.shouldRenderSecondarySubtitle
@@ -96,6 +99,47 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 enum class VideoGestureMode { None, Brightness, Volume, Seek, SwipeToFullscreen }
+
+internal fun resolveVerticalGestureMode(
+    isFullscreen: Boolean,
+    isSwipeUp: Boolean,
+    startX: Float,
+    leftZoneEnd: Float,
+    rightZoneStart: Float,
+    portraitSwipeToFullscreenEnabled: Boolean,
+    centerSwipeToFullscreenEnabled: Boolean,
+    slideVolumeBrightnessEnabled: Boolean = true
+): VideoGestureMode {
+    if (!isFullscreen && portraitSwipeToFullscreenEnabled && isSwipeUp) {
+        return VideoGestureMode.SwipeToFullscreen
+    }
+    if (!slideVolumeBrightnessEnabled && startX < leftZoneEnd) {
+        return VideoGestureMode.None
+    }
+    if (!slideVolumeBrightnessEnabled && startX > rightZoneStart) {
+        return VideoGestureMode.None
+    }
+    return when {
+        startX < leftZoneEnd -> VideoGestureMode.Brightness
+        startX > rightZoneStart -> VideoGestureMode.Volume
+        else -> if (centerSwipeToFullscreenEnabled) {
+            VideoGestureMode.SwipeToFullscreen
+        } else {
+            VideoGestureMode.None
+        }
+    }
+}
+
+internal fun shouldShowDanmakuLayers(
+    isInPipMode: Boolean,
+    danmakuEnabled: Boolean,
+    isPortraitFullscreen: Boolean,
+    pipNoDanmakuEnabled: Boolean
+): Boolean {
+    if (!danmakuEnabled || isPortraitFullscreen) return false
+    if (isInPipMode && pipNoDanmakuEnabled) return false
+    return true
+}
 
 internal fun resolveHorizontalSeekDeltaMs(
     isFullscreen: Boolean,
@@ -304,6 +348,7 @@ fun VideoPlayerSection(
     isFavorited: Boolean = false,
     onToggleFollow: () -> Unit = {},
     onToggleLike: () -> Unit = {},
+    onDislike: () -> Unit = {},
     onCoin: () -> Unit = {},
     onToggleFavorite: () -> Unit = {},
     onTriple: () -> Unit = {},  // [新增] 一键三连回调
@@ -346,6 +391,18 @@ fun VideoPlayerSection(
     val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
         .getPortraitSwipeToFullscreenEnabled(context)
         .collectAsState(initial = true)
+    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCenterSwipeToFullscreenEnabled(context)
+        .collectAsState(initial = true)
+    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getSlideVolumeBrightnessEnabled(context)
+        .collectAsState(initial = true)
+    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getSetSystemBrightnessEnabled(context)
+        .collectAsState(initial = false)
+    val pipNoDanmakuEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getPipNoDanmakuEnabled(context)
+        .collectAsState(initial = false)
 
     val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
         .getSeekForwardSeconds(context)
@@ -368,6 +425,9 @@ fun VideoPlayerSection(
     val autoExitFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
         .getAutoExitFullscreen(context)
         .collectAsState(initial = true)
+    val subtitleAutoPreference by com.android.purebilibili.core.store.SettingsManager
+        .getSubtitleAutoPreference(context)
+        .collectAsState(initial = SubtitleAutoPreference.OFF)
     
     //  [新增] 双击跳转视觉反馈状态
     var seekFeedbackText by remember { mutableStateOf<String?>(null) }
@@ -584,6 +644,7 @@ fun VideoPlayerSection(
                 isInPipMode,
                 isScreenLocked,
                 portraitSwipeToFullscreenEnabled,
+                centerSwipeToFullscreenEnabled,
                 fullscreenSwipeSeekSeconds
             ) {
                 if (!isInPipMode) {
@@ -656,7 +717,6 @@ fun VideoPlayerSection(
                                 //  阈值判定：上滑超过一定距离触发全屏
                                 val swipeThreshold = 50.dp.toPx()
                                 if (
-                                    portraitSwipeToFullscreenEnabled &&
                                     shouldTriggerFullscreenBySwipe(
                                         isFullscreen = isFullscreen,
                                         reverseGesture = fullscreenGestureReverse,
@@ -712,37 +772,17 @@ fun VideoPlayerSection(
                                     val leftZoneEnd = (width / 3f - boundaryPadding).coerceAtLeast(0f)
                                     val rightZoneStart = (width * 2f / 3f + boundaryPadding).coerceAtMost(width)
                                     val isSwipeUp = totalDragDistanceY < -minDragThreshold
-                                    
-                                    gestureMode = if (!isFullscreen) {
-                                        // 竖屏模式：可选“上滑进全屏”；关闭后改为优先亮度/音量，不强制进全屏。
-                                        if (portraitSwipeToFullscreenEnabled && isSwipeUp) {
-                                            VideoGestureMode.SwipeToFullscreen
-                                        } else {
-                                            when {
-                                                startX < leftZoneEnd -> VideoGestureMode.Brightness
-                                                startX > rightZoneStart -> VideoGestureMode.Volume
-                                                else -> if (portraitSwipeToFullscreenEnabled) {
-                                                    VideoGestureMode.SwipeToFullscreen
-                                                } else {
-                                                    VideoGestureMode.None
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        // 横屏模式
-                                        // 左侧 1/3: 亮度
-                                        // 右侧 1/3: 音量
-                                        // 中间 1/3: 用于滑动退出全屏（可反向）
-                                        when {
-                                            startX < leftZoneEnd -> VideoGestureMode.Brightness
-                                            startX > rightZoneStart -> VideoGestureMode.Volume
-                                            else -> if (portraitSwipeToFullscreenEnabled) {
-                                                VideoGestureMode.SwipeToFullscreen
-                                            } else {
-                                                VideoGestureMode.None
-                                            }
-                                        }
-                                    }
+
+                                    gestureMode = resolveVerticalGestureMode(
+                                        isFullscreen = isFullscreen,
+                                        isSwipeUp = isSwipeUp,
+                                        startX = startX,
+                                        leftZoneEnd = leftZoneEnd,
+                                        rightZoneStart = rightZoneStart,
+                                        portraitSwipeToFullscreenEnabled = portraitSwipeToFullscreenEnabled,
+                                        centerSwipeToFullscreenEnabled = centerSwipeToFullscreenEnabled,
+                                        slideVolumeBrightnessEnabled = slideVolumeBrightnessEnabled
+                                    )
 
                                     // 横屏中间 1/3 的垂直手势直接忽略，避免误触亮度/音量
                                     if (isFullscreen && gestureMode == VideoGestureMode.None) {
@@ -786,6 +826,18 @@ fun VideoPlayerSection(
                                     if (kotlin.math.abs(newBrightness - gesturePercent) > 0.02f) {
                                         getActivity()?.window?.attributes = getActivity()?.window?.attributes?.apply {
                                             screenBrightness = newBrightness
+                                        }
+                                        if (setSystemBrightnessEnabled) {
+                                            runCatching {
+                                                if (Settings.System.canWrite(context)) {
+                                                    val value = (newBrightness * 255f).roundToInt().coerceIn(1, 255)
+                                                    Settings.System.putInt(
+                                                        context.contentResolver,
+                                                        Settings.System.SCREEN_BRIGHTNESS,
+                                                        value
+                                                    )
+                                                }
+                                            }
                                         }
                                         gesturePercent = newBrightness
                                     }
@@ -1343,8 +1395,14 @@ fun VideoPlayerSection(
     }
 
     // 2. DanmakuView (使用 ByteDance DanmakuRenderEngine - 覆盖在 PlayerView 上方)
-    android.util.Log.d("VideoPlayerSection", "🔍 DanmakuView check: isInPipMode=$isInPipMode, danmakuEnabled=$danmakuEnabled")
-        if (!isInPipMode && danmakuEnabled && !isPortraitFullscreen) {
+    val shouldShowDanmakuLayer = shouldShowDanmakuLayers(
+        isInPipMode = isInPipMode,
+        danmakuEnabled = danmakuEnabled,
+        isPortraitFullscreen = isPortraitFullscreen,
+        pipNoDanmakuEnabled = pipNoDanmakuEnabled
+    )
+    android.util.Log.d("VideoPlayerSection", "🔍 DanmakuView check: isInPipMode=$isInPipMode, danmakuEnabled=$danmakuEnabled, pipNoDanmakuEnabled=$pipNoDanmakuEnabled")
+        if (shouldShowDanmakuLayer) {
             android.util.Log.d("VideoPlayerSection", " Conditions met, creating DanmakuView...")
             //  计算状态栏高度
             val statusBarHeightPx = remember(context) {
@@ -1415,7 +1473,7 @@ fun VideoPlayerSection(
         // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
         val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsState()
         
-        if (!isInPipMode && danmakuEnabled && advancedDanmakuList.isNotEmpty()) {
+        if (shouldShowDanmakuLayer && advancedDanmakuList.isNotEmpty()) {
              Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1431,31 +1489,91 @@ fun VideoPlayerSection(
 
         // 4. B站字幕叠加层（支持中英双语）
         val subtitleFeatureEnabled = isSubtitleFeatureEnabledForUser()
+        val subtitleBelongsToCurrentVideo = remember(uiState, subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled) return@remember false
+            val success = uiState as? PlayerUiState.Success ?: return@remember false
+            success.subtitleOwnerBvid == success.info.bvid &&
+                success.subtitleOwnerCid == success.info.cid &&
+                success.info.cid > 0L
+        }
         val subtitlePrimaryAvailable = remember(uiState, subtitleFeatureEnabled) {
             if (!subtitleFeatureEnabled) return@remember false
             val success = uiState as? PlayerUiState.Success ?: return@remember false
-            success.subtitlePrimaryCues.isNotEmpty()
+            subtitleBelongsToCurrentVideo && success.subtitlePrimaryCues.isNotEmpty()
         }
         val subtitleSecondaryAvailable = remember(uiState, subtitleFeatureEnabled) {
             if (!subtitleFeatureEnabled) return@remember false
             val success = uiState as? PlayerUiState.Success ?: return@remember false
-            success.subtitleSecondaryCues.isNotEmpty()
+            subtitleBelongsToCurrentVideo && success.subtitleSecondaryCues.isNotEmpty()
         }
-        val subtitleTrackAvailable = subtitlePrimaryAvailable || subtitleSecondaryAvailable
-        val subtitleToggleKey = remember(uiState, bvid) {
+        val subtitlePrimaryTrackBound = remember(uiState, subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled) return@remember false
+            val success = uiState as? PlayerUiState.Success ?: return@remember false
+            subtitleBelongsToCurrentVideo &&
+                (!success.subtitlePrimaryTrackKey.isNullOrBlank() || !success.subtitlePrimaryLanguage.isNullOrBlank())
+        }
+        val subtitleSecondaryTrackBound = remember(uiState, subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled) return@remember false
+            val success = uiState as? PlayerUiState.Success ?: return@remember false
+            subtitleBelongsToCurrentVideo &&
+                (!success.subtitleSecondaryTrackKey.isNullOrBlank() || !success.subtitleSecondaryLanguage.isNullOrBlank())
+        }
+        val subtitlePrimaryLikelyAi = remember(uiState, subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled) return@remember false
+            val success = uiState as? PlayerUiState.Success ?: return@remember false
+            subtitleBelongsToCurrentVideo && success.subtitlePrimaryLikelyAi
+        }
+        val subtitleSecondaryLikelyAi = remember(uiState, subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled) return@remember false
+            val success = uiState as? PlayerUiState.Success ?: return@remember false
+            subtitleBelongsToCurrentVideo && success.subtitleSecondaryLikelyAi
+        }
+        val subtitleControlAvailability = remember(
+            subtitleFeatureEnabled,
+            subtitlePrimaryTrackBound,
+            subtitleSecondaryTrackBound,
+            subtitlePrimaryAvailable,
+            subtitleSecondaryAvailable
+        ) {
+            if (!subtitleFeatureEnabled) {
+                com.android.purebilibili.feature.video.subtitle.SubtitleControlAvailability(
+                    trackAvailable = false,
+                    primarySelectable = false,
+                    secondarySelectable = false
+                )
+            } else {
+                resolveSubtitleControlAvailability(
+                    primaryTrackBound = subtitlePrimaryTrackBound,
+                    secondaryTrackBound = subtitleSecondaryTrackBound,
+                    primaryCueAvailable = subtitlePrimaryAvailable,
+                    secondaryCueAvailable = subtitleSecondaryAvailable
+                )
+            }
+        }
+        val subtitleAutoModeMuted = remember(playerState.player, audioManager, bvid) {
+            val systemMuted = runCatching {
+                audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0
+            }.getOrDefault(false)
+            systemMuted || playerState.player.volume <= 0f
+        }
+        val subtitleToggleKey = remember(uiState, bvid, subtitleAutoPreference) {
             val success = uiState as? PlayerUiState.Success
             if (success == null) {
                 "no-subtitle"
             } else {
-                "${bvid}_${success.info.cid}_${success.subtitlePrimaryLanguage}_${success.subtitleSecondaryLanguage}"
+                "${bvid}_${success.info.cid}_${success.subtitlePrimaryLanguage}_${success.subtitleSecondaryLanguage}_${success.subtitlePrimaryLikelyAi}_${success.subtitleSecondaryLikelyAi}_${subtitleAutoPreference.name}"
             }
         }
         var subtitleDisplayModePreference by rememberSaveable("${subtitleToggleKey}_mode") {
             mutableStateOf(
                 if (subtitleFeatureEnabled) {
-                    resolveDefaultSubtitleDisplayMode(
-                        hasPrimaryTrack = subtitlePrimaryAvailable,
-                        hasSecondaryTrack = subtitleSecondaryAvailable
+                    resolveSubtitleDisplayModeByAutoPreference(
+                        preference = subtitleAutoPreference,
+                        hasPrimaryTrack = subtitlePrimaryTrackBound,
+                        hasSecondaryTrack = subtitleSecondaryTrackBound,
+                        primaryTrackLikelyAi = subtitlePrimaryLikelyAi,
+                        secondaryTrackLikelyAi = subtitleSecondaryLikelyAi,
+                        isMuted = subtitleAutoModeMuted
                     )
                 } else {
                     SubtitleDisplayMode.OFF
@@ -1467,11 +1585,12 @@ fun VideoPlayerSection(
         }
         val subtitleDisplayMode = remember(
             subtitleFeatureEnabled,
+            subtitleBelongsToCurrentVideo,
             subtitleDisplayModePreference,
             subtitlePrimaryAvailable,
             subtitleSecondaryAvailable
         ) {
-            if (!subtitleFeatureEnabled) {
+            if (!subtitleFeatureEnabled || !subtitleBelongsToCurrentVideo) {
                 SubtitleDisplayMode.OFF
             } else {
                 normalizeSubtitleDisplayMode(
@@ -1485,14 +1604,18 @@ fun VideoPlayerSection(
         val subtitlePrimaryLabel = remember(uiState) {
             val success = uiState as? PlayerUiState.Success
             resolveSubtitleLanguageLabel(
-                languageCode = success?.subtitlePrimaryLanguage,
+                languageCode = success?.takeIf {
+                    it.subtitleOwnerBvid == it.info.bvid && it.subtitleOwnerCid == it.info.cid
+                }?.subtitlePrimaryLanguage,
                 fallbackLabel = "中文"
             )
         }
         val subtitleSecondaryLabel = remember(uiState) {
             val success = uiState as? PlayerUiState.Success
             resolveSubtitleLanguageLabel(
-                languageCode = success?.subtitleSecondaryLanguage,
+                languageCode = success?.takeIf {
+                    it.subtitleOwnerBvid == it.info.bvid && it.subtitleOwnerCid == it.info.cid
+                }?.subtitleSecondaryLanguage,
                 fallbackLabel = "英文"
             )
         }
@@ -1506,12 +1629,18 @@ fun VideoPlayerSection(
         val subtitlePrimaryText = remember(uiState, subtitleFeatureEnabled, subtitlePositionMs, subtitleDisplayMode) {
             if (!subtitleFeatureEnabled) return@remember null
             val success = uiState as? PlayerUiState.Success ?: return@remember null
+            if (success.subtitleOwnerBvid != success.info.bvid || success.subtitleOwnerCid != success.info.cid) {
+                return@remember null
+            }
             if (!shouldRenderPrimarySubtitle(subtitleDisplayMode)) return@remember null
             resolveSubtitleTextAt(success.subtitlePrimaryCues, subtitlePositionMs)
         }
         val subtitleSecondaryText = remember(uiState, subtitleFeatureEnabled, subtitlePositionMs, subtitleDisplayMode) {
             if (!subtitleFeatureEnabled) return@remember null
             val success = uiState as? PlayerUiState.Success ?: return@remember null
+            if (success.subtitleOwnerBvid != success.info.bvid || success.subtitleOwnerCid != success.info.cid) {
+                return@remember null
+            }
             if (!shouldRenderSecondarySubtitle(subtitleDisplayMode)) return@remember null
             resolveSubtitleTextAt(success.subtitleSecondaryCues, subtitlePositionMs)
         }
@@ -2073,9 +2202,9 @@ fun VideoPlayerSection(
                 isAudioOnly = isAudioOnly,
                 onAudioOnlyToggle = onAudioOnlyToggle,
                 subtitleControlState = SubtitleControlUiState(
-                    trackAvailable = subtitleFeatureEnabled && subtitleTrackAvailable,
-                    primaryAvailable = subtitleFeatureEnabled && subtitlePrimaryAvailable,
-                    secondaryAvailable = subtitleFeatureEnabled && subtitleSecondaryAvailable,
+                    trackAvailable = subtitleControlAvailability.trackAvailable,
+                    primaryAvailable = subtitleControlAvailability.primarySelectable,
+                    secondaryAvailable = subtitleControlAvailability.secondarySelectable,
                     enabled = subtitleFeatureEnabled && subtitleOverlayEnabled,
                     displayMode = if (subtitleFeatureEnabled) subtitleDisplayMode else SubtitleDisplayMode.OFF,
                     primaryLabel = subtitlePrimaryLabel,
@@ -2097,8 +2226,8 @@ fun VideoPlayerSection(
                         )
                         subtitleDisplayModePreference = if (enabled) {
                             resolveDefaultSubtitleDisplayMode(
-                                hasPrimaryTrack = subtitlePrimaryAvailable,
-                                hasSecondaryTrack = subtitleSecondaryAvailable
+                                hasPrimaryTrack = subtitleControlAvailability.primarySelectable,
+                                hasSecondaryTrack = subtitleControlAvailability.secondarySelectable
                             )
                         } else {
                             SubtitleDisplayMode.OFF
@@ -2189,6 +2318,7 @@ fun VideoPlayerSection(
                 coinCount = uiState.coinCount,
                 onToggleFollow = onToggleFollow,
                 onToggleLike = onToggleLike,
+                onDislike = onDislike,
                 onCoin = onCoin,
                 onToggleFavorite = onToggleFavorite,
                 onDrawerVideoClick = { vid ->

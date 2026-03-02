@@ -14,6 +14,8 @@ import com.android.purebilibili.core.cache.PlayUrlCache
 import com.android.purebilibili.core.cooldown.PlaybackCooldownManager
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.SkipAction
+import com.android.purebilibili.core.store.TodayWatchFeedbackSnapshot
+import com.android.purebilibili.core.store.TodayWatchFeedbackStore
 import com.android.purebilibili.core.store.TodayWatchProfileStore
 import com.android.purebilibili.core.util.AnalyticsHelper
 import com.android.purebilibili.core.util.CrashReporter
@@ -58,6 +60,10 @@ import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaI
 import com.android.purebilibili.feature.video.subtitle.SubtitleCue
 import com.android.purebilibili.feature.video.subtitle.SubtitleTrackMeta
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
+import com.android.purebilibili.feature.video.subtitle.isLikelyAiSubtitleTrack
+import com.android.purebilibili.feature.video.subtitle.isTrustedBilibiliSubtitleUrl
+import com.android.purebilibili.feature.video.subtitle.normalizeBilibiliSubtitleUrl
+import com.android.purebilibili.feature.video.subtitle.orderSubtitleTracksByPreference
 import com.android.purebilibili.feature.video.subtitle.resolveDefaultSubtitleLanguages
 
 // ========== UI State ==========
@@ -113,8 +119,14 @@ sealed class PlayerUiState {
         val currentAudioLang: String? = null,
         val videoDurationMs: Long = 0L,
         val subtitleEnabled: Boolean = false,
+        val subtitleOwnerBvid: String? = null,
+        val subtitleOwnerCid: Long = 0L,
         val subtitlePrimaryLanguage: String? = null,
         val subtitleSecondaryLanguage: String? = null,
+        val subtitlePrimaryTrackKey: String? = null,
+        val subtitleSecondaryTrackKey: String? = null,
+        val subtitlePrimaryLikelyAi: Boolean = false,
+        val subtitleSecondaryLikelyAi: Boolean = false,
         val subtitlePrimaryCues: List<SubtitleCue> = emptyList(),
         val subtitleSecondaryCues: List<SubtitleCue> = emptyList(),
         val ownerFollowerCount: Int? = null,
@@ -216,6 +228,71 @@ internal fun shouldApplySubtitleLoadResult(
         expectedCid == currentCid
 }
 
+internal fun buildSubtitleTrackBindingKey(
+    subtitleId: Long,
+    subtitleIdStr: String,
+    languageCode: String,
+    subtitleUrl: String = ""
+): String {
+    val idPart = subtitleIdStr.takeIf { it.isNotBlank() }
+        ?: subtitleId.takeIf { it > 0L }?.toString()
+        ?: "no-id"
+    val baseKey = "${idPart}|${languageCode.ifBlank { "unknown" }}"
+    val normalizedUrl = normalizeBilibiliSubtitleUrl(subtitleUrl)
+    if (normalizedUrl.isBlank()) return baseKey
+    val urlPathKey = runCatching {
+        val uri = java.net.URI(normalizedUrl)
+        val host = uri.host?.lowercase().orEmpty()
+        val path = uri.path?.lowercase().orEmpty()
+        when {
+            host.isNotBlank() && path.isNotBlank() -> "$host$path"
+            path.isNotBlank() -> path
+            else -> ""
+        }
+    }.getOrDefault("")
+    if (urlPathKey.isBlank()) return baseKey
+    return "$baseKey|$urlPathKey"
+}
+
+internal fun shouldApplySubtitleTrackBinding(
+    expectedTrackKey: String?,
+    currentTrackKey: String?,
+    expectedLanguage: String?,
+    currentLanguage: String?
+): Boolean {
+    return resolveSubtitleTrackBindingMismatchReason(
+        expectedTrackKey = expectedTrackKey,
+        currentTrackKey = currentTrackKey,
+        expectedLanguage = expectedLanguage,
+        currentLanguage = currentLanguage
+    ) == null
+}
+
+internal fun resolveSubtitleTrackBindingMismatchReason(
+    expectedTrackKey: String?,
+    currentTrackKey: String?,
+    expectedLanguage: String?,
+    currentLanguage: String?
+): String? {
+    val languageMatched = expectedLanguage.isNullOrBlank() || expectedLanguage == currentLanguage
+    if (!languageMatched) {
+        return "language-mismatch expected=$expectedLanguage current=$currentLanguage"
+    }
+    if (expectedTrackKey.isNullOrBlank()) return null
+    if (expectedTrackKey == currentTrackKey) return null
+    return "track-key-mismatch expected=$expectedTrackKey current=$currentTrackKey"
+}
+
+internal fun shouldRetrySubtitleLoadWithPlayerInfo(errorMessage: String?): Boolean {
+    val msg = errorMessage?.lowercase().orEmpty()
+    if (msg.isBlank()) return false
+    return msg.contains("http 401") ||
+        msg.contains("http 403") ||
+        msg.contains("http 404") ||
+        msg.contains("http 410") ||
+        msg.contains("http 412")
+}
+
 internal fun shouldTreatAsSamePlaybackRequest(
     requestBvid: String,
     requestCid: Long,
@@ -269,8 +346,14 @@ internal fun resolveExternalPlaylistSyncDecision(
 internal fun clearSubtitleFields(state: PlayerUiState.Success): PlayerUiState.Success {
     return state.copy(
         subtitleEnabled = false,
+        subtitleOwnerBvid = null,
+        subtitleOwnerCid = 0L,
         subtitlePrimaryLanguage = null,
         subtitleSecondaryLanguage = null,
+        subtitlePrimaryTrackKey = null,
+        subtitleSecondaryTrackKey = null,
+        subtitlePrimaryLikelyAi = false,
+        subtitleSecondaryLikelyAi = false,
         subtitlePrimaryCues = emptyList(),
         subtitleSecondaryCues = emptyList()
     )
@@ -279,6 +362,8 @@ internal fun clearSubtitleFields(state: PlayerUiState.Success): PlayerUiState.Su
 internal data class SubtitleTrackLoadDecision(
     val primaryLanguage: String?,
     val secondaryLanguage: String?,
+    val primaryLikelyAi: Boolean,
+    val secondaryLikelyAi: Boolean,
     val primaryCues: List<SubtitleCue>,
     val secondaryCues: List<SubtitleCue>
 )
@@ -308,13 +393,17 @@ internal fun isLikelyLowQualitySubtitleTrack(
 internal fun resolveSubtitleTrackLoadDecision(
     primaryLanguage: String,
     primaryCues: List<SubtitleCue>,
+    primaryLikelyAi: Boolean = false,
     secondaryLanguage: String?,
-    secondaryCues: List<SubtitleCue>
+    secondaryCues: List<SubtitleCue>,
+    secondaryLikelyAi: Boolean = false
 ): SubtitleTrackLoadDecision {
     if (secondaryLanguage.isNullOrBlank()) {
         return SubtitleTrackLoadDecision(
             primaryLanguage = primaryLanguage.takeIf { primaryCues.isNotEmpty() },
             secondaryLanguage = null,
+            primaryLikelyAi = primaryLikelyAi,
+            secondaryLikelyAi = false,
             primaryCues = primaryCues,
             secondaryCues = emptyList()
         )
@@ -333,18 +422,24 @@ internal fun resolveSubtitleTrackLoadDecision(
         !primaryLowQuality && !secondaryLowQuality -> SubtitleTrackLoadDecision(
             primaryLanguage = primaryLanguage.takeIf { primaryCues.isNotEmpty() },
             secondaryLanguage = secondaryLanguage.takeIf { secondaryCues.isNotEmpty() },
+            primaryLikelyAi = primaryLikelyAi,
+            secondaryLikelyAi = secondaryLikelyAi,
             primaryCues = primaryCues,
             secondaryCues = secondaryCues
         )
         primaryLowQuality && !secondaryLowQuality -> SubtitleTrackLoadDecision(
             primaryLanguage = secondaryLanguage.takeIf { secondaryCues.isNotEmpty() },
             secondaryLanguage = null,
+            primaryLikelyAi = secondaryLikelyAi,
+            secondaryLikelyAi = false,
             primaryCues = secondaryCues,
             secondaryCues = emptyList()
         )
         !primaryLowQuality && secondaryLowQuality -> SubtitleTrackLoadDecision(
             primaryLanguage = primaryLanguage.takeIf { primaryCues.isNotEmpty() },
             secondaryLanguage = null,
+            primaryLikelyAi = primaryLikelyAi,
+            secondaryLikelyAi = false,
             primaryCues = primaryCues,
             secondaryCues = emptyList()
         )
@@ -354,6 +449,8 @@ internal fun resolveSubtitleTrackLoadDecision(
                 SubtitleTrackLoadDecision(
                     primaryLanguage = primaryLanguage.takeIf { primaryCues.isNotEmpty() },
                     secondaryLanguage = null,
+                    primaryLikelyAi = primaryLikelyAi,
+                    secondaryLikelyAi = false,
                     primaryCues = primaryCues,
                     secondaryCues = emptyList()
                 )
@@ -361,6 +458,8 @@ internal fun resolveSubtitleTrackLoadDecision(
                 SubtitleTrackLoadDecision(
                     primaryLanguage = secondaryLanguage.takeIf { secondaryCues.isNotEmpty() },
                     secondaryLanguage = null,
+                    primaryLikelyAi = secondaryLikelyAi,
+                    secondaryLikelyAi = false,
                     primaryCues = secondaryCues,
                     secondaryCues = emptyList()
                 )
@@ -1515,7 +1614,22 @@ class PlayerViewModel : ViewModel() {
                                 requestToken = requestToken
                             )
                             loadAiSummary(loadedBvid, loadedCid, loadedOwnerMid)
-                            startOnlineCountPolling(loadedBvid, loadedCid)
+                            val context = appContext
+                            val shouldShowOnlineCount = context?.let {
+                                com.android.purebilibili.core.store.SettingsManager
+                                    .getShowOnlineCount(it)
+                                    .first()
+                            } ?: false
+                            if (shouldShowOnlineCount) {
+                                startOnlineCountPolling(loadedBvid, loadedCid)
+                            } else {
+                                onlineCountJob?.cancel()
+                                _uiState.update { current ->
+                                    if (current is PlayerUiState.Success) {
+                                        current.copy(onlineCount = "")
+                                    } else current
+                                }
+                            }
                         }
 
                         //  [新增] 更新播放列表
@@ -2005,6 +2119,54 @@ class PlayerViewModel : ViewModel() {
                 }
                 .onFailure { toast(it.message ?: "操作失败") }
         }
+    }
+
+    fun markVideoNotInterested() {
+        val current = _uiState.value as? PlayerUiState.Success
+        if (current == null) {
+            toast("视频未加载")
+            return
+        }
+        val context = appContext
+        if (context == null) {
+            toast("暂时无法记录反馈")
+            return
+        }
+        viewModelScope.launch(Dispatchers.Default) {
+            val oldSnapshot = TodayWatchFeedbackStore.getSnapshot(context)
+            val mergedKeywords = oldSnapshot.dislikedKeywords + extractDislikeKeywords(current.info.title)
+            val snapshot = TodayWatchFeedbackSnapshot(
+                dislikedBvids = oldSnapshot.dislikedBvids + current.info.bvid,
+                dislikedCreatorMids = oldSnapshot.dislikedCreatorMids + current.info.owner.mid,
+                dislikedKeywords = mergedKeywords
+            )
+            TodayWatchFeedbackStore.saveSnapshot(context, snapshot)
+            Logger.d(
+                "PlayerViewModel",
+                "Recorded not interested feedback: bvid=${current.info.bvid}, mid=${current.info.owner.mid}"
+            )
+            withContext(Dispatchers.Main) {
+                toast("已减少此类推荐")
+            }
+        }
+    }
+
+    private fun extractDislikeKeywords(title: String): Set<String> {
+        if (title.isBlank()) return emptySet()
+        val normalized = title.lowercase()
+        val stopWords = setOf("视频", "合集", "最新", "一个", "我们", "你们", "今天", "真的", "这个")
+        val zhTokens = Regex("[\\u4e00-\\u9fa5]{2,6}")
+            .findAll(normalized)
+            .map { it.value }
+            .filter { it !in stopWords }
+            .take(6)
+            .toList()
+        val enTokens = Regex("[a-z0-9]{3,}")
+            .findAll(normalized)
+            .map { it.value }
+            .take(4)
+            .toList()
+        return (zhTokens + enTokens).toSet()
     }
 
     // ========== 评论发送对话框 ==========
@@ -2785,6 +2947,20 @@ class PlayerViewModel : ViewModel() {
         onlineCountJob = viewModelScope.launch {
             while (true) {
                 try {
+                    val context = appContext
+                    val enabled = context?.let {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .getShowOnlineCount(it)
+                            .first()
+                    } ?: false
+                    if (!enabled) {
+                        _uiState.update { current ->
+                            if (current is PlayerUiState.Success) {
+                                current.copy(onlineCount = "")
+                            } else current
+                        }
+                        break
+                    }
                     val response = com.android.purebilibili.core.network.NetworkModule.api.getOnlineCount(bvid, cid)
                     if (response.code == 0 && response.data != null) {
                         val onlineText = "${response.data.total}人正在看"
@@ -2868,6 +3044,7 @@ class PlayerViewModel : ViewModel() {
                             bvid = bvid,
                             cid = cid,
                             subtitles = data.subtitle?.subtitles.orEmpty(),
+                            preferredPrimaryLanguage = data.subtitle?.lan,
                             requestToken = requestToken
                         )
                     } else {
@@ -2943,8 +3120,14 @@ class PlayerViewModel : ViewModel() {
             ) {
                 current.copy(
                     subtitleEnabled = false,
+                    subtitleOwnerBvid = null,
+                    subtitleOwnerCid = 0L,
                     subtitlePrimaryLanguage = null,
                     subtitleSecondaryLanguage = null,
+                    subtitlePrimaryTrackKey = null,
+                    subtitleSecondaryTrackKey = null,
+                    subtitlePrimaryLikelyAi = false,
+                    subtitleSecondaryLikelyAi = false,
                     subtitlePrimaryCues = emptyList(),
                     subtitleSecondaryCues = emptyList()
                 )
@@ -2954,10 +3137,36 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
+    private fun mapSubtitleTracksForPlayback(subtitles: List<SubtitleItem>): List<SubtitleTrackMeta> {
+        return orderSubtitleTracksByPreference(
+            subtitles.mapNotNull { item ->
+                val normalizedUrl = normalizeBilibiliSubtitleUrl(item.subtitleUrl)
+                if (!isTrustedBilibiliSubtitleUrl(normalizedUrl)) {
+                    Logger.d(
+                        "PlayerVM",
+                        "SUB_DBG ignore untrusted subtitle track: lan=${item.lan}, url=${item.subtitleUrl.take(80)}"
+                    )
+                    return@mapNotNull null
+                }
+                SubtitleTrackMeta(
+                    id = item.id,
+                    idStr = item.idStr,
+                    lan = item.lan,
+                    lanDoc = item.lanDoc,
+                    subtitleUrl = normalizedUrl,
+                    aiStatus = item.aiStatus,
+                    aiType = item.aiType,
+                    type = item.type
+                )
+            }.distinctBy { meta -> "${meta.lan}|${meta.idStr}|${meta.id}|${meta.subtitleUrl}" }
+        )
+    }
+
     private fun loadSubtitleTracksFromPlayerInfo(
         bvid: String,
         cid: Long,
         subtitles: List<SubtitleItem>,
+        preferredPrimaryLanguage: String? = null,
         requestToken: Long = currentLoadRequestToken
     ) {
         val current = _uiState.value as? PlayerUiState.Success ?: return
@@ -2974,26 +3183,35 @@ class PlayerViewModel : ViewModel() {
             return
         }
 
-        val trackMetas = subtitles.mapNotNull { item ->
-            val url = item.subtitleUrl.trim()
-            if (url.isBlank()) return@mapNotNull null
-            SubtitleTrackMeta(
-                lan = item.lan,
-                lanDoc = item.lanDoc,
-                subtitleUrl = url
-            )
-        }.distinctBy { meta -> "${meta.lan}|${meta.subtitleUrl}" }
+        val trackMetas = mapSubtitleTracksForPlayback(subtitles)
         if (trackMetas.isEmpty()) {
             clearSubtitleTracksForCurrentVideo(bvid = bvid, cid = cid)
             return
         }
 
-        val selection = resolveDefaultSubtitleLanguages(trackMetas)
-        val primaryTrack = trackMetas.firstOrNull { it.lan == selection.primaryLanguage } ?: trackMetas.first()
-        val secondaryTrack = selection.secondaryLanguage
+        val selection = resolveDefaultSubtitleLanguages(
+            tracks = trackMetas,
+            preferredPrimaryLanguage = preferredPrimaryLanguage
+        )
+        var primaryTrack = trackMetas.firstOrNull { it.lan == selection.primaryLanguage } ?: trackMetas.first()
+        var secondaryTrack = selection.secondaryLanguage
             ?.let { targetLan ->
                 trackMetas.firstOrNull { it.lan == targetLan && it.lan != primaryTrack.lan }
             }
+        var primaryTrackKey = buildSubtitleTrackBindingKey(
+            subtitleId = primaryTrack.id,
+            subtitleIdStr = primaryTrack.idStr,
+            languageCode = primaryTrack.lan,
+            subtitleUrl = primaryTrack.subtitleUrl
+        )
+        var secondaryTrackKey = secondaryTrack?.let {
+            buildSubtitleTrackBindingKey(
+                subtitleId = it.id,
+                subtitleIdStr = it.idStr,
+                languageCode = it.lan,
+                subtitleUrl = it.subtitleUrl
+            )
+        }
         subtitleLoadToken += 1
         val currentToken = subtitleLoadToken
 
@@ -3016,8 +3234,14 @@ class PlayerViewModel : ViewModel() {
             ) {
                 state.copy(
                     subtitleEnabled = true,
+                    subtitleOwnerBvid = bvid,
+                    subtitleOwnerCid = cid,
                     subtitlePrimaryLanguage = primaryTrack.lan,
                     subtitleSecondaryLanguage = secondaryTrack?.lan,
+                    subtitlePrimaryTrackKey = primaryTrackKey,
+                    subtitleSecondaryTrackKey = secondaryTrackKey,
+                    subtitlePrimaryLikelyAi = isLikelyAiSubtitleTrack(primaryTrack),
+                    subtitleSecondaryLikelyAi = secondaryTrack?.let(::isLikelyAiSubtitleTrack) ?: false,
                     subtitlePrimaryCues = emptyList(),
                     subtitleSecondaryCues = emptyList()
                 )
@@ -3027,11 +3251,98 @@ class PlayerViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            val primaryResult = VideoRepository.getSubtitleCues(primaryTrack.subtitleUrl)
-            val secondaryResult = if (secondaryTrack != null) {
-                VideoRepository.getSubtitleCues(secondaryTrack.subtitleUrl)
-            } else {
-                Result.success(emptyList())
+            var primaryResult = VideoRepository.getSubtitleCues(
+                subtitleUrl = primaryTrack.subtitleUrl,
+                bvid = bvid,
+                cid = cid,
+                subtitleId = primaryTrack.id,
+                subtitleIdStr = primaryTrack.idStr,
+                subtitleLan = primaryTrack.lan
+            )
+            var secondaryResult = secondaryTrack?.let { track ->
+                VideoRepository.getSubtitleCues(
+                    subtitleUrl = track.subtitleUrl,
+                    bvid = bvid,
+                    cid = cid,
+                    subtitleId = track.id,
+                    subtitleIdStr = track.idStr,
+                    subtitleLan = track.lan
+                )
+            } ?: Result.success(emptyList())
+
+            val shouldRetryWithFreshPlayerInfo = shouldRetrySubtitleLoadWithPlayerInfo(
+                primaryResult.exceptionOrNull()?.message
+            ) || shouldRetrySubtitleLoadWithPlayerInfo(
+                secondaryResult.exceptionOrNull()?.message
+            )
+            if (shouldRetryWithFreshPlayerInfo) {
+                Logger.d(
+                    "PlayerVM",
+                    "SUB_DBG subtitle load got auth-like failure, retry with refreshed player info: bvid=$bvid cid=$cid"
+                )
+                val refreshedTracks = VideoRepository.getPlayerInfo(bvid, cid)
+                    .getOrNull()
+                    ?.subtitle
+                    ?.subtitles
+                    .orEmpty()
+                    .let(::mapSubtitleTracksForPlayback)
+                if (refreshedTracks.isNotEmpty()) {
+                    val retryPrimaryTrack = refreshedTracks.firstOrNull { track ->
+                        buildSubtitleTrackBindingKey(
+                            subtitleId = track.id,
+                            subtitleIdStr = track.idStr,
+                            languageCode = track.lan,
+                            subtitleUrl = track.subtitleUrl
+                        ) == primaryTrackKey
+                    } ?: refreshedTracks.firstOrNull { it.lan == primaryTrack.lan }
+                    if (retryPrimaryTrack != null && primaryResult.isFailure) {
+                        primaryTrack = retryPrimaryTrack
+                        primaryTrackKey = buildSubtitleTrackBindingKey(
+                            subtitleId = primaryTrack.id,
+                            subtitleIdStr = primaryTrack.idStr,
+                            languageCode = primaryTrack.lan,
+                            subtitleUrl = primaryTrack.subtitleUrl
+                        )
+                        primaryResult = VideoRepository.getSubtitleCues(
+                            subtitleUrl = primaryTrack.subtitleUrl,
+                            bvid = bvid,
+                            cid = cid,
+                            subtitleId = primaryTrack.id,
+                            subtitleIdStr = primaryTrack.idStr,
+                            subtitleLan = primaryTrack.lan
+                        )
+                    }
+
+                    if (secondaryTrack != null) {
+                        val retrySecondaryTrack = refreshedTracks.firstOrNull { track ->
+                            buildSubtitleTrackBindingKey(
+                                subtitleId = track.id,
+                                subtitleIdStr = track.idStr,
+                                languageCode = track.lan,
+                                subtitleUrl = track.subtitleUrl
+                            ) == secondaryTrackKey
+                        } ?: refreshedTracks.firstOrNull { track ->
+                            track.lan == secondaryTrack?.lan && track.lan != primaryTrack.lan
+                        }
+                        if (retrySecondaryTrack != null && secondaryResult.isFailure) {
+                            secondaryTrack = retrySecondaryTrack
+                            secondaryTrackKey = buildSubtitleTrackBindingKey(
+                                subtitleId = retrySecondaryTrack.id,
+                                subtitleIdStr = retrySecondaryTrack.idStr,
+                                languageCode = retrySecondaryTrack.lan,
+                                subtitleUrl = retrySecondaryTrack.subtitleUrl
+                            )
+                            secondaryResult = VideoRepository.getSubtitleCues(
+                                subtitleUrl = retrySecondaryTrack.subtitleUrl,
+                                bvid = bvid,
+                                cid = cid,
+                                subtitleId = retrySecondaryTrack.id,
+                                subtitleIdStr = retrySecondaryTrack.idStr,
+                                subtitleLan = retrySecondaryTrack.lan
+                            )
+                        }
+                    }
+                }
             }
 
             if (!shouldApplySubtitleLoadResult(
@@ -3046,6 +3357,22 @@ class PlayerViewModel : ViewModel() {
                 return@launch
             }
 
+            _uiState.update { state ->
+                if (state is PlayerUiState.Success &&
+                    state.info.bvid == bvid &&
+                    state.info.cid == cid
+                ) {
+                    state.copy(
+                        subtitlePrimaryTrackKey = primaryTrackKey,
+                        subtitleSecondaryTrackKey = secondaryTrackKey,
+                        subtitlePrimaryLikelyAi = isLikelyAiSubtitleTrack(primaryTrack),
+                        subtitleSecondaryLikelyAi = secondaryTrack?.let(::isLikelyAiSubtitleTrack) ?: false
+                    )
+                } else {
+                    state
+                }
+            }
+
             val primaryCues = primaryResult.getOrElse {
                 emptyList()
             }
@@ -3056,24 +3383,65 @@ class PlayerViewModel : ViewModel() {
             val subtitleDecision = resolveSubtitleTrackLoadDecision(
                 primaryLanguage = primaryTrack.lan,
                 primaryCues = primaryCues,
+                primaryLikelyAi = isLikelyAiSubtitleTrack(primaryTrack),
                 secondaryLanguage = secondaryTrack?.lan,
-                secondaryCues = secondaryCues
+                secondaryCues = secondaryCues,
+                secondaryLikelyAi = secondaryTrack?.let(::isLikelyAiSubtitleTrack) ?: false
             )
 
             _uiState.update { state ->
+                val primaryMismatchReason = if (state is PlayerUiState.Success) {
+                    resolveSubtitleTrackBindingMismatchReason(
+                        expectedTrackKey = primaryTrackKey,
+                        currentTrackKey = state.subtitlePrimaryTrackKey,
+                        expectedLanguage = primaryTrack.lan,
+                        currentLanguage = state.subtitlePrimaryLanguage
+                    )
+                } else {
+                    "ui-not-success"
+                }
+                val secondaryMismatchReason = if (state is PlayerUiState.Success) {
+                    resolveSubtitleTrackBindingMismatchReason(
+                        expectedTrackKey = secondaryTrackKey,
+                        currentTrackKey = state.subtitleSecondaryTrackKey,
+                        expectedLanguage = secondaryTrack?.lan,
+                        currentLanguage = state.subtitleSecondaryLanguage
+                    )
+                } else {
+                    "ui-not-success"
+                }
                 if (state is PlayerUiState.Success &&
                     state.info.bvid == bvid &&
-                    state.info.cid == cid
+                    state.info.cid == cid &&
+                    primaryMismatchReason == null &&
+                    secondaryMismatchReason == null
                 ) {
+                    Logger.d(
+                        "PlayerVM",
+                        "SUB_DBG apply subtitle: owner=$bvid/$cid primaryLang=${subtitleDecision.primaryLanguage} secondaryLang=${subtitleDecision.secondaryLanguage} primaryCues=${subtitleDecision.primaryCues.size} secondaryCues=${subtitleDecision.secondaryCues.size}"
+                    )
                     state.copy(
                         subtitleEnabled = subtitleDecision.primaryCues.isNotEmpty() ||
                             subtitleDecision.secondaryCues.isNotEmpty(),
+                        subtitleOwnerBvid = bvid,
+                        subtitleOwnerCid = cid,
                         subtitlePrimaryLanguage = subtitleDecision.primaryLanguage,
                         subtitleSecondaryLanguage = subtitleDecision.secondaryLanguage,
+                        subtitlePrimaryLikelyAi = subtitleDecision.primaryLikelyAi,
+                        subtitleSecondaryLikelyAi = subtitleDecision.secondaryLikelyAi,
                         subtitlePrimaryCues = subtitleDecision.primaryCues,
                         subtitleSecondaryCues = subtitleDecision.secondaryCues
                     )
                 } else {
+                    if (state is PlayerUiState.Success &&
+                        state.info.bvid == bvid &&
+                        state.info.cid == cid
+                    ) {
+                        Logger.d(
+                            "PlayerVM",
+                            "SUB_DBG drop subtitle apply by binding: bvid=$bvid cid=$cid primary=${primaryMismatchReason ?: "ok"} secondary=${secondaryMismatchReason ?: "ok"}"
+                        )
+                    }
                     state
                 }
             }

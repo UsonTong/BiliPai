@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.settings
 
+import com.android.purebilibili.core.store.FullscreenMode
 import com.android.purebilibili.core.store.SettingsManager
 
 internal data class PlaybackSegmentOption<T>(
@@ -57,4 +58,13 @@ internal fun resolveFeedApiSegmentOptions(
             label = type.label
         )
     }
+}
+
+internal fun resolveFullscreenModeSegmentOptions(): List<PlaybackSegmentOption<FullscreenMode>> {
+    return listOf(
+        PlaybackSegmentOption(FullscreenMode.AUTO, "自动"),
+        PlaybackSegmentOption(FullscreenMode.NONE, "不改"),
+        PlaybackSegmentOption(FullscreenMode.VERTICAL, "竖屏"),
+        PlaybackSegmentOption(FullscreenMode.HORIZONTAL, "横屏")
+    )
 }

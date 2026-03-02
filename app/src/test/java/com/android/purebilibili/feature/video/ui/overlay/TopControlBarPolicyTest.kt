@@ -23,4 +23,22 @@ class TopControlBarPolicyTest {
             )
         )
     }
+
+    @Test
+    fun interactiveActionsVisibleWhenSettingEnabled() {
+        assertTrue(
+            shouldShowInteractiveActionsInTopControlBar(
+                showFullscreenActionItems = true
+            )
+        )
+    }
+
+    @Test
+    fun interactiveActionsHiddenWhenSettingDisabled() {
+        assertFalse(
+            shouldShowInteractiveActionsInTopControlBar(
+                showFullscreenActionItems = false
+            )
+        )
+    }
 }
