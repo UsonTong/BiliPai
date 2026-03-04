@@ -39,6 +39,14 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
+    fun `resolveDefaultPlaybackQualityOptions should only expose fixed quality tiers`() {
+        val options = resolveDefaultPlaybackQualityOptions()
+
+        assertEquals(listOf(116, 80, 64, 32, 16), options.map { it.value })
+        assertEquals(listOf("1080P60", "1080P", "720P", "480P", "360P"), options.map { it.label })
+    }
+
+    @Test
     fun `resolveSegmentedSwipeTargetIndex should switch to adjacent option when drag exceeds threshold`() {
         assertEquals(
             3,

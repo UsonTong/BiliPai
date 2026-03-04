@@ -84,6 +84,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import io.github.alexzhirkevich.cupertino.icons.filled.PlayCircle
 import io.github.alexzhirkevich.cupertino.icons.filled.BubbleLeft
+import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
 
 /**
  * 沉浸式视频卡片 (Cinematic Mode)
@@ -155,6 +156,13 @@ fun CinematicVideoCard(
         coverSharedEnabled = coverSharedEnabled,
         isQuickReturnLimited = CardPositionManager.shouldLimitSharedElementsForQuickReturn()
     )
+    val enterAnimationEnabledAtMount = remember(video.bvid) {
+        resolveHomeCardEnterAnimationEnabledAtMount(
+            baseAnimationEnabled = animationEnabled,
+            isReturningFromDetail = CardPositionManager.isReturningFromDetail,
+            isSwitchingCategory = CardPositionManager.isSwitchingCategory
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -164,7 +172,7 @@ fun CinematicVideoCard(
             .animateEnter(
                 index = index,
                 key = Unit,
-                animationEnabled = animationEnabled && !CardPositionManager.isReturningFromDetail && !CardPositionManager.isSwitchingCategory,
+                animationEnabled = enterAnimationEnabledAtMount,
                 motionTier = motionTier
             )
             .onGloballyPositioned { coordinates ->

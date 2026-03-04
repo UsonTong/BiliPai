@@ -48,6 +48,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.spring
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
+import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
 
 /**
  *  玻璃拟态卡片 - Vision Pro 风格 (性能优化版)
@@ -147,6 +148,13 @@ fun GlassVideoCard(
     } else {
         Modifier
     }
+    val enterAnimationEnabledAtMount = remember(video.bvid) {
+        resolveHomeCardEnterAnimationEnabledAtMount(
+            baseAnimationEnabled = animationEnabled,
+            isReturningFromDetail = CardPositionManager.isReturningFromDetail,
+            isSwitchingCategory = CardPositionManager.isSwitchingCategory
+        )
+    }
 
     Box(
         modifier = cardModifier
@@ -156,7 +164,7 @@ fun GlassVideoCard(
             .animateEnter(
                 index = index, 
                 key = Unit, 
-                animationEnabled = animationEnabled && !CardPositionManager.isReturningFromDetail && !CardPositionManager.isSwitchingCategory,
+                animationEnabled = enterAnimationEnabledAtMount,
                 motionTier = motionTier
             )
             //  [新增] 记录卡片位置

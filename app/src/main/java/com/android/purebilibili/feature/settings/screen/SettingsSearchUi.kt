@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.components.IOSClickableItem
 import com.android.purebilibili.core.ui.components.IOSDivider
@@ -45,12 +46,15 @@ internal fun SettingsSearchResultsSection(
             )
         } else {
             results.forEachIndexed { index, result ->
+                val visual = resolveSettingsEntryVisual(result.target)
                 IOSClickableItem(
-                    icon = CupertinoIcons.Outlined.Gearshape,
+                    icon = visual.icon,
+                    iconPainter = visual.iconResId?.let { painterResource(id = it) },
                     title = result.title,
                     subtitle = result.subtitle,
                     value = result.section,
-                    onClick = { onResultClick(result.target) }
+                    onClick = { onResultClick(result.target) },
+                    iconTint = visual.iconTint
                 )
                 if (index != results.lastIndex) {
                     IOSDivider(startIndent = 66.dp)

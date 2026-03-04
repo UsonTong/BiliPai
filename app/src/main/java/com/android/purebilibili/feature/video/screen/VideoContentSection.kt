@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.ui.common.copyOnLongPress
+import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
+import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.data.model.response.RelatedVideo
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.VideoTag
@@ -151,6 +153,18 @@ fun VideoContentSection(
     val scope = rememberCoroutineScope()
     val introListState = rememberLazyListState()
     val commentListState = rememberLazyListState()
+    TrackJankStateFlag(
+        stateName = "video_detail:tab_swipe",
+        isActive = pagerState.isScrollInProgress
+    )
+    TrackScrollJank(
+        scrollableState = introListState,
+        stateName = "video_detail:intro_scroll"
+    )
+    TrackScrollJank(
+        scrollableState = commentListState,
+        stateName = "video_detail:comment_scroll"
+    )
     
     // 评论图片预览状态
     var showImagePreview by remember { mutableStateOf(false) }
@@ -219,6 +233,7 @@ fun VideoContentSection(
         // 内容区域
         HorizontalPager(
             state = pagerState,
+            beyondViewportPageCount = 1,
             userScrollEnabled = true,
             modifier = Modifier
                 .fillMaxWidth()

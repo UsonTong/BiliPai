@@ -22,6 +22,7 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -57,6 +58,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.ui.blur.BlurSurfaceType
+import com.android.purebilibili.core.ui.blur.unifiedBlur
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.core.util.FormatUtils
@@ -78,6 +81,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.withTimeoutOrNull
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 private const val AUTO_HIDE_DELAY = 4000L
 
@@ -292,11 +297,13 @@ fun FullscreenPlayerOverlay(
     
     // [问题8修复] 状态栏排除区域高度（像素）
     val statusBarExclusionZonePx = with(density) { 40.dp.toPx() }
+    val overlayHazeState = remember { HazeState() }
     
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .hazeSource(overlayHazeState)
             .pointerInput(
                 gesturesEnabled,
                 doubleTapSeekEnabled,
@@ -654,6 +661,7 @@ fun FullscreenPlayerOverlay(
                 },
                 seekTime = if (gestureMode == FullscreenGestureMode.Seek) seekPreviewPosition else null,
                 duration = duration,
+                hazeState = overlayHazeState,
                 modifier = Modifier.align(Alignment.Center)
             )
         }
@@ -1021,48 +1029,117 @@ private fun GestureIndicator(
     value: Float,
     seekTime: Long?,
     duration: Long,
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = Color.Transparent
-    ) {
+    val renderProgress by animateFloatAsState(
+        targetValue = value.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 120),
+        label = "fullscreen-gesture-progress"
+    )
+    val accentColor = when (mode) {
+        FullscreenGestureMode.Brightness -> Color(0xFFFFD54F)
+        FullscreenGestureMode.Volume -> Color(0xFF80DEEA)
+        else -> Color.White
+    }
+    val overlayShape = RoundedCornerShape(18.dp)
+    if (mode == FullscreenGestureMode.Seek) {
+        Surface(
+            modifier = modifier.then(
+                if (hazeState != null) {
+                    Modifier.unifiedBlur(
+                        hazeState = hazeState,
+                        shape = overlayShape,
+                        surfaceType = BlurSurfaceType.OVERLAY
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+            shape = overlayShape,
+            color = Color.Black.copy(alpha = 0.74f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.58f))
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .widthIn(min = 128.dp, max = 190.dp)
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+            ) {
+                Text(
+                    "${FormatUtils.formatDuration(((seekTime ?: 0) / 1000).toInt())} / ${FormatUtils.formatDuration((duration / 1000).toInt())}",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    } else {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
+            modifier = modifier
+                .widthIn(min = 128.dp, max = 190.dp)
+                .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
             when (mode) {
                 FullscreenGestureMode.Brightness -> {
-                    //  亮度图标：CupertinoIcons SunMax (iOS SF Symbols 风格)
-                    Icon(CupertinoIcons.Default.SunMax, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(CupertinoIcons.Default.SunMax, null, tint = accentColor, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(8.dp))
-                    Text("亮度", color = Color.White, fontSize = 14.sp)
+                    Text("亮度", color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp)
                     Spacer(Modifier.height(4.dp))
                     Text("${(value * 100).toInt()}%", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(Color.White.copy(alpha = 0.20f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(renderProgress)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(accentColor.copy(alpha = 0.66f), accentColor)
+                                    )
+                                )
+                        )
+                    }
                 }
                 FullscreenGestureMode.Volume -> {
-                    //  动态音量图标：3 级
                     val volumeIcon = when {
                         value < 0.01f -> CupertinoIcons.Default.SpeakerSlash
                         value < 0.5f -> CupertinoIcons.Default.Speaker
                         else -> CupertinoIcons.Default.SpeakerWave2
                     }
-                    Icon(volumeIcon, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(volumeIcon, null, tint = accentColor, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(8.dp))
-                    Text("音量", color = Color.White, fontSize = 14.sp)
+                    Text("音量", color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp)
                     Spacer(Modifier.height(4.dp))
                     Text("${(value * 100).toInt()}%", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(Color.White.copy(alpha = 0.20f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(renderProgress)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(accentColor.copy(alpha = 0.66f), accentColor)
+                                    )
+                                )
+                        )
+                    }
                 }
-                FullscreenGestureMode.Seek -> {
-                    Text(
-                        "${FormatUtils.formatDuration(((seekTime ?: 0) / 1000).toInt())} / ${FormatUtils.formatDuration((duration / 1000).toInt())}",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                else -> {}
+                else -> Unit
             }
         }
     }

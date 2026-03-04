@@ -19,10 +19,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.purebilibili.R
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.util.EasterEggs
-import com.android.purebilibili.core.ui.AppIcons
 import io.github.alexzhirkevich.cupertino.CupertinoSwitch
 import io.github.alexzhirkevich.cupertino.CupertinoSwitchDefaults
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
@@ -83,31 +81,38 @@ fun FollowAuthorSection(
     onTwitterClick: () -> Unit,
     onDonateClick: () -> Unit
 ) {
+    val telegramVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TELEGRAM)
+    val twitterVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TWITTER)
+    val donateVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DONATE)
+
     SettingsCardGroup {
         SettingClickableItem(
-            iconPainter = painterResource(R.drawable.ic_telegram_mono),
+            icon = telegramVisual.icon,
+            iconPainter = telegramVisual.iconResId?.let { painterResource(id = it) },
             title = "Telegram 频道",
             value = "@BiliPai",
             onClick = onTelegramClick,
-            iconTint = Color(0xFF0088CC),
+            iconTint = telegramVisual.iconTint,
             enableCopy = true
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = AppIcons.Twitter,
+            icon = twitterVisual.icon,
+            iconPainter = twitterVisual.iconResId?.let { painterResource(id = it) },
             title = "Twitter / X",
             value = "@YangY_0x00",
             onClick = onTwitterClick,
-            iconTint = Color(0xFF1DA1F2),
+            iconTint = twitterVisual.iconTint,
             enableCopy = true
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Filled.HandThumbsup,
+            icon = donateVisual.icon,
+            iconPainter = donateVisual.iconResId?.let { painterResource(id = it) },
             title = "打赏作者",
             value = "支持开发",
             onClick = onDonateClick,
-            iconTint = Color(0xFFFF3B30),
+            iconTint = donateVisual.iconTint,
             enableCopy = false
         )
     }
@@ -119,29 +124,36 @@ fun GeneralSection(
     onPlaybackClick: () -> Unit,
     onBottomBarClick: () -> Unit
 ) {
+    val appearanceVisual = resolveSettingsEntryVisual(SettingsSearchTarget.APPEARANCE)
+    val playbackVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PLAYBACK)
+    val bottomBarVisual = resolveSettingsEntryVisual(SettingsSearchTarget.BOTTOM_BAR)
+
     SettingsCardGroup {
         SettingClickableItem(
-            icon = CupertinoIcons.Default.PaintbrushPointed,
+            icon = appearanceVisual.icon,
+            iconPainter = appearanceVisual.iconResId?.let { painterResource(id = it) },
             title = "外观设置",
             value = "主题、图标、模糊效果",
             onClick = onAppearanceClick,
-            iconTint = iOSPink
+            iconTint = appearanceVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.PlayCircle,
+            icon = playbackVisual.icon,
+            iconPainter = playbackVisual.iconResId?.let { painterResource(id = it) },
             title = "播放设置",
             value = "解码、手势、后台播放",
             onClick = onPlaybackClick,
-            iconTint = iOSGreen
+            iconTint = playbackVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.ListBullet,
+            icon = bottomBarVisual.icon,
+            iconPainter = bottomBarVisual.iconResId?.let { painterResource(id = it) },
             title = "底栏设置",
             value = "自定义底栏项目",
             onClick = onBottomBarClick,
-            iconTint = iOSBlue
+            iconTint = bottomBarVisual.iconTint
         )
     }
 }
@@ -151,21 +163,26 @@ fun SupportToolsSection(
     onTipsClick: () -> Unit,
     onOpenLinksClick: () -> Unit
 ) {
+    val tipsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TIPS)
+    val openLinksVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_LINKS)
+
     SettingsCardGroup {
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Lightbulb,
+            icon = tipsVisual.icon,
+            iconPainter = tipsVisual.iconResId?.let { painterResource(id = it) },
             title = "小贴士 & 隐藏操作",
             value = "探索更多功能",
             onClick = onTipsClick,
-            iconTint = iOSOrange
+            iconTint = tipsVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Link,
+            icon = openLinksVisual.icon,
+            iconPainter = openLinksVisual.iconResId?.let { painterResource(id = it) },
             title = "默认打开链接",
             value = "设置应用链接支持",
             onClick = onOpenLinksClick,
-            iconTint = iOSTeal
+            iconTint = openLinksVisual.iconTint
         )
     }
 }
@@ -384,6 +401,9 @@ fun PrivacySection(
     onPermissionClick: () -> Unit,
     onBlockedListClick: () -> Unit // [New]
 ) {
+    val permissionVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PERMISSION)
+    val blockedListVisual = resolveSettingsEntryVisual(SettingsSearchTarget.BLOCKED_LIST)
+
     SettingsCardGroup {
         SettingSwitchItem(
             icon = CupertinoIcons.Default.EyeSlash,
@@ -395,19 +415,21 @@ fun PrivacySection(
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Lock,
+            icon = permissionVisual.icon,
+            iconPainter = permissionVisual.iconResId?.let { painterResource(id = it) },
             title = "权限管理",
             value = "查看应用权限",
             onClick = onPermissionClick,
-            iconTint = iOSTeal
+            iconTint = permissionVisual.iconTint
         )
          SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Person,
+            icon = blockedListVisual.icon,
+            iconPainter = blockedListVisual.iconResId?.let { painterResource(id = it) },
             title = "黑名单管理",
             value = "管理已屏蔽的 UP 主",
             onClick = onBlockedListClick,
-            iconTint = iOSRed
+            iconTint = blockedListVisual.iconTint
         )
     }
 }
@@ -420,30 +442,37 @@ fun DataStorageSection(
     onDownloadPathClick: () -> Unit,
     onClearCacheClick: () -> Unit
 ) {
+    val webDavVisual = resolveSettingsEntryVisual(SettingsSearchTarget.WEBDAV_BACKUP)
+    val downloadPathVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DOWNLOAD_PATH)
+    val clearCacheVisual = resolveSettingsEntryVisual(SettingsSearchTarget.CLEAR_CACHE)
+
     SettingsCardGroup {
         // WebDAV 是“备份副本”场景，使用双文档图标比链路图标更贴合语义。
         SettingClickableItem(
-            icon = CupertinoIcons.Default.DocOnDoc,
+            icon = webDavVisual.icon,
+            iconPainter = webDavVisual.iconResId?.let { painterResource(id = it) },
             title = "WebDAV 云备份",
             value = "备份与恢复设置/插件",
             onClick = onWebDavBackupClick,
-            iconTint = iOSBlue
+            iconTint = webDavVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Folder,
+            icon = downloadPathVisual.icon,
+            iconPainter = downloadPathVisual.iconResId?.let { painterResource(id = it) },
             title = "下载位置",
             value = if (customDownloadPath != null) "自定义" else "默认",
             onClick = onDownloadPathClick,
-            iconTint = iOSBlue
+            iconTint = downloadPathVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Trash,
+            icon = clearCacheVisual.icon,
+            iconPainter = clearCacheVisual.iconResId?.let { painterResource(id = it) },
             title = "清除缓存",
             value = cacheSize,
             onClick = onClearCacheClick,
-            iconTint = iOSPink
+            iconTint = clearCacheVisual.iconTint
         )
     }
 }
@@ -458,6 +487,9 @@ fun DeveloperSection(
     onPluginsClick: () -> Unit,
     onExportLogsClick: () -> Unit
 ) {
+    val pluginsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PLUGINS)
+    val exportLogsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.EXPORT_LOGS)
+
     SettingsCardGroup {
         SettingSwitchItem(
             icon = CupertinoIcons.Default.ExclamationmarkTriangle,
@@ -478,19 +510,21 @@ fun DeveloperSection(
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.PuzzlepieceExtension,
+            icon = pluginsVisual.icon,
+            iconPainter = pluginsVisual.iconResId?.let { painterResource(id = it) },
             title = "插件中心",
             value = "$pluginCount 个已启用",
             onClick = onPluginsClick,
-            iconTint = iOSPurple
+            iconTint = pluginsVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.DocText,
+            icon = exportLogsVisual.icon,
+            iconPainter = exportLogsVisual.iconResId?.let { painterResource(id = it) },
             title = "导出日志",
             value = "用于反馈问题",
             onClick = onExportLogsClick,
-            iconTint = iOSTeal
+            iconTint = exportLogsVisual.iconTint
         )
     }
 }
@@ -514,6 +548,13 @@ fun AboutSection(
     versionClickCount: Int = 0,
     versionClickThreshold: Int = EasterEggs.VERSION_EASTER_EGG_THRESHOLD
 ) {
+    val disclaimerVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DISCLAIMER)
+    val licensesVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_LICENSES)
+    val openSourceHomeVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_HOME)
+    val checkUpdateVisual = resolveSettingsEntryVisual(SettingsSearchTarget.CHECK_UPDATE)
+    val releaseNotesVisual = resolveSettingsEntryVisual(SettingsSearchTarget.VIEW_RELEASE_NOTES)
+    val replayOnboardingVisual = resolveSettingsEntryVisual(SettingsSearchTarget.REPLAY_ONBOARDING)
+
     val safeThreshold = versionClickThreshold.coerceAtLeast(1)
     val normalizedClickCount = versionClickCount.coerceAtLeast(0)
     val versionProgress = normalizedClickCount.coerceAtMost(safeThreshold).toFloat() / safeThreshold
@@ -542,44 +583,49 @@ fun AboutSection(
 
     SettingsCardGroup {
         SettingClickableItem(
-            icon = CupertinoIcons.Default.ExclamationmarkTriangle,
+            icon = disclaimerVisual.icon,
+            iconPainter = disclaimerVisual.iconResId?.let { painterResource(id = it) },
             title = "发布渠道声明",
             value = "仅 GitHub / Telegram",
             onClick = onDisclaimerClick,
-            iconTint = iOSBlue
+            iconTint = disclaimerVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.DocText,
+            icon = licensesVisual.icon,
+            iconPainter = licensesVisual.iconResId?.let { painterResource(id = it) },
             title = "开源许可证",
             value = "License",
             onClick = onLicenseClick,
-            iconTint = iOSOrange
+            iconTint = licensesVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Link,
+            icon = openSourceHomeVisual.icon,
+            iconPainter = openSourceHomeVisual.iconResId?.let { painterResource(id = it) },
             title = "开源主页",
             value = "GitHub",
             onClick = onGithubClick,
-            iconTint = iOSPurple,
+            iconTint = openSourceHomeVisual.iconTint,
             enableCopy = true
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.ArrowTriangle2Circlepath,
+            icon = checkUpdateVisual.icon,
+            iconPainter = checkUpdateVisual.iconResId?.let { painterResource(id = it) },
             title = "检查更新",
             value = if (isCheckingUpdate) "检查中..." else updateStatusText,
             onClick = onCheckUpdateClick,
-            iconTint = iOSBlue
+            iconTint = checkUpdateVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.DocText,
+            icon = releaseNotesVisual.icon,
+            iconPainter = releaseNotesVisual.iconResId?.let { painterResource(id = it) },
             title = "查看更新日志",
             value = "最新版本说明",
             onClick = onViewReleaseNotesClick,
-            iconTint = iOSTeal
+            iconTint = releaseNotesVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingSwitchItem(
@@ -601,11 +647,12 @@ fun AboutSection(
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.ArrowCounterclockwise,
+            icon = replayOnboardingVisual.icon,
+            iconPainter = replayOnboardingVisual.iconResId?.let { painterResource(id = it) },
             title = "重播新手引导",
             value = "了解应用功能",
             onClick = onReplayOnboardingClick,
-            iconTint = iOSPink
+            iconTint = replayOnboardingVisual.iconTint
         )
         SettingsDivider(startIndent = 66.dp)
         SettingSwitchItem(

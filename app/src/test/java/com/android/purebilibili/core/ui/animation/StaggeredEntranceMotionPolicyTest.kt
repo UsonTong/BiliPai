@@ -13,25 +13,32 @@ class StaggeredEntranceMotionPolicyTest {
         val policy = resolveStaggeredEntranceMotionPolicy(MotionTier.Reduced)
 
         assertTrue(policy.delayStepMs <= 12)
-        assertTrue(policy.offsetFactor <= 0.4f)
-        assertTrue(policy.initialScale >= 0.97f)
+        assertTrue(policy.maxDelayMs <= 70)
+        assertTrue(policy.translationDurationMs <= 210)
+        assertTrue(policy.offsetFactor <= 0.32f)
+        assertTrue(policy.initialScale >= 0.985f)
     }
 
     @Test
-    fun normalMotion_keepsBaselineDelay() {
+    fun normalMotion_shouldReduceQueueingAndTotalDuration() {
         val policy = resolveStaggeredEntranceMotionPolicy(MotionTier.Normal)
 
-        assertEquals(35, policy.delayStepMs)
-        assertEquals(0.94f, policy.initialScale)
+        assertTrue(policy.delayStepMs <= 28)
+        assertTrue(policy.maxDelayMs <= 200)
+        assertTrue(policy.translationDurationMs <= 340)
+        assertTrue(policy.scaleDurationMs <= 320)
+        assertTrue(policy.initialScale >= 0.95f)
     }
 
     @Test
-    fun enhancedMotion_isMoreExpressiveThanNormal() {
+    fun enhancedMotion_isExpressiveButScaleIsConstrained() {
         val normal = resolveStaggeredEntranceMotionPolicy(MotionTier.Normal)
         val enhanced = resolveStaggeredEntranceMotionPolicy(MotionTier.Enhanced)
 
         assertTrue(enhanced.offsetFactor >= normal.offsetFactor)
+        assertTrue(enhanced.translationDurationMs > normal.translationDurationMs)
         assertTrue(enhanced.initialScale < normal.initialScale)
+        assertTrue(enhanced.initialScale >= 0.92f)
     }
 
     @Test

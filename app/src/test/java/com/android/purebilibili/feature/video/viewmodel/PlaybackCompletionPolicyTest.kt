@@ -89,9 +89,9 @@ class PlaybackCompletionPolicyTest {
     }
 
     @Test
-    fun `favorite external playlist should loop list in sequential play mode`() {
+    fun `favorite external playlist should respect explicit stop behavior`() {
         assertEquals(
-            PlaybackEndAction.PLAY_NEXT_IN_PLAYLIST_LOOP,
+            PlaybackEndAction.STOP,
             resolvePlaybackEndActionForSession(
                 behavior = PlaybackCompletionBehavior.STOP_AFTER_CURRENT,
                 autoPlayEnabled = false,
@@ -103,15 +103,15 @@ class PlaybackCompletionPolicyTest {
     }
 
     @Test
-    fun `favorite external playlist should use shuffle flow in random mode`() {
+    fun `favorite external playlist should respect play in order behavior`() {
         assertEquals(
-            PlaybackEndAction.AUTO_CONTINUE,
+            PlaybackEndAction.PLAY_NEXT_IN_PLAYLIST,
             resolvePlaybackEndActionForSession(
-                behavior = PlaybackCompletionBehavior.STOP_AFTER_CURRENT,
+                behavior = PlaybackCompletionBehavior.PLAY_IN_ORDER,
                 autoPlayEnabled = false,
                 isExternalPlaylist = true,
                 externalPlaylistSource = ExternalPlaylistSource.FAVORITE,
-                playMode = PlayMode.SHUFFLE
+                playMode = PlayMode.REPEAT_ONE
             )
         )
     }

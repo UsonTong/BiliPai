@@ -50,6 +50,16 @@ internal fun resolveSegmentedSwipeTargetIndex(
     }
 }
 
+internal fun resolveDefaultPlaybackQualityOptions(): List<PlaybackSegmentOption<Int>> {
+    return listOf(
+        PlaybackSegmentOption(116, "1080P60"),
+        PlaybackSegmentOption(80, "1080P"),
+        PlaybackSegmentOption(64, "720P"),
+        PlaybackSegmentOption(32, "480P"),
+        PlaybackSegmentOption(16, "360P")
+    )
+}
+
 internal fun resolveFeedApiSegmentOptions(
     entries: List<SettingsManager.FeedApiType> = SettingsManager.FeedApiType.entries
 ): List<PlaybackSegmentOption<SettingsManager.FeedApiType>> {

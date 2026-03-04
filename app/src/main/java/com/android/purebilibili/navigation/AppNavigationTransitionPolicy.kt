@@ -61,7 +61,9 @@ internal fun shouldDeferBottomBarRevealOnVideoReturn(
     isReturningFromDetail: Boolean,
     currentRoute: String?
 ): Boolean {
-    return isReturningFromDetail && currentRoute == ScreenRoutes.Home.route
+    if (!isReturningFromDetail || currentRoute != ScreenRoutes.Home.route) return false
+    // 返回首页时不再延迟底栏显示，避免“先隐藏再出现”造成的闪烁感。
+    return false
 }
 
 internal fun shouldUseTabletSeamlessBackTransition(

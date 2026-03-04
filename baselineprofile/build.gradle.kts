@@ -12,6 +12,8 @@ android {
         targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR,LOW_BATTERY"
+        // Enable Perfetto composition tracing in macrobenchmark runs when needed.
+        testInstrumentationRunnerArguments["androidx.benchmark.fullTracing.enable"] = "true"
     }
 
     targetProjectPath = ":app"
@@ -20,10 +22,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    kotlinOptions {
-        jvmTarget = "21"
     }
 
     testOptions {
@@ -39,8 +37,16 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
 dependencies {
-    implementation("androidx.benchmark:benchmark-macro-junit4:1.3.3")
-    implementation("androidx.test.ext:junit:1.1.5")
+    implementation("androidx.benchmark:benchmark-macro-junit4:1.4.1")
+    implementation("androidx.test.ext:junit:1.3.0")
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    implementation("androidx.tracing:tracing-perfetto:1.0.0")
+    implementation("androidx.tracing:tracing-perfetto-binary:1.0.0")
 }

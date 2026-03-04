@@ -15,6 +15,7 @@ class HomePerformancePolicyTest {
             cardAnimationEnabled = false,
             cardTransitionEnabled = true,
             isDataSaverActive = false,
+            smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )
 
@@ -36,10 +37,29 @@ class HomePerformancePolicyTest {
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
             isDataSaverActive = true,
+            smartVisualGuardEnabled = false,
             normalPreloadAheadCount = 5
         )
 
         assertTrue(config.isDataSaverActive)
         assertTrue(config.preloadAheadCount == 0)
+    }
+
+    @Test
+    fun smartGuard_keepsDataSaverOff_butDisablesLiquidGlassAndLimitsPreload() {
+        val config = resolveHomePerformanceConfig(
+            headerBlurEnabled = true,
+            bottomBarBlurEnabled = true,
+            liquidGlassEnabled = true,
+            cardAnimationEnabled = true,
+            cardTransitionEnabled = true,
+            isDataSaverActive = false,
+            smartVisualGuardEnabled = true,
+            normalPreloadAheadCount = 5
+        )
+
+        assertFalse(config.isDataSaverActive)
+        assertFalse(config.liquidGlassEnabled)
+        assertTrue(config.preloadAheadCount == 2)
     }
 }

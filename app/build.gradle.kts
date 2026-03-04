@@ -28,8 +28,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 96
-        versionName = "6.6.0"
+        versionCode = 97
+        versionName = "6.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -87,10 +87,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    kotlinOptions {
-        jvmTarget = "21"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -128,6 +124,12 @@ android {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
             output.outputFileName = "BiliPai-${variant.versionName}-universal.apk"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
@@ -192,7 +194,7 @@ dependencies {
     
     // --- 3.8 Backdrop (液态玻璃效果) ---
     // 提供透镜折射、玻璃高光、连续圆角等 iOS/visionOS 风格视觉效果
-    implementation("io.github.kyant0:backdrop:1.0.0")
+    implementation("io.github.kyant0:backdrop:1.0.6")
 
 
     // --- 4. Player (视频播放器 Media3) ---
@@ -230,6 +232,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-process:2.9.4")  // 🔋 ProcessLifecycleOwner 后台检测
+    implementation("androidx.metrics:metrics-performance:1.0.0-beta01")
     
     // --- 8.1 WorkManager (后台下载任务) ---
     implementation("androidx.work:work-runtime-ktx:2.9.0")

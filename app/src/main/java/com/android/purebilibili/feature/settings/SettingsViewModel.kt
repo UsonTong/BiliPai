@@ -10,10 +10,12 @@ import com.android.purebilibili.core.store.normalizeAppIconKey
 import com.android.purebilibili.core.store.resolveAppIconLauncherAlias
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.util.CacheUtils
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,6 +36,7 @@ data class SettingsUiState(
     val cardAnimationEnabled: Boolean = false,     //  卡片进场动画（默认关闭）
     val cardTransitionEnabled: Boolean = false,    //  卡片过渡动画（默认关闭）
     val predictiveBackAnimationEnabled: Boolean = true, // [New] 预测性返回联动动画
+    val smartVisualGuardEnabled: Boolean = true, // [New] 智能流畅优先
     val cacheSize: String = "计算中...",
     val cacheBreakdown: CacheUtils.CacheBreakdown? = null,  //  详细缓存统计
     //  实验性功能
@@ -78,6 +81,7 @@ data class ExtraSettings(
     val cardAnimationEnabled: Boolean,
     val cardTransitionEnabled: Boolean,
     val predictiveBackAnimationEnabled: Boolean,
+    val smartVisualGuardEnabled: Boolean,
     val hapticFeedbackEnabled: Boolean, // [Restored]
     val isLiquidGlassEnabled: Boolean = true, // [New]
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
@@ -115,6 +119,7 @@ private data class BaseSettings(
     val cardAnimationEnabled: Boolean, //  卡片进场动画
     val cardTransitionEnabled: Boolean, //  卡片过渡动画
     val predictiveBackAnimationEnabled: Boolean, // [New]
+    val smartVisualGuardEnabled: Boolean, // [New]
     val hapticFeedbackEnabled: Boolean, // [新增]
     val isLiquidGlassEnabled: Boolean, // [New]
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
@@ -122,6 +127,8 @@ private data class BaseSettings(
     val isHeaderCollapseEnabled: Boolean, // [New]
     val gridColumnCount: Int // [New]
 )
+
+private fun <T> Flow<T>.asAnyFlow(): Flow<Any?> = map { it }
 
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -152,18 +159,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
     
     private val uiSettingsFlow2 = combine(
-        SettingsManager.getBottomBarFloating(context),
-        SettingsManager.getBottomBarLabelMode(context),
-        SettingsManager.getDisplayMode(context),
-        SettingsManager.getCardAnimationEnabled(context), // [Restored]
-        SettingsManager.getCardTransitionEnabled(context),
-        SettingsManager.getPredictiveBackAnimationEnabled(context), // [New]
-        SettingsManager.getHapticFeedbackEnabled(context), // [新增]
-        SettingsManager.getLiquidGlassEnabled(context), // [New]
-        SettingsManager.getLiquidGlassStyle(context), // [New]
-        SettingsManager.getTabletUseSidebar(context), // [New]
-        SettingsManager.getHeaderCollapseEnabled(context), // [New]
-        SettingsManager.getGridColumnCount(context) // [New]
+        SettingsManager.getBottomBarFloating(context).asAnyFlow(),
+        SettingsManager.getBottomBarLabelMode(context).asAnyFlow(),
+        SettingsManager.getDisplayMode(context).asAnyFlow(),
+        SettingsManager.getCardAnimationEnabled(context).asAnyFlow(), // [Restored]
+        SettingsManager.getCardTransitionEnabled(context).asAnyFlow(),
+        SettingsManager.getPredictiveBackAnimationEnabled(context).asAnyFlow(), // [New]
+        SettingsManager.getSmartVisualGuardEnabled(context).asAnyFlow(), // [New]
+        SettingsManager.getHapticFeedbackEnabled(context).asAnyFlow(), // [新增]
+        SettingsManager.getLiquidGlassEnabled(context).asAnyFlow(), // [New]
+        SettingsManager.getLiquidGlassStyle(context).asAnyFlow(), // [New]
+        SettingsManager.getTabletUseSidebar(context).asAnyFlow(), // [New]
+        SettingsManager.getHeaderCollapseEnabled(context).asAnyFlow(), // [New]
+        SettingsManager.getGridColumnCount(context).asAnyFlow() // [New]
     ) { values ->
         val isBottomBarFloating = values[0] as Boolean
         val labelMode = values[1] as Int
@@ -171,12 +179,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val cardAnimation = values[3] as Boolean
         val cardTransition = values[4] as Boolean
         val predictiveBackAnimation = values[5] as Boolean
-        val hapticFeedback = values[6] as Boolean
-        val liquidGlass = values[7] as Boolean
-        val liquidGlassStyle = values[8] as com.android.purebilibili.core.store.LiquidGlassStyle
-        val tabletUseSidebar = values[9] as Boolean
-        val headerCollapse = values[10] as Boolean
-        val gridColumnCount = values[11] as Int
+        val smartVisualGuard = values[6] as Boolean
+        val hapticFeedback = values[7] as Boolean
+        val liquidGlass = values[8] as Boolean
+        val liquidGlassStyle = values[9] as com.android.purebilibili.core.store.LiquidGlassStyle
+        val tabletUseSidebar = values[10] as Boolean
+        val headerCollapse = values[11] as Boolean
+        val gridColumnCount = values[12] as Int
         
         data class Ui2(
             val f: Boolean,
@@ -185,6 +194,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val ca: Boolean,
             val ct: Boolean,
             val pba: Boolean,
+            val svg: Boolean,
             val h: Boolean,
             val lg: Boolean,
             val lgs: com.android.purebilibili.core.store.LiquidGlassStyle,
@@ -199,6 +209,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimation,
             cardTransition,
             predictiveBackAnimation,
+            smartVisualGuard,
             hapticFeedback,
             liquidGlass,
             liquidGlassStyle,
@@ -222,6 +233,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimationEnabled = ui2.ca,
             cardTransitionEnabled = ui2.ct,
             predictiveBackAnimationEnabled = ui2.pba,
+            smartVisualGuardEnabled = ui2.svg,
             hapticFeedbackEnabled = ui2.h, // [新增]
             isLiquidGlassEnabled = ui2.lg, // [New]
             liquidGlassStyle = ui2.lgs, // [New]
@@ -290,6 +302,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimationEnabled = extra.cardAnimationEnabled,
             cardTransitionEnabled = extra.cardTransitionEnabled,
             predictiveBackAnimationEnabled = extra.predictiveBackAnimationEnabled,
+            smartVisualGuardEnabled = extra.smartVisualGuardEnabled,
             hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = extra.isLiquidGlassEnabled, // [New]
             liquidGlassStyle = extra.liquidGlassStyle, // [New]
@@ -327,6 +340,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             cardAnimationEnabled = settings.cardAnimationEnabled,
             cardTransitionEnabled = settings.cardTransitionEnabled,
             predictiveBackAnimationEnabled = settings.predictiveBackAnimationEnabled,
+            smartVisualGuardEnabled = settings.smartVisualGuardEnabled,
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = settings.isLiquidGlassEnabled, // [New]
             liquidGlassStyle = settings.liquidGlassStyle, // [New]
@@ -483,6 +497,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun togglePredictiveBackAnimation(value: Boolean) {
         viewModelScope.launch {
             SettingsManager.setPredictiveBackAnimationEnabled(context, value)
+        }
+    }
+
+    fun toggleSmartVisualGuard(value: Boolean) {
+        viewModelScope.launch {
+            SettingsManager.setSmartVisualGuardEnabled(context, value)
         }
     }
     

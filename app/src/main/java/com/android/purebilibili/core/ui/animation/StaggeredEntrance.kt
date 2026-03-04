@@ -43,32 +43,32 @@ fun resolveStaggeredEntranceMotionPolicy(
     return when (motionTier) {
         MotionTier.Reduced -> StaggeredEntranceMotionPolicy(
             delayStepMs = 10,
-            maxDelayMs = 80,
-            alphaDurationMs = 180,
-            translationDurationMs = 230,
-            scaleDurationMs = 200,
-            initialScale = 0.98f,
-            offsetFactor = 0.35f
+            maxDelayMs = 60,
+            alphaDurationMs = 160,
+            translationDurationMs = 190,
+            scaleDurationMs = 170,
+            initialScale = 0.985f,
+            offsetFactor = 0.30f
         )
 
         MotionTier.Enhanced -> StaggeredEntranceMotionPolicy(
-            delayStepMs = 28,
-            maxDelayMs = 240,
-            alphaDurationMs = 340,
-            translationDurationMs = 520,
-            scaleDurationMs = 460,
-            initialScale = 0.9f,
-            offsetFactor = 1.15f
+            delayStepMs = 26,
+            maxDelayMs = 220,
+            alphaDurationMs = 300,
+            translationDurationMs = 430,
+            scaleDurationMs = 380,
+            initialScale = 0.92f,
+            offsetFactor = 1.05f
         )
 
         MotionTier.Normal -> StaggeredEntranceMotionPolicy(
-            delayStepMs = 35,
-            maxDelayMs = 260,
-            alphaDurationMs = 300,
-            translationDurationMs = 450,
-            scaleDurationMs = 400,
-            initialScale = 0.94f,
-            offsetFactor = 1f
+            delayStepMs = 24,
+            maxDelayMs = 180,
+            alphaDurationMs = 220,
+            translationDurationMs = 320,
+            scaleDurationMs = 300,
+            initialScale = 0.96f,
+            offsetFactor = 0.72f
         )
     }
 }

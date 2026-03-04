@@ -265,6 +265,24 @@ internal enum class AudioNextPlaybackStrategy {
     PAGE_THEN_SEASON_THEN_RELATED
 }
 
+internal enum class PlayInOrderNextSource {
+    PAGE_OR_SEASON,
+    PLAYLIST,
+    NONE
+}
+
+internal fun resolvePlayInOrderNextSource(
+    hasNextPage: Boolean,
+    hasNextSeasonEpisode: Boolean,
+    hasNextPlaylistItem: Boolean
+): PlayInOrderNextSource {
+    return when {
+        hasNextPage || hasNextSeasonEpisode -> PlayInOrderNextSource.PAGE_OR_SEASON
+        hasNextPlaylistItem -> PlayInOrderNextSource.PLAYLIST
+        else -> PlayInOrderNextSource.NONE
+    }
+}
+
 internal fun resolveAudioNextPlaybackStrategy(
     isExternalPlaylist: Boolean,
     externalPlaylistSource: ExternalPlaylistSource
@@ -1197,7 +1215,7 @@ class PlayerViewModel : ViewModel() {
                         exoPlayer?.play()
                     }
                     PlaybackEndAction.PLAY_NEXT_IN_PLAYLIST -> {
-                        if (!playNextFromPlaylist(loopAtEnd = false)) {
+                        if (!playNextInOrder()) {
                             _showPlaybackEndedDialog.value = false
                         }
                     }
@@ -1265,17 +1283,29 @@ class PlayerViewModel : ViewModel() {
         }
     }
 
-    private fun playNextFromPlaylist(loopAtEnd: Boolean): Boolean {
-        val items = PlaylistManager.playlist.value
-        if (items.isEmpty()) return false
-
+    private fun resolveCurrentPlaylistIndex(items: List<PlaylistItem>): Int {
         val currentInfo = (_uiState.value as? PlayerUiState.Success)?.info
-        val currentIndex = PlaylistManager.currentIndex.value
+        return PlaylistManager.currentIndex.value
             .takeIf { it in items.indices }
             ?: currentInfo?.bvid?.let { bvid ->
                 items.indexOfFirst { it.bvid == bvid }.takeIf { it >= 0 }
             }
             ?: 0
+    }
+
+    private fun hasNextInPlaylist(loopAtEnd: Boolean): Boolean {
+        val items = PlaylistManager.playlist.value
+        if (items.isEmpty()) return false
+
+        val currentIndex = resolveCurrentPlaylistIndex(items)
+        return currentIndex < items.lastIndex || loopAtEnd
+    }
+
+    private fun playNextFromPlaylist(loopAtEnd: Boolean): Boolean {
+        val items = PlaylistManager.playlist.value
+        if (items.isEmpty()) return false
+
+        val currentIndex = resolveCurrentPlaylistIndex(items)
 
         val nextIndex = when {
             currentIndex < items.lastIndex -> currentIndex + 1
@@ -1287,7 +1317,82 @@ class PlayerViewModel : ViewModel() {
         loadVideo(target.bvid, autoPlay = true)
         return true
     }
-    
+
+    private fun resolveCurrentNextAvailability(): Triple<Boolean, Boolean, Boolean> {
+        val current = _uiState.value as? PlayerUiState.Success
+        val hasNextPage = current?.let { success ->
+            val pages = success.info.pages
+            if (pages.size <= 1) {
+                false
+            } else {
+                val nextPageIndex = pages.indexOfFirst { it.cid == currentCid } + 1
+                nextPageIndex < pages.size
+            }
+        } ?: false
+
+        val hasNextSeasonEpisode = current?.info?.ugc_season?.let { season ->
+            val allEpisodes = season.sections.flatMap { it.episodes }
+            val nextEpIndex = allEpisodes.indexOfFirst { it.bvid == current.info.bvid } + 1
+            nextEpIndex < allEpisodes.size
+        } ?: false
+
+        return Triple(hasNextPage, hasNextSeasonEpisode, hasNextInPlaylist(loopAtEnd = false))
+    }
+
+    private fun playNextInOrder(): Boolean {
+        val (hasNextPage, hasNextSeasonEpisode, hasNextPlaylistItem) = resolveCurrentNextAvailability()
+        return when (
+            resolvePlayInOrderNextSource(
+                hasNextPage = hasNextPage,
+                hasNextSeasonEpisode = hasNextSeasonEpisode,
+                hasNextPlaylistItem = hasNextPlaylistItem
+            )
+        ) {
+            PlayInOrderNextSource.PAGE_OR_SEASON ->
+                playNextPageOrSeason() || playNextFromPlaylist(loopAtEnd = false)
+            PlayInOrderNextSource.PLAYLIST -> playNextFromPlaylist(loopAtEnd = false)
+            PlayInOrderNextSource.NONE -> false
+        }
+    }
+
+    private fun playNextPageOrSeason(): Boolean {
+        val current = _uiState.value as? PlayerUiState.Success ?: return false
+
+        // 1. 优先检查分P
+        val pages = current.info.pages
+        if (pages.size > 1) {
+            val currentPageIndex = pages.indexOfFirst { it.cid == currentCid }
+            val nextPageIndex = currentPageIndex + 1
+
+            if (nextPageIndex < pages.size) {
+                val nextPage = pages[nextPageIndex]
+                Logger.d("PlayerVM", "🎵 播放下一个分P: P${nextPageIndex + 1} - ${nextPage.part}")
+                switchPage(nextPageIndex)
+                return true
+            }
+        }
+
+        // 2. 检查合集 (UGC Season)
+        current.info.ugc_season?.let { season ->
+            val allEpisodes = season.sections.flatMap { it.episodes }
+            val currentEpIndex = allEpisodes.indexOfFirst { it.bvid == current.info.bvid }
+            val nextEpIndex = currentEpIndex + 1
+
+            if (nextEpIndex < allEpisodes.size) {
+                val nextEpisode = allEpisodes[nextEpIndex]
+                Logger.d("PlayerVM", "📂 播放合集下一集: ${nextEpisode.title}")
+                viewModelScope.launch {
+                    toast("播放合集下一集: ${nextEpisode.title}")
+                }
+                loadVideo(nextEpisode.bvid, autoPlay = true, cid = nextEpisode.cid)
+                return true
+            }
+            Logger.d("PlayerVM", "📂 合集全部播放完成")
+        }
+
+        return false
+    }
+
     /**
      * 🎵 [新增] 优先播放下一个分P，如果没有分P则检查合集，最后播放推荐视频
      * 用于分集视频（如音乐合集）的连续播放
@@ -1307,48 +1412,8 @@ class PlayerViewModel : ViewModel() {
             return
         }
 
-        val current = _uiState.value as? PlayerUiState.Success ?: run {
-            // 如果当前没有成功状态，直接播放推荐
-            playNextRecommended()
-            return
-        }
-        
-        // 1. 优先检查分P
-        val pages = current.info.pages
-        if (pages.size > 1) {
-            val currentPageIndex = pages.indexOfFirst { it.cid == currentCid }
-            val nextPageIndex = currentPageIndex + 1
-            
-            if (nextPageIndex < pages.size) {
-                // 播放下一个分P
-                val nextPage = pages[nextPageIndex]
-                Logger.d("PlayerVM", "🎵 播放下一个分P: P${nextPageIndex + 1} - ${nextPage.part}")
-                switchPage(nextPageIndex)
-                return
-            }
-            // 所有分P播放完成，继续检查合集
-        }
-        
-        // 2. 检查合集 (UGC Season)
-        current.info.ugc_season?.let { season ->
-            val allEpisodes = season.sections.flatMap { it.episodes }
-            val currentEpIndex = allEpisodes.indexOfFirst { it.bvid == current.info.bvid }
-            val nextEpIndex = currentEpIndex + 1
-            
-            if (nextEpIndex < allEpisodes.size) {
-                // 播放合集下一集
-                val nextEpisode = allEpisodes[nextEpIndex]
-                Logger.d("PlayerVM", "📂 播放合集下一集: ${nextEpisode.title}")
-                viewModelScope.launch {
-                    toast("播放合集下一集: ${nextEpisode.title}")
-                }
-                loadVideo(nextEpisode.bvid, autoPlay = true, cid = nextEpisode.cid)
-                return
-            }
-            // 合集已播放完成
-            Logger.d("PlayerVM", "📂 合集全部播放完成")
-        }
-        
+        if (playNextPageOrSeason()) return
+
         // 3. 最后播放推荐视频
         Logger.d("PlayerVM", "🎵 播放推荐视频")
         playNextRecommended()

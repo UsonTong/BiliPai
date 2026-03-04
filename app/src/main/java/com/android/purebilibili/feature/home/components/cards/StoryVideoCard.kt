@@ -47,6 +47,7 @@ import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
+import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 
@@ -67,6 +68,7 @@ fun StoryVideoCard(
     animationEnabled: Boolean = true,  //  卡片动画开关
     motionTier: MotionTier = MotionTier.Normal,
     transitionEnabled: Boolean = false, //  卡片过渡动画开关
+    scrollLiteModeEnabled: Boolean = false,
     upFollowerCount: Int? = null,
     upVideoCount: Int? = null,
     onDismiss: (() -> Unit)? = null,    //  [新增] 删除/过滤回调（长按触发）
@@ -80,6 +82,11 @@ fun StoryVideoCard(
     val cardCornerRadius = iOSCornerRadius.ExtraLarge * cornerRadiusScale  // 20.dp * scale
     val smallCornerRadius = iOSCornerRadius.Small * cornerRadiusScale - 2.dp  // 8.dp * scale
     val durationBadgeStyle = remember { resolveVideoCardDurationBadgeVisualStyle() }
+    val scrollLitePolicy = remember(scrollLiteModeEnabled) {
+        resolveStoryVideoCardScrollLiteVisualPolicy(
+            scrollLiteModeEnabled = scrollLiteModeEnabled
+        )
+    }
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
@@ -141,6 +148,13 @@ fun StoryVideoCard(
     } else {
         Modifier
     }
+    val enterAnimationEnabledAtMount = remember(video.bvid) {
+        resolveHomeCardEnterAnimationEnabledAtMount(
+            baseAnimationEnabled = animationEnabled,
+            isReturningFromDetail = CardPositionManager.isReturningFromDetail,
+            isSwitchingCategory = CardPositionManager.isSwitchingCategory
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -150,7 +164,7 @@ fun StoryVideoCard(
             .animateEnter(
                 index = index, 
                 key = Unit, 
-                animationEnabled = animationEnabled && !CardPositionManager.isReturningFromDetail && !CardPositionManager.isSwitchingCategory,
+                animationEnabled = enterAnimationEnabledAtMount,
                 motionTier = motionTier
             )
             //  [新增] 记录卡片位置
@@ -193,7 +207,7 @@ fun StoryVideoCard(
             modifier = cardModifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 6.dp, // 降低阴影使其更轻量
+                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
                     shape = RoundedCornerShape(cardCornerRadius),
                     ambientColor = Color.Black.copy(alpha = 0.1f),
                     spotColor = Color.Black.copy(alpha = 0.15f),
@@ -341,83 +355,85 @@ fun StoryVideoCard(
             
             // 数据行 (Play & Danmaku)
              //  [重设计] 播放数据行 - 独立展示，精致风格
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(start = 16.dp) // 与 UP 主信息分开
-            ) {
-                // 播放量
-                if (video.stat.view > 0) {
-                     // 🔗 [共享元素] 播放量
-                    var viewsModifier = Modifier.wrapContentSize()
-                    if (metadataSharedEnabled) {
-                        with(requireNotNull(sharedTransitionScope)) {
-                            viewsModifier = viewsModifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
-                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ ->
-                                    spring(dampingRatio = 0.8f, stiffness = 200f)
-                                }
-                            )
+            if (scrollLitePolicy.showSecondaryStatsRow) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(start = 16.dp) // 与 UP 主信息分开
+                ) {
+                    // 播放量
+                    if (video.stat.view > 0) {
+                         // 🔗 [共享元素] 播放量
+                        var viewsModifier = Modifier.wrapContentSize()
+                        if (metadataSharedEnabled) {
+                            with(requireNotNull(sharedTransitionScope)) {
+                                viewsModifier = viewsModifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
+                                    animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                                    boundsTransform = { _, _ ->
+                                        spring(dampingRatio = 0.8f, stiffness = 200f)
+                                    }
+                                )
+                            }
+                        }
+                        
+                        Box(modifier = viewsModifier) {
+                             Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = CupertinoIcons.Outlined.PlayCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = FormatUtils.formatStat(video.stat.view.toLong()),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
-                    
-                    Box(modifier = viewsModifier) {
-                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Outlined.PlayCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = FormatUtils.formatStat(video.stat.view.toLong()),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+
+                    // 弹幕数 (仅当有播放量时显示，保持逻辑一致)
+                    if (video.stat.view > 0 && video.stat.danmaku > 0) {
+                         // 🔗 [共享元素] 弹幕数
+                         var danmakuModifier = Modifier.wrapContentSize()
+                         if (metadataSharedEnabled) {
+                             with(requireNotNull(sharedTransitionScope)) {
+                                 danmakuModifier = danmakuModifier.sharedBounds(
+                                     sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),
+                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                                     boundsTransform = { _, _ ->
+                                         spring(dampingRatio = 0.8f, stiffness = 200f)
+                                     }
+                                 )
+                             }
+                         }
+
+                         Box(modifier = danmakuModifier) {
+                             Row(
+                                 verticalAlignment = Alignment.CenterVertically,
+                                 horizontalArrangement = Arrangement.spacedBy(2.dp)
+                             ) {
+                                 Icon(
+                                     imageVector = CupertinoIcons.Outlined.BubbleLeft,
+                                     contentDescription = null,
+                                     modifier = Modifier.size(12.dp),
+                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                 )
+                                 Text(
+                                     text = FormatUtils.formatStat(video.stat.danmaku.toLong()),
+                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                     fontSize = 11.sp,
+                                     fontWeight = FontWeight.Medium
+                                 )
+                             }
+                         }
                     }
-                }
-
-                // 弹幕数 (仅当有播放量时显示，保持逻辑一致)
-                if (video.stat.view > 0 && video.stat.danmaku > 0) {
-                     // 🔗 [共享元素] 弹幕数
-                     var danmakuModifier = Modifier.wrapContentSize()
-                     if (metadataSharedEnabled) {
-                         with(requireNotNull(sharedTransitionScope)) {
-                             danmakuModifier = danmakuModifier.sharedBounds(
-                                 sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),
-                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                 boundsTransform = { _, _ ->
-                                     spring(dampingRatio = 0.8f, stiffness = 200f)
-                                 }
-                             )
-                         }
-                     }
-
-                     Box(modifier = danmakuModifier) {
-                         Row(
-                             verticalAlignment = Alignment.CenterVertically,
-                             horizontalArrangement = Arrangement.spacedBy(2.dp)
-                         ) {
-                             Icon(
-                                 imageVector = CupertinoIcons.Outlined.BubbleLeft,
-                                 contentDescription = null,
-                                 modifier = Modifier.size(12.dp),
-                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
-                             )
-                             Text(
-                                 text = FormatUtils.formatStat(video.stat.danmaku.toLong()),
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                 fontSize = 11.sp,
-                                 fontWeight = FontWeight.Medium
-                             )
-                         }
-                     }
                 }
             }
         }

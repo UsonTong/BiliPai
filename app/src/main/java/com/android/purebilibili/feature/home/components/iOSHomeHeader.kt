@@ -48,6 +48,8 @@ import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
+import com.android.purebilibili.core.ui.blur.BlurSurfaceType
+import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
 
 /**
@@ -78,7 +80,11 @@ fun iOSHomeHeader(
     // [New] LayerBackdrop for liquid glass effect
     backdrop: com.kyant.backdrop.backdrops.LayerBackdrop? = null,
     homeSettings: com.android.purebilibili.core.store.HomeSettings? = null,
-    topTabsVisible: Boolean = true
+    topTabsVisible: Boolean = true,
+    motionTier: MotionTier = MotionTier.Normal,
+    isScrolling: Boolean = false,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false
 ) {
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -191,7 +197,20 @@ fun iOSHomeHeader(
             .zIndex(10f) // Ensure high z-index for the whole header
             // [Revert] Removed Liquid Glass Effect due to performance issues
              .run {
-                  this.then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
+                  this.then(
+                      if (hazeState != null) {
+                          Modifier.unifiedBlur(
+                              hazeState = hazeState,
+                              surfaceType = BlurSurfaceType.HEADER,
+                              motionTier = motionTier,
+                              isScrolling = isScrolling,
+                              isTransitionRunning = isTransitionRunning,
+                              forceLowBudget = forceLowBlurBudget
+                          )
+                      } else {
+                          Modifier
+                      }
+                  )
                       .background(animatedHeaderColor)
              }
             .padding(bottom = 0.dp) // Reset padding, controlled by spacer
@@ -357,13 +376,27 @@ fun iOSHomeHeader(
                         when {
                             isTabGlassEnabled && hazeState != null -> {
                                 this
-                                    .unifiedBlur(hazeState)
+                                    .unifiedBlur(
+                                        hazeState = hazeState,
+                                        surfaceType = BlurSurfaceType.HEADER,
+                                        motionTier = motionTier,
+                                        isScrolling = isScrolling,
+                                        isTransitionRunning = isTransitionRunning,
+                                        forceLowBudget = forceLowBlurBudget
+                                    )
                                     .background(tabSurfaceColor.copy(alpha = tabOverlayAlpha))
                             }
 
                             isTabBlurEnabled && hazeState != null -> {
                                 this
-                                    .unifiedBlur(hazeState)
+                                    .unifiedBlur(
+                                        hazeState = hazeState,
+                                        surfaceType = BlurSurfaceType.HEADER,
+                                        motionTier = motionTier,
+                                        isScrolling = isScrolling,
+                                        isTransitionRunning = isTransitionRunning,
+                                        forceLowBudget = forceLowBlurBudget
+                                    )
                                     .background(tabSurfaceColor.copy(alpha = tabOverlayAlpha))
                             }
 

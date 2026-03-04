@@ -121,6 +121,8 @@ TOTAL_PSS_KB="$(sed -nE 's/.*TOTAL PSS:[[:space:]]*([0-9,]+).*/\1/p' "$MEM_FILE"
 TOTAL_TIME_MS="$(sed -nE 's/.*TotalTime:[[:space:]]*([0-9]+).*/\1/p' "$START_FILE" | head -n1)"
 THIS_TIME_MS="$(sed -nE 's/.*ThisTime:[[:space:]]*([0-9]+).*/\1/p' "$START_FILE" | head -n1)"
 WAIT_TIME_MS="$(sed -nE 's/.*WaitTime:[[:space:]]*([0-9]+).*/\1/p' "$START_FILE" | head -n1)"
+ROOT_VISIBILITY="$(sed -nE 's/.*visibility=([0-9]+).*/\1/p' "$GFX_FILE" | head -n1)"
+SAMPLE_VALID="yes"
 
 TOTAL_FRAMES="${TOTAL_FRAMES:-N/A}"
 JANKY_COUNT="${JANKY_COUNT:-N/A}"
@@ -131,6 +133,14 @@ if [[ -z "${THIS_TIME_MS:-}" ]]; then
   THIS_TIME_MS="${WAIT_TIME_MS:-$TOTAL_TIME_MS}"
 fi
 THIS_TIME_MS="${THIS_TIME_MS:-N/A}"
+ROOT_VISIBILITY="${ROOT_VISIBILITY:-N/A}"
+
+if [[ "$TOTAL_FRAMES" == "0" && "$ROOT_VISIBILITY" == "8" ]]; then
+  SAMPLE_VALID="no"
+fi
+if [[ "$TOTAL_FRAMES" == "N/A" || "$JANKY_PERCENT" == "N/A" || "$THIS_TIME_MS" == "N/A" ]]; then
+  SAMPLE_VALID="no"
+fi
 
 if [[ ! -f "$REPORT_FILE" ]]; then
   cat > "$REPORT_FILE" <<'EOF'
@@ -158,7 +168,11 @@ ROW="| $TIMESTAMP | $DEVICE | $THIS_TIME_MS | $TOTAL_TIME_MS | $TOTAL_FRAMES | $
 echo "$ROW" >> "$REPORT_FILE"
 
 echo "[tablet-perf] result: startup=${THIS_TIME_MS}/${TOTAL_TIME_MS}ms frames=$TOTAL_FRAMES jank=$JANKY_COUNT (${JANKY_PERCENT}%) pss=${TOTAL_PSS_KB}KB"
+if [[ "$SAMPLE_VALID" == "no" ]]; then
+  echo "[tablet-perf] warning: sample likely invalid (frames=$TOTAL_FRAMES, root_visibility=$ROOT_VISIBILITY). Keep app in foreground and screen unlocked."
+fi
 echo "[tablet-perf] report: $REPORT_FILE"
 echo "[tablet-perf] raw: $START_FILE"
 echo "[tablet-perf] raw: $GFX_FILE"
 echo "[tablet-perf] raw: $MEM_FILE"
+echo "[tablet-perf] sample_valid: $SAMPLE_VALID"

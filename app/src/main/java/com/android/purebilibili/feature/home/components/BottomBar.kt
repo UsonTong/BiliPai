@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.blur.BlurStyles
+import com.android.purebilibili.core.ui.blur.BlurSurfaceType
+import com.android.purebilibili.core.ui.adaptive.MotionTier
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
@@ -288,7 +290,10 @@ fun FrostedBottomBar(
     // [NEW] Scroll offset for liquid glass refraction effect
     scrollOffset: Float = 0f,
     // [NEW] LayerBackdrop for real background refraction (captures content behind the bar)
-    backdrop: LayerBackdrop? = null
+    backdrop: LayerBackdrop? = null,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f // Simple darkness check
     val haptic = rememberHapticFeedback()
@@ -315,6 +320,7 @@ fun FrostedBottomBar(
     
     // 背景颜色
     val blurIntensity = com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity()
+    val isActivelyScrolling = kotlin.math.abs(scrollOffset) >= 6f
     
     // [Fix] Background Color for Legibility
     // 使用半透明背景以保证文字在视频上的可读性，同时保留毛玻璃效果
@@ -604,7 +610,20 @@ fun FrostedBottomBar(
                             // Standard Fallback: Solid Background + Blur
                             this
                                 .background(barColor)
-                                .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
+                                .then(
+                                    if (hazeState != null) {
+                                        Modifier.unifiedBlur(
+                                            hazeState = hazeState,
+                                            surfaceType = BlurSurfaceType.BOTTOM_BAR,
+                                            motionTier = motionTier,
+                                            isScrolling = isActivelyScrolling,
+                                            isTransitionRunning = isTransitionRunning,
+                                            forceLowBudget = forceLowBlurBudget
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         }
                     }
             )

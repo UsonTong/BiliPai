@@ -111,8 +111,9 @@ internal fun shouldTryAppApiForTargetQuality(
     directedTrafficMode: Boolean = false
 ): Boolean {
     if (directedTrafficMode && targetQn > 0) return true
-    // 标准策略：高画质走 APP API；兜底策略：无 Cookie 但有 APP token 时，1080P(80) 也走 APP API。
-    return targetQn >= 112 || (!hasSessionCookie && targetQn >= 80)
+    if (!hasSessionCookie && targetQn >= 80) return true
+    // 标准策略：1080P 及以上优先尝试 APP API，降低 WEB 链路偶发回落到 720P 的概率。
+    return targetQn >= 80
 }
 
 internal fun shouldEnableDirectedTrafficMode(
@@ -142,13 +143,13 @@ internal fun shouldAcceptAppApiResultForTargetQuality(
     returnedQuality: Int,
     dashVideoIds: List<Int>
 ): Boolean {
-    // 标准清晰度请求不做严格校验，保持原有快速起播策略。
-    if (targetQn < 112) return true
+    // 720P 及以下保持原策略，优先保障起播成功。
+    if (targetQn < 80) return true
 
     // DASH 轨道中存在目标清晰度，说明结果可满足切换目标。
     if (dashVideoIds.distinct().contains(targetQn)) return true
 
-    // 非 DASH 场景下，返回清晰度本身满足目标也视为可接受。
+    // 非 DASH 场景下，返回清晰度本身满足目标也视为可接受；否则继续走后续回退链路。
     return returnedQuality >= targetQn && returnedQuality > 0
 }
 

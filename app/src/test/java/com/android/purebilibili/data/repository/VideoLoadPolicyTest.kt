@@ -95,9 +95,9 @@ class VideoLoadPolicyTest {
     }
 
     @Test
-    fun `shouldTryAppApiForTargetQuality enables app api for 1080P when session cookie missing`() {
+    fun `shouldTryAppApiForTargetQuality enables app api for 1080P regardless of session cookie`() {
         assertTrue(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = false))
-        assertFalse(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = true))
+        assertTrue(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = true))
         assertFalse(shouldTryAppApiForTargetQuality(64))
         assertTrue(shouldTryAppApiForTargetQuality(112))
         assertTrue(shouldTryAppApiForTargetQuality(120))
@@ -106,6 +106,17 @@ class VideoLoadPolicyTest {
                 targetQn = 64,
                 hasSessionCookie = true,
                 directedTrafficMode = true
+            )
+        )
+    }
+
+    @Test
+    fun `shouldAcceptAppApiResultForTargetQuality rejects downgraded 1080 response without target track`() {
+        assertFalse(
+            shouldAcceptAppApiResultForTargetQuality(
+                targetQn = 80,
+                returnedQuality = 64,
+                dashVideoIds = listOf(64, 32)
             )
         )
     }

@@ -128,6 +128,7 @@ import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.player.PlaylistUiState
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
+import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 // 📱 [新增] 竖屏全屏
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
 import com.android.purebilibili.feature.video.ui.overlay.PlayerProgress
@@ -305,6 +306,18 @@ internal fun shouldAutoEnterPortraitFullscreenFromRoute(
         isVerticalVideo &&
         !isPortraitFullscreen &&
         !hasAutoEnteredPortraitFromRoute
+}
+
+internal fun shouldSyncMainPlayerToInternalBvid(
+    isPortraitFullscreen: Boolean,
+    routeBvid: String,
+    currentBvid: String,
+    loadedBvid: String
+): Boolean {
+    if (isPortraitFullscreen) return false
+    if (currentBvid.isBlank()) return false
+    if (currentBvid == routeBvid) return false
+    return loadedBvid != currentBvid
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -1083,10 +1096,17 @@ fun VideoDetailScreen(
         }
     }
 
-    LaunchedEffect(uiState, currentBvid, currentBvidCid, isPortraitFullscreen) {
-        if (isPortraitFullscreen) return@LaunchedEffect
+    LaunchedEffect(uiState, currentBvid, currentBvidCid, isPortraitFullscreen, bvid) {
         val success = uiState as? PlayerUiState.Success ?: return@LaunchedEffect
-        if (success.info.bvid == currentBvid) return@LaunchedEffect
+        if (!shouldSyncMainPlayerToInternalBvid(
+                isPortraitFullscreen = isPortraitFullscreen,
+                routeBvid = bvid,
+                currentBvid = currentBvid,
+                loadedBvid = success.info.bvid
+            )
+        ) {
+            return@LaunchedEffect
+        }
         viewModel.loadVideo(
             bvid = currentBvid,
             cid = currentBvidCid.takeIf { it > 0L } ?: 0L,
@@ -1524,6 +1544,19 @@ fun VideoDetailScreen(
                     // 📏 [Collapsing Player] 上滑隐藏播放器逻辑
                     val videoHeightPx = with(LocalDensity.current) { videoHeight.toPx() }
                     var playerHeightOffsetPx by remember { mutableFloatStateOf(0f) }
+                    TrackJankStateFlag(
+                        stateName = "video_detail:player_swipe_collapse",
+                        isActive = swipeHidePlayerEnabled && abs(playerHeightOffsetPx) > 0.5f
+                    )
+                    val isPlayerCollapsed by remember(swipeHidePlayerEnabled, videoHeightPx) {
+                        derivedStateOf {
+                            resolveIsPlayerCollapsed(
+                                swipeHidePlayerEnabled = swipeHidePlayerEnabled,
+                                playerHeightOffsetPx = playerHeightOffsetPx,
+                                videoHeightPx = videoHeightPx
+                            )
+                        }
+                    }
                     
                     // 当设置关闭时，重置高度
                     LaunchedEffect(swipeHidePlayerEnabled) {
@@ -1538,10 +1571,13 @@ fun VideoDetailScreen(
                                 val delta = available.y
                                 // 上滑 (delta < 0)：隐藏播放器，消费滚动
                                 if (delta < 0) {
-                                    val newOffset = playerHeightOffsetPx + delta
-                                    val coercedOffset = newOffset.coerceIn(-videoHeightPx, 0f)
-                                    val consumed = coercedOffset - playerHeightOffsetPx
-                                    playerHeightOffsetPx = coercedOffset
+                                    val nextOffset = resolveNextPlayerHeightOffset(
+                                        currentOffsetPx = playerHeightOffsetPx,
+                                        deltaPx = delta,
+                                        minOffsetPx = -videoHeightPx
+                                    ) ?: return Offset.Zero
+                                    val consumed = nextOffset - playerHeightOffsetPx
+                                    playerHeightOffsetPx = nextOffset
                                     return Offset(0f, consumed)
                                 }
                                 return Offset.Zero
@@ -1553,10 +1589,13 @@ fun VideoDetailScreen(
                                 val delta = available.y
                                 // 下滑 (delta > 0)：显示播放器 (且 available > 0 说明内容已滚到顶)
                                 if (delta > 0) {
-                                     val newOffset = playerHeightOffsetPx + delta
-                                     val coercedOffset = newOffset.coerceIn(-videoHeightPx, 0f)
-                                     val consumedDelta = coercedOffset - playerHeightOffsetPx
-                                     playerHeightOffsetPx = coercedOffset
+                                     val nextOffset = resolveNextPlayerHeightOffset(
+                                         currentOffsetPx = playerHeightOffsetPx,
+                                         deltaPx = delta,
+                                         minOffsetPx = -videoHeightPx
+                                     ) ?: return Offset.Zero
+                                     val consumedDelta = nextOffset - playerHeightOffsetPx
+                                     playerHeightOffsetPx = nextOffset
                                      return Offset(0f, consumedDelta)
                                 }
                                 return Offset.Zero
@@ -1804,13 +1843,6 @@ fun VideoDetailScreen(
                                                 enter = fadeIn(tween(transitionEnterDurationMillis.coerceAtLeast(180)))
                                             ) {
                                                 Box(modifier = Modifier.fillMaxSize()) {
-                                                    // [新增] 计算播放器是否已折叠 (容差 10px)
-                                                    val isPlayerCollapsed = if (swipeHidePlayerEnabled) {
-                                                        playerHeightOffsetPx <= -videoHeightPx + 10f
-                                                    } else {
-                                                        false
-                                                    }
-
                                                     VideoContentSection(
                                                         info = success.info,
                                                         relatedVideos = success.related,
@@ -3086,6 +3118,32 @@ private fun Context.findActivity(): Activity? {
         context = context.baseContext
     }
     return null
+}
+
+internal fun resolveNextPlayerHeightOffset(
+    currentOffsetPx: Float,
+    deltaPx: Float,
+    minOffsetPx: Float,
+    maxOffsetPx: Float = 0f,
+    minUpdateDeltaPx: Float = 0.75f
+): Float? {
+    if (abs(deltaPx) < minUpdateDeltaPx) return null
+    val nextOffset = (currentOffsetPx + deltaPx).coerceIn(minOffsetPx, maxOffsetPx)
+    return if (abs(nextOffset - currentOffsetPx) < minUpdateDeltaPx) {
+        null
+    } else {
+        nextOffset
+    }
+}
+
+internal fun resolveIsPlayerCollapsed(
+    swipeHidePlayerEnabled: Boolean,
+    playerHeightOffsetPx: Float,
+    videoHeightPx: Float,
+    collapseTolerancePx: Float = 10f
+): Boolean {
+    if (!swipeHidePlayerEnabled) return false
+    return playerHeightOffsetPx <= (-videoHeightPx + collapseTolerancePx)
 }
 
 internal fun shouldRotateToPortraitOnSplitBack(

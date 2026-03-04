@@ -8,7 +8,7 @@ class HomeReturnAnimationPolicyTest {
     @Test
     fun quickReturn_withTransition_usesLongerSuppressionOnPhone() {
         assertEquals(
-            360L,
+            380L,
             resolveReturnAnimationSuppressionDurationMs(
                 isTabletLayout = false,
                 cardAnimationEnabled = true,
@@ -34,7 +34,7 @@ class HomeReturnAnimationPolicyTest {
     @Test
     fun normalReturn_usesOriginalDurations() {
         assertEquals(
-            260L,
+            360L,
             resolveReturnAnimationSuppressionDurationMs(
                 isTabletLayout = false,
                 cardAnimationEnabled = true,
@@ -43,7 +43,7 @@ class HomeReturnAnimationPolicyTest {
             )
         )
         assertEquals(
-            90L,
+            220L,
             resolveReturnAnimationSuppressionDurationMs(
                 isTabletLayout = false,
                 cardAnimationEnabled = false,
@@ -56,7 +56,7 @@ class HomeReturnAnimationPolicyTest {
     @Test
     fun nonSharedReturn_usesShorterSuppressionDurations() {
         assertEquals(
-            150L,
+            240L,
             resolveReturnAnimationSuppressionDurationMs(
                 isTabletLayout = false,
                 cardAnimationEnabled = true,

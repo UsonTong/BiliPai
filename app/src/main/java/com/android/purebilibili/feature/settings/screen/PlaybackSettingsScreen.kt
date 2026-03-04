@@ -1105,21 +1105,10 @@ fun PlaybackSettingsContent(
                         .getWifiQuality(context).collectAsState(initial = 80)
                     val mobileQuality by com.android.purebilibili.core.store.SettingsManager
                         .getMobileQuality(context).collectAsState(initial = 64)
-                    
-                    // 🚀 [新增] 自动最高画质
-                    val autoHighestQuality by com.android.purebilibili.core.store.SettingsManager
-                        .getAutoHighestQuality(context).collectAsState(initial = false)
                     val directedTrafficEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getBiliDirectedTrafficEnabled(context).collectAsState(initial = false)
                     
-                    // 画质选项列表
-                    val qualityOptions = listOf(
-                        PlaybackSegmentOption(116, "1080P60"),
-                        PlaybackSegmentOption(80, "1080P"),
-                        PlaybackSegmentOption(64, "720P"),
-                        PlaybackSegmentOption(32, "480P"),
-                        PlaybackSegmentOption(16, "360P")
-                    )
+                    val qualityOptions = resolveDefaultPlaybackQualityOptions()
                     
                     fun getQualityLabel(id: Int): String = resolveSelectionLabel(
                         options = qualityOptions,
@@ -1128,23 +1117,6 @@ fun PlaybackSettingsContent(
                     )
                     
                     IOSGroup {
-                        // 🚀 自动最高画质开关（置顶）
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Sparkles,
-                            title = "自动最高画质",
-                            subtitle = if (autoHighestQuality) "已开启：始终使用视频最高可用画质" else "开启后忽略下方画质设置",
-                            checked = autoHighestQuality,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setAutoHighestQuality(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-                        
-                        Divider()
-
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ChartBar,
                             title = "B站定向流量支持",
@@ -1167,14 +1139,9 @@ fun PlaybackSettingsContent(
 
                         IOSSlidingSegmentedSetting(
                             title = "WiFi 默认画质：${getQualityLabel(wifiQuality)}",
-                            subtitle = if (autoHighestQuality) {
-                                "已开启自动最高画质，此选项将暂时不生效"
-                            } else {
-                                "仅 WiFi 环境生效"
-                            },
+                            subtitle = "仅 WiFi 环境生效",
                             options = qualityOptions,
                             selectedValue = wifiQuality,
-                            enabled = !autoHighestQuality,
                             onSelectionChange = { qualityId ->
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager
@@ -1200,14 +1167,12 @@ fun PlaybackSettingsContent(
                         IOSSlidingSegmentedSetting(
                             title = "流量 默认画质：${getQualityLabel(mobileQuality)}",
                             subtitle = when {
-                                autoHighestQuality -> "已开启自动最高画质，此选项将暂时不生效"
                                 isDataSaverActive && mobileQuality > effectiveQuality ->
                                     "省流量模式当前实际最高为 $effectiveQualityLabel"
                                 else -> "仅移动网络环境生效"
                             },
                             options = qualityOptions,
                             selectedValue = mobileQuality,
-                            enabled = !autoHighestQuality,
                             onSelectionChange = { qualityId ->
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager

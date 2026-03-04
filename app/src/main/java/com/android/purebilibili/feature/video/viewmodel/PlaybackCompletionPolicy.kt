@@ -32,6 +32,7 @@ internal fun resolvePlaybackEndAction(
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun resolvePlaybackEndActionForSession(
     behavior: PlaybackCompletionBehavior,
     autoPlayEnabled: Boolean,
@@ -39,14 +40,9 @@ internal fun resolvePlaybackEndActionForSession(
     externalPlaylistSource: ExternalPlaylistSource,
     playMode: PlayMode
 ): PlaybackEndAction {
-    if (isExternalPlaylist && externalPlaylistSource == ExternalPlaylistSource.FAVORITE) {
-        return when (playMode) {
-            PlayMode.SEQUENTIAL -> PlaybackEndAction.PLAY_NEXT_IN_PLAYLIST_LOOP
-            PlayMode.SHUFFLE -> PlaybackEndAction.AUTO_CONTINUE
-            PlayMode.REPEAT_ONE -> PlaybackEndAction.REPEAT_CURRENT
-        }
-    }
-
+    // 显式播放完成策略（暂停/顺序/单循/列表循）始终优先于来源特判，
+    // 避免外部队列（如收藏夹听歌）出现“设置已选暂停但仍自动循环”的行为割裂。
+    // NOTE: externalPlaylistSource/playMode 保留入参用于兼容现有调用面与后续扩展。
     return resolvePlaybackEndAction(
         behavior = behavior,
         autoPlayEnabled = autoPlayEnabled,

@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.video.ui.components
 
+import com.android.purebilibili.data.model.response.ReplyMember
+import com.android.purebilibili.data.model.response.ReplySailingCardBg
+import com.android.purebilibili.data.model.response.ReplySailingFan
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -73,5 +76,129 @@ class ReplyComponentsPolicyTest {
 
         val invalid = COMMENT_TIMESTAMP_PATTERN.find("3:5")
         assertNull(invalid)
+    }
+
+    @Test
+    fun `resolveFanGroupTagVisual keeps num_desc and cardbg image`() {
+        val fan = ReplySailingFan(
+            isFan = 1,
+            number = 11,
+            color = "#f76a6b",
+            name = "测试粉丝团",
+            numDesc = "000011"
+        )
+
+        val visual = resolveFanGroupTagVisual(
+            fan = fan,
+            cardBgImage = "https://example.com/card3.png"
+        )
+
+        assertNotNull(visual)
+        assertEquals("000011", visual.fanNumber)
+        assertEquals("https://example.com/card3.png", visual.cardBgImageUrl)
+    }
+
+    @Test
+    fun `resolveFanGroupTagVisual pads number when num_desc is blank`() {
+        val fan = ReplySailingFan(
+            isFan = 1,
+            number = 11,
+            color = "#f76a6b",
+            name = "测试粉丝团",
+            numDesc = ""
+        )
+
+        val visual = resolveFanGroupTagVisual(
+            fan = fan,
+            cardBgImage = "   "
+        )
+
+        assertNotNull(visual)
+        assertEquals("000011", visual.fanNumber)
+        assertNull(visual.cardBgImageUrl)
+    }
+
+    @Test
+    fun `resolveSailingDecorationImage picks first non blank card image`() {
+        val cards = listOf(
+            ReplySailingCardBg(image = "", fan = null),
+            ReplySailingCardBg(image = "https://example.com/fan_card.png", fan = null),
+            ReplySailingCardBg(image = "https://example.com/other.png", fan = null)
+        )
+
+        val image = resolveSailingDecorationImage(cards)
+        assertEquals("https://example.com/fan_card.png", image)
+    }
+
+    @Test
+    fun `resolveSailingFan finds first fan with visible number`() {
+        val cards = listOf(
+            ReplySailingCardBg(
+                image = "",
+                fan = ReplySailingFan(number = 0, numDesc = "", color = "", name = "", isFan = 0)
+            ),
+            ReplySailingCardBg(
+                image = "",
+                fan = ReplySailingFan(number = 11, numDesc = "", color = "", name = "", isFan = 1)
+            )
+        )
+
+        val fan = resolveSailingFan(cards)
+        assertNotNull(fan)
+        assertEquals(11L, fan.number)
+    }
+
+    @Test
+    fun `resolveFanGroupVisualFromMemberAndSailing prefers pili plus garb card image over focus image`() {
+        val member = ReplyMember(
+            garbCardImage = "https://example.com/garb_card.png",
+            garbCardImageWithFocus = "https://example.com/garb_card_focus.png",
+            garbCardNumber = "021288",
+            garbCardFanColor = "#f76a6b"
+        )
+        val cards = listOf(
+            ReplySailingCardBg(
+                image = "https://example.com/sailing_card.png",
+                fan = ReplySailingFan(number = 11, numDesc = "000011", color = "#112233", name = "", isFan = 1)
+            )
+        )
+
+        val visual = resolveFanGroupVisualFromMemberAndSailing(member, cards)
+        assertNotNull(visual)
+        assertEquals("021288", visual.fanNumber)
+        assertEquals("https://example.com/garb_card.png", visual.cardBgImageUrl)
+        assertEquals("#f76a6b", visual.fanColorHex)
+    }
+
+    @Test
+    fun `normalizeHttpImageUrl upgrades protocol relative and bare host urls`() {
+        assertEquals(
+            "https://i0.hdslb.com/bfs/garb/item.png",
+            normalizeHttpImageUrl("//i0.hdslb.com/bfs/garb/item.png")
+        )
+        assertEquals(
+            "https://i0.hdslb.com/bfs/garb/item.png",
+            normalizeHttpImageUrl("i0.hdslb.com/bfs/garb/item.png")
+        )
+    }
+
+    @Test
+    fun `resolveDecorationImageUrl appends low quality suffix for plain image urls`() {
+        assertEquals(
+            "https://i0.hdslb.com/bfs/garb/item.png@1q.webp",
+            resolveDecorationImageUrl("//i0.hdslb.com/bfs/garb/item.png")
+        )
+        assertEquals(
+            "https://i0.hdslb.com/bfs/garb/item.png@1q.webp",
+            resolveDecorationImageUrl("i0.hdslb.com/bfs/garb/item.png")
+        )
+    }
+
+    @Test
+    fun `resolveDecorationImageUrl upgrades existing thumbnail suffix to include quality`() {
+        assertEquals(
+            "https://i0.hdslb.com/bfs/garb/item@240w_1q.webp",
+            resolveDecorationImageUrl("https://i0.hdslb.com/bfs/garb/item@240w.webp")
+        )
     }
 }

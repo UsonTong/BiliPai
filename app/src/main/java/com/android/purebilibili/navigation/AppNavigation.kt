@@ -1866,6 +1866,8 @@ fun AppNavigation(
                                     itemColorIndices = bottomBarItemColors,
                                     homeSettings = homeSettings,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
+                                    motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
+                                    forceLowBlurBudget = homeSettings.smartVisualGuardEnabled,
                                     onToggleSidebar = {
                                         // [Tablet] Toggle sidebar mode
                                         coroutineScope.launch {
@@ -1888,6 +1890,8 @@ fun AppNavigation(
                                 itemColorIndices = bottomBarItemColors,
                                 homeSettings = homeSettings,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
+                                motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
+                                forceLowBlurBudget = homeSettings.smartVisualGuardEnabled,
                                 onToggleSidebar = {
                                     // [Tablet] Toggle sidebar mode
                                     coroutineScope.launch {

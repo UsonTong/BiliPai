@@ -34,6 +34,7 @@ import com.android.purebilibili.core.ui.animation.DissolveAnimationPreset
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve
 import com.android.purebilibili.core.ui.adaptive.MotionTier
+import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.data.model.response.VideoItem
@@ -66,6 +67,7 @@ internal fun HomeCategoryPageContent(
     cardAnimationEnabled: Boolean,
     cardMotionTier: MotionTier = MotionTier.Normal,
     cardTransitionEnabled: Boolean,
+    smartVisualGuardEnabled: Boolean = false,
     isDataSaverActive: Boolean,
     compactStatsOnCover: Boolean = true,
     oldContentAnchorBvid: String? = null,
@@ -95,6 +97,12 @@ internal fun HomeCategoryPageContent(
     firstGridItemModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
 ) {
+    val scrollLiteModeEnabled = smartVisualGuardEnabled && gridState.isScrollInProgress
+    TrackScrollJank(
+        scrollableState = gridState,
+        stateName = "home:feed:${category.name.lowercase()}"
+    )
+
     // Check for load more
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -229,6 +237,7 @@ internal fun HomeCategoryPageContent(
                     if (shouldInsertDividerHere) {
                         item(
                             key = "old_content_divider_$index",
+                            contentType = "home_old_content_divider",
                             span = { GridItemSpan(gridColumns) }
                         ) {
                             OldContentDivider()
@@ -236,7 +245,8 @@ internal fun HomeCategoryPageContent(
                     }
 
                     item(
-                        key = if (video.bvid.isNotBlank()) video.bvid else "video_${video.id}_$index"
+                        key = if (video.bvid.isNotBlank()) video.bvid else "video_${video.id}_$index",
+                        contentType = "home_video_card"
                     ) {
                         val isDynamicDetailCard = video.dynamicId.isNotBlank() && !video.bvid.startsWith("BV", ignoreCase = true)
                         val isDissolving = video.bvid in dissolvingVideos
@@ -258,6 +268,7 @@ internal fun HomeCategoryPageContent(
                                         animationEnabled = cardAnimationEnabled,
                                         motionTier = cardMotionTier,
                                         transitionEnabled = cardTransitionEnabled,
+                                        scrollLiteModeEnabled = scrollLiteModeEnabled,
                                         onDismiss = { onDismissVideo(video.bvid) },
                                         onLongClick = if (isDynamicDetailCard) null else ({ longPressCallback(video) }),
                                         onClick = { bvid, cid ->
@@ -282,6 +293,7 @@ internal fun HomeCategoryPageContent(
                                         animationEnabled = cardAnimationEnabled,
                                         motionTier = cardMotionTier,
                                         transitionEnabled = cardTransitionEnabled,
+                                        scrollLiteModeEnabled = scrollLiteModeEnabled,
                                         isDataSaverActive = isDataSaverActive,
                                         compactStatsOnCover = compactStatsOnCover,
                                         onDismiss = { onDismissVideo(video.bvid) },

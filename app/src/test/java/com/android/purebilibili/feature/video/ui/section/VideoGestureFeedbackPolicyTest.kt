@@ -3,8 +3,10 @@ package com.android.purebilibili.feature.video.ui.section
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
+import androidx.compose.ui.graphics.Color
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class VideoGestureFeedbackPolicyTest {
 
@@ -240,5 +242,34 @@ class VideoGestureFeedbackPolicyTest {
             listOf(false, true, true),
             resolveGesturePercentDigitChangeMask(previousPercent = 49, currentPercent = 50)
         )
+    }
+
+    @Test
+    fun `resolveGestureLevelOverlayVisualPolicy returns warm accent for brightness`() {
+        val policy = resolveGestureLevelOverlayVisualPolicy(
+            mode = VideoGestureMode.Brightness,
+            percent = 0.3f
+        )
+
+        assertEquals(Color(0xFFFFD54F), policy.accentColor)
+        assertTrue(policy.containerAlpha > 0.15f)
+    }
+
+    @Test
+    fun `resolveGestureLevelOverlayVisualPolicy returns cool accent for volume`() {
+        val policy = resolveGestureLevelOverlayVisualPolicy(
+            mode = VideoGestureMode.Volume,
+            percent = 0.8f
+        )
+
+        assertEquals(Color(0xFF80DEEA), policy.accentColor)
+        assertTrue(policy.glowAlpha > 0.3f)
+    }
+
+    @Test
+    fun `resolveGestureRenderProgress clamps to safe range`() {
+        assertEquals(0f, resolveGestureRenderProgress(-0.3f))
+        assertEquals(0.6f, resolveGestureRenderProgress(0.6f))
+        assertEquals(1f, resolveGestureRenderProgress(1.4f))
     }
 }

@@ -1,11 +1,23 @@
 // 文件路径: data/model/response/ResponseModels.kt
 // 1. 强制压制 InternalSerializationApi 报错
-@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+@file:OptIn(
+    kotlinx.serialization.InternalSerializationApi::class,
+    kotlinx.serialization.ExperimentalSerializationApi::class
+)
 
 package com.android.purebilibili.data.model.response
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 @Serializable
 data class ReplyResponse(
@@ -123,6 +135,7 @@ data class ReplyItem(
 
     //  核心修复：给对象类型加上默认值 = ReplyMember()
     // 遇到被删除用户或特殊评论时，member 字段可能缺失或为 null，不加默认值会导致整个列表解析崩溃
+    @Serializable(with = ReplyMemberOrDefaultSerializer::class)
     val member: ReplyMember = ReplyMember(),
     val content: ReplyContent = ReplyContent(),
 
@@ -144,20 +157,76 @@ data class ReplyUpAction(
     val reply: Boolean = false  // UP主回复了
 )
 
+object ReplyMemberOrDefaultSerializer : KSerializer<ReplyMember> {
+    override val descriptor: SerialDescriptor = ReplyMember.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ReplyMember) {
+        encoder.encodeSerializableValue(ReplyMember.serializer(), value)
+    }
+
+    override fun deserialize(decoder: Decoder): ReplyMember {
+        if (decoder !is JsonDecoder) {
+            return decoder.decodeSerializableValue(ReplyMember.serializer())
+        }
+        val element = decoder.decodeJsonElement()
+        if (element is JsonNull) {
+            return ReplyMember()
+        }
+        return decoder.json.decodeFromJsonElement(ReplyMember.serializer(), element)
+    }
+}
+
 @Serializable
 data class ReplyMember(
+    @Serializable(with = FlexibleStringSerializer::class)
     val mid: String = "0",
+    @Serializable(with = FlexibleStringSerializer::class)
     val uname: String = "未知用户",
+    @Serializable(with = FlexibleStringSerializer::class)
     val avatar: String = "",
 
     @SerialName("level_info")
     val levelInfo: ReplyLevelInfo = ReplyLevelInfo(),
 
-    val vip: ReplyVipInfo? = null
+    val vip: ReplyVipInfo? = null,
+
+    @SerialName("fans_detail")
+    val fansDetail: ReplyFansDetail? = null,
+
+    val nameplate: ReplyNameplate? = null,
+
+    @Serializable(with = FlexibleImageUrlSerializer::class)
+    @SerialName("garb_card_image")
+    val garbCardImage: String = "",
+
+    @Serializable(with = FlexibleImageUrlSerializer::class)
+    @SerialName("garb_card_image_with_focus")
+    val garbCardImageWithFocus: String = "",
+
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("garb_card_number")
+    val garbCardNumber: String = "",
+
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("garb_card_fan_color")
+    val garbCardFanColor: String = "",
+
+    @Serializable(with = FlexibleFlagIntSerializer::class)
+    @SerialName("garb_card_is_fan")
+    val garbCardIsFan: Int = 0,
+
+    @SerialName("user_sailing")
+    @Serializable(with = ReplyUserSailingOrNullSerializer::class)
+    val userSailing: ReplyUserSailing? = null,
+
+    @SerialName("user_sailing_v2")
+    @Serializable(with = ReplyUserSailingOrNullSerializer::class)
+    val userSailingV2: ReplyUserSailing? = null
 )
 
 @Serializable
 data class ReplyLevelInfo(
+    @Serializable(with = FlexibleIntSerializer::class)
     @SerialName("current_level")
     val currentLevel: Int = 0
 )
@@ -167,6 +236,196 @@ data class ReplyVipInfo(
     val vipType: Int = 0,
     val vipStatus: Int = 0
 )
+
+@Serializable
+data class ReplyFansDetail(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val uid: Long = 0,
+    @Serializable(with = FlexibleLongSerializer::class)
+    @SerialName("medal_id")
+    val medalId: Long = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("medal_name")
+    val medalName: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
+    val score: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val level: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val intimacy: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("master_status")
+    val masterStatus: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    @SerialName("is_receive")
+    val isReceive: Int = 0
+)
+
+@Serializable
+data class ReplyNameplate(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val nid: Long = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
+    val name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val image: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("image_small")
+    val imageSmall: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val level: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val condition: String = ""
+)
+
+@Serializable
+data class ReplyUserSailing(
+    val pendant: ReplySailingPendant? = null,
+    @SerialName("cardbg")
+    @Serializable(with = ReplySailingCardBgOrNullSerializer::class)
+    val cardBg: ReplySailingCardBg? = null,
+    @SerialName("cardbg_with_focus")
+    @Serializable(with = ReplySailingCardBgOrNullSerializer::class)
+    val cardBgWithFocus: ReplySailingCardBg? = null
+)
+
+@Serializable
+data class ReplySailingPendant(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val id: Long = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
+    val name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val image: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("jump_url")
+    val jumpUrl: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val type: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("image_enhance")
+    val imageEnhance: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("image_enhance_frame")
+    val imageEnhanceFrame: String = ""
+)
+
+@Serializable
+data class ReplySailingCardBg(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val id: Long = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
+    val name: String = "",
+    @Serializable(with = FlexibleImageUrlSerializer::class)
+    val image: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("jump_url")
+    val jumpUrl: String = "",
+    @Serializable(with = ReplySailingFanOrNullSerializer::class)
+    val fan: ReplySailingFan? = null,
+    @Serializable(with = FlexibleStringSerializer::class)
+    val type: String = ""
+)
+
+@Serializable
+data class ReplySailingFan(
+    @Serializable(with = FlexibleFlagIntSerializer::class)
+    @SerialName("is_fan")
+    val isFan: Int = 0,
+    @Serializable(with = FlexibleLongSerializer::class)
+    val number: Long = 0,
+    @Serializable(with = FlexibleStringSerializer::class)
+    val color: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    @SerialName("num_desc")
+    val numDesc: String = ""
+)
+
+object ReplyUserSailingOrNullSerializer : KSerializer<ReplyUserSailing?> {
+    override val descriptor: SerialDescriptor = ReplyUserSailing.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ReplyUserSailing?) {
+        if (value == null) {
+            encoder.encodeNull()
+            return
+        }
+        encoder.encodeSerializableValue(ReplyUserSailing.serializer(), value)
+    }
+
+    override fun deserialize(decoder: Decoder): ReplyUserSailing? {
+        if (decoder !is JsonDecoder) {
+            return runCatching { decoder.decodeSerializableValue(ReplyUserSailing.serializer()) }.getOrNull()
+        }
+        val element = decoder.decodeJsonElement()
+        if (element is JsonNull || element !is JsonObject) return null
+        return runCatching { decoder.json.decodeFromJsonElement(ReplyUserSailing.serializer(), element) }.getOrNull()
+    }
+}
+
+object ReplySailingCardBgOrNullSerializer : KSerializer<ReplySailingCardBg?> {
+    override val descriptor: SerialDescriptor = ReplySailingCardBg.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ReplySailingCardBg?) {
+        if (value == null) {
+            encoder.encodeNull()
+            return
+        }
+        encoder.encodeSerializableValue(ReplySailingCardBg.serializer(), value)
+    }
+
+    override fun deserialize(decoder: Decoder): ReplySailingCardBg? {
+        if (decoder !is JsonDecoder) {
+            return runCatching { decoder.decodeSerializableValue(ReplySailingCardBg.serializer()) }.getOrNull()
+        }
+        val element = decoder.decodeJsonElement()
+        if (element is JsonNull || element !is JsonObject) return null
+        return runCatching { decoder.json.decodeFromJsonElement(ReplySailingCardBg.serializer(), element) }.getOrNull()
+    }
+}
+
+object ReplySailingFanOrNullSerializer : KSerializer<ReplySailingFan?> {
+    override val descriptor: SerialDescriptor = ReplySailingFan.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ReplySailingFan?) {
+        if (value == null) {
+            encoder.encodeNull()
+            return
+        }
+        encoder.encodeSerializableValue(ReplySailingFan.serializer(), value)
+    }
+
+    override fun deserialize(decoder: Decoder): ReplySailingFan? {
+        if (decoder !is JsonDecoder) {
+            return runCatching { decoder.decodeSerializableValue(ReplySailingFan.serializer()) }.getOrNull()
+        }
+        val element = decoder.decodeJsonElement()
+        if (element is JsonNull || element !is JsonObject) return null
+        return runCatching { decoder.json.decodeFromJsonElement(ReplySailingFan.serializer(), element) }.getOrNull()
+    }
+}
+
+object FlexibleFlagIntSerializer : KSerializer<Int> {
+    override val descriptor: SerialDescriptor = FlexibleIntSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: Int) {
+        encoder.encodeInt(value)
+    }
+
+    override fun deserialize(decoder: Decoder): Int {
+        if (decoder !is JsonDecoder) return decoder.decodeInt()
+        val element = decoder.decodeJsonElement()
+        val primitive = element as? JsonPrimitive ?: return 0
+        primitive.booleanOrNull?.let { return if (it) 1 else 0 }
+        val content = runCatching { primitive.content }.getOrNull() ?: return 0
+        return when (content.lowercase()) {
+            "true" -> 1
+            "false" -> 0
+            else -> content.toIntOrNull() ?: content.toDoubleOrNull()?.toInt() ?: 0
+        }
+    }
+}
 
 @Serializable
 data class ReplyContent(

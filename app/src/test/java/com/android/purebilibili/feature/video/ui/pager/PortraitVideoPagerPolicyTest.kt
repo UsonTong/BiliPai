@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.video.ui.pager
 
 import com.android.purebilibili.data.model.response.RelatedVideo
+import androidx.media3.common.Player
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -41,5 +42,10 @@ class PortraitVideoPagerPolicyTest {
         )
 
         assertEquals(0, index)
+    }
+
+    @Test
+    fun resolvePortraitPagerRepeatMode_defaultsToOffForOrderedPlayback() {
+        assertEquals(Player.REPEAT_MODE_OFF, resolvePortraitPagerRepeatMode())
     }
 }

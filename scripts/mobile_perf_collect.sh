@@ -109,13 +109,27 @@ TOTAL_FRAMES="$(awk -F: '/Total frames rendered:/{gsub(/ /,"",$2); print $2; exi
 JANKY_COUNT="$(sed -nE 's/.*Janky frames:[[:space:]]*([0-9]+).*/\1/p' "$GFX_FILE" | head -n1)"
 JANKY_PERCENT="$(sed -nE 's/.*Janky frames:[[:space:]]*[0-9]+[[:space:]]*\(([0-9.]+)%.*/\1/p' "$GFX_FILE" | head -n1)"
 TOTAL_PSS_KB="$(sed -nE 's/.*TOTAL PSS:[[:space:]]*([0-9,]+).*/\1/p' "$MEM_FILE" | head -n1 | tr -d ',')"
+ROOT_VISIBILITY="$(sed -nE 's/.*visibility=([0-9]+).*/\1/p' "$GFX_FILE" | head -n1)"
+SAMPLE_VALID="yes"
 
 TOTAL_FRAMES="${TOTAL_FRAMES:-N/A}"
 JANKY_COUNT="${JANKY_COUNT:-N/A}"
 JANKY_PERCENT="${JANKY_PERCENT:-N/A}"
 TOTAL_PSS_KB="${TOTAL_PSS_KB:-N/A}"
+ROOT_VISIBILITY="${ROOT_VISIBILITY:-N/A}"
+
+if [[ "$TOTAL_FRAMES" == "0" && "$ROOT_VISIBILITY" == "8" ]]; then
+  SAMPLE_VALID="no"
+fi
+if [[ "$TOTAL_FRAMES" == "N/A" || "$JANKY_PERCENT" == "N/A" ]]; then
+  SAMPLE_VALID="no"
+fi
 
 echo "[mobile-perf] result: frames=$TOTAL_FRAMES jank=$JANKY_COUNT (${JANKY_PERCENT}%) pss=${TOTAL_PSS_KB}KB"
+if [[ "$SAMPLE_VALID" == "no" ]]; then
+  echo "[mobile-perf] warning: sample likely invalid (frames=$TOTAL_FRAMES, root_visibility=$ROOT_VISIBILITY). Keep app in foreground and screen unlocked."
+fi
 echo "[mobile-perf] raw: $GFX_FILE"
 echo "[mobile-perf] raw: $MEM_FILE"
 echo "[mobile-perf] timestamp: $TIMESTAMP"
+echo "[mobile-perf] sample_valid: $SAMPLE_VALID"

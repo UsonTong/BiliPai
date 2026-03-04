@@ -3,6 +3,7 @@ package com.android.purebilibili.baselineprofile
 import androidx.benchmark.macro.MacrobenchmarkScope
 import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import org.junit.Rule
@@ -18,7 +19,7 @@ class BiliPaiBaselineProfileGenerator {
     @Test
     fun generateBaselineProfile() {
         baselineProfileRule.collect(
-            packageName = "com.android.purebilibili",
+            packageName = TARGET_PACKAGE_NAME,
             includeInStartupProfile = true,
             maxIterations = 8
         ) {
@@ -41,6 +42,12 @@ class BiliPaiBaselineProfileGenerator {
                 clickBottomTab("历史")
                 scrollFeedOnce()
             }
+
+            startVideoDetailActivity()
+            scrollVideoDetailContent()
+            swipeVideoPlayerSeek()
+            device.pressBack()
+            device.waitForIdle()
 
             clickBottomTab("首页")
         }
@@ -75,5 +82,36 @@ class BiliPaiBaselineProfileGenerator {
         val toY = if (reverse) (device.displayHeight * 3) / 4 else device.displayHeight / 3
         device.swipe(x, fromY, x, toY, 24)
         device.waitForIdle()
+    }
+
+    private fun MacrobenchmarkScope.startVideoDetailActivity() {
+        val component = "$TARGET_PACKAGE_NAME/.feature.video.VideoActivity"
+        device.executeShellCommand("am start -W -n $component --es bvid ${resolveBenchmarkBvid()}")
+        device.wait(Until.findObject(By.pkg(TARGET_PACKAGE_NAME)), 8_000)
+        device.waitForIdle()
+    }
+
+    private fun MacrobenchmarkScope.scrollVideoDetailContent() {
+        val x = device.displayWidth / 2
+        val fromY = (device.displayHeight * 88) / 100
+        val toY = (device.displayHeight * 45) / 100
+        device.swipe(x, fromY, x, toY, 24)
+        device.waitForIdle()
+    }
+
+    private fun MacrobenchmarkScope.swipeVideoPlayerSeek() {
+        val y = (device.displayHeight * 22) / 100
+        val fromX = (device.displayWidth * 24) / 100
+        val toX = (device.displayWidth * 76) / 100
+        device.swipe(fromX, y, toX, y, 24)
+        device.waitForIdle()
+    }
+
+    private fun resolveBenchmarkBvid(): String {
+        val configured = InstrumentationRegistry.getArguments()
+            .getString("benchmark.bvid")
+            .orEmpty()
+            .trim()
+        return if (configured.isNotBlank()) configured else DEFAULT_BENCHMARK_BVID
     }
 }

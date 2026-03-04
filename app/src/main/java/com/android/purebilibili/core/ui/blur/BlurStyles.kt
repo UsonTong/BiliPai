@@ -37,6 +37,20 @@ object BlurStyles {
             BlurIntensity.THICK -> HazeMaterials.thick()           //  浓郁 - 最强模糊，完全遮盖
         }
     }
+
+    @OptIn(ExperimentalHazeMaterialsApi::class)
+    @Composable
+    fun getBlurStyle(
+        intensity: BlurIntensity,
+        budget: BlurBudget?
+    ): HazeStyle {
+        val effectiveIntensity = if (budget != null) {
+            resolveBudgetedBlurIntensity(intensity, budget)
+        } else {
+            intensity
+        }
+        return getBlurStyle(effectiveIntensity)
+    }
     
     /**
      *  获取不同模糊强度对应的背景透明度
@@ -52,5 +66,18 @@ object BlurStyles {
             BlurIntensity.THICK -> 0.6f        //  浓郁 - 高透明度，遮盖背景
         }
     }
-}
 
+    fun getBackgroundAlpha(
+        intensity: BlurIntensity,
+        budget: BlurBudget?
+    ): Float {
+        val effectiveIntensity = if (budget != null) {
+            resolveBudgetedBlurIntensity(intensity, budget)
+        } else {
+            intensity
+        }
+        val alpha = getBackgroundAlpha(effectiveIntensity)
+        val multiplier = budget?.backgroundAlphaMultiplier ?: 1f
+        return (alpha * multiplier).coerceIn(0f, 1f)
+    }
+}

@@ -26,21 +26,21 @@ internal fun resolveAppNavigationMotionSpec(
 
     return if (isTabletLayout) {
         AppNavigationMotionSpec(
-            slideDurationMillis = 380,
-            fastFadeDurationMillis = 210,
-            mediumFadeDurationMillis = 260,
-            slowFadeDurationMillis = 320,
-            backdropBlurDurationMillis = 280,
-            maxBackdropBlurRadius = 28f
+            slideDurationMillis = 350,
+            fastFadeDurationMillis = 190,
+            mediumFadeDurationMillis = 240,
+            slowFadeDurationMillis = 290,
+            backdropBlurDurationMillis = 240,
+            maxBackdropBlurRadius = 24f
         )
     } else {
         AppNavigationMotionSpec(
-            slideDurationMillis = 340,
-            fastFadeDurationMillis = 180,
-            mediumFadeDurationMillis = 230,
-            slowFadeDurationMillis = 300,
-            backdropBlurDurationMillis = 240,
-            maxBackdropBlurRadius = 20f
+            slideDurationMillis = 300,
+            fastFadeDurationMillis = 160,
+            mediumFadeDurationMillis = 200,
+            slowFadeDurationMillis = 255,
+            backdropBlurDurationMillis = 200,
+            maxBackdropBlurRadius = 16f
         )
     }
 }

@@ -268,7 +268,7 @@ fun PortraitVideoPager(
             )
             .build()
             .apply {
-                repeatMode = Player.REPEAT_MODE_ONE
+                repeatMode = resolvePortraitPagerRepeatMode()
                 volume = 1.0f
                 setPlaybackSpeed(SettingsManager.getPreferredPlaybackSpeedSync(context))
             }
@@ -1459,3 +1459,5 @@ internal fun resolvePortraitInitialPageIndex(
     if (recommendationIndex < 0) return 0
     return recommendationIndex + 1
 }
+
+internal fun resolvePortraitPagerRepeatMode(): Int = Player.REPEAT_MODE_OFF

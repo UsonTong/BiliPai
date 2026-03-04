@@ -24,4 +24,14 @@ class UnifiedBlurPreferencePolicyTest {
 
         assertEquals(BlurIntensity.THICK, result)
     }
+
+    @Test
+    fun budgetClamp_shouldNotChangeLowerIntensity() {
+        val result = resolveBudgetedBlurIntensity(
+            preferred = BlurIntensity.THIN,
+            budget = BlurBudget(maxBlurLevel = 1, backgroundAlphaMultiplier = 1.0f, allowRealtime = true)
+        )
+
+        assertEquals(BlurIntensity.THIN, result)
+    }
 }

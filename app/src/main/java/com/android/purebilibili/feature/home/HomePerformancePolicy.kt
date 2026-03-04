@@ -17,15 +17,25 @@ internal fun resolveHomePerformanceConfig(
     cardAnimationEnabled: Boolean,
     cardTransitionEnabled: Boolean,
     isDataSaverActive: Boolean,
+    smartVisualGuardEnabled: Boolean,
     normalPreloadAheadCount: Int = 5
 ): HomePerformanceConfig {
+    val shouldPrioritizeSmoothness = smartVisualGuardEnabled
+    val effectiveDataSaver = isDataSaverActive
+    val effectiveLiquidGlass = liquidGlassEnabled && !shouldPrioritizeSmoothness
+    val effectivePreloadAheadCount = when {
+        effectiveDataSaver -> 0
+        shouldPrioritizeSmoothness -> normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)
+        else -> normalPreloadAheadCount.coerceAtLeast(0)
+    }
+
     return HomePerformanceConfig(
         headerBlurEnabled = headerBlurEnabled,
         bottomBarBlurEnabled = bottomBarBlurEnabled,
-        liquidGlassEnabled = liquidGlassEnabled,
+        liquidGlassEnabled = effectiveLiquidGlass,
         cardAnimationEnabled = cardAnimationEnabled,
         cardTransitionEnabled = cardTransitionEnabled,
-        isDataSaverActive = isDataSaverActive,
-        preloadAheadCount = if (isDataSaverActive) 0 else normalPreloadAheadCount.coerceAtLeast(0)
+        isDataSaverActive = effectiveDataSaver,
+        preloadAheadCount = effectivePreloadAheadCount
     )
 }

@@ -8,7 +8,10 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 // --- 1. 热搜模型 (保持不变) ---
@@ -194,6 +197,61 @@ object FlexibleStringSerializer : KSerializer<String> {
         val element = decoder.decodeJsonElement()
         val primitive = element as? JsonPrimitive ?: return ""
         return runCatching { primitive.content }.getOrNull() ?: ""
+    }
+}
+
+object FlexibleImageUrlSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("FlexibleImageUrl", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: String) {
+        encoder.encodeString(value)
+    }
+
+    override fun deserialize(decoder: Decoder): String {
+        if (decoder !is JsonDecoder) return decoder.decodeString()
+        val element = decoder.decodeJsonElement()
+        return extractFlexibleImageUrl(element) ?: ""
+    }
+}
+
+private val PREFERRED_IMAGE_KEYS = listOf(
+    "day", "night", "light", "dark",
+    "image", "image_small", "img", "img_url", "url", "src", "default"
+)
+
+private fun extractFlexibleImageUrl(element: JsonElement?, depth: Int = 0): String? {
+    if (element == null || depth > 8) return null
+    return when (element) {
+        is JsonPrimitive -> normalizeImageUrlCandidate(runCatching { element.content }.getOrNull())
+        is JsonObject -> {
+            PREFERRED_IMAGE_KEYS.firstNotNullOfOrNull { key ->
+                extractFlexibleImageUrl(element[key], depth + 1)
+            } ?: element.values.firstNotNullOfOrNull { child ->
+                extractFlexibleImageUrl(child, depth + 1)
+            }
+        }
+        is JsonArray -> element.firstNotNullOfOrNull { child ->
+            extractFlexibleImageUrl(child, depth + 1)
+        }
+        else -> null
+    }
+}
+
+private fun normalizeImageUrlCandidate(raw: String?): String? {
+    val text = raw?.trim().orEmpty()
+    if (text.isBlank()) return null
+    if (text.equals("null", ignoreCase = true)) return null
+    return if (
+        text.startsWith("http://") ||
+        text.startsWith("https://") ||
+        text.startsWith("//") ||
+        text.startsWith("/") ||
+        text.contains("/")
+    ) {
+        text
+    } else {
+        null
     }
 }
 

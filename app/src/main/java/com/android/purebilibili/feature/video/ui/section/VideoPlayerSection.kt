@@ -49,6 +49,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.keyframes
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Path
 import androidx.activity.compose.BackHandler
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -68,6 +69,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,6 +91,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.core.store.FullscreenAspectRatio
+import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
+import com.android.purebilibili.core.ui.performance.TrackJankStateValue
+import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
@@ -223,6 +228,46 @@ internal fun resolveGestureDisplayIcon(
             else -> CupertinoIcons.Default.SpeakerWave2
         }
         else -> fallbackIcon ?: CupertinoIcons.Filled.SunMax
+    }
+}
+
+internal data class GestureLevelOverlayVisualPolicy(
+    val accentColor: Color,
+    val containerAlpha: Float,
+    val borderAlpha: Float,
+    val glowAlpha: Float
+)
+
+internal fun resolveGestureRenderProgress(percent: Float): Float {
+    return percent.coerceIn(0f, 1f)
+}
+
+internal fun resolveGestureLevelOverlayVisualPolicy(
+    mode: VideoGestureMode,
+    percent: Float
+): GestureLevelOverlayVisualPolicy {
+    val progress = resolveGestureRenderProgress(percent)
+    return when (mode) {
+        VideoGestureMode.Brightness -> GestureLevelOverlayVisualPolicy(
+            accentColor = Color(0xFFFFD54F),
+            containerAlpha = 0.20f + progress * 0.08f,
+            borderAlpha = 0.52f + progress * 0.22f,
+            glowAlpha = 0.30f + progress * 0.40f
+        )
+
+        VideoGestureMode.Volume -> GestureLevelOverlayVisualPolicy(
+            accentColor = Color(0xFF80DEEA),
+            containerAlpha = 0.19f + progress * 0.08f,
+            borderAlpha = 0.50f + progress * 0.20f,
+            glowAlpha = 0.28f + progress * 0.38f
+        )
+
+        else -> GestureLevelOverlayVisualPolicy(
+            accentColor = Color.White,
+            containerAlpha = 0.22f,
+            borderAlpha = 0.50f,
+            glowAlpha = 0.32f
+        )
     }
 }
 
@@ -685,6 +730,14 @@ fun VideoPlayerSection(
     var seekTargetTime by remember { mutableLongStateOf(0L) }
     var startPosition by remember { mutableLongStateOf(0L) }
     var isGestureVisible by remember { mutableStateOf(false) }
+    TrackJankStateFlag(
+        stateName = "video_player:gesture_visible",
+        isActive = isGestureVisible
+    )
+    TrackJankStateValue(
+        stateName = "video_player:gesture_mode",
+        stateValue = gestureMode.takeUnless { it == VideoGestureMode.None }?.name
+    )
     
     //  视频比例状态
     var currentAspectRatio by remember { mutableStateOf(fixedFullscreenAspectRatio.toVideoAspectRatio()) }
@@ -1924,16 +1977,25 @@ fun VideoPlayerSection(
                 percent = gesturePercent,
                 fallbackIcon = gestureIcon
             )
+            val visualPolicy = resolveGestureLevelOverlayVisualPolicy(
+                mode = gestureMode,
+                percent = gesturePercent
+            )
+            val renderProgress by animateFloatAsState(
+                targetValue = resolveGestureRenderProgress(gesturePercent),
+                animationSpec = tween(durationMillis = 130),
+                label = "gesture-progress"
+            )
             val iconScale by animateFloatAsState(
                 targetValue = 0.9f + gesturePercent.coerceIn(0f, 1f) * 0.35f,
                 animationSpec = tween(durationMillis = 180),
                 label = "gesture-icon-scale"
             )
-            val levelAccentColor = when (gestureMode) {
-                VideoGestureMode.Brightness -> Color(0xFFFFD54F)
-                VideoGestureMode.Volume -> Color(0xFF80DEEA)
-                else -> Color.White
-            }
+            val valueScale by animateFloatAsState(
+                targetValue = if (gesturePercentDisplay != previousGesturePercentDisplay) 1.06f else 1f,
+                animationSpec = tween(durationMillis = 140),
+                label = "gesture-value-scale"
+            )
             val overlayTextShadow = Shadow(
                 color = Color.Black.copy(alpha = 0.62f),
                 offset = Offset(0f, 2f),
@@ -1954,11 +2016,27 @@ fun VideoPlayerSection(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size((uiLayoutPolicy.gestureIconSizeDp + 20).dp)
-                            .background(Color.White.copy(alpha = 0.10f), CircleShape)
-                            .border(1.dp, Color.White.copy(alpha = 0.66f), CircleShape),
+                            .size((uiLayoutPolicy.gestureIconSizeDp + 20).dp),
                         contentAlignment = Alignment.Center
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    visualPolicy.accentColor.copy(alpha = visualPolicy.glowAlpha),
+                                    CircleShape
+                                )
+                                .blur(
+                                    radius = 14.dp,
+                                    edgeTreatment = BlurredEdgeTreatment.Unbounded
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.White.copy(alpha = 0.10f), CircleShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.66f), CircleShape)
+                        )
                         AnimatedContent(
                             targetState = dynamicGestureIcon,
                             transitionSpec = {
@@ -1974,7 +2052,7 @@ fun VideoPlayerSection(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = levelAccentColor,
+                                tint = visualPolicy.accentColor,
                                 modifier = Modifier
                                     .size(uiLayoutPolicy.gestureIconSizeDp.dp)
                                     .graphicsLayer {
@@ -2000,17 +2078,34 @@ fun VideoPlayerSection(
                             fontSize = 24.sp
                         ),
                         textShadow = overlayTextShadow,
-                        modifier = Modifier.widthIn(min = 74.dp)
+                        modifier = Modifier
+                            .widthIn(min = 74.dp)
+                            .graphicsLayer {
+                                scaleX = valueScale
+                                scaleY = valueScale
+                            }
                     )
-                    LinearProgressIndicator(
-                        progress = { gesturePercent.coerceIn(0f, 1f) },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
-                            .clip(RoundedCornerShape(999.dp)),
-                        color = levelAccentColor,
-                        trackColor = Color.White.copy(alpha = 0.22f)
-                    )
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color.White.copy(alpha = 0.20f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(renderProgress)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            visualPolicy.accentColor.copy(alpha = 0.68f),
+                                            visualPolicy.accentColor
+                                        )
+                                    )
+                                )
+                        )
+                    }
                 }
             }
         }

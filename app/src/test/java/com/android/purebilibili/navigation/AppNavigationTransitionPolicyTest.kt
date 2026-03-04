@@ -253,8 +253,8 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun returningFromDetailToHome_shouldDeferBottomBarReveal() {
-        assertTrue(
+    fun returningFromDetailToHome_shouldNotDeferBottomBarReveal() {
+        assertFalse(
             shouldDeferBottomBarRevealOnVideoReturn(
                 isReturningFromDetail = true,
                 currentRoute = ScreenRoutes.Home.route

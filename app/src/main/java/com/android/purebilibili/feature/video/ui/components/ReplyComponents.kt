@@ -5,6 +5,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import coil.compose.AsyncImage
@@ -37,8 +39,12 @@ import coil.decode.ImageDecoderDecoder
 import android.os.Build
 //  已改用 MaterialTheme.colorScheme.primary
 import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.data.model.response.ReplyFansDetail
 import com.android.purebilibili.data.model.response.ReplyItem
+import com.android.purebilibili.data.model.response.ReplyMember
 import com.android.purebilibili.data.model.response.ReplyPicture
+import com.android.purebilibili.data.model.response.ReplySailingCardBg
+import com.android.purebilibili.data.model.response.ReplySailingFan
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextPlacement
 import androidx.compose.ui.layout.ContentScale
@@ -79,6 +85,75 @@ internal fun shouldEnableRichCommentSelection(
     hasInteractiveAnnotations: Boolean
 ): Boolean {
     return !hasRenderableEmotes && !hasInteractiveAnnotations
+}
+
+internal data class FanGroupTagVisual(
+    val fanNumber: String,
+    val cardBgImageUrl: String?,
+    val fanColorHex: String = ""
+)
+
+internal fun resolveSailingFan(cardBgs: List<ReplySailingCardBg>): ReplySailingFan? {
+    return cardBgs.asSequence()
+        .mapNotNull { it.fan }
+        .firstOrNull { it.numDesc.isNotBlank() || it.number > 0 }
+}
+
+internal fun resolveSailingDecorationImage(cardBgs: List<ReplySailingCardBg>): String? {
+    return cardBgs.asSequence()
+        .map { it.image }
+        .firstOrNull { it.isNotBlank() }
+}
+
+internal fun resolveFanGroupTagVisual(
+    fan: ReplySailingFan?,
+    cardBgImage: String?,
+    fanColorHex: String? = null
+): FanGroupTagVisual? {
+    fan ?: return null
+    val fanNumber = fan.numDesc.ifBlank {
+        if (fan.number > 0) fan.number.toString().padStart(6, '0') else ""
+    }
+    if (fanNumber.isBlank()) return null
+    return FanGroupTagVisual(
+        fanNumber = fanNumber,
+        cardBgImageUrl = cardBgImage?.takeIf { it.isNotBlank() },
+        fanColorHex = fanColorHex?.takeIf { it.isNotBlank() } ?: fan.color
+    )
+}
+
+internal fun resolveFanGroupVisualFromMemberAndSailing(
+    member: ReplyMember,
+    cardBgs: List<ReplySailingCardBg>
+): FanGroupTagVisual? {
+    val sailingFan = resolveSailingFan(cardBgs)
+    val legacyNumber = member.garbCardNumber.trim()
+    val fanNumber = when {
+        legacyNumber.isNotBlank() -> legacyNumber
+        sailingFan != null -> {
+            sailingFan.numDesc.ifBlank {
+                if (sailingFan.number > 0) sailingFan.number.toString().padStart(6, '0') else ""
+            }
+        }
+        else -> ""
+    }
+    if (fanNumber.isBlank()) return null
+
+    val image = when {
+        member.garbCardImage.isNotBlank() -> member.garbCardImage
+        member.garbCardImageWithFocus.isNotBlank() -> member.garbCardImageWithFocus
+        else -> resolveSailingDecorationImage(cardBgs).orEmpty()
+    }
+    val fanColorHex = member.garbCardFanColor
+        .takeIf { it.isNotBlank() }
+        ?: sailingFan?.color
+        ?: ""
+
+    return FanGroupTagVisual(
+        fanNumber = fanNumber,
+        cardBgImageUrl = image.takeIf { it.isNotBlank() },
+        fanColorHex = fanColorHex
+    )
 }
 
 internal fun resolveReplyPreviewTextContent(item: ReplyItem): ImagePreviewTextContent {
@@ -152,6 +227,23 @@ fun ReplyItemView(
             "IP归属地：$cleanLocation"
         } else null
     }
+    val fansDetail = item.member.fansDetail
+        ?.takeIf { it.medalName.isNotBlank() && it.level > 0 }
+    val nameplateImage = item.member.nameplate
+        ?.imageSmall
+        ?.takeIf { it.isNotBlank() }
+    val sailingCardBgs = listOfNotNull(
+        item.member.userSailing?.cardBg,
+        item.member.userSailing?.cardBgWithFocus,
+        item.member.userSailingV2?.cardBg,
+        item.member.userSailingV2?.cardBgWithFocus
+    )
+    val fanGroupVisual = resolveFanGroupVisualFromMemberAndSailing(
+        member = item.member,
+        cardBgs = sailingCardBgs
+    )
+    val piliPlusDecoration = fanGroupVisual
+        ?.takeIf { !it.cardBgImageUrl.isNullOrBlank() }
 
     Column(
         modifier = Modifier
@@ -180,68 +272,86 @@ fun ReplyItemView(
             
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                // User Info Header
-                Row(
-                    verticalAlignment = Alignment.CenterVertically, 
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = item.member.uname,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (item.member.vip?.vipStatus == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+            Box(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // User Info Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .weight(1f, fill = false)
-                            .copyOnLongPress(item.member.uname, "用户名")
-                    )
-                    
-                    if (isUpComment) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        UpTag()
-                    }
-                    
-                    if (isPinned) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        PinnedTag()
-                    }
-                    
-                    Spacer(modifier = Modifier.width(6.dp))
-                    LevelTag(level = item.member.levelInfo.currentLevel)
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Content
-                RichCommentText(
-                    text = item.content.message,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    emoteMap = localEmoteMap,
-                    onTimestampClick = onTimestampClick,
-                    onUrlClick = onUrlClick
-                )
-
-                // Images
-                if (!item.content.pictures.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    CommentPictures(
-                        pictures = item.content.pictures,
-                        onImageClick = { images, index, rect ->
-                            onImagePreview?.invoke(
-                                images,
-                                index,
-                                rect,
-                                resolveReplyPreviewTextContent(item)
+                            .fillMaxWidth()
+                            .padding(end = if (piliPlusDecoration != null) 88.dp else 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = item.member.uname,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (item.member.vip?.vipStatus == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .copyOnLongPress(item.member.uname, "用户名")
                             )
+
+                            if (isUpComment) {
+                                UpTag()
+                            }
+
+                            if (isPinned) {
+                                PinnedTag()
+                            }
+
+                            if (item.member.levelInfo.currentLevel > 0) {
+                                LevelTag(level = item.member.levelInfo.currentLevel)
+                            }
+
+                            if (fansDetail != null) {
+                                FansMedalTag(detail = fansDetail)
+                            }
+
+                            if (!nameplateImage.isNullOrBlank()) {
+                                NameplateTag(imageUrl = nameplateImage)
+                            }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Content
+                    RichCommentText(
+                        text = item.content.message,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        emoteMap = localEmoteMap,
+                        onTimestampClick = onTimestampClick,
+                        onUrlClick = onUrlClick
                     )
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    // Images
+                    if (!item.content.pictures.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        CommentPictures(
+                            pictures = item.content.pictures,
+                            onImageClick = { images, index, rect ->
+                                onImagePreview?.invoke(
+                                    images,
+                                    index,
+                                    rect,
+                                    resolveReplyPreviewTextContent(item)
+                                )
+                            }
+                        )
+                    }
 
-                // Footer Actions
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Footer Actions
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                     // Time & Location
                     Text(
                         text = buildString {
@@ -382,6 +492,16 @@ fun ReplyItemView(
                             )
                         }
                     }
+                    }
+                }
+
+                if (piliPlusDecoration != null) {
+                    PiliPlusGarbCardDecoration(
+                        visual = piliPlusDecoration,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 2.dp)
+                    )
                 }
             }
         }
@@ -640,24 +760,191 @@ fun EmojiText(
     )
 }
 
-//  [重构] 等级标签 - iOS 风格 (简约文字)
+//  等级标签（改为截图同款的小矩形 LV 样式）
 @Composable
 fun LevelTag(level: Int) {
-    val textColor = when {
-        level >= 6 -> Color(0xFFFF6699)
-        level >= 5 -> Color(0xFFFF9500)
-        level >= 4 -> Color(0xFF22C3AA)
-        level >= 3 -> Color(0xFF7BC549)
-        level >= 2 -> Color(0xFF5EAADE)
-        else -> Color(0xFF969696)
+    val badgeColor = resolveLevelBadgeColor(level)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        badgeColor.copy(alpha = 0.92f),
+                        badgeColor
+                    )
+                )
+            )
+            .padding(horizontal = 5.dp, vertical = 1.dp)
+    ) {
+        Text(
+            text = "LV$level",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            lineHeight = 10.sp
+        )
     }
-    
-    Text(
-        text = "Lv.$level",
-        fontSize = 11.sp, // Slightly larger for readability
-        fontWeight = FontWeight.SemiBold, // Less heavy than Bold
-        color = textColor
+}
+
+@Composable
+private fun FansMedalTag(detail: ReplyFansDetail) {
+    val accentColor = resolveFansMedalColor(detail.level)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .border(
+                width = 0.8.dp,
+                color = accentColor.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(3.dp)
+            )
+            .background(accentColor.copy(alpha = 0.14f))
+    ) {
+        Text(
+            text = detail.medalName,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Medium,
+            color = accentColor.copy(alpha = 0.95f),
+            maxLines = 1,
+            modifier = Modifier.padding(start = 4.dp, end = 3.dp, top = 1.dp, bottom = 1.dp)
+        )
+        Box(
+            modifier = Modifier
+                .background(accentColor)
+                .padding(horizontal = 3.dp, vertical = 1.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = detail.level.toString(),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun NameplateTag(imageUrl: String) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(FormatUtils.fixImageUrl(imageUrl))
+            .crossfade(true)
+            .build(),
+        contentDescription = "Nameplate",
+        modifier = Modifier
+            .size(width = 20.dp, height = 12.dp)
+            .clip(RoundedCornerShape(2.dp))
     )
+}
+
+@Composable
+private fun PiliPlusGarbCardDecoration(
+    visual: FanGroupTagVisual,
+    modifier: Modifier = Modifier
+) {
+    val fallbackImageUrl = normalizeHttpImageUrl(visual.cardBgImageUrl)
+    val primaryImageUrl = resolveDecorationImageUrl(visual.cardBgImageUrl)
+    if (primaryImageUrl.isBlank()) return
+    var imageUrl by remember(primaryImageUrl, fallbackImageUrl) {
+        mutableStateOf(primaryImageUrl)
+    }
+
+    val textColor = parseHexColorOrNull(visual.fanColorHex) ?: Color(0xFFD2D8E2)
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .listener(
+                    onError = { _, _ ->
+                        if (fallbackImageUrl.isNotBlank() && imageUrl != fallbackImageUrl) {
+                            imageUrl = fallbackImageUrl
+                        }
+                    }
+                )
+                .crossfade(true)
+                .build(),
+            contentDescription = "Fan group decoration",
+            // Garb card assets often contain huge transparent margins.
+            // Keep center crop so the main emblem near center stays visible.
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center,
+            modifier = Modifier
+                .size(width = 42.dp, height = 22.dp)
+                .clip(RoundedCornerShape(2.dp))
+        )
+        Text(
+            text = "co.${visual.fanNumber}",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor
+        )
+    }
+}
+
+internal fun normalizeHttpImageUrl(url: String?): String {
+    if (url.isNullOrBlank()) return ""
+    val text = url.trim()
+    val lower = text.lowercase(Locale.ROOT)
+    val looksLikeHostPath = !text.startsWith("/") &&
+        text.substringBefore('/').contains('.')
+    return when {
+        text.startsWith("//") -> "https:$text"
+        lower.startsWith("http://") -> "https://${text.substringAfter("://")}"
+        lower.startsWith("https://") -> text
+        looksLikeHostPath -> "https://$text"
+        else -> text
+    }
+}
+
+private val IMAGE_SUFFIX_REGEX =
+    Regex("""\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$""", RegexOption.IGNORE_CASE)
+private val THUMBNAIL_SUFFIX_REGEX =
+    Regex("""(@(\d+[a-z]_?)*)(\..*)?$""", RegexOption.IGNORE_CASE)
+
+internal fun resolveDecorationImageUrl(url: String?): String {
+    val normalized = normalizeHttpImageUrl(url)
+    if (normalized.isBlank()) return ""
+    if (!IMAGE_SUFFIX_REGEX.containsMatchIn(normalized)) return normalized
+
+    return if (THUMBNAIL_SUFFIX_REGEX.containsMatchIn(normalized)) {
+        normalized.replace(THUMBNAIL_SUFFIX_REGEX) { match ->
+            val suffix = match.groups[3]?.value ?: ".webp"
+            "${match.groups[1]?.value.orEmpty()}_1q$suffix"
+        }
+    } else {
+        "$normalized@1q.webp"
+    }
+}
+
+private fun resolveLevelBadgeColor(level: Int): Color {
+    return when {
+        level >= 6 -> Color(0xFFF04444)
+        level >= 5 -> Color(0xFFFF7A45)
+        level >= 4 -> Color(0xFFFF8B5A)
+        level >= 3 -> Color(0xFFFF9C6E)
+        level >= 2 -> Color(0xFFFFAE84)
+        else -> Color(0xFFA7ADB8)
+    }
+}
+
+private fun resolveFansMedalColor(level: Int): Color {
+    return when {
+        level >= 30 -> Color(0xFFE67A2B)
+        level >= 20 -> Color(0xFFD9963B)
+        level >= 10 -> Color(0xFFCFA657)
+        else -> Color(0xFFB6B6B6)
+    }
+}
+
+private fun parseHexColorOrNull(hex: String?): Color? {
+    if (hex.isNullOrBlank()) return null
+    return runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()
 }
 
 fun formatTime(timestamp: Long): String {

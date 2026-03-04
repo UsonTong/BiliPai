@@ -9,6 +9,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalContext
+import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.store.SettingsManager
 import androidx.compose.ui.draw.clip
 import dev.chrisbanes.haze.HazeState
@@ -62,14 +63,26 @@ fun currentUnifiedBlurIntensity(): BlurIntensity {
 fun Modifier.unifiedBlur(
     hazeState: HazeState,
     enabled: Boolean = true,
-    shape: androidx.compose.ui.graphics.Shape? = null
+    shape: androidx.compose.ui.graphics.Shape? = null,
+    surfaceType: BlurSurfaceType = BlurSurfaceType.GENERIC,
+    motionTier: MotionTier = MotionTier.Normal,
+    isScrolling: Boolean = false,
+    isTransitionRunning: Boolean = false,
+    forceLowBudget: Boolean = false
 ): Modifier = composed {
     if (!enabled) return@composed this
 
     val blurIntensity = currentUnifiedBlurIntensity()
+    val budget = resolveBlurBudget(
+        surfaceType = surfaceType,
+        motionTier = motionTier,
+        isScrolling = isScrolling,
+        isTransitionRunning = isTransitionRunning,
+        forceLowBudget = forceLowBudget
+    )
     
     // 根据用户选择获取对应的模糊样式
-    val blurStyle = BlurStyles.getBlurStyle(blurIntensity)
+    val blurStyle = BlurStyles.getBlurStyle(blurIntensity, budget)
     
     //  [修复] HazeEffect 不支持 shape 参数，需使用 clip 修饰符
     //  仅当提供了 shape 时才应用 clip，避免破坏现有圆角组件 (如 BottomBar)
