@@ -601,6 +601,7 @@ cd BiliPai
 | [DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | B 站弹幕引擎 |
 | [DanmakuRenderEngine](https://github.com/bytedance/DanmakuRenderEngine) | 字节跳动高性能弹幕引擎 |
 | [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) | B 站 API 文档 |
+| [biliSendCommAntifraud](https://github.com/freedom-introvert/biliSendCommAntifraud) | 评论反诈检测参考实现 |
 | [Haze](https://github.com/chrisbanes/haze) | 毛玻璃效果库 |
 | [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass) | 液态玻璃效果 |
 | [Lottie](https://github.com/airbnb/lottie-android) | Airbnb 动画库 |

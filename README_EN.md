@@ -423,6 +423,14 @@ Issues and Pull Requests are welcome!
 
 ---
 
+## 🙏 Acknowledgements
+
+| Project | Description |
+|-----|-----|
+| [biliSendCommAntifraud](https://github.com/freedom-introvert/biliSendCommAntifraud) | Reference implementation for comment anti-fraud detection |
+
+---
+
 ## ⚠️ Disclaimer
 
 > [!CAUTION]
