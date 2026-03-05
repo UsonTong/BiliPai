@@ -358,7 +358,6 @@ private fun VideoIntroTab(
     onBgmClick: (BgmInfo) -> Unit = {},
     showInteractionActions: Boolean = true
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val hasPages = info.pages.size > 1
     LazyColumn(
         state = listState,
@@ -414,13 +413,12 @@ private fun VideoIntroTab(
 
         itemsIndexed(items = relatedVideos, key = { _, item -> item.bvid }) { index, video ->
             val openRelatedVideo = {
-                val activity = (context as? android.app.Activity) ?: (context as? android.content.ContextWrapper)?.baseContext as? android.app.Activity
-                val options = activity?.let {
-                    android.app.ActivityOptions.makeSceneTransitionAnimation(it).toBundle()
-                }
-                val navOptions = android.os.Bundle(options ?: android.os.Bundle.EMPTY)
-                if (video.cid > 0L) {
-                    navOptions.putLong(VIDEO_NAV_TARGET_CID_KEY, video.cid)
+                val navOptions = if (video.cid > 0L) {
+                    android.os.Bundle().apply {
+                        putLong(VIDEO_NAV_TARGET_CID_KEY, video.cid)
+                    }
+                } else {
+                    null
                 }
                 onRelatedVideoClick(video.bvid, navOptions)
             }

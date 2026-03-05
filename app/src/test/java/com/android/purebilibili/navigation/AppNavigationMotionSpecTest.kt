@@ -16,6 +16,10 @@ class AppNavigationMotionSpecTest {
         assertEquals(120, spec.fastFadeDurationMillis)
         assertEquals(160, spec.backdropBlurDurationMillis)
         assertEquals(8f, spec.maxBackdropBlurRadius)
+        assertEquals(120, spec.fallbackFadeDurationMillis)
+        assertEquals(170, spec.quickReturnFadeDurationMillis)
+        assertEquals(180, spec.seamlessFadeDurationMillis)
+        assertEquals(180, spec.cardTargetFallbackSlideMaxDurationMillis)
     }
 
     @Test
@@ -29,6 +33,10 @@ class AppNavigationMotionSpecTest {
         assertEquals(190, spec.fastFadeDurationMillis)
         assertEquals(290, spec.slowFadeDurationMillis)
         assertEquals(24f, spec.maxBackdropBlurRadius)
+        assertEquals(120, spec.fallbackFadeDurationMillis)
+        assertEquals(170, spec.quickReturnFadeDurationMillis)
+        assertEquals(180, spec.seamlessFadeDurationMillis)
+        assertEquals(180, spec.cardTargetFallbackSlideMaxDurationMillis)
     }
 
     @Test
@@ -42,5 +50,9 @@ class AppNavigationMotionSpecTest {
         assertEquals(160, spec.fastFadeDurationMillis)
         assertEquals(255, spec.slowFadeDurationMillis)
         assertEquals(16f, spec.maxBackdropBlurRadius)
+        assertEquals(120, spec.fallbackFadeDurationMillis)
+        assertEquals(170, spec.quickReturnFadeDurationMillis)
+        assertEquals(180, spec.seamlessFadeDurationMillis)
+        assertEquals(180, spec.cardTargetFallbackSlideMaxDurationMillis)
     }
 }

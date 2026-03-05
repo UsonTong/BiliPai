@@ -211,13 +211,19 @@ object SettingsManager {
     
     //  [新增] 开屏壁纸
     private val KEY_SPLASH_WALLPAPER_URI = stringPreferencesKey("splash_wallpaper_uri")
+    private val KEY_SPLASH_WALLPAPER_HISTORY = stringPreferencesKey("splash_wallpaper_history")
+    private val KEY_SPLASH_RANDOM_POOL_URIS = stringPreferencesKey("splash_random_pool_uris")
     private val KEY_SPLASH_ENABLED = booleanPreferencesKey("splash_enabled")
+    private val KEY_SPLASH_RANDOM_ENABLED = booleanPreferencesKey("splash_random_enabled")
     private val KEY_SPLASH_ICON_ANIMATION_ENABLED = booleanPreferencesKey("splash_icon_animation_enabled")
     private val KEY_SPLASH_ALIGNMENT_MOBILE = floatPreferencesKey("splash_alignment_mobile")
     private val KEY_SPLASH_ALIGNMENT_TABLET = floatPreferencesKey("splash_alignment_tablet")
     private const val SPLASH_PREFS = "splash_prefs"
     private const val SPLASH_PREFS_KEY_WALLPAPER_URI = "wallpaper_uri"
+    private const val SPLASH_PREFS_KEY_WALLPAPER_HISTORY = "wallpaper_history"
+    private const val SPLASH_PREFS_KEY_RANDOM_POOL_URIS = "random_pool_uris"
     private const val SPLASH_PREFS_KEY_ENABLED = "enabled"
+    private const val SPLASH_PREFS_KEY_RANDOM_ENABLED = "random_enabled"
     private const val SPLASH_PREFS_KEY_ICON_ANIMATION_ENABLED = "icon_animation_enabled"
     private const val SPLASH_PREFS_KEY_ALIGNMENT_MOBILE = "alignment_mobile"
     private const val SPLASH_PREFS_KEY_ALIGNMENT_TABLET = "alignment_tablet"
@@ -459,6 +465,7 @@ object SettingsManager {
             AppThemeMode.FOLLOW_SYSTEM -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             AppThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
             AppThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            AppThemeMode.AMOLED -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         }
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode)
     }
@@ -740,22 +747,75 @@ object SettingsManager {
     fun getSplashWallpaperUri(context: Context): Flow<String> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SPLASH_WALLPAPER_URI] ?: "" }
 
+    fun getSplashWallpaperHistory(context: Context): Flow<List<String>> = context.settingsDataStore.data
+        .map { preferences -> decodeSplashWallpaperHistory(preferences[KEY_SPLASH_WALLPAPER_HISTORY] ?: "") }
+
+    fun getSplashRandomPoolUris(context: Context): Flow<List<String>> = context.settingsDataStore.data
+        .map { preferences -> decodeSplashWallpaperHistory(preferences[KEY_SPLASH_RANDOM_POOL_URIS] ?: "") }
+
     suspend fun setSplashWallpaperUri(context: Context, uri: String) {
-        context.settingsDataStore.edit { preferences -> 
-            preferences[KEY_SPLASH_WALLPAPER_URI] = uri 
+        var encodedHistory = ""
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SPLASH_WALLPAPER_URI] = uri
+            val existingHistory = decodeSplashWallpaperHistory(preferences[KEY_SPLASH_WALLPAPER_HISTORY] ?: "")
+            val updatedHistory = appendSplashWallpaperHistory(existingHistory, uri)
+            encodedHistory = encodeSplashWallpaperHistory(updatedHistory)
+            preferences[KEY_SPLASH_WALLPAPER_HISTORY] = encodedHistory
         }
         // 同步到 SharedPreferences
         context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
-            .edit().putString(SPLASH_PREFS_KEY_WALLPAPER_URI, uri).apply()
+            .edit()
+            .putString(SPLASH_PREFS_KEY_WALLPAPER_URI, uri)
+            .putString(SPLASH_PREFS_KEY_WALLPAPER_HISTORY, encodedHistory)
+            .apply()
     }
-    
+
+    suspend fun setSplashWallpaperHistory(context: Context, history: List<String>) {
+        val encoded = encodeSplashWallpaperHistory(history)
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SPLASH_WALLPAPER_HISTORY] = encoded
+        }
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(SPLASH_PREFS_KEY_WALLPAPER_HISTORY, encoded)
+            .apply()
+    }
+
     fun getSplashWallpaperUriSync(context: Context): String {
         return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
             .getString(SPLASH_PREFS_KEY_WALLPAPER_URI, "") ?: ""
     }
-    
+
+    fun getSplashWallpaperHistorySync(context: Context): List<String> {
+        val raw = context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getString(SPLASH_PREFS_KEY_WALLPAPER_HISTORY, "")
+            .orEmpty()
+        return decodeSplashWallpaperHistory(raw)
+    }
+
+    suspend fun setSplashRandomPoolUris(context: Context, poolUris: List<String>) {
+        val encoded = encodeSplashWallpaperHistory(poolUris)
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SPLASH_RANDOM_POOL_URIS] = encoded
+        }
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(SPLASH_PREFS_KEY_RANDOM_POOL_URIS, encoded)
+            .apply()
+    }
+
+    fun getSplashRandomPoolUrisSync(context: Context): List<String> {
+        val raw = context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getString(SPLASH_PREFS_KEY_RANDOM_POOL_URIS, "")
+            .orEmpty()
+        return decodeSplashWallpaperHistory(raw)
+    }
+
     fun isSplashEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SPLASH_ENABLED] ?: false } // 默认关闭
+
+    fun getSplashRandomEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SPLASH_RANDOM_ENABLED] ?: false }
 
     fun getSplashIconAnimationEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SPLASH_ICON_ANIMATION_ENABLED] ?: true }
@@ -772,6 +832,21 @@ object SettingsManager {
     fun isSplashEnabledSync(context: Context): Boolean {
         return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
             .getBoolean(SPLASH_PREFS_KEY_ENABLED, false)
+    }
+
+    suspend fun setSplashRandomEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SPLASH_RANDOM_ENABLED] = value
+        }
+        context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(SPLASH_PREFS_KEY_RANDOM_ENABLED, value)
+            .apply()
+    }
+
+    fun isSplashRandomEnabledSync(context: Context): Boolean {
+        return context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(SPLASH_PREFS_KEY_RANDOM_ENABLED, false)
     }
 
     suspend fun setSplashIconAnimationEnabled(context: Context, value: Boolean) {

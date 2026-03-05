@@ -89,6 +89,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.core.store.FullscreenAspectRatio
@@ -97,6 +98,7 @@ import com.android.purebilibili.core.ui.performance.TrackJankStateValue
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
 import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
@@ -118,6 +120,19 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 enum class VideoGestureMode { None, Brightness, Volume, Seek, SwipeToFullscreen }
+
+private const val HI_RES_AUDIO_QUALITY_ID = 30251
+private const val HI_RES_LONG_PRESS_SPEED_LIMIT = 1.5f
+
+internal fun resolveEffectiveLongPressSpeed(
+    requestedSpeed: Float,
+    currentAudioQuality: Int,
+    hiResSpeedLimit: Float = HI_RES_LONG_PRESS_SPEED_LIMIT
+): Float {
+    val normalized = requestedSpeed.coerceAtLeast(0.1f)
+    if (currentAudioQuality != HI_RES_AUDIO_QUALITY_ID) return normalized
+    return normalized.coerceAtMost(hiResSpeedLimit)
+}
 
 internal fun resolveVerticalGestureMode(
     isFullscreen: Boolean,
@@ -240,6 +255,54 @@ internal data class GestureLevelOverlayVisualPolicy(
     val glowAlpha: Float
 )
 
+internal data class VideoGestureMotionSpec(
+    val digitBlurResetDurationMillis: Int,
+    val digitAlphaResetDurationMillis: Int,
+    val digitEnterFadeDurationMillis: Int,
+    val digitExitFadeDurationMillis: Int,
+    val digitScaleDurationMillis: Int,
+    val levelOverlayEnterFadeDurationMillis: Int,
+    val levelOverlayEnterTransformDurationMillis: Int,
+    val levelOverlayExitDurationMillis: Int,
+    val levelProgressDurationMillis: Int,
+    val levelIconScaleDurationMillis: Int,
+    val levelValueScaleDurationMillis: Int,
+    val levelIconEnterFadeDurationMillis: Int,
+    val levelIconExitFadeDurationMillis: Int,
+    val levelIconContentScaleDurationMillis: Int,
+    val orientationHintEnterFadeDurationMillis: Int,
+    val orientationHintEnterTransformDurationMillis: Int,
+    val orientationHintExitDurationMillis: Int,
+    val longPressHintDurationMillis: Int,
+    val longPressArrowCycleDurationMillis: Int,
+    val longPressArrowPhaseStepDurationMillis: Int
+)
+
+internal fun resolveVideoGestureMotionSpec(): VideoGestureMotionSpec {
+    return VideoGestureMotionSpec(
+        digitBlurResetDurationMillis = 220,
+        digitAlphaResetDurationMillis = 220,
+        digitEnterFadeDurationMillis = 130,
+        digitExitFadeDurationMillis = 120,
+        digitScaleDurationMillis = 200,
+        levelOverlayEnterFadeDurationMillis = 160,
+        levelOverlayEnterTransformDurationMillis = 220,
+        levelOverlayExitDurationMillis = 200,
+        levelProgressDurationMillis = 130,
+        levelIconScaleDurationMillis = 180,
+        levelValueScaleDurationMillis = 140,
+        levelIconEnterFadeDurationMillis = 120,
+        levelIconExitFadeDurationMillis = 110,
+        levelIconContentScaleDurationMillis = 180,
+        orientationHintEnterFadeDurationMillis = 150,
+        orientationHintEnterTransformDurationMillis = 230,
+        orientationHintExitDurationMillis = 200,
+        longPressHintDurationMillis = 200,
+        longPressArrowCycleDurationMillis = 900,
+        longPressArrowPhaseStepDurationMillis = 300
+    )
+}
+
 internal fun resolveGestureRenderProgress(percent: Float): Float {
     return percent.coerceIn(0f, 1f)
 }
@@ -347,6 +410,25 @@ internal fun shouldDisableCoverFadeAnimation(
     return forceCoverDuringReturnAnimation
 }
 
+internal data class VideoPlayerCoverMotionSpec(
+    val shouldAnimateFade: Boolean,
+    val enterFadeDurationMillis: Int,
+    val exitFadeDurationMillis: Int
+)
+
+private const val VIDEO_PLAYER_COVER_FADE_ENTER_DURATION_MILLIS = 200
+private const val VIDEO_PLAYER_COVER_FADE_EXIT_DURATION_MILLIS = 300
+
+internal fun resolveVideoPlayerCoverMotionSpec(
+    forceCoverDuringReturnAnimation: Boolean
+): VideoPlayerCoverMotionSpec {
+    return VideoPlayerCoverMotionSpec(
+        shouldAnimateFade = !forceCoverDuringReturnAnimation,
+        enterFadeDurationMillis = VIDEO_PLAYER_COVER_FADE_ENTER_DURATION_MILLIS,
+        exitFadeDurationMillis = VIDEO_PLAYER_COVER_FADE_EXIT_DURATION_MILLIS
+    )
+}
+
 internal fun shouldHidePlayerSurfaceDuringForcedReturn(
     forceCoverDuringReturnAnimation: Boolean
 ): Boolean {
@@ -363,12 +445,18 @@ internal fun shouldEnableForcedReturnCoverSharedBounds(
     forceCoverDuringReturnAnimation: Boolean,
     transitionEnabled: Boolean,
     hasSharedTransitionScope: Boolean,
-    hasAnimatedVisibilityScope: Boolean
+    hasAnimatedVisibilityScope: Boolean,
+    sourceRoute: String?
 ): Boolean {
+    val sourceRouteBase = sourceRoute?.substringBefore("?")
+    // 允许所有卡片列表页面（首页、历史、收藏、搜索等）使用返回封面共享过渡
+    val allowBySourceRoute = sourceRouteBase == null ||
+        com.android.purebilibili.navigation.isVideoCardReturnTargetRoute(sourceRouteBase)
     return forceCoverDuringReturnAnimation &&
         transitionEnabled &&
         hasSharedTransitionScope &&
-        hasAnimatedVisibilityScope
+        hasAnimatedVisibilityScope &&
+        allowBySourceRoute
 }
 
 internal fun shouldPromoteFirstFrameByPlaybackFallback(
@@ -388,13 +476,34 @@ internal fun shouldPromoteFirstFrameByPlaybackFallback(
         currentPositionMs > 300L
 }
 
+internal fun shouldRebindPlayerSurfaceOnForeground(
+    hasPlayerView: Boolean,
+    isInPipMode: Boolean,
+    videoWidth: Int,
+    videoHeight: Int
+): Boolean {
+    if (!hasPlayerView || isInPipMode) return false
+    return videoWidth > 0 && videoHeight > 0
+}
+
+internal fun rebindPlayerSurfaceIfNeeded(
+    playerView: PlayerView,
+    player: Player
+) {
+    if (playerView.player === player) {
+        playerView.player = null
+    }
+    playerView.player = player
+}
+
 @Composable
 private fun GesturePercentDigit(
     digit: Char?,
     shouldAnimate: Boolean,
     textStyle: TextStyle,
     textShadow: Shadow,
-    slotWidth: androidx.compose.ui.unit.Dp
+    slotWidth: androidx.compose.ui.unit.Dp,
+    motionSpec: VideoGestureMotionSpec
 ) {
     val blurAnim = remember { Animatable(0f) }
     val alphaAnim = remember { Animatable(1f) }
@@ -415,23 +524,29 @@ private fun GesturePercentDigit(
         launch {
             blurAnim.animateTo(
                 targetValue = 0f,
-                animationSpec = tween(durationMillis = 220)
+                animationSpec = tween(durationMillis = motionSpec.digitBlurResetDurationMillis)
             )
         }
         alphaAnim.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 220)
+            animationSpec = tween(durationMillis = motionSpec.digitAlphaResetDurationMillis)
         )
     }
 
     AnimatedContent(
         targetState = digit,
         transitionSpec = {
-            (fadeIn(animationSpec = tween(130)) +
-                scaleIn(initialScale = 0.9f, animationSpec = tween(200)))
+            (fadeIn(animationSpec = tween(motionSpec.digitEnterFadeDurationMillis)) +
+                scaleIn(
+                    initialScale = 0.9f,
+                    animationSpec = tween(motionSpec.digitScaleDurationMillis)
+                ))
                 .togetherWith(
-                    fadeOut(animationSpec = tween(120)) +
-                        scaleOut(targetScale = 1.1f, animationSpec = tween(200))
+                    fadeOut(animationSpec = tween(motionSpec.digitExitFadeDurationMillis)) +
+                        scaleOut(
+                            targetScale = 1.1f,
+                            animationSpec = tween(motionSpec.digitScaleDurationMillis)
+                        )
                 )
         },
         label = "gesture-percent-digit"
@@ -462,7 +577,8 @@ private fun GesturePercentValue(
     previousPercent: Int,
     textStyle: TextStyle,
     textShadow: Shadow,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    motionSpec: VideoGestureMotionSpec
 ) {
     val digits = remember(percent) { resolveGesturePercentDigits(percent) }
     val changeMask = remember(previousPercent, percent) {
@@ -481,7 +597,8 @@ private fun GesturePercentValue(
                     shouldAnimate = changeMask.getOrElse(index) { false },
                     textStyle = textStyle,
                     textShadow = textShadow,
-                    slotWidth = 16.dp
+                    slotWidth = 16.dp,
+                    motionSpec = motionSpec
                 )
             }
         }
@@ -667,8 +784,10 @@ fun VideoPlayerSection(
         .getLongPressSpeed(context)
         .collectAsState(initial = 2.0f)
     var isLongPressing by remember { mutableStateOf(false) }
-    var originalSpeed by remember { mutableFloatStateOf(1.0f) }
+    var originalPlaybackParameters by remember { mutableStateOf(PlaybackParameters.DEFAULT) }
+    var effectiveLongPressSpeed by remember { mutableFloatStateOf(longPressSpeed) }
     var longPressSpeedFeedbackVisible by remember { mutableStateOf(false) }
+    var hasShownHiResCompatHint by remember(bvid) { mutableStateOf(false) }
     var hasAutoEnteredFullscreen by remember(bvid) { mutableStateOf(false) }
     
     //  [新增] 缓冲状态监听
@@ -751,6 +870,7 @@ fun VideoPlayerSection(
     var orientationHintVisible by remember { mutableStateOf(false) }
     var orientationHintText by remember { mutableStateOf(resolveOrientationSwitchHintText(isFullscreen)) }
     var hasObservedOrientationChange by remember { mutableStateOf(false) }
+    val gestureMotionSpec = remember { resolveVideoGestureMotionSpec() }
 
     // 进度手势相关状态
     var seekTargetTime by remember { mutableLongStateOf(0L) }
@@ -1117,11 +1237,33 @@ fun VideoPlayerSection(
                         if (isScreenLocked) return@detectTapGestures
                         //  长按开始：保存原速度并应用长按倍速
                         val player = playerState.player
-                        originalSpeed = player.playbackParameters.speed
-                        player.setPlaybackSpeed(longPressSpeed)
+                        originalPlaybackParameters = player.playbackParameters
+                        effectiveLongPressSpeed = resolveEffectiveLongPressSpeed(
+                            requestedSpeed = longPressSpeed,
+                            currentAudioQuality = currentAudioQuality
+                        )
+                        player.playbackParameters = PlaybackParameters(
+                            effectiveLongPressSpeed,
+                            1.0f
+                        )
+                        if (
+                            currentAudioQuality == HI_RES_AUDIO_QUALITY_ID &&
+                            effectiveLongPressSpeed < longPressSpeed &&
+                            !hasShownHiResCompatHint
+                        ) {
+                            hasShownHiResCompatHint = true
+                            Toast.makeText(
+                                context,
+                                "Hi-Res 音源长按倍速最高 1.5x，以降低失真",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         isLongPressing = true
                         longPressSpeedFeedbackVisible = true
-                        com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏩ LongPress: speed ${longPressSpeed}x")
+                        com.android.purebilibili.core.util.Logger.d(
+                            "VideoPlayerSection",
+                            "⏩ LongPress: speed ${effectiveLongPressSpeed}x (requested=${longPressSpeed}x, audio=$currentAudioQuality)"
+                        )
                     },
                     onDoubleTap = { offset ->
                         // 🔒 锁定时禁用双击
@@ -1177,10 +1319,13 @@ fun VideoPlayerSection(
                         tryAwaitRelease()
                         //  如果之前是长按状态，松开时恢复原速度
                         if (isLongPressing) {
-                            playerState.player.setPlaybackSpeed(originalSpeed)
+                            playerState.player.playbackParameters = originalPlaybackParameters
                             isLongPressing = false
                             longPressSpeedFeedbackVisible = false
-                            com.android.purebilibili.core.util.Logger.d("VideoPlayerSection", "⏹️ LongPress released: speed ${originalSpeed}x")
+                            com.android.purebilibili.core.util.Logger.d(
+                                "VideoPlayerSection",
+                                "⏹️ LongPress released: speed ${originalPlaybackParameters.speed}x"
+                            )
                         }
                     }
                 )
@@ -1305,9 +1450,24 @@ fun VideoPlayerSection(
             danmakuManager.loadDanmaku(cid, aid, durationMs)  //  传入时长启用 Protobuf API
         }
 
-        //  横竖屏/小窗切换后，若应当播放但未播放，主动恢复
-        LaunchedEffect(isFullscreen, isInPipMode) {
+        //  横竖屏/小窗切换后，重绑 surface 并在需要时主动恢复播放。
+        LaunchedEffect(isFullscreen, isInPipMode, playerViewRef) {
             val player = playerState.player
+            val shouldRebindSurface = shouldRebindPlayerSurfaceOnForeground(
+                hasPlayerView = playerViewRef != null,
+                isInPipMode = isInPipMode,
+                videoWidth = player.videoSize.width,
+                videoHeight = player.videoSize.height
+            )
+            if (shouldRebindSurface) {
+                playerViewRef?.let { playerView ->
+                    rebindPlayerSurfaceIfNeeded(playerView = playerView, player = player)
+                    com.android.purebilibili.core.util.Logger.d(
+                        "VideoPlayerSection",
+                        "🎬 Foreground surface rebind applied to avoid audio-only resume"
+                    )
+                }
+            }
             if (player.playWhenReady && !player.isPlaying && player.playbackState == Player.STATE_READY) {
                 player.play()
             }
@@ -1448,6 +1608,22 @@ fun VideoPlayerSection(
                         // 解决导航到其他视频后返回，弹幕暂停失效的问题
                         android.util.Log.d("VideoPlayerSection", " ON_RESUME: Re-attaching danmaku player")
                         danmakuManager.attachPlayer(playerState.player)
+                        val player = playerState.player
+                        val shouldRebindSurface = shouldRebindPlayerSurfaceOnForeground(
+                            hasPlayerView = playerViewRef != null,
+                            isInPipMode = isInPipMode,
+                            videoWidth = player.videoSize.width,
+                            videoHeight = player.videoSize.height
+                        )
+                        if (shouldRebindSurface) {
+                            playerViewRef?.let { playerView ->
+                                rebindPlayerSurfaceIfNeeded(playerView = playerView, player = player)
+                                com.android.purebilibili.core.util.Logger.d(
+                                    "VideoPlayerSection",
+                                    "🎬 ON_RESUME surface rebind applied"
+                                )
+                            }
+                        }
                     }
                     androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
                         android.util.Log.d("VideoPlayerSection", " ON_DESTROY: Clearing danmaku references")
@@ -1588,12 +1764,16 @@ fun VideoPlayerSection(
         isFirstFrameRendered = isFirstFrameRendered,
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation
     )
-    val disableCoverFadeAnimation = shouldDisableCoverFadeAnimation(forceCoverDuringReturnAnimation)
+    val coverMotionSpec = remember(forceCoverDuringReturnAnimation) {
+        resolveVideoPlayerCoverMotionSpec(forceCoverDuringReturnAnimation)
+    }
+    val disableCoverFadeAnimation = !coverMotionSpec.shouldAnimateFade
     val forceReturnCoverSharedBoundsEnabled = shouldEnableForcedReturnCoverSharedBounds(
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
         transitionEnabled = transitionEnabled,
         hasSharedTransitionScope = sharedTransitionScope != null,
-        hasAnimatedVisibilityScope = animatedVisibilityScope != null
+        hasAnimatedVisibilityScope = animatedVisibilityScope != null,
+        sourceRoute = CardPositionManager.lastVideoSourceRoute
     )
     
     // [Debug] Logging
@@ -1603,8 +1783,16 @@ fun VideoPlayerSection(
 
     AnimatedVisibility(
         visible = showCover && currentCoverUrl.isNotEmpty(),
-        enter = if (disableCoverFadeAnimation) EnterTransition.None else fadeIn(animationSpec = tween(200)),
-        exit = if (disableCoverFadeAnimation) ExitTransition.None else fadeOut(animationSpec = tween(300)),
+        enter = if (disableCoverFadeAnimation) {
+            EnterTransition.None
+        } else {
+            fadeIn(animationSpec = tween(coverMotionSpec.enterFadeDurationMillis))
+        },
+        exit = if (disableCoverFadeAnimation) {
+            ExitTransition.None
+        } else {
+            fadeOut(animationSpec = tween(coverMotionSpec.exitFadeDurationMillis))
+        },
         modifier = Modifier.zIndex(100f) // 返回中强制封面时，确保封面压住所有播放器层
     ) {
         val coverCardShape = RoundedCornerShape(12.dp)
@@ -2022,12 +2210,24 @@ fun VideoPlayerSection(
         AnimatedVisibility(
             visible = shouldShowLevelIndicator,
             modifier = Modifier.align(Alignment.Center),
-            enter = fadeIn(animationSpec = tween(160)) +
-                scaleIn(initialScale = 0.84f, animationSpec = tween(220)) +
-                slideInVertically(initialOffsetY = { it / 8 }, animationSpec = tween(220)),
-            exit = fadeOut(animationSpec = tween(200)) +
-                scaleOut(targetScale = 0.9f, animationSpec = tween(200)) +
-                slideOutVertically(targetOffsetY = { -it / 10 }, animationSpec = tween(200))
+            enter = fadeIn(animationSpec = tween(gestureMotionSpec.levelOverlayEnterFadeDurationMillis)) +
+                scaleIn(
+                    initialScale = 0.84f,
+                    animationSpec = tween(gestureMotionSpec.levelOverlayEnterTransformDurationMillis)
+                ) +
+                slideInVertically(
+                    initialOffsetY = { it / 8 },
+                    animationSpec = tween(gestureMotionSpec.levelOverlayEnterTransformDurationMillis)
+                ),
+            exit = fadeOut(animationSpec = tween(gestureMotionSpec.levelOverlayExitDurationMillis)) +
+                scaleOut(
+                    targetScale = 0.9f,
+                    animationSpec = tween(gestureMotionSpec.levelOverlayExitDurationMillis)
+                ) +
+                slideOutVertically(
+                    targetOffsetY = { -it / 10 },
+                    animationSpec = tween(gestureMotionSpec.levelOverlayExitDurationMillis)
+                )
         ) {
             val levelLabel = resolveGestureIndicatorLabel(gestureMode)
             val dynamicGestureIcon = resolveGestureDisplayIcon(
@@ -2041,17 +2241,17 @@ fun VideoPlayerSection(
             )
             val renderProgress by animateFloatAsState(
                 targetValue = resolveGestureRenderProgress(gesturePercent),
-                animationSpec = tween(durationMillis = 130),
+                animationSpec = tween(durationMillis = gestureMotionSpec.levelProgressDurationMillis),
                 label = "gesture-progress"
             )
             val iconScale by animateFloatAsState(
                 targetValue = 0.9f + gesturePercent.coerceIn(0f, 1f) * 0.35f,
-                animationSpec = tween(durationMillis = 180),
+                animationSpec = tween(durationMillis = gestureMotionSpec.levelIconScaleDurationMillis),
                 label = "gesture-icon-scale"
             )
             val valueScale by animateFloatAsState(
                 targetValue = if (gesturePercentDisplay != previousGesturePercentDisplay) 1.06f else 1f,
-                animationSpec = tween(durationMillis = 140),
+                animationSpec = tween(durationMillis = gestureMotionSpec.levelValueScaleDurationMillis),
                 label = "gesture-value-scale"
             )
             val overlayTextShadow = Shadow(
@@ -2098,11 +2298,17 @@ fun VideoPlayerSection(
                         AnimatedContent(
                             targetState = dynamicGestureIcon,
                             transitionSpec = {
-                                (fadeIn(animationSpec = tween(120)) +
-                                    scaleIn(initialScale = 0.78f, animationSpec = tween(180)))
+                                (fadeIn(animationSpec = tween(gestureMotionSpec.levelIconEnterFadeDurationMillis)) +
+                                    scaleIn(
+                                        initialScale = 0.78f,
+                                        animationSpec = tween(gestureMotionSpec.levelIconContentScaleDurationMillis)
+                                    ))
                                     .togetherWith(
-                                        fadeOut(animationSpec = tween(110)) +
-                                            scaleOut(targetScale = 1.2f, animationSpec = tween(180))
+                                        fadeOut(animationSpec = tween(gestureMotionSpec.levelIconExitFadeDurationMillis)) +
+                                            scaleOut(
+                                                targetScale = 1.2f,
+                                                animationSpec = tween(gestureMotionSpec.levelIconContentScaleDurationMillis)
+                                            )
                                     )
                             },
                             label = "gesture-icon-content"
@@ -2136,6 +2342,7 @@ fun VideoPlayerSection(
                             fontSize = 24.sp
                         ),
                         textShadow = overlayTextShadow,
+                        motionSpec = gestureMotionSpec,
                         modifier = Modifier
                             .widthIn(min = 74.dp)
                             .graphicsLayer {
@@ -2173,11 +2380,20 @@ fun VideoPlayerSection(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(bottom = 196.dp),
-            enter = fadeIn(animationSpec = tween(150)) +
-                scaleIn(initialScale = 0.85f, animationSpec = tween(230)) +
-                slideInVertically(initialOffsetY = { -it / 5 }, animationSpec = tween(230)),
-            exit = fadeOut(animationSpec = tween(200)) +
-                scaleOut(targetScale = 0.95f, animationSpec = tween(200))
+            enter = fadeIn(animationSpec = tween(gestureMotionSpec.orientationHintEnterFadeDurationMillis)) +
+                scaleIn(
+                    initialScale = 0.85f,
+                    animationSpec = tween(gestureMotionSpec.orientationHintEnterTransformDurationMillis)
+                ) +
+                slideInVertically(
+                    initialOffsetY = { -it / 5 },
+                    animationSpec = tween(gestureMotionSpec.orientationHintEnterTransformDurationMillis)
+                ),
+            exit = fadeOut(animationSpec = tween(gestureMotionSpec.orientationHintExitDurationMillis)) +
+                scaleOut(
+                    targetScale = 0.95f,
+                    animationSpec = tween(gestureMotionSpec.orientationHintExitDurationMillis)
+                )
         ) {
             Row(
                 modifier = Modifier
@@ -2274,21 +2490,25 @@ fun VideoPlayerSection(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 16.dp),
-            enter = fadeIn(animationSpec = tween(200)) + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut(animationSpec = tween(200)) + slideOutVertically(targetOffsetY = { -it })
+            enter = fadeIn(animationSpec = tween(gestureMotionSpec.longPressHintDurationMillis)) +
+                slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut(animationSpec = tween(gestureMotionSpec.longPressHintDurationMillis)) +
+                slideOutVertically(targetOffsetY = { -it })
         ) {
             val infiniteTransition = rememberInfiniteTransition(label = "fast_forward")
+            val arrowCycleDuration = gestureMotionSpec.longPressArrowCycleDurationMillis
+            val arrowPhase = gestureMotionSpec.longPressArrowPhaseStepDurationMillis
             // 三个箭头循环亮度动画，依次偏移相位
             val arrow1Alpha by infiniteTransition.animateFloat(
                 initialValue = 0.3f,
                 targetValue = 1.0f,
                 animationSpec = infiniteRepeatable(
                     animation = keyframes {
-                        durationMillis = 900
+                        durationMillis = arrowCycleDuration
                         0.3f at 0
-                        1.0f at 300
-                        0.3f at 600
-                        0.3f at 900
+                        1.0f at arrowPhase
+                        0.3f at arrowPhase * 2
+                        0.3f at arrowCycleDuration
                     },
                     repeatMode = RepeatMode.Restart
                 ),
@@ -2299,11 +2519,11 @@ fun VideoPlayerSection(
                 targetValue = 1.0f,
                 animationSpec = infiniteRepeatable(
                     animation = keyframes {
-                        durationMillis = 900
+                        durationMillis = arrowCycleDuration
                         0.3f at 0
-                        0.3f at 300
-                        1.0f at 600
-                        0.3f at 900
+                        0.3f at arrowPhase
+                        1.0f at arrowPhase * 2
+                        0.3f at arrowCycleDuration
                     },
                     repeatMode = RepeatMode.Restart
                 ),
@@ -2314,10 +2534,10 @@ fun VideoPlayerSection(
                 targetValue = 1.0f,
                 animationSpec = infiniteRepeatable(
                     animation = keyframes {
-                        durationMillis = 900
+                        durationMillis = arrowCycleDuration
                         0.3f at 0
-                        0.3f at 600
-                        1.0f at 900
+                        0.3f at arrowPhase * 2
+                        1.0f at arrowCycleDuration
                     },
                     repeatMode = RepeatMode.Restart
                 ),
@@ -2350,7 +2570,7 @@ fun VideoPlayerSection(
                 Spacer(modifier = Modifier.width(8.dp))
                 // 倍速文字
                 Text(
-                    text = "${longPressSpeed}x",
+                    text = "${effectiveLongPressSpeed}x",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,

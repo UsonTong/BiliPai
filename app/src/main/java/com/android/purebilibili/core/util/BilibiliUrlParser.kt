@@ -20,10 +20,13 @@ object BilibiliUrlParser {
     private const val TAG = "BilibiliUrlParser"
     
     // BV 号正则表达式
-    private val BV_REGEX = Regex("BV[a-zA-Z0-9]{10}")
+    private val BV_REGEX = Regex("BV([a-zA-Z0-9]{10})", RegexOption.IGNORE_CASE)
     
     // AV 号正则表达式
     private val AV_REGEX = Regex("av(\\d+)", RegexOption.IGNORE_CASE)
+
+    // /video/170001 这类纯数字 aid 路径（兼容 bilibili://video/170001 与 https://.../video/170001）
+    private val VIDEO_AID_PATH_REGEX = Regex("/video/(\\d+)(?:[/?#]|$)", RegexOption.IGNORE_CASE)
     
     /**
      * 解析结果数据类
@@ -50,8 +53,9 @@ object BilibiliUrlParser {
         
         // 首先尝试直接匹配 BV 号
         BV_REGEX.find(input)?.let { match ->
-            Logger.d(TAG, "Found BV: ${match.value}")
-            return ParseResult(bvid = match.value, isValid = true)
+            val normalizedBvid = "BV${match.groupValues[1]}"
+            Logger.d(TAG, "Found BV: $normalizedBvid")
+            return ParseResult(bvid = normalizedBvid, isValid = true)
         }
         
         // 尝试匹配 AV 号
@@ -59,6 +63,15 @@ object BilibiliUrlParser {
             val aid = match.groupValues[1].toLongOrNull()
             if (aid != null) {
                 Logger.d(TAG, "Found AV: $aid")
+                return ParseResult(aid = aid, isValid = true)
+            }
+        }
+
+        // 尝试匹配 /video/{aid} 结构
+        VIDEO_AID_PATH_REGEX.find(input)?.let { match ->
+            val aid = match.groupValues[1].toLongOrNull()
+            if (aid != null) {
+                Logger.d(TAG, "Found numeric video path aid: $aid")
                 return ParseResult(aid = aid, isValid = true)
             }
         }
@@ -81,18 +94,65 @@ object BilibiliUrlParser {
         
         // b23.tv 短链接需要特殊处理
         if (host.contains("b23.tv")) {
-            // 短链接的路径部分可能包含重定向后的 BV 号
-            // 或者需要网络请求获取重定向地址
-            return parse(path)
+            // 短链接优先尝试路径；失败时回退全量 URI，避免 query/fragment 携带视频 ID 被漏掉。
+            val pathResult = parse(path)
+            return if (pathResult.isValid) pathResult else parse(uri.toString())
         }
         
         // bilibili.com 链接
         if (host.contains("bilibili.com")) {
-            return parse(path)
+            val pathResult = parse(path)
+            if (pathResult.isValid) return pathResult
+            resolveAidFromVideoPath(
+                pathSegments = uri.pathSegments,
+                allowBareNumericLeading = false
+            )?.let { aid ->
+                Logger.d(TAG, "Found structured aid from bilibili.com path: $aid")
+                return ParseResult(aid = aid, isValid = true)
+            }
+            return parse(uri.toString())
+        }
+
+        // bilibili:// / bili:// 链接或其他 scheme，先尝试 query 参数再尝试结构化 path。
+        val queryCandidates = listOfNotNull(
+            uri.getQueryParameter("bvid"),
+            uri.getQueryParameter("BVID"),
+            uri.getQueryParameter("aid"),
+            uri.getQueryParameter("AID"),
+            uri.getQueryParameter("avid"),
+            uri.getQueryParameter("AVID")
+        )
+        queryCandidates.forEach { candidate ->
+            val parsed = parse(candidate)
+            if (parsed.isValid) return parsed
+        }
+        resolveAidFromVideoPath(
+            pathSegments = uri.pathSegments,
+            allowBareNumericLeading = true
+        )?.let { aid ->
+            Logger.d(TAG, "Found structured aid from custom scheme path: $aid")
+            return ParseResult(aid = aid, isValid = true)
         }
         
         // 尝试从整个 URI 中提取
         return parse(uri.toString())
+    }
+
+    private fun resolveAidFromVideoPath(
+        pathSegments: List<String>,
+        allowBareNumericLeading: Boolean
+    ): Long? {
+        if (pathSegments.isEmpty()) return null
+        // https://www.bilibili.com/video/170001
+        if (pathSegments[0].equals("video", ignoreCase = true)) {
+            return pathSegments.getOrNull(1)?.toLongOrNull()
+        }
+        // bilibili://video/170001 -> host=video, pathSegments[0]=170001
+        return if (allowBareNumericLeading) {
+            pathSegments[0].toLongOrNull()
+        } else {
+            null
+        }
     }
     
     /**

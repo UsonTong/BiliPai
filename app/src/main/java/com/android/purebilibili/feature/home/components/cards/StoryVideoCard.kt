@@ -189,8 +189,8 @@ fun StoryVideoCard(
             .then(
                  if (onDismiss == null && onLongClick == null) {
                      Modifier.iOSCardTapEffect(
-                         pressScale = 0.97f,
-                         pressTranslationY = 10f,
+                         pressScale = 1f,
+                         pressTranslationY = 0f,
                          hapticEnabled = true
                      ) {
                          triggerCardClick()

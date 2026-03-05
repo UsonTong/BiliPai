@@ -40,6 +40,24 @@ private fun createDarkColorScheme(primaryColor: Color) = darkColorScheme(
     outlineVariant = iOSSystemGray4Dark
 )
 
+private fun createAmoledDarkColorScheme(primaryColor: Color) = darkColorScheme(
+    primary = primaryColor,
+    onPrimary = White,
+    primaryContainer = primaryColor.copy(alpha = 0.32f),
+    onPrimaryContainer = primaryColor,
+    secondary = primaryColor.copy(alpha = 0.9f),
+    secondaryContainer = primaryColor.copy(alpha = 0.22f),
+    onSecondaryContainer = primaryColor,
+    background = Black,
+    surface = Black,
+    onSurface = TextPrimaryDark,
+    surfaceVariant = Color(0xFF050505),
+    onSurfaceVariant = TextSecondaryDark,
+    surfaceContainer = Color(0xFF090909),
+    outline = Color(0xFF262626),
+    outlineVariant = Color(0xFF1A1A1A)
+)
+
 private fun createLightColorScheme(primaryColor: Color) = lightColorScheme(
     primary = primaryColor,
     onPrimary = White,
@@ -66,6 +84,7 @@ private val LightColorScheme = createLightColorScheme(iOSSystemBlue)
 fun PureBiliBiliTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    amoledDarkTheme: Boolean = false,
     themeColorIndex: Int = 0, //  默认 0 = iOS 蓝色
     content: @Composable () -> Unit
 ) {
@@ -85,6 +104,7 @@ fun PureBiliBiliTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+        darkTheme && amoledDarkTheme -> createAmoledDarkColorScheme(customPrimaryColor)
         //  [新增] 使用自定义主题色
         darkTheme -> createDarkColorScheme(customPrimaryColor)
         else -> createLightColorScheme(customPrimaryColor)

@@ -13,22 +13,27 @@ import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.ui.AppIcons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.filled.HandThumbsup
 import io.github.alexzhirkevich.cupertino.icons.outlined.ArrowCounterclockwise
 import io.github.alexzhirkevich.cupertino.icons.outlined.ArrowTriangle2Circlepath
 import io.github.alexzhirkevich.cupertino.icons.outlined.DocOnDoc
 import io.github.alexzhirkevich.cupertino.icons.outlined.DocText
 import io.github.alexzhirkevich.cupertino.icons.outlined.ExclamationmarkTriangle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Folder
+import io.github.alexzhirkevich.cupertino.icons.outlined.Gift
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
 import io.github.alexzhirkevich.cupertino.icons.outlined.Link
 import io.github.alexzhirkevich.cupertino.icons.outlined.ListBullet
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lock
+import io.github.alexzhirkevich.cupertino.icons.outlined.Newspaper
 import io.github.alexzhirkevich.cupertino.icons.outlined.PaintbrushPointed
 import io.github.alexzhirkevich.cupertino.icons.outlined.Person
 import io.github.alexzhirkevich.cupertino.icons.outlined.PlayCircle
 import io.github.alexzhirkevich.cupertino.icons.outlined.PuzzlepieceExtension
+import io.github.alexzhirkevich.cupertino.icons.outlined.SquareAndArrowUp
+import io.github.alexzhirkevich.cupertino.icons.outlined.SquareStack3dUp
+import io.github.alexzhirkevich.cupertino.icons.outlined.Terminal
 import io.github.alexzhirkevich.cupertino.icons.outlined.Trash
+import io.github.alexzhirkevich.cupertino.icons.outlined.XmarkCircle
 
 internal data class SettingsEntryVisual(
     val icon: ImageVector? = null,
@@ -47,7 +52,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSGreen
         )
         SettingsSearchTarget.BOTTOM_BAR -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.ListBullet,
+            icon = CupertinoIcons.Default.SquareStack3dUp,
             iconTint = iOSBlue
         )
         SettingsSearchTarget.PERMISSION -> SettingsEntryVisual(
@@ -55,7 +60,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSTeal
         )
         SettingsSearchTarget.BLOCKED_LIST -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.Person,
+            icon = CupertinoIcons.Default.XmarkCircle,
             iconTint = iOSRed
         )
         SettingsSearchTarget.WEBDAV_BACKUP -> SettingsEntryVisual(
@@ -75,7 +80,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSPurple
         )
         SettingsSearchTarget.EXPORT_LOGS -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.DocText,
+            icon = CupertinoIcons.Default.Terminal,
             iconTint = iOSTeal
         )
         SettingsSearchTarget.OPEN_SOURCE_LICENSES -> SettingsEntryVisual(
@@ -83,7 +88,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSOrange
         )
         SettingsSearchTarget.OPEN_SOURCE_HOME -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.Link,
+            icon = CupertinoIcons.Default.SquareAndArrowUp,
             iconTint = iOSPurple
         )
         SettingsSearchTarget.CHECK_UPDATE -> SettingsEntryVisual(
@@ -91,7 +96,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSBlue
         )
         SettingsSearchTarget.VIEW_RELEASE_NOTES -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.DocText,
+            icon = CupertinoIcons.Default.Newspaper,
             iconTint = iOSTeal
         )
         SettingsSearchTarget.REPLAY_ONBOARDING -> SettingsEntryVisual(
@@ -107,7 +112,7 @@ internal fun resolveSettingsEntryVisual(target: SettingsSearchTarget): SettingsE
             iconTint = iOSTeal
         )
         SettingsSearchTarget.DONATE -> SettingsEntryVisual(
-            icon = CupertinoIcons.Filled.HandThumbsup,
+            icon = CupertinoIcons.Default.Gift,
             iconTint = Color(0xFFFF3B30)
         )
         SettingsSearchTarget.TELEGRAM -> SettingsEntryVisual(

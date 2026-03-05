@@ -417,7 +417,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     // 1. Save to internal splash directory
                     val splashDir = File(context.filesDir, "splash")
                     if (!splashDir.exists()) splashDir.mkdirs()
-                    val destFile = File(splashDir, "splash_bg.jpg")
+                    val destFile = File(splashDir, "splash_bg_${System.currentTimeMillis()}.jpg")
 
                     FileOutputStream(destFile).use { output ->
                         output.write(bytes)

@@ -402,8 +402,13 @@ fun AppearanceSettingsContent(
             Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = effectiveMotionTier)) {
                 IOSGroup {
                     val isSplashEnabled by com.android.purebilibili.core.store.SettingsManager.isSplashEnabled(context).collectAsState(initial = false)
+                    val splashRandomEnabled by com.android.purebilibili.core.store.SettingsManager.getSplashRandomEnabled(context).collectAsState(initial = false)
+                    val splashRandomPoolUris by com.android.purebilibili.core.store.SettingsManager.getSplashRandomPoolUris(context).collectAsState(initial = emptyList())
                     val splashIconAnimationEnabled by com.android.purebilibili.core.store.SettingsManager.getSplashIconAnimationEnabled(context).collectAsState(initial = true)
                     val splashWallpaperUri by com.android.purebilibili.core.store.SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = null)
+                    val splashRandomPoolPreview = remember(splashRandomPoolUris) {
+                        resolveSplashRandomPoolPreviewState(poolUris = splashRandomPoolUris)
+                    }
                     
                     // 开关项
                     IOSSwitchItem(
@@ -414,6 +419,80 @@ fun AppearanceSettingsContent(
                         onCheckedChange = { viewModel.toggleSplashEnabled(it) },
                         iconTint = com.android.purebilibili.core.theme.iOSBlue
                     )
+
+                    Divider()
+                    IOSSwitchItem(
+                        icon = CupertinoIcons.Default.Shuffle,
+                        title = "随机展示开屏壁纸",
+                        subtitle = "启动时从可见官方壁纸中随机展示",
+                        checked = splashRandomEnabled,
+                        onCheckedChange = { viewModel.toggleSplashRandomEnabled(it) },
+                        iconTint = com.android.purebilibili.core.theme.iOSGreen
+                    )
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isSplashEnabled && splashRandomEnabled,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "随机池预览",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "${splashRandomPoolPreview.totalCount} 张",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            if (splashRandomPoolPreview.previewUris.isEmpty()) {
+                                Text(
+                                    text = "暂无可见壁纸，请先进入“选择开屏壁纸”加载列表",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    splashRandomPoolPreview.previewUris.forEach { previewUri ->
+                                        AsyncImage(
+                                            model = coil.request.ImageRequest.Builder(context)
+                                                .data(previewUri)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(width = 42.dp, height = 72.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        )
+                                    }
+                                }
+                                if (splashRandomPoolPreview.totalCount > splashRandomPoolPreview.previewUris.size) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "还有 ${splashRandomPoolPreview.totalCount - splashRandomPoolPreview.previewUris.size} 张",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Divider()
                     IOSSwitchItem(

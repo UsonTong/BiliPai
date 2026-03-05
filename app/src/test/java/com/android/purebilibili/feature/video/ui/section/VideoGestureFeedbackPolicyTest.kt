@@ -272,4 +272,34 @@ class VideoGestureFeedbackPolicyTest {
         assertEquals(0.6f, resolveGestureRenderProgress(0.6f))
         assertEquals(1f, resolveGestureRenderProgress(1.4f))
     }
+
+    @Test
+    fun `resolveVideoGestureMotionSpec keeps tuned durations for level overlay`() {
+        val spec = resolveVideoGestureMotionSpec()
+
+        assertEquals(160, spec.levelOverlayEnterFadeDurationMillis)
+        assertEquals(220, spec.levelOverlayEnterTransformDurationMillis)
+        assertEquals(200, spec.levelOverlayExitDurationMillis)
+        assertEquals(130, spec.levelProgressDurationMillis)
+        assertEquals(180, spec.levelIconScaleDurationMillis)
+        assertEquals(180, spec.levelIconContentScaleDurationMillis)
+        assertEquals(140, spec.levelValueScaleDurationMillis)
+    }
+
+    @Test
+    fun `resolveVideoGestureMotionSpec keeps tuned durations for hints and digit transitions`() {
+        val spec = resolveVideoGestureMotionSpec()
+
+        assertEquals(220, spec.digitBlurResetDurationMillis)
+        assertEquals(220, spec.digitAlphaResetDurationMillis)
+        assertEquals(130, spec.digitEnterFadeDurationMillis)
+        assertEquals(120, spec.digitExitFadeDurationMillis)
+        assertEquals(200, spec.digitScaleDurationMillis)
+        assertEquals(150, spec.orientationHintEnterFadeDurationMillis)
+        assertEquals(230, spec.orientationHintEnterTransformDurationMillis)
+        assertEquals(200, spec.orientationHintExitDurationMillis)
+        assertEquals(200, spec.longPressHintDurationMillis)
+        assertEquals(900, spec.longPressArrowCycleDurationMillis)
+        assertEquals(300, spec.longPressArrowPhaseStepDurationMillis)
+    }
 }

@@ -6,8 +6,17 @@ internal data class AppNavigationMotionSpec(
     val mediumFadeDurationMillis: Int,
     val slowFadeDurationMillis: Int,
     val backdropBlurDurationMillis: Int,
-    val maxBackdropBlurRadius: Float
+    val maxBackdropBlurRadius: Float,
+    val fallbackFadeDurationMillis: Int,
+    val quickReturnFadeDurationMillis: Int,
+    val seamlessFadeDurationMillis: Int,
+    val cardTargetFallbackSlideMaxDurationMillis: Int
 )
+
+private const val FALLBACK_FADE_DURATION_MILLIS = 120
+private const val QUICK_RETURN_FADE_DURATION_MILLIS = 170
+private const val SEAMLESS_FADE_DURATION_MILLIS = 180
+private const val CARD_TARGET_FALLBACK_SLIDE_MAX_DURATION_MILLIS = 180
 
 internal fun resolveAppNavigationMotionSpec(
     isTabletLayout: Boolean,
@@ -20,7 +29,11 @@ internal fun resolveAppNavigationMotionSpec(
             mediumFadeDurationMillis = 160,
             slowFadeDurationMillis = 190,
             backdropBlurDurationMillis = 160,
-            maxBackdropBlurRadius = 8f
+            maxBackdropBlurRadius = 8f,
+            fallbackFadeDurationMillis = FALLBACK_FADE_DURATION_MILLIS,
+            quickReturnFadeDurationMillis = QUICK_RETURN_FADE_DURATION_MILLIS,
+            seamlessFadeDurationMillis = SEAMLESS_FADE_DURATION_MILLIS,
+            cardTargetFallbackSlideMaxDurationMillis = CARD_TARGET_FALLBACK_SLIDE_MAX_DURATION_MILLIS
         )
     }
 
@@ -31,7 +44,11 @@ internal fun resolveAppNavigationMotionSpec(
             mediumFadeDurationMillis = 240,
             slowFadeDurationMillis = 290,
             backdropBlurDurationMillis = 240,
-            maxBackdropBlurRadius = 24f
+            maxBackdropBlurRadius = 24f,
+            fallbackFadeDurationMillis = FALLBACK_FADE_DURATION_MILLIS,
+            quickReturnFadeDurationMillis = QUICK_RETURN_FADE_DURATION_MILLIS,
+            seamlessFadeDurationMillis = SEAMLESS_FADE_DURATION_MILLIS,
+            cardTargetFallbackSlideMaxDurationMillis = CARD_TARGET_FALLBACK_SLIDE_MAX_DURATION_MILLIS
         )
     } else {
         AppNavigationMotionSpec(
@@ -40,7 +57,11 @@ internal fun resolveAppNavigationMotionSpec(
             mediumFadeDurationMillis = 200,
             slowFadeDurationMillis = 255,
             backdropBlurDurationMillis = 200,
-            maxBackdropBlurRadius = 16f
+            maxBackdropBlurRadius = 16f,
+            fallbackFadeDurationMillis = FALLBACK_FADE_DURATION_MILLIS,
+            quickReturnFadeDurationMillis = QUICK_RETURN_FADE_DURATION_MILLIS,
+            seamlessFadeDurationMillis = SEAMLESS_FADE_DURATION_MILLIS,
+            cardTargetFallbackSlideMaxDurationMillis = CARD_TARGET_FALLBACK_SLIDE_MAX_DURATION_MILLIS
         )
     }
 }

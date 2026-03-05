@@ -13,6 +13,8 @@ import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.store.SettingsManager
 import androidx.compose.ui.draw.clip
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.hazeEffect
 
 private val LocalUnifiedBlurIntensity = staticCompositionLocalOf<BlurIntensity?> { null }
@@ -95,5 +97,17 @@ fun Modifier.unifiedBlur(
         style = blurStyle
     ) {
         blurEnabled = true
+        @OptIn(ExperimentalHazeApi::class)
+        run {
+            val inputScaleFactor = resolveBlurInputScale(
+                budget = budget,
+                surfaceType = surfaceType
+            )
+            inputScale = if (inputScaleFactor >= 1f) {
+                HazeInputScale.None
+            } else {
+                HazeInputScale.Fixed(inputScaleFactor)
+            }
+        }
     }
 }

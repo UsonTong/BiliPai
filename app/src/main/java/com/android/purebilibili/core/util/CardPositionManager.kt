@@ -73,6 +73,13 @@ object CardPositionManager {
      */
     var lastScreenDensity: Float = 3f
         private set
+
+    /**
+     * 最近一次进入视频详情时的来源路由（去掉 query 参数）。
+     * 用于按来源路由差异化返回时的封面共享过渡策略。
+     */
+    var lastVideoSourceRoute: String? = null
+        private set
     
     /**
      * 记录卡片位置
@@ -127,6 +134,10 @@ object CardPositionManager {
             detailReturnUptimeMs = SystemClock.uptimeMillis()
         )
     }
+
+    fun recordVideoSourceRoute(route: String?) {
+        lastVideoSourceRoute = route?.substringBefore("?")
+    }
     
     /**
      *  清除返回标记
@@ -145,6 +156,7 @@ object CardPositionManager {
         isReturningFromDetail = false
         isQuickReturnFromDetail = false
         lastDetailEnterUptimeMs = 0L
+        lastVideoSourceRoute = null
     }
 
     fun shouldLimitSharedElementsForQuickReturn(): Boolean {

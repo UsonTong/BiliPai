@@ -1,7 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VideoDetailEntryVisualPolicyTest {
@@ -20,7 +19,7 @@ class VideoDetailEntryVisualPolicyTest {
     }
 
     @Test
-    fun `entry frame should clamp progress and decrease blur as progress increases`() {
+    fun `entry frame should stay fully opaque and unblurred in shared transition mode`() {
         val start = resolveVideoDetailEntryVisualFrame(
             rawProgress = -0.2f,
             transitionEnabled = true,
@@ -37,13 +36,14 @@ class VideoDetailEntryVisualPolicyTest {
             maxBlurRadiusPx = 20f
         )
 
-        assertEquals(20f, start.blurRadiusPx)
-        assertTrue(mid.blurRadiusPx in 9f..11f)
+        assertEquals(0f, start.blurRadiusPx)
+        assertEquals(0f, mid.blurRadiusPx)
         assertEquals(0f, end.blurRadiusPx)
-
-        assertTrue(start.scrimAlpha > mid.scrimAlpha)
+        assertEquals(0f, start.scrimAlpha)
+        assertEquals(0f, mid.scrimAlpha)
         assertEquals(0f, end.scrimAlpha)
-        assertTrue(start.contentAlpha < mid.contentAlpha)
+        assertEquals(1f, start.contentAlpha)
+        assertEquals(1f, mid.contentAlpha)
         assertEquals(1f, end.contentAlpha)
     }
 }

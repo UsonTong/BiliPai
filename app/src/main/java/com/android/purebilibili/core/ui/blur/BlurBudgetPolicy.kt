@@ -93,3 +93,17 @@ internal fun resolveBudgetedBlurIntensity(
     val cappedLevel = minOf(preferredLevel, budget.maxBlurLevel)
     return blurLevelOrder[cappedLevel]
 }
+
+internal fun resolveBlurInputScale(
+    budget: BlurBudget,
+    surfaceType: BlurSurfaceType
+): Float {
+    if (budget.allowRealtime) return 1f
+    return when (surfaceType) {
+        BlurSurfaceType.HEADER -> 0.88f
+        BlurSurfaceType.DRAWER_OR_SHEET -> 0.84f
+        BlurSurfaceType.BOTTOM_BAR -> 0.82f
+        BlurSurfaceType.OVERLAY -> 0.84f
+        BlurSurfaceType.GENERIC -> 0.84f
+    }
+}

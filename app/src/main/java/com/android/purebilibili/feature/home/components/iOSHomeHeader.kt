@@ -47,10 +47,35 @@ import com.android.purebilibili.core.store.LiquidGlassStyle
 import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.blur.BlurStyles
+import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.blur.BlurSurfaceType
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
+
+private const val HOME_HEADER_LIQUID_GLASS_ALPHA = 0.10f
+
+internal fun resolveHomeHeaderSurfaceAlpha(
+    isGlassEnabled: Boolean,
+    blurEnabled: Boolean,
+    blurIntensity: BlurIntensity
+): Float {
+    if (!blurEnabled) return 1f
+    if (isGlassEnabled) return HOME_HEADER_LIQUID_GLASS_ALPHA
+    return (BlurStyles.getBackgroundAlpha(blurIntensity) * 0.8f).coerceIn(0f, 1f)
+}
+
+internal fun shouldEnableTopTabSecondaryBlur(
+    hasHeaderBlur: Boolean,
+    topTabMaterialMode: TopTabMaterialMode,
+    isScrolling: Boolean,
+    isTransitionRunning: Boolean
+): Boolean {
+    if (!hasHeaderBlur) return false
+    if (topTabMaterialMode == TopTabMaterialMode.PLAIN) return false
+    if (isScrolling || isTransitionRunning) return false
+    return true
+}
 
 /**
  *  简洁版首页头部 (带滚动隐藏/显示动画)
@@ -97,13 +122,12 @@ fun iOSHomeHeader(
 
     //  读取当前模糊强度以确定背景透明度
     val blurIntensity = currentUnifiedBlurIntensity()
-    val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity) * 0.8f // Slightly more transparent for glass
-    
-    val targetHeaderColor = if (isGlassEnabled) {
-         MaterialTheme.colorScheme.surface.copy(alpha = 0.01f) // Almost transparent
-    } else {
-         MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) backgroundAlpha else 1f)
-    }
+    val backgroundAlpha = resolveHomeHeaderSurfaceAlpha(
+        isGlassEnabled = isGlassEnabled,
+        blurEnabled = hazeState != null,
+        blurIntensity = blurIntensity
+    )
+    val targetHeaderColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
     
     // [UX优化] 平滑过渡顶部栏背景色 (Smooth Header Color Transition)
     // 注意：这里保留颜色动画是没问题的，因为它不影响布局
@@ -123,6 +147,12 @@ fun iOSHomeHeader(
     val isTabFloating = topTabStyle.floating
     val isTabGlassEnabled = topTabStyle.materialMode == TopTabMaterialMode.LIQUID_GLASS
     val isTabBlurEnabled = topTabStyle.materialMode == TopTabMaterialMode.BLUR
+    val enableTopTabSecondaryBlur = shouldEnableTopTabSecondaryBlur(
+        hasHeaderBlur = hazeState != null,
+        topTabMaterialMode = topTabStyle.materialMode,
+        isScrolling = isScrolling,
+        isTransitionRunning = isTransitionRunning
+    )
     val isGlassSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val liquidStyle = homeSettings?.liquidGlassStyle ?: LiquidGlassStyle.CLASSIC
     val tabShape = RoundedCornerShape(if (isTabFloating) 22.dp else 0.dp)
@@ -374,10 +404,10 @@ fun iOSHomeHeader(
                     .clip(tabShape)
                     .run {
                         when {
-                            isTabGlassEnabled && hazeState != null -> {
+                            isTabGlassEnabled && enableTopTabSecondaryBlur -> {
                                 this
                                     .unifiedBlur(
-                                        hazeState = hazeState,
+                                        hazeState = requireNotNull(hazeState),
                                         surfaceType = BlurSurfaceType.HEADER,
                                         motionTier = motionTier,
                                         isScrolling = isScrolling,
@@ -387,10 +417,10 @@ fun iOSHomeHeader(
                                     .background(tabSurfaceColor.copy(alpha = tabOverlayAlpha))
                             }
 
-                            isTabBlurEnabled && hazeState != null -> {
+                            isTabBlurEnabled && enableTopTabSecondaryBlur -> {
                                 this
                                     .unifiedBlur(
-                                        hazeState = hazeState,
+                                        hazeState = requireNotNull(hazeState),
                                         surfaceType = BlurSurfaceType.HEADER,
                                         motionTier = motionTier,
                                         isScrolling = isScrolling,

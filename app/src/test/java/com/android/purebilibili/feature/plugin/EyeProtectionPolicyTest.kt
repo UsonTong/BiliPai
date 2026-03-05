@@ -129,4 +129,20 @@ class EyeProtectionPolicyTest {
         assertEquals(1.0f, visualState.brightnessLevel)
         assertEquals(0f, visualState.warmFilterStrength)
     }
+
+    @Test
+    fun `reminder dialog uses compact actions on short screens`() {
+        val policy = resolveEyeReminderDialogLayoutPolicy(screenHeightDp = 640)
+
+        assertTrue(policy.useCompactSecondaryActions)
+        assertEquals(0.86f, policy.maxHeightFraction)
+    }
+
+    @Test
+    fun `reminder dialog keeps regular actions on taller screens`() {
+        val policy = resolveEyeReminderDialogLayoutPolicy(screenHeightDp = 820)
+
+        assertFalse(policy.useCompactSecondaryActions)
+        assertEquals(0.92f, policy.maxHeightFraction)
+    }
 }

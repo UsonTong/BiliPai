@@ -33,9 +33,9 @@ fun resolveVideoProgressBarLayoutPolicy(
             chapterSpacingDp = 8,
             chapterFontSp = 14,
             touchContainerHeightDp = 28,
-            trackHeightDp = 5f,
-            thumbIdleSizeDp = 16,
-            thumbDraggingSizeDp = 22,
+            trackHeightDp = 3.5f,
+            thumbIdleSizeDp = 14,
+            thumbDraggingSizeDp = 20,
             thumbIdleOffsetDp = 8,
             thumbDraggingOffsetDp = 10
         )
@@ -53,9 +53,9 @@ fun resolveVideoProgressBarLayoutPolicy(
             chapterSpacingDp = 6,
             chapterFontSp = 12,
             touchContainerHeightDp = 24,
-            trackHeightDp = 4f,
-            thumbIdleSizeDp = 14,
-            thumbDraggingSizeDp = 18,
+            trackHeightDp = 3f,
+            thumbIdleSizeDp = 12,
+            thumbDraggingSizeDp = 16,
             thumbIdleOffsetDp = 7,
             thumbDraggingOffsetDp = 9
         )
@@ -73,9 +73,9 @@ fun resolveVideoProgressBarLayoutPolicy(
             chapterSpacingDp = 5,
             chapterFontSp = 11,
             touchContainerHeightDp = 22,
-            trackHeightDp = 3.5f,
-            thumbIdleSizeDp = 13,
-            thumbDraggingSizeDp = 17,
+            trackHeightDp = 2.5f,
+            thumbIdleSizeDp = 11,
+            thumbDraggingSizeDp = 15,
             thumbIdleOffsetDp = 6,
             thumbDraggingOffsetDp = 8
         )
@@ -92,9 +92,9 @@ fun resolveVideoProgressBarLayoutPolicy(
         chapterSpacingDp = 4,
         chapterFontSp = 10,
         touchContainerHeightDp = 20,
-        trackHeightDp = 3f,
-        thumbIdleSizeDp = 12,
-        thumbDraggingSizeDp = 16,
+        trackHeightDp = 2.25f,
+        thumbIdleSizeDp = 10,
+        thumbDraggingSizeDp = 14,
         thumbIdleOffsetDp = 6,
         thumbDraggingOffsetDp = 8
     )

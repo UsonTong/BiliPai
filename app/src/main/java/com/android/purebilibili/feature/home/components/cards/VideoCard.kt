@@ -156,16 +156,6 @@ fun ElegantVideoCard(
     //  记录卡片位置（非 Compose State，避免滚动时触发高频重组）
     val cardBoundsRef = remember { object { var value: androidx.compose.ui.geometry.Rect? = null } }
     
-    //  [交互优化] 按压缩放动画状态
-    var isPressed by remember { mutableStateOf(false) }
-    val interactionScale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f, // [UX优化] 更明显的缩放反馈 (0.96 -> 0.95)
-        animationSpec = androidx.compose.animation.core.spring(
-            dampingRatio = 0.8f,   // 🚀 [性能优化] 减少回弹次数
-            stiffness = 600f       // 🚀 [性能优化] 更快完成动画
-        ),
-        label = "cardScale"
-    )
     val triggerCardClick = {
         cardBoundsRef.value?.let { bounds ->
             CardPositionManager.recordCardPosition(
@@ -189,10 +179,6 @@ fun ElegantVideoCard(
         modifier = Modifier
             .then(modifier)
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = interactionScale
-                scaleY = interactionScale
-            }
             //  [修复] 进场动画 - 使用 Unit 作为 key，只在首次挂载时播放
             // 原问题：使用 video.bvid 作为 key，分类切换时所有卡片重新触发动画（缩放收缩效果）
             .animateEnter(
@@ -258,16 +244,11 @@ fun ElegantVideoCard(
                     clip = true
                 )
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                //  [交互优化] 封面区域：点击跳转 (带按压反馈)
+                //  [交互优化] 封面区域：点击跳转
                 .pointerInput(onLongClick, onDismiss, onWatchLater, onUnfavorite) {
                     val hasPreviewAction = onLongClick != null
                     val hasLongPressMenu = onDismiss != null || onWatchLater != null || onUnfavorite != null
                     detectTapGestures(
-                        onPress = {
-                            isPressed = true
-                            tryAwaitRelease()
-                            isPressed = false
-                        },
                         onLongPress = {
                             if (hasPreviewAction) {
                                 haptic(HapticType.HEAVY)
@@ -513,16 +494,11 @@ fun ElegantVideoCard(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = titleModifier
-                    //  [交互优化] 标题区域：长按弹出菜单，点击跳转 (带按压反馈)
+                    //  [交互优化] 标题区域：长按弹出菜单，点击跳转
                     .pointerInput(onDismiss, onWatchLater, onUnfavorite) {
                         val hasPreviewAction = onLongClick != null
                         val hasLongPressMenu = onDismiss != null || onWatchLater != null || onUnfavorite != null
                         detectTapGestures(
-                            onPress = {
-                                isPressed = true
-                                tryAwaitRelease()
-                                isPressed = false
-                            },
                             onLongPress = {
                                 if (hasPreviewAction) {
                                   haptic(HapticType.HEAVY)

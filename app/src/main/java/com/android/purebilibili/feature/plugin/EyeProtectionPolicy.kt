@@ -12,6 +12,27 @@ internal data class EyeVisualState(
     val warmFilterStrength: Float
 )
 
+internal data class EyeReminderDialogLayoutPolicy(
+    val useCompactSecondaryActions: Boolean,
+    val maxHeightFraction: Float
+)
+
+internal fun resolveEyeReminderDialogLayoutPolicy(
+    screenHeightDp: Int
+): EyeReminderDialogLayoutPolicy {
+    return if (screenHeightDp <= 700) {
+        EyeReminderDialogLayoutPolicy(
+            useCompactSecondaryActions = true,
+            maxHeightFraction = 0.86f
+        )
+    } else {
+        EyeReminderDialogLayoutPolicy(
+            useCompactSecondaryActions = false,
+            maxHeightFraction = 0.92f
+        )
+    }
+}
+
 internal fun isWithinProtectionWindow(
     currentHour: Int,
     startHour: Int,

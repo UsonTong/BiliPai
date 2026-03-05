@@ -202,8 +202,8 @@ fun GlassVideoCard(
                 .then(
                     if (onDismiss == null) {
                         Modifier.iOSCardTapEffect(
-                            pressScale = 0.96f,
-                            pressTranslationY = 8f,
+                            pressScale = 1f,
+                            pressTranslationY = 0f,
                             hapticEnabled = true
                         ) {
                             triggerCardClick()

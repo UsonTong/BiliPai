@@ -121,4 +121,32 @@ class ResumePlaybackSuggestionPolicyTest {
 
         assertNull(suggestion)
     }
+
+    @Test
+    fun `suggests later page even when entry page has longer progress`() {
+        val info = ViewInfo(
+            bvid = "BV1later",
+            cid = 1101L,
+            pages = listOf(
+                Page(cid = 1101L, page = 1),
+                Page(cid = 1102L, page = 2),
+                Page(cid = 1103L, page = 3)
+            )
+        )
+
+        val suggestion = resolveResumePlaybackSuggestion(
+            requestCid = 1101L,
+            loadedInfo = info,
+            progressLookup = { _, cid ->
+                when (cid) {
+                    1101L -> 9 * 60 * 1000L
+                    1103L -> 25_000L
+                    else -> 0L
+                }
+            }
+        )
+
+        assertEquals(1103L, suggestion?.targetCid)
+        assertEquals("P3", suggestion?.targetLabel)
+    }
 }

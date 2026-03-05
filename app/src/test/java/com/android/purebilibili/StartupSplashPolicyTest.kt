@@ -69,6 +69,39 @@ class StartupSplashPolicyTest {
     }
 
     @Test
+    fun resolveSplashWallpaperUriForLaunch_usesVisiblePoolWhenRandomEnabled() {
+        val resolved = resolveSplashWallpaperUriForLaunch(
+            randomEnabled = true,
+            fixedSplashUri = "content://fixed",
+            poolUris = listOf("content://a", "content://b", "content://c"),
+            launchSeed = 4L
+        )
+        assertEquals("content://b", resolved)
+    }
+
+    @Test
+    fun resolveSplashWallpaperUriForLaunch_fallsBackToFixedWhenPoolUnavailable() {
+        assertEquals(
+            "content://fixed",
+            resolveSplashWallpaperUriForLaunch(
+                randomEnabled = true,
+                fixedSplashUri = "content://fixed",
+                poolUris = emptyList(),
+                launchSeed = 9L
+            )
+        )
+        assertEquals(
+            "content://fixed",
+            resolveSplashWallpaperUriForLaunch(
+                randomEnabled = false,
+                fixedSplashUri = "content://fixed",
+                poolUris = listOf("content://a", "content://b"),
+                launchSeed = 9L
+            )
+        )
+    }
+
+    @Test
     fun enablesSplashFlyoutOnlyAfterStartupPrivacyFlowCompleted() {
         assertFalse(
             shouldEnableSplashFlyoutAnimation(

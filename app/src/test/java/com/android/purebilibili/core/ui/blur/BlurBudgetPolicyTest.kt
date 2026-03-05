@@ -88,4 +88,32 @@ class BlurBudgetPolicyTest {
         assertEquals(0, budget.maxBlurLevel)
         assertFalse(budget.allowRealtime)
     }
+
+    @Test
+    fun blurInputScale_keepsFullQualityWhenRealtimeAllowed() {
+        val scale = resolveBlurInputScale(
+            budget = BlurBudget(
+                maxBlurLevel = 2,
+                backgroundAlphaMultiplier = 1.0f,
+                allowRealtime = true
+            ),
+            surfaceType = BlurSurfaceType.HEADER
+        )
+
+        assertEquals(1.0f, scale)
+    }
+
+    @Test
+    fun blurInputScale_downscalesWhenRealtimeDisabled() {
+        val scale = resolveBlurInputScale(
+            budget = BlurBudget(
+                maxBlurLevel = 2,
+                backgroundAlphaMultiplier = 1.0f,
+                allowRealtime = false
+            ),
+            surfaceType = BlurSurfaceType.HEADER
+        )
+
+        assertEquals(0.88f, scale)
+    }
 }

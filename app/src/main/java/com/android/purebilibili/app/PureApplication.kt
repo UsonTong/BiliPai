@@ -347,6 +347,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
             0 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM  // 跟随系统
             1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO             // 浅色
             2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES            // 深色
+            3 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES            // AMOLED 纯黑
             else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
         }
         

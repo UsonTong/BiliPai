@@ -1,7 +1,6 @@
 package com.android.purebilibili.core.theme
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Rect
 
 /**
@@ -15,11 +14,12 @@ object AnimationSpecs {
      * 用于共享元素过渡、卡片展开/收起等空间变换
      *
      * 特点：
-     * - 高刚度 (Stiffness ~400f): 响应迅速，跟手感强
-     * - 低阻尼 (Damping ~0.78f): 带有微小的过冲 (Overshoot)，富有弹性但不过分晃动
+     * - 高刚度 (Stiffness 380f): 响应迅速，跟手感强
+     * - 阻尼 (Damping 0.82f): 带有微小的过冲 (Overshoot)，富有弹性但不过分晃动
+     * - 基于真正的物理弹簧模型，而非固定时长 tween
      */
-    val BiliPaiSpringSpec = tween<Rect>(
-        durationMillis = 320,
-        easing = CubicBezierEasing(0.20f, 0.90f, 0.22f, 1.00f)
+    val BiliPaiSpringSpec = spring<Rect>(
+        dampingRatio = 0.82f,
+        stiffness = 380f
     )
 }

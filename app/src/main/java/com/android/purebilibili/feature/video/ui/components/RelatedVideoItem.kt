@@ -14,25 +14,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.clickable
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.data.model.response.RelatedVideo
-import com.android.purebilibili.core.theme.iosCard
-import com.android.purebilibili.core.theme.iOSSystemGray3
 import com.android.purebilibili.core.theme.iOSBlue
-import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.components.UpBadgeName
@@ -72,6 +70,40 @@ fun RelatedVideosHeader() {
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
+internal fun resolveRelatedVideoCardPressScaleTarget(
+    isPressed: Boolean,
+    transitionEnabled: Boolean
+): Float {
+    // Keep related card bounds stable to reduce list jank and transition drift.
+    // Intentionally avoid press squeeze in this list.
+    return 1f
+}
+
+@Suppress("UNUSED_PARAMETER")
+internal fun shouldEnableRelatedVideoCoverCrossfade(
+    transitionEnabled: Boolean
+): Boolean {
+    // Avoid image crossfade competing with list scrolling and shared transition.
+    return false
+}
+
+@Suppress("UNUSED_PARAMETER")
+internal fun shouldTriggerRelatedVideoPressHaptic(
+    isPressed: Boolean,
+    transitionEnabled: Boolean
+): Boolean {
+    return false
+}
+
+@Suppress("UNUSED_PARAMETER")
+internal fun shouldEnableRelatedVideoMetadataSharedBounds(
+    transitionEnabled: Boolean
+): Boolean {
+    // Metadata shared bounds are expensive in long lists and can cause return misalignment.
+    return false
+}
+
 /**
  * Related Video Item (iOS style optimized)
  * 
@@ -91,28 +123,31 @@ fun RelatedVideoItem(
     // 🔗 获取共享元素作用域 (用于过渡动画)
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
-    
-    // Top-level container acts as the button/card
-    // Using simple Row structure but with IOS touch physics manually or via wrapper
-    // Since we want the whole row to be clickable and scale:
-    
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = androidx.compose.animation.core.spring(
-            dampingRatio = 0.6f, // MediumBouncy
-            stiffness = 500f // Medium
-        ),
-        label = "cardScale"
-    )
-    
-    // Haptic feedback
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    LaunchedEffect(isPressed) {
-        if (isPressed) {
-            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) // Using standard haptic for now
+    val coverSharedEnabled = transitionEnabled &&
+        sharedTransitionScope != null &&
+        animatedVisibilityScope != null
+    val metadataSharedEnabled = shouldEnableRelatedVideoMetadataSharedBounds(transitionEnabled)
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val screenWidthPx = remember(configuration.screenWidthDp, density) {
+        with(density) { configuration.screenWidthDp.dp.toPx() }
+    }
+    val screenHeightPx = remember(configuration.screenHeightDp, density) {
+        with(density) { configuration.screenHeightDp.dp.toPx() }
+    }
+    val densityValue = density.density
+    val coverBoundsRef = remember { object { var value: Rect? = null } }
+
+    val triggerRelatedVideoClick = {
+        coverBoundsRef.value?.let { bounds ->
+            CardPositionManager.recordCardPosition(
+                bounds = bounds,
+                screenWidth = screenWidthPx,
+                screenHeight = screenHeightPx,
+                density = densityValue
+            )
         }
+        onClick()
     }
 
     Box(
@@ -125,11 +160,8 @@ fun RelatedVideoItem(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .scale(scale)
                 .clickable(
-                    interactionSource = interactionSource,
-                    indication = androidx.compose.foundation.LocalIndication.current,
-                    onClick = onClick
+                    onClick = triggerRelatedVideoClick
                 )
         ) {
 
@@ -139,7 +171,7 @@ fun RelatedVideoItem(
                 .padding(10.dp) // Internal padding
         ) {
             // 🔗 [共享元素] 为封面添加共享元素标记
-            val coverModifier = if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+            val coverModifier = if (coverSharedEnabled) {
                 with(sharedTransitionScope) {
                     Modifier
                         .sharedBounds(
@@ -164,11 +196,14 @@ fun RelatedVideoItem(
                     .height(relatedCoverHeight)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .onGloballyPositioned { coordinates ->
+                        coverBoundsRef.value = coordinates.boundsInRoot()
+                    }
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(FormatUtils.fixImageUrl(video.pic))
-                        .crossfade(true)
+                        .crossfade(shouldEnableRelatedVideoCoverCrossfade(transitionEnabled))
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
@@ -206,7 +241,7 @@ fun RelatedVideoItem(
                 // 🔗 [共享元素] 标题 - Wrap in Box to isolate from Text intrinsic measurement issues
                 var titleBoxModifier = Modifier.fillMaxWidth()
 
-                if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
                         titleBoxModifier = titleBoxModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
@@ -236,7 +271,7 @@ fun RelatedVideoItem(
                         // UP Name
                         var upNameBoxModifier = Modifier.weight(1f, fill = false)
 
-                        if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 upNameBoxModifier = upNameBoxModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = "video_up_${video.bvid}"),
@@ -248,7 +283,7 @@ fun RelatedVideoItem(
                             }
                         }
                         var followActionModifier = Modifier.wrapContentSize()
-                        if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 followActionModifier = followActionModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = "video_up_action_${video.bvid}"),
@@ -279,7 +314,7 @@ fun RelatedVideoItem(
                                         .clip(androidx.compose.foundation.shape.CircleShape)
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
 
-                                    if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                    if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                                         with(sharedTransitionScope) {
                                             avatarModifier = avatarModifier.sharedBounds(
                                                 sharedContentState = rememberSharedContentState(key = "video_avatar_${video.bvid}"),
@@ -295,7 +330,7 @@ fun RelatedVideoItem(
                                     AsyncImage(
                                         model = ImageRequest.Builder(LocalContext.current)
                                             .data(FormatUtils.fixImageUrl(video.owner.face))
-                                            .crossfade(true)
+                                            .crossfade(shouldEnableRelatedVideoCoverCrossfade(transitionEnabled))
                                             .build(),
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
@@ -319,7 +354,7 @@ fun RelatedVideoItem(
                     ) {
                         // Views
                         var viewsModifier = Modifier.wrapContentSize()
-                        if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 viewsModifier = viewsModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
@@ -338,7 +373,7 @@ fun RelatedVideoItem(
                         
                         // Danmaku
                         var danmakuModifier = Modifier.wrapContentSize()
-                        if (transitionEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        if (metadataSharedEnabled && sharedTransitionScope != null && animatedVisibilityScope != null) {
                             with(sharedTransitionScope) {
                                 danmakuModifier = danmakuModifier.sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),

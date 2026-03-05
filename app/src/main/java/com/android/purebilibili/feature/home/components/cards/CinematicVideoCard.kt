@@ -137,14 +137,6 @@ fun CinematicVideoCard(
         onClick(video.bvid, 0)
     }
     
-    // 按压效果
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f, // 微妙的缩放
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-        label = "cardScale"
-    )
-
     // 共享元素
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
@@ -169,7 +161,6 @@ fun CinematicVideoCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 24.dp, start = 16.dp, end = 16.dp) // 增加间距
-            .scale(scale)
             .animateEnter(
                 index = index,
                 key = Unit,
@@ -194,11 +185,6 @@ fun CinematicVideoCard(
                 .background(Color.Black) // 纯黑底色
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onPress = {
-                            isPressed = true
-                            tryAwaitRelease()
-                            isPressed = false
-                        },
                         onLongPress = {
                              if (onDismiss != null || onWatchLater != null) {
                                 haptic(HapticType.HEAVY)

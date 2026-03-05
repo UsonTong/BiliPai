@@ -199,6 +199,22 @@ internal fun resolveSplashWallpaperAlignmentBias(
     return if (isTabletLayout) tabletBias else mobileBias
 }
 
+internal fun resolveSplashWallpaperUriForLaunch(
+    randomEnabled: Boolean,
+    fixedSplashUri: String,
+    poolUris: List<String>,
+    launchSeed: Long
+): String {
+    if (!randomEnabled) return fixedSplashUri
+    val candidates = poolUris
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+    if (candidates.isEmpty()) return fixedSplashUri
+    val index = Math.floorMod(launchSeed, candidates.size.toLong()).toInt()
+    return candidates[index]
+}
+
 internal fun shouldStartLocalProxyOnAppLaunch(): Boolean = false
 
 internal fun shouldEnableSplashFlyoutAnimation(
@@ -685,7 +701,10 @@ class MainActivity : ComponentActivity() {
                 AppThemeMode.FOLLOW_SYSTEM -> systemInDark // 跟随系统：系统黑则黑，系统白则白
                 AppThemeMode.LIGHT -> false                // 强制浅色
                 AppThemeMode.DARK -> true                  // 强制深色
+                AppThemeMode.AMOLED -> true                // 强制纯黑
             }
+            val useAmoledDarkTheme = themeMode == AppThemeMode.AMOLED
+            val effectiveDynamicColor = dynamicColor && !useAmoledDarkTheme
 
             //  [新增] 根据主题动态更新状态栏样式
             LaunchedEffect(useDarkTheme) {
@@ -713,7 +732,8 @@ class MainActivity : ComponentActivity() {
             // 6. 传入参数
             PureBiliBiliTheme(
                 darkTheme = useDarkTheme,
-                dynamicColor = dynamicColor,
+                dynamicColor = effectiveDynamicColor,
+                amoledDarkTheme = useAmoledDarkTheme,
                 themeColorIndex = themeColorIndex, //  传入主题色索引
 
             ) {
@@ -825,7 +845,17 @@ class MainActivity : ComponentActivity() {
                     
                     // [New] Custom Splash Wallpaper Overlay
                     val readCustomSplashPrefs = remember { shouldReadCustomSplashPreferences() }
-                    val splashUri = remember(readCustomSplashPrefs) { SettingsManager.getSplashWallpaperUriSync(context) }
+                    val splashUri = remember(readCustomSplashPrefs) {
+                        val fixedUri = SettingsManager.getSplashWallpaperUriSync(context)
+                        val randomEnabled = SettingsManager.isSplashRandomEnabledSync(context)
+                        val splashRandomPool = SettingsManager.getSplashRandomPoolUrisSync(context)
+                        resolveSplashWallpaperUriForLaunch(
+                            randomEnabled = randomEnabled,
+                            fixedSplashUri = fixedUri,
+                            poolUris = splashRandomPool,
+                            launchSeed = System.currentTimeMillis()
+                        )
+                    }
                     val splashAlignmentBias = remember(readCustomSplashPrefs, windowSizeClass.widthSizeClass) {
                         val mobileBias = SettingsManager.getSplashAlignmentSync(context, isTablet = false)
                         val tabletBias = SettingsManager.getSplashAlignmentSync(context, isTablet = true)

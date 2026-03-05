@@ -4,6 +4,7 @@ internal fun resolveThemeModeSegmentOptions(): List<PlaybackSegmentOption<AppThe
     return listOf(
         PlaybackSegmentOption(AppThemeMode.FOLLOW_SYSTEM, AppThemeMode.FOLLOW_SYSTEM.label),
         PlaybackSegmentOption(AppThemeMode.LIGHT, AppThemeMode.LIGHT.label),
-        PlaybackSegmentOption(AppThemeMode.DARK, AppThemeMode.DARK.label)
+        PlaybackSegmentOption(AppThemeMode.DARK, AppThemeMode.DARK.label),
+        PlaybackSegmentOption(AppThemeMode.AMOLED, AppThemeMode.AMOLED.label)
     )
 }

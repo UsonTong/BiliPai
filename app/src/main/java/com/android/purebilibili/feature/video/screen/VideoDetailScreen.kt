@@ -19,6 +19,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.EnterExitState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -180,6 +181,20 @@ internal fun shouldClearStaleReturningStateOnVideoDetailEnter(
     return isReturningFromDetail
 }
 
+private const val COVER_TAKEOVER_PRE_BACK_DELAY_MILLIS = 16L
+
+internal fun resolveForceCoverOnlyForReturn(
+    forceCoverOnlyOnReturn: Boolean,
+    isReturningFromDetail: Boolean,
+    isExitTransitionInProgress: Boolean
+): Boolean {
+    return forceCoverOnlyOnReturn || isReturningFromDetail
+}
+
+internal fun resolveCoverTakeoverDelayBeforeBackNavigationMillis(): Long {
+    return COVER_TAKEOVER_PRE_BACK_DELAY_MILLIS
+}
+
 internal data class VideoDetailSystemBarsSnapshot(
     val statusBarColor: Int,
     val navigationBarColor: Int,
@@ -280,24 +295,40 @@ internal data class VideoDetailEntryVisualFrame(
     val blurRadiusPx: Float
 )
 
+internal data class VideoDetailMotionSpec(
+    val entryPhaseDurationMillis: Int,
+    val contentSwapFadeDurationMillis: Int,
+    val contentRevealFadeDurationMillis: Int
+)
+
+private const val VIDEO_DETAIL_ENTRY_PHASE_MIN_DURATION_MILLIS = 120
+private const val VIDEO_DETAIL_CONTENT_PHASE_MIN_DURATION_MILLIS = 180
+
+internal fun resolveVideoDetailMotionSpec(
+    transitionEnterDurationMillis: Int
+): VideoDetailMotionSpec {
+    return VideoDetailMotionSpec(
+        entryPhaseDurationMillis = transitionEnterDurationMillis
+            .coerceAtLeast(VIDEO_DETAIL_ENTRY_PHASE_MIN_DURATION_MILLIS),
+        contentSwapFadeDurationMillis = transitionEnterDurationMillis
+            .coerceAtLeast(VIDEO_DETAIL_CONTENT_PHASE_MIN_DURATION_MILLIS),
+        contentRevealFadeDurationMillis = transitionEnterDurationMillis
+            .coerceAtLeast(VIDEO_DETAIL_CONTENT_PHASE_MIN_DURATION_MILLIS)
+    )
+}
+
 internal fun resolveVideoDetailEntryVisualFrame(
     rawProgress: Float,
     transitionEnabled: Boolean,
     maxBlurRadiusPx: Float
 ): VideoDetailEntryVisualFrame {
-    if (!transitionEnabled) {
-        return VideoDetailEntryVisualFrame(
-            contentAlpha = 1f,
-            scrimAlpha = 0f,
-            blurRadiusPx = 0f
-        )
-    }
-
-    val progress = rawProgress.coerceIn(0f, 1f)
+    // 共享元素模式下，sharedBounds 已经处理视觉过渡，
+    // 额外的 alpha/blur 会与共享元素动画冲突导致闪烁。
+    // 无论是否启用过渡，都返回完全不透明、无模糊。
     return VideoDetailEntryVisualFrame(
-        contentAlpha = (0.9f + progress * 0.1f).coerceIn(0f, 1f),
-        scrimAlpha = (1f - progress) * 0.08f,
-        blurRadiusPx = (maxBlurRadiusPx.coerceAtLeast(0f) * (1f - progress)).coerceAtLeast(0f)
+        contentAlpha = 1f,
+        scrimAlpha = 0f,
+        blurRadiusPx = 0f
     )
 }
 
@@ -380,6 +411,9 @@ fun VideoDetailScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val configuration = LocalConfiguration.current
+    val motionSpec = remember(transitionEnterDurationMillis) {
+        resolveVideoDetailMotionSpec(transitionEnterDurationMillis)
+    }
     val uiState by viewModel.uiState.collectAsState()
     val resumePlaybackSuggestion by viewModel.resumePlaybackSuggestion.collectAsState()
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
@@ -388,6 +422,7 @@ fun VideoDetailScreen(
     var isNavigatingToMiniMode by remember { mutableStateOf(false) }
     var hasAutoEnteredAudioMode by rememberSaveable { mutableStateOf(false) }
     var hasAutoEnteredPortraitFromRoute by rememberSaveable(bvid) { mutableStateOf(false) }
+    val backNavigationScope = rememberCoroutineScope()
 
     val navigateToRelatedVideo = remember(onVideoClick, miniPlayerManager, uiState) {
         { targetBvid: String, options: android.os.Bundle? ->
@@ -449,7 +484,7 @@ fun VideoDetailScreen(
         Animatable(if (transitionEnabled) 0f else 1f)
     }
 
-    LaunchedEffect(transitionEnabled, transitionEnterDurationMillis) {
+    LaunchedEffect(transitionEnabled, motionSpec.entryPhaseDurationMillis) {
         if (!transitionEnabled) {
             entryVisualProgress.snapTo(1f)
             isTransitionFinished = true
@@ -461,7 +496,7 @@ fun VideoDetailScreen(
         entryVisualProgress.animateTo(
             targetValue = 1f,
             animationSpec = tween(
-                durationMillis = transitionEnterDurationMillis.coerceAtLeast(120),
+                durationMillis = motionSpec.entryPhaseDurationMillis,
                 easing = FastOutSlowInEasing
             )
         )
@@ -661,17 +696,43 @@ fun VideoDetailScreen(
     //  [修复] 包装的 onBack，在导航之前立即恢复状态栏并通知小窗管理器
     var isActuallyLeaving by remember { mutableStateOf(false) }
     var forceCoverOnlyOnReturn by remember { mutableStateOf(false) }
+    val rootAnimatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    val isExitTransitionInProgress =
+        rootAnimatedVisibilityScope?.transition?.targetState == EnterExitState.PostExit
+    val coverTakeoverBeforeBackDelayMillis = remember {
+        resolveCoverTakeoverDelayBeforeBackNavigationMillis()
+    }
+    val forceCoverOnlyForReturn = resolveForceCoverOnlyForReturn(
+        forceCoverOnlyOnReturn = forceCoverOnlyOnReturn,
+        isReturningFromDetail = CardPositionManager.isReturningFromDetail,
+        isExitTransitionInProgress = isExitTransitionInProgress
+    )
 
-    val handleBack = remember(onBack, miniPlayerManager) {
-        {
+    val handleBack = remember(
+        onBack,
+        miniPlayerManager,
+        currentBvid,
+        coverTakeoverBeforeBackDelayMillis,
+        backNavigationScope
+    ) {
+        back@{
+            if (isActuallyLeaving) return@back
             isActuallyLeaving = true // 标记确实是用户通过点击或返回键离开
             isScreenActive = false  // 标记页面正在退出
             forceCoverOnlyOnReturn = true
+            // 进入返回流程时立即标记，确保封面优先接管
+            CardPositionManager.markReturning()
             // 🎯 通知小窗管理器这是用户主动导航离开（用于控制后台音频）
             miniPlayerManager?.markLeavingByNavigation(expectedBvid = currentBvid)
-            
-            restoreStatusBar()      //  立即恢复状态栏（动画开始前）
-            onBack()                // 执行实际的返回导航
+
+            restoreStatusBar() // 立即恢复状态栏（动画开始前）
+            backNavigationScope.launch {
+                // 给封面一个帧预算优先接管，避免视频帧 -> 封面的闪变
+                if (coverTakeoverBeforeBackDelayMillis > 0L) {
+                    kotlinx.coroutines.delay(coverTakeoverBeforeBackDelayMillis)
+                }
+                onBack() // 执行实际的返回导航
+            }
         }
     }
 
@@ -1354,7 +1415,7 @@ fun VideoDetailScreen(
     }
     
     // 🎯 [移除] 以下 BackHandler 会阻止 Compose Navigation 的预测性返回手势动画
-    // CardPositionManager.markReturning() 已在 onDispose 中处理（见下方修改）
+    // 显式点击返回时由 handleBack 提前标记 returning，系统路径仍由 onDispose 兜底标记。
     // BackHandler(enabled = !isFullscreenMode && !isPortraitFullscreen, onBack = handleBack)
     
     
@@ -1497,7 +1558,7 @@ fun VideoDetailScreen(
                 onTriple = { viewModel.doTripleAction() },
                 onRelatedVideoClick = navigateToRelatedVideo,
                 onPageSelect = { viewModel.switchPage(it) },
-                forceCoverOnly = forceCoverOnlyOnReturn,
+                forceCoverOnly = forceCoverOnlyForReturn,
                 allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
                 suppressSubtitleOverlay = shouldSuppressSubtitleOverlay
             )
@@ -1575,7 +1636,7 @@ fun VideoDetailScreen(
                         // 🔁 [新增] 播放模式
                         currentPlayMode = currentPlayMode,
                         onPlayModeClick = { com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode() },
-                        forceCoverOnlyOnReturn = forceCoverOnlyOnReturn
+                        forceCoverOnlyOnReturn = forceCoverOnlyForReturn
                     )
                 } else {
                     // 📱 手机竖屏：原有单列布局
@@ -1679,7 +1740,7 @@ fun VideoDetailScreen(
                             transitionEnabled = transitionEnabled,
                             hasSharedTransitionScope = sharedTransitionScope != null,
                             hasAnimatedVisibilityScope = animatedVisibilityScope != null
-                        ) && !forceCoverOnlyOnReturn
+                        ) && !forceCoverOnlyForReturn
                     ) {
                         with(requireNotNull(sharedTransitionScope)) {
                             Modifier
@@ -1792,7 +1853,7 @@ fun VideoDetailScreen(
                                 // [New Actions]
                                 onSaveCover = { viewModel.saveCover(context) },
                                 onDownloadAudio = { viewModel.downloadAudio(context) },
-                                forceCoverOnly = forceCoverOnlyOnReturn,
+                                forceCoverOnly = forceCoverOnlyForReturn,
                                 allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
                                 suppressSubtitleOverlay = shouldSuppressSubtitleOverlay
                                 //  空降助手 - 已由插件系统自动处理
@@ -1848,9 +1909,9 @@ fun VideoDetailScreen(
                                     targetState = success.info.bvid,
                                     transitionSpec = {
                                         // 左右滑动 + 淡入淡出过渡动画
-                                        (slideInHorizontally { width -> width / 4 } + fadeIn(animationSpec = tween(transitionEnterDurationMillis.coerceAtLeast(180))))
+                                        (slideInHorizontally { width -> width / 4 } + fadeIn(animationSpec = tween(motionSpec.contentSwapFadeDurationMillis)))
                                             .togetherWith(
-                                                slideOutHorizontally { width -> -width / 4 } + fadeOut(animationSpec = tween(transitionEnterDurationMillis.coerceAtLeast(180)))
+                                                slideOutHorizontally { width -> -width / 4 } + fadeOut(animationSpec = tween(motionSpec.contentSwapFadeDurationMillis))
                                             )
                                     },
                                     label = "video_content_transition"
@@ -1882,7 +1943,7 @@ fun VideoDetailScreen(
                                             // 配合 isTransitionFinished 状态
                                             androidx.compose.animation.AnimatedVisibility(
                                                 visible = isTransitionFinished,
-                                                enter = fadeIn(tween(transitionEnterDurationMillis.coerceAtLeast(180)))
+                                                enter = fadeIn(tween(motionSpec.contentRevealFadeDurationMillis))
                                             ) {
                                                 Box(modifier = Modifier.fillMaxSize()) {
                                                     VideoContentSection(

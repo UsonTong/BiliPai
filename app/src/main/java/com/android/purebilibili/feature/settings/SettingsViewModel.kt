@@ -537,6 +537,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     // [New] Splash Screen
     fun toggleSplashEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashEnabled(context, value) } }
+    fun toggleSplashRandomEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashRandomEnabled(context, value) } }
     fun toggleSplashIconAnimationEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashIconAnimationEnabled(context, value) } }
 
     // [New] 触感反馈

@@ -174,6 +174,11 @@ private data class ResumeProgressSource(
     val label: String
 )
 
+private data class OrderedResumeCandidate(
+    val order: Int,
+    val suggestion: ResumePlaybackSuggestion
+)
+
 internal fun resolveResumePlaybackSuggestion(
     requestCid: Long,
     loadedInfo: ViewInfo,
@@ -220,29 +225,44 @@ internal fun resolveResumePlaybackSuggestion(
             )
         }
 
-    val candidates = (pageSources + seasonEpisodeSources)
+    val orderedSources = (pageSources + seasonEpisodeSources)
         .distinctBy { source -> "${source.bvid}#${source.cid}" }
-        .asSequence()
-        .filterNot { source ->
-            source.bvid == currentBvid && source.cid == currentCid
-        }
-        .mapNotNull { source ->
+    val currentSourceIndex = orderedSources.indexOfFirst { source ->
+        source.bvid == currentBvid && source.cid == currentCid
+    }
+
+    val candidates = orderedSources
+        .mapIndexedNotNull { index, source ->
+            if (source.bvid == currentBvid && source.cid == currentCid) return@mapIndexedNotNull null
             val positionMs = progressLookup(source.bvid, source.cid).coerceAtLeast(0L)
             if (positionMs < minResumePositionMs) {
                 null
             } else {
-                ResumePlaybackSuggestion(
-                    targetBvid = source.bvid,
-                    targetCid = source.cid,
-                    targetLabel = source.label,
-                    positionMs = positionMs
+                OrderedResumeCandidate(
+                    order = index,
+                    suggestion = ResumePlaybackSuggestion(
+                        targetBvid = source.bvid,
+                        targetCid = source.cid,
+                        targetLabel = source.label,
+                        positionMs = positionMs
+                    )
                 )
             }
         }
-        .toList()
+    val bestCandidate = candidates
+        .maxByOrNull { candidate ->
+            // 优先恢复更靠后的分P/合集项，避免旧分P的长进度覆盖用户最近切换的后续分集。
+            val isForwardFromCurrent = currentSourceIndex >= 0 && candidate.order > currentSourceIndex
+            if (isForwardFromCurrent) {
+                candidate.order + orderedSources.size
+            } else {
+                candidate.order
+            }
+        }?.suggestion ?: return null
 
-    val bestCandidate = candidates.maxByOrNull { it.positionMs } ?: return null
-    if (bestCandidate.positionMs <= currentPositionMs + minDeltaFromCurrentMs) return null
+    val candidateOnlySlightlyAhead = bestCandidate.positionMs > currentPositionMs &&
+        bestCandidate.positionMs <= currentPositionMs + minDeltaFromCurrentMs
+    if (candidateOnlySlightlyAhead) return null
     return bestCandidate
 }
 

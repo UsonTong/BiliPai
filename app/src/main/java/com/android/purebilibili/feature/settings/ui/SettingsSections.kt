@@ -326,7 +326,7 @@ fun FeedApiSection(
         }
         SettingsDivider(startIndent = 66.dp)
         FeedSwitchItem(
-            icon = CupertinoIcons.Default.ArrowTriangle2Circlepath,
+            icon = CupertinoIcons.Default.ArrowClockwise,
             title = "动态增量刷新",
             subtitle = "下拉刷新时不重置列表，仅在顶部插入新内容",
             checked = incrementalTimelineRefreshEnabled,
@@ -492,7 +492,7 @@ fun DeveloperSection(
 
     SettingsCardGroup {
         SettingSwitchItem(
-            icon = CupertinoIcons.Default.ExclamationmarkTriangle,
+            icon = CupertinoIcons.Default.Bolt,
             title = "崩溃追踪",
             subtitle = "帮助开发者发现和修复问题",
             checked = crashTrackingEnabled,
@@ -656,7 +656,7 @@ fun AboutSection(
         )
         SettingsDivider(startIndent = 66.dp)
         SettingSwitchItem(
-            icon = CupertinoIcons.Default.Gift,
+            icon = CupertinoIcons.Default.Sparkles,
             title = "趣味彩蛋",
             subtitle = "刷新、点赞、投币、搜索时显示趣味提示",
             checked = easterEggEnabled,

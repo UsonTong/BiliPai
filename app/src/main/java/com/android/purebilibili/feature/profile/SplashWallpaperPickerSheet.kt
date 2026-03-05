@@ -26,23 +26,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.android.purebilibili.core.store.SettingsManager
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
-
-/**
- * 修复壁纸图片 URL
- */
-private fun fixWallpaperUrl(url: String?): String {
-    if (url.isNullOrEmpty()) return ""
-    var newUrl = url
-    if (newUrl.startsWith("//")) {
-        newUrl = "https:$newUrl"
-    }
-    if (newUrl.startsWith("http://")) {
-        newUrl = newUrl.replace("http://", "https://")
-    }
-    return newUrl
-}
 
 /**
  * 🖼️ 开屏壁纸选择器 (用于设置页)
@@ -71,6 +57,10 @@ fun SplashWallpaperPickerSheet(
         if (officialWallpapers.isEmpty()) {
             viewModel.loadOfficialWallpapers()
         }
+    }
+    LaunchedEffect(officialWallpapers) {
+        val randomPool = resolveVisibleSplashWallpaperPool(officialWallpapers)
+        SettingsManager.setSplashRandomPoolUris(context, randomPool)
     }
 
     ModalBottomSheet(
@@ -145,7 +135,7 @@ fun SplashWallpaperPickerSheet(
                         items(officialWallpapers) { item ->
                             val isSelected = selectedUrl == item.thumb || selectedUrl == item.image
                             val rawUrl = item.thumb.ifEmpty { item.image }
-                            val imageUrl = fixWallpaperUrl(rawUrl)
+                            val imageUrl = normalizeSplashWallpaperUrl(rawUrl)
 
                             Column(
                                 modifier = Modifier
@@ -210,7 +200,7 @@ fun SplashWallpaperPickerSheet(
 
                     if (showSplashAdjustmentSheet && selectedUrl != null) {
                         WallpaperAdjustmentSheet(
-                            imageUri = fixWallpaperUrl(selectedUrl),
+                            imageUri = normalizeSplashWallpaperUrl(selectedUrl),
                             initialMobileBias = initialSplashMobileBias,
                             initialTabletBias = initialSplashTabletBias,
                             onDismiss = { showSplashAdjustmentSheet = false },
@@ -241,7 +231,7 @@ fun SplashWallpaperPickerSheet(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "同时保存到相册",
+                                        text = "同时保存到相册",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )

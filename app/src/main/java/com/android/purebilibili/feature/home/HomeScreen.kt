@@ -132,12 +132,13 @@ fun HomeScreen(
     onInboxClick: () -> Unit = {},  // 私信页面
     onStoryClick: () -> Unit = {},  //  [新增] 竖屏短视频
     globalHazeState: dev.chrisbanes.haze.HazeState? = null,  //  [新增] 全局底栏模糊状态
-    predictiveBackAnimationEnabled: Boolean = true
+    predictiveStableBackRouteMotionEnabled: Boolean = false
 ) {
     val state by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
 // val pullRefreshState = rememberPullToRefreshState() // [Removed] Moved inside HorizontalPager
     val context = LocalContext.current
+    val overlayMotionSpec = remember { resolveHomeOverlayMotionSpec() }
     //  [Refactor] Use a map of grid states for each category to support HorizontalPager
     // [Refactor] Use a map of grid states for each category to support HorizontalPager
     val gridStates = remember { mutableMapOf<HomeCategory, LazyGridState>() }
@@ -445,7 +446,7 @@ fun HomeScreen(
     val crashTrackingConsentShown = homeSettings.crashTrackingConsentShown
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled &&
-        !predictiveBackAnimationEnabled // 预测返回模式下禁用首页共享元素，避免叠层滞留
+        !predictiveStableBackRouteMotionEnabled // 预测返回稳定路由模式下禁用首页共享元素，避免叠层滞留
     val baseIsLiquidGlassEnabled = homeSettings.isLiquidGlassEnabled      //  流体玻璃特效开关
     val baseIsDataSaverActive = remember(context) {
         com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
@@ -1226,12 +1227,12 @@ fun HomeScreen(
 
         AnimatedVisibility(
             visible = refreshDeltaTipText != null,
-            enter = fadeIn(animationSpec = tween(180)) + slideInVertically(
-                animationSpec = tween(220),
+            enter = fadeIn(animationSpec = tween(overlayMotionSpec.refreshTipEnterFadeDurationMillis)) + slideInVertically(
+                animationSpec = tween(overlayMotionSpec.refreshTipSlideDurationMillis),
                 initialOffsetY = { -it / 2 }
             ),
-            exit = fadeOut(animationSpec = tween(220)) + slideOutVertically(
-                animationSpec = tween(220),
+            exit = fadeOut(animationSpec = tween(overlayMotionSpec.refreshTipExitFadeDurationMillis)) + slideOutVertically(
+                animationSpec = tween(overlayMotionSpec.refreshTipSlideDurationMillis),
                 targetOffsetY = { -it / 2 }
             ),
             modifier = Modifier
@@ -1269,12 +1270,12 @@ fun HomeScreen(
         ) {
             AnimatedVisibility(
                 visible = undoVisible,
-                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(
-                    animationSpec = tween(250),
+                enter = fadeIn(animationSpec = tween(overlayMotionSpec.undoFabFadeDurationMillis)) + slideInVertically(
+                    animationSpec = tween(overlayMotionSpec.undoFabSlideDurationMillis),
                     initialOffsetY = { it }
                 ),
-                exit = fadeOut(animationSpec = tween(200)) + slideOutVertically(
-                    animationSpec = tween(250),
+                exit = fadeOut(animationSpec = tween(overlayMotionSpec.undoFabFadeDurationMillis)) + slideOutVertically(
+                    animationSpec = tween(overlayMotionSpec.undoFabSlideDurationMillis),
                     targetOffsetY = { it }
                 ),
                 modifier = Modifier.padding(end = 16.dp, bottom = homeListBottomPadding + 8.dp)
@@ -1309,8 +1310,20 @@ fun HomeScreen(
         // [Feature] Video Preview Overlay with Animation
         androidx.compose.animation.AnimatedVisibility(
             visible = targetVideoItemState.value != null,
-            enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.9f, animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
-            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.9f, animationSpec = tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
+            enter = fadeIn(tween(overlayMotionSpec.previewOverlayFadeDurationMillis)) + scaleIn(
+                initialScale = 0.9f,
+                animationSpec = tween(
+                    overlayMotionSpec.previewOverlayScaleDurationMillis,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
+            ),
+            exit = fadeOut(tween(overlayMotionSpec.previewOverlayFadeDurationMillis)) + scaleOut(
+                targetScale = 0.9f,
+                animationSpec = tween(
+                    overlayMotionSpec.previewOverlayScaleDurationMillis,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
+            ),
             modifier = Modifier.fillMaxSize().zIndex(100f) // Ensure on top
         ) {
             val item = targetVideoItemState.value
@@ -1594,12 +1607,18 @@ fun HomeScreen(
             visible = useSideNavigation,
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
-                animationSpec = tween(300, easing = LinearOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(200)),
+                animationSpec = tween(
+                    overlayMotionSpec.sideNavEnterSlideDurationMillis,
+                    easing = LinearOutSlowInEasing
+                )
+            ) + fadeIn(animationSpec = tween(overlayMotionSpec.sideNavFadeDurationMillis)),
             exit = slideOutHorizontally(
                 targetOffsetX = { -it },
-                animationSpec = tween(250, easing = FastOutLinearInEasing)
-            ) + fadeOut(animationSpec = tween(200))
+                animationSpec = tween(
+                    overlayMotionSpec.sideNavExitSlideDurationMillis,
+                    easing = FastOutLinearInEasing
+                )
+            ) + fadeOut(animationSpec = tween(overlayMotionSpec.sideNavFadeDurationMillis))
         ) {
             FrostedSideBar(
                 currentItem = currentNavItem,
@@ -1627,6 +1646,34 @@ fun HomeScreen(
             scaffoldContent()
         }
     }
+}
+
+internal data class HomeOverlayMotionSpec(
+    val refreshTipEnterFadeDurationMillis: Int,
+    val refreshTipExitFadeDurationMillis: Int,
+    val refreshTipSlideDurationMillis: Int,
+    val undoFabFadeDurationMillis: Int,
+    val undoFabSlideDurationMillis: Int,
+    val previewOverlayFadeDurationMillis: Int,
+    val previewOverlayScaleDurationMillis: Int,
+    val sideNavEnterSlideDurationMillis: Int,
+    val sideNavExitSlideDurationMillis: Int,
+    val sideNavFadeDurationMillis: Int
+)
+
+internal fun resolveHomeOverlayMotionSpec(): HomeOverlayMotionSpec {
+    return HomeOverlayMotionSpec(
+        refreshTipEnterFadeDurationMillis = 180,
+        refreshTipExitFadeDurationMillis = 220,
+        refreshTipSlideDurationMillis = 220,
+        undoFabFadeDurationMillis = 200,
+        undoFabSlideDurationMillis = 250,
+        previewOverlayFadeDurationMillis = 200,
+        previewOverlayScaleDurationMillis = 200,
+        sideNavEnterSlideDurationMillis = 300,
+        sideNavExitSlideDurationMillis = 250,
+        sideNavFadeDurationMillis = 200
+    )
 }
 
 internal fun resolveReturnAnimationSuppressionDurationMs(
