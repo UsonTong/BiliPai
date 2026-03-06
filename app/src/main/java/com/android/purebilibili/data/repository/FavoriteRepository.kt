@@ -8,6 +8,11 @@ import kotlinx.coroutines.withContext
 object FavoriteRepository {
     private val api = NetworkModule.api
 
+    data class CollectedFavFoldersPage(
+        val folders: List<FavFolder>,
+        val totalCount: Int
+    )
+
     suspend fun getFavFolders(mid: Long): Result<List<FavFolder>> {
         return withContext(Dispatchers.IO) {
             try {
@@ -32,15 +37,18 @@ object FavoriteRepository {
         pn: Int = 1,
         ps: Int = 20,
         platform: String = "web"
-    ): Result<List<FavFolder>> {
+    ): Result<CollectedFavFoldersPage> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = api.getCollectedFavFolders(mid = mid, pn = pn, ps = ps, platform = platform)
                 if (response.code == 0) {
                     Result.success(
-                        response.data?.list
-                            ?.map { it.copy(source = FavFolderSource.SUBSCRIBED) }
-                            ?: emptyList()
+                        CollectedFavFoldersPage(
+                            folders = response.data?.list
+                                ?.map { it.copy(source = FavFolderSource.SUBSCRIBED) }
+                                ?: emptyList(),
+                            totalCount = response.data?.count ?: 0
+                        )
                     )
                 } else {
                     Result.failure(Exception("获取收藏合集失败: ${response.code}"))

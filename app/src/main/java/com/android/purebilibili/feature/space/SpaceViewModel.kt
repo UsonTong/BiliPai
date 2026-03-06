@@ -503,6 +503,7 @@ class SpaceViewModel(
         return FavoriteRepository
             .getCollectedFavFolders(mid = mid, pn = 1, ps = 40, platform = "web")
             .getOrNull()
+            ?.folders
             .orEmpty()
             .let(::resolveSpaceFavoriteFoldersForDisplay)
     }

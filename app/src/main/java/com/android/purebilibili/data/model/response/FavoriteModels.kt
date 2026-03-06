@@ -50,6 +50,7 @@ data class FavoriteInfo(
 
 @Serializable
 data class FavFolderList(
+    val count: Int = 0,
     val list: List<FavFolder>? = null
 )
 
@@ -70,6 +71,7 @@ data class FavFolder(
 data class FavoriteData(
     val id: Long = 0,
     val type: Int = 0,
+    val attr: Int = 0,
     val title: String = "",
     val cover: String = "",
     val intro: String = "",

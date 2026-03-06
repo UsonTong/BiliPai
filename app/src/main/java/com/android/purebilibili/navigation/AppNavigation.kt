@@ -1002,7 +1002,7 @@ fun AppNavigation(
                     viewModel = historyViewModel,
                     onBack = { navController.popBackStack() },
                     globalHazeState = mainHazeState, // [新增] 传入全局 HazeState
-                    onVideoClick = { bvid, cid ->
+                    onVideoClick = { bvid, cid, cover ->
                         // [修复] 根据历史记录类型导航到不同页面
                         val historyItem = historyViewModel.getHistoryItem(bvid)
                         val resolvedCid = resolveHistoryPlaybackCid(
@@ -1020,7 +1020,7 @@ fun AppNavigation(
                                     navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId, historyItem.epid))
                                 } else {
                                     // 异常情况，尝试普通视频方式
-                                    navigateToVideo(bvid, resolvedCid, "")
+                                    navigateToVideo(bvid, resolvedCid, cover)
                                 }
                             }
                             com.android.purebilibili.data.model.response.HistoryBusiness.LIVE -> {
@@ -1032,12 +1032,12 @@ fun AppNavigation(
                                         historyItem.videoItem.owner.name
                                     ))
                                 } else {
-                                    navigateToVideo(bvid, resolvedCid, "")
+                                    navigateToVideo(bvid, resolvedCid, cover)
                                 }
                             }
                             else -> {
                                 // 普通视频 (archive) 或未知类型
-                                navigateToVideo(bvid, resolvedCid, "")
+                                navigateToVideo(bvid, resolvedCid, cover)
                             }
                         }
                     }
@@ -1058,7 +1058,7 @@ fun AppNavigation(
                     viewModel = favoriteViewModel,
                     onBack = { navController.popBackStack() },
                     globalHazeState = mainHazeState, // [新增] 传入全局 HazeState
-                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
+                    onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
                     onFavoriteFolderClick = { mediaId, ownerMid, title ->
                         navController.navigate(
                             ScreenRoutes.SeasonSeriesDetail.createRoute(
@@ -1567,7 +1567,7 @@ fun AppNavigation(
                 CommonListScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
-                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
+                    onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
                     onCollectionClick = { collectionId, collectionMid, collectionTitle ->
                         navController.navigate(
                             ScreenRoutes.SeasonSeriesDetail.createRoute(
