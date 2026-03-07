@@ -85,6 +85,39 @@ fun ActionButtonsRow(
     onFavoriteLongClick: () -> Unit = {} // [New] 长按收藏
 ) {
     val primaryActionColor = MaterialTheme.colorScheme.primary
+    val haptic = rememberHapticFeedback()
+    var isTriplePressing by remember { mutableStateOf(false) }
+    var tripleCompleted by remember { mutableStateOf(false) }
+    var tripleProgress by remember { mutableFloatStateOf(0f) }
+    val animatedTripleProgress by animateFloatAsState(
+        targetValue = if (isTriplePressing) 1f else 0f,
+        animationSpec = if (isTriplePressing) {
+            tween(durationMillis = 900, easing = LinearEasing)
+        } else {
+            tween(durationMillis = 180, easing = FastOutSlowInEasing)
+        },
+        label = "detailTripleProgress",
+        finishedListener = { progress ->
+            tripleProgress = progress
+            if (progress >= 1f && isTriplePressing && !tripleCompleted) {
+                tripleCompleted = true
+                haptic(HapticType.MEDIUM)
+                onTripleClick()
+                isTriplePressing = false
+            }
+        }
+    )
+
+    LaunchedEffect(animatedTripleProgress) {
+        tripleProgress = animatedTripleProgress
+    }
+
+    LaunchedEffect(isTriplePressing) {
+        if (isTriplePressing) {
+            haptic(HapticType.LIGHT)
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -101,13 +134,34 @@ fun ActionButtonsRow(
                 .heightIn(min = 56.dp),
             contentAlignment = Alignment.Center
         ) {
-            BiliActionButton(
+            TripleProgressActionButton(
                 icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
                 text = FormatUtils.formatStat(info.stat.like.toLong()),
                 isActive = isLiked,
                 activeColor = primaryActionColor,
+                progress = tripleProgress,
                 onClick = onLikeClick,
-                onLongClick = onTripleClick
+                modifier = Modifier.pointerInput(
+                    isLiked,
+                    tripleCompleted,
+                    tripleProgress
+                ) {
+                    detectTapGestures(
+                        onPress = {
+                            tripleCompleted = false
+                            isTriplePressing = true
+                            val released = tryAwaitRelease()
+                            val progressAtRelease = tripleProgress
+                            if (!tripleCompleted) {
+                                isTriplePressing = false
+                                if (released && progressAtRelease < 0.08f) {
+                                    onLikeClick()
+                                }
+                            }
+                        }
+                    )
+                },
+                disableInternalClick = true
             )
         }
 
@@ -118,11 +172,12 @@ fun ActionButtonsRow(
                 .heightIn(min = 56.dp),
             contentAlignment = Alignment.Center
         ) {
-            BiliActionButton(
+            TripleProgressActionButton(
                 icon = AppIcons.BiliCoin,
                 text = FormatUtils.formatStat(info.stat.coin.toLong()),
                 isActive = coinCount > 0,
                 activeColor = primaryActionColor,
+                progress = tripleProgress,
                 onClick = onCoinClick
             )
         }
@@ -134,11 +189,12 @@ fun ActionButtonsRow(
                 .heightIn(min = 56.dp),
             contentAlignment = Alignment.Center
         ) {
-            BiliActionButton(
+            TripleProgressActionButton(
                 icon = if (isFavorited) Icons.Rounded.Star else Icons.Outlined.StarBorder,
                 text = FormatUtils.formatStat(info.stat.favorite.toLong()),
                 isActive = isFavorited,
                 activeColor = primaryActionColor,
+                progress = tripleProgress,
                 onClick = onFavoriteClick,
                 onLongClick = onFavoriteLongClick
             )
@@ -183,6 +239,114 @@ fun ActionButtonsRow(
             )
         }
 
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun TripleProgressActionButton(
+    icon: ImageVector,
+    text: String,
+    isActive: Boolean,
+    activeColor: Color,
+    progress: Float,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    disableInternalClick: Boolean = false
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant
+    val iconTint = resolveVideoActionTint(
+        isActive = isActive,
+        activeColor = activeColor,
+        inactiveColor = inactiveTint
+    )
+    val textTint = resolveVideoActionCountTint(
+        isActive = isActive,
+        activeColor = activeColor,
+        inactiveColor = inactiveTint
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && !disableInternalClick) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "tripleActionButtonScale"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .then(
+                if (disableInternalClick) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    )
+                }
+            )
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(28.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (progress > 0f) {
+                Canvas(modifier = Modifier.size(28.dp)) {
+                    val stroke = 2.5.dp.toPx()
+                    val diameter = size.minDimension - stroke
+                    val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
+
+                    drawArc(
+                        color = activeColor.copy(alpha = 0.18f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = Size(diameter, diameter),
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                    drawArc(
+                        color = activeColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = Size(diameter, diameter),
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = textTint,
+            fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+            maxLines = 1
+        )
     }
 }
 

@@ -58,6 +58,7 @@ import com.android.purebilibili.feature.video.interaction.evaluateInteractiveCho
 import com.android.purebilibili.feature.video.interaction.shouldTriggerInteractiveQuestion
 import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaId
 import com.android.purebilibili.feature.video.ui.feedback.resolveTripleActionFeedbackMessage
+import com.android.purebilibili.feature.video.ui.feedback.resolveTripleActionVisualState
 import com.android.purebilibili.feature.video.subtitle.SubtitleCue
 import com.android.purebilibili.feature.video.subtitle.SubtitleTrackMeta
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
@@ -3922,11 +3923,19 @@ class PlayerViewModel : ViewModel() {
             toast("正在三连")
             interactionUseCase.doTripleAction(current.info.aid)
                 .onSuccess { result ->
-                    var newState = current
-                    if (result.likeSuccess) newState = newState.copy(isLiked = true)
-                    if (result.coinSuccess) newState = newState.copy(coinCount = 2)
-                    if (result.favoriteSuccess) newState = newState.copy(isFavorited = true)
-                    _uiState.value = newState
+                    val visualState = resolveTripleActionVisualState(
+                        currentLiked = current.isLiked,
+                        currentCoinCount = current.coinCount,
+                        currentFavorited = current.isFavorited,
+                        likeSuccess = result.likeSuccess,
+                        coinSuccess = result.coinSuccess,
+                        favoriteSuccess = result.favoriteSuccess
+                    )
+                    _uiState.value = current.copy(
+                        isLiked = visualState.isLiked,
+                        coinCount = visualState.coinCount,
+                        isFavorited = visualState.isFavorited
+                    )
                     if (result.allSuccess) _tripleCelebrationVisible.value = true
                     toast(
                         resolveTripleActionFeedbackMessage(

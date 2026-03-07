@@ -155,15 +155,15 @@ fun TripleSuccessAnimation(
     val resolutionProgress = phaseProgress(currentProgress, convergenceEnd, resolutionEnd)
     val dissolveProgress = phaseProgress(currentProgress, resolutionEnd, 1f)
     val primary = MaterialTheme.colorScheme.primary
-    val surface = MaterialTheme.colorScheme.surface
-    val baseDistance = if (isCompact) 26f else 34f
-    val baseYOffset = if (isCompact) 10f else 14f
-    val iconSize = if (isCompact) 18.dp else 22.dp
-    val containerWidth = if (isCompact) 190.dp else 228.dp
-    val containerHeight = if (isCompact) 82.dp else 104.dp
-    val badgeScale = 0.9f + (resolutionProgress * 0.1f) - (dissolveProgress * 0.04f)
-    val badgeAlpha = (resolutionProgress * (1f - dissolveProgress * 0.6f)).coerceIn(0f, 1f)
-    val trailAlpha = (convergenceProgress * (1f - dissolveProgress)).coerceIn(0f, 1f) * 0.5f
+    val accent = Color.White
+    val baseDistance = if (isCompact) 84f else 102f
+    val baseYOffset = if (isCompact) 58f else 72f
+    val iconSize = if (isCompact) 30.dp else 34.dp
+    val containerWidth = if (isCompact) 260.dp else 320.dp
+    val containerHeight = if (isCompact) 200.dp else 240.dp
+    val badgeScale = 0.74f + (resolutionProgress * 0.4f) - (dissolveProgress * 0.08f)
+    val badgeAlpha = (resolutionProgress * (1f - dissolveProgress * 0.45f)).coerceIn(0f, 1f)
+    val trailAlpha = (convergenceProgress * (1f - dissolveProgress * 0.7f)).coerceIn(0f, 1f) * 0.82f
 
     Box(
         modifier = Modifier
@@ -175,39 +175,60 @@ fun TripleSuccessAnimation(
             val center = Offset(size.width / 2f, size.height / 2f)
             val iconStarts = listOf(
                 Offset(center.x - baseDistance.dp.toPx(), center.y + baseYOffset.dp.toPx()),
-                Offset(center.x, center.y - (baseYOffset + 12f).dp.toPx()),
+                Offset(center.x, center.y - (baseYOffset + 18f).dp.toPx()),
                 Offset(center.x + baseDistance.dp.toPx(), center.y + baseYOffset.dp.toPx())
             )
 
             if (!reducedMotion) {
                 iconStarts.forEach { start ->
-                    val end = center.copy(y = center.y - 2.dp.toPx())
+                    val end = center.copy(y = center.y - 6.dp.toPx())
                     val currentX = lerp(start.x, end.x, convergenceProgress)
                     val currentY = lerp(start.y, end.y, convergenceProgress)
                     drawCircle(
-                        color = primary.copy(alpha = trailAlpha * 0.55f),
-                        radius = if (isCompact) 3.5.dp.toPx() else 4.5.dp.toPx(),
+                        color = primary.copy(alpha = trailAlpha * 0.72f),
+                        radius = if (isCompact) 5.dp.toPx() else 6.dp.toPx(),
                         center = Offset(currentX, currentY)
                     )
                 }
             }
 
             if (badgeAlpha > 0f) {
-                val ringRadius = if (isCompact) 18.dp.toPx() else 22.dp.toPx()
+                val ringRadius = if (isCompact) 42.dp.toPx() else 48.dp.toPx()
+                val burstAlpha = (resolutionProgress * (1f - dissolveProgress)).coerceIn(0f, 1f)
+
+                for (index in 0 until 18) {
+                    val angle = (index * 20f) * (Math.PI / 180f).toFloat()
+                    val distance = ringRadius * (1.15f + resolutionProgress * 0.9f)
+                    val particleCenter = Offset(
+                        x = center.x + kotlin.math.cos(angle) * distance,
+                        y = center.y + kotlin.math.sin(angle) * distance
+                    )
+                    drawCircle(
+                        color = accent.copy(alpha = burstAlpha * 0.9f),
+                        radius = if (index % 3 == 0) 4.dp.toPx() else 2.8.dp.toPx(),
+                        center = particleCenter
+                    )
+                }
+
                 drawCircle(
-                    color = primary.copy(alpha = badgeAlpha * 0.16f),
-                    radius = ringRadius * (1.18f - dissolveProgress * 0.08f),
+                    color = primary.copy(alpha = badgeAlpha * 0.18f),
+                    radius = ringRadius * (1.55f - dissolveProgress * 0.12f),
                     center = center
                 )
                 drawCircle(
                     color = primary.copy(alpha = badgeAlpha * 0.95f),
                     radius = ringRadius,
                     center = center,
-                    style = Stroke(width = if (isCompact) 2.dp.toPx() else 2.5.dp.toPx())
+                    style = Stroke(width = if (isCompact) 3.dp.toPx() else 3.5.dp.toPx())
                 )
                 drawCircle(
-                    color = surface.copy(alpha = badgeAlpha * 0.92f),
-                    radius = ringRadius * 0.66f,
+                    color = primary.copy(alpha = badgeAlpha * 0.88f),
+                    radius = ringRadius * 0.78f,
+                    center = center
+                )
+                drawCircle(
+                    color = accent.copy(alpha = badgeAlpha * 0.95f),
+                    radius = ringRadius * 0.48f,
                     center = center
                 )
             }
@@ -228,7 +249,7 @@ fun TripleSuccessAnimation(
                 image = AppIcons.BiliCoin,
                 tint = primary,
                 baseX = 0f,
-                baseY = -(baseYOffset + 12f),
+                baseY = -(baseYOffset + 18f),
                 activationProgress = iconActivationProgress(activationProgress, 1),
                 convergenceProgress = convergenceProgress,
                 dissolveProgress = dissolveProgress,
@@ -255,24 +276,37 @@ fun TripleSuccessAnimation(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = AppIcons.BiliCoin,
+                imageVector = Icons.Rounded.ThumbUp,
                 contentDescription = null,
                 tint = primary,
-                modifier = Modifier.size(if (isCompact) 16.dp else 18.dp)
+                modifier = Modifier.size(if (isCompact) 26.dp else 30.dp)
             )
         }
 
         Text(
-            text = "三连完成",
-            color = primary.copy(alpha = badgeAlpha),
-            fontSize = if (isCompact) 14.sp else 15.sp,
-            fontWeight = FontWeight.SemiBold,
+            text = "三连完成!",
+            color = accent.copy(alpha = badgeAlpha),
+            fontSize = if (isCompact) 22.sp else 26.sp,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = if (isCompact) (-2).dp else (-4).dp)
+                .offset(y = if (isCompact) (-20).dp else (-28).dp)
                 .graphicsLayer {
                     alpha = badgeAlpha
-                    translationY = (1f - resolutionProgress).coerceIn(0f, 1f) * 8f
+                    translationY = (1f - resolutionProgress).coerceIn(0f, 1f) * 18f
+                }
+        )
+        Text(
+            text = "点赞  投币  收藏",
+            color = accent.copy(alpha = badgeAlpha * 0.9f),
+            fontSize = if (isCompact) 12.sp else 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = if (isCompact) 2.dp else 8.dp)
+                .graphicsLayer {
+                    alpha = badgeAlpha
+                    translationY = (1f - resolutionProgress).coerceIn(0f, 1f) * 12f
                 }
         )
     }

@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.video.ui.feedback
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TripleActionMotionSpecTest {
@@ -26,5 +27,27 @@ class TripleActionMotionSpecTest {
         assertTrue(spec.convergenceDurationMillis == 0)
         assertTrue(spec.resolutionDurationMillis in 120..220)
         assertTrue(spec.dwellDurationMillis in 1000..1600)
+    }
+
+    @Test
+    fun `triple celebration uses center overlay in portrait`() {
+        assertEquals(
+            TripleCelebrationPlacement.CenterOverlay,
+            resolveTripleCelebrationPlacement(
+                isFullscreen = false,
+                isLandscape = false
+            )
+        )
+    }
+
+    @Test
+    fun `triple celebration keeps center overlay in fullscreen`() {
+        assertEquals(
+            TripleCelebrationPlacement.CenterOverlay,
+            resolveTripleCelebrationPlacement(
+                isFullscreen = true,
+                isLandscape = true
+            )
+        )
     }
 }

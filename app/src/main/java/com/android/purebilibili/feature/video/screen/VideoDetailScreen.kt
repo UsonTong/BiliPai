@@ -150,6 +150,8 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
 import com.android.purebilibili.feature.video.ui.components.InteractiveChoiceOverlay
 import com.android.purebilibili.feature.video.ui.feedback.VideoFeedbackAnchor
+import com.android.purebilibili.feature.video.ui.feedback.TripleCelebrationPlacement
+import com.android.purebilibili.feature.video.ui.feedback.resolveTripleCelebrationPlacement
 import com.android.purebilibili.feature.video.ui.feedback.resolveVideoFeedbackPlacement
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -2975,18 +2977,21 @@ fun VideoDetailScreen(
         
         // 🎉 三连成功庆祝动画
         val tripleCelebrationVisible by viewModel.tripleCelebrationVisible.collectAsState()
+        val tripleCelebrationPlacement = resolveTripleCelebrationPlacement(
+            isFullscreen = isFullscreenMode,
+            isLandscape = isLandscape
+        )
         if (tripleCelebrationVisible) {
             Box(
-                modifier = Modifier
-                    .align(feedbackAnchorAlignment)
-                    .padding(
-                        end = if (feedbackPlacement.anchor == VideoFeedbackAnchor.BottomTrailing) feedbackPlacement.sideInsetDp.dp else 0.dp,
-                        bottom = (feedbackPlacement.bottomInsetDp + 90).dp
-                    )
+                modifier = Modifier.align(
+                    when (tripleCelebrationPlacement) {
+                        TripleCelebrationPlacement.CenterOverlay -> Alignment.Center
+                    }
+                )
             ) {
                 TripleSuccessAnimation(
                     visible = true,
-                    isCompact = isFullscreenMode || isLandscape,
+                    isCompact = false,
                     reducedMotion = isReducedActionMotion,
                     onAnimationEnd = { viewModel.dismissTripleCelebration() }
                 )

@@ -8,6 +8,10 @@ data class TripleActionMotionSpec(
     val usesConvergence: Boolean
 )
 
+enum class TripleCelebrationPlacement {
+    CenterOverlay
+}
+
 fun resolveTripleActionMotionSpec(reducedMotion: Boolean): TripleActionMotionSpec {
     return if (reducedMotion) {
         TripleActionMotionSpec(
@@ -26,4 +30,11 @@ fun resolveTripleActionMotionSpec(reducedMotion: Boolean): TripleActionMotionSpe
             usesConvergence = true
         )
     }
+}
+
+fun resolveTripleCelebrationPlacement(
+    isFullscreen: Boolean,
+    isLandscape: Boolean
+): TripleCelebrationPlacement {
+    return TripleCelebrationPlacement.CenterOverlay
 }

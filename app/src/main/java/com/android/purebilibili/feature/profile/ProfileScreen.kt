@@ -1458,6 +1458,7 @@ fun ProfileTripleActionEntry(
     var isLongPressing by remember { mutableStateOf(false) }
     var longPressProgress by remember { mutableFloatStateOf(0f) }
     var showDialog by remember { mutableStateOf(false) }
+    var showCelebration by remember { mutableStateOf(false) }
     val progressDuration = 1500 // 1.5 秒
     
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
@@ -1474,7 +1475,7 @@ fun ProfileTripleActionEntry(
         finishedListener = { progress ->
             if (progress >= 1f && isLongPressing) {
                 haptic(com.android.purebilibili.core.util.HapticType.MEDIUM)
-                showDialog = true
+                showCelebration = true
                 isLongPressing = false
             }
         }
@@ -1514,48 +1515,68 @@ fun ProfileTripleActionEntry(
             }
         )
     }
-    
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isLongPressing = true
-                        val released = tryAwaitRelease()
-                        isLongPressing = false
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            isLongPressing = true
+                            tryAwaitRelease()
+                            isLongPressing = false
+                        }
+                    )
+                },
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 点赞图标 (带进度环)
+            com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+                icon = CupertinoIcons.Outlined.HandThumbsup,
+                text = "149",
+                progress = longPressProgress,
+                progressColor = MaterialTheme.colorScheme.primary,
+                isActive = false
+            )
+
+            // 投币图标
+            com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+                icon = com.android.purebilibili.core.ui.AppIcons.BiliCoin,
+                text = "25",
+                progress = longPressProgress,
+                progressColor = MaterialTheme.colorScheme.primary,
+                isActive = false
+            )
+
+            // 收藏图标
+            com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
+                icon = CupertinoIcons.Outlined.Bookmark,
+                text = "7",
+                progress = longPressProgress,
+                progressColor = MaterialTheme.colorScheme.primary,
+                isActive = false
+            )
+        }
+
+        if (showCelebration) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                com.android.purebilibili.feature.video.ui.components.TripleSuccessAnimation(
+                    visible = true,
+                    reducedMotion = false,
+                    onAnimationEnd = {
+                        showCelebration = false
+                        showDialog = true
                     }
                 )
-            },
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 点赞图标 (带进度环)
-        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
-            icon = CupertinoIcons.Outlined.HandThumbsup,
-            text = "149",
-            progress = longPressProgress,
-            progressColor = MaterialTheme.colorScheme.primary,
-            isActive = false
-        )
-        
-        // 投币图标
-        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
-            icon = com.android.purebilibili.core.ui.AppIcons.BiliCoin,
-            text = "25",
-            progress = longPressProgress,
-            progressColor = Color(0xFFFFB300),
-            isActive = false
-        )
-        
-        // 收藏图标
-        com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
-            icon = CupertinoIcons.Outlined.Bookmark,
-            text = "7",
-            progress = longPressProgress,
-            progressColor = Color(0xFFFFC107),
-            isActive = false
-        )
+            }
+        }
     }
 }
