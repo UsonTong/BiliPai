@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.video.viewmodel
 
+import com.android.purebilibili.feature.video.playback.resolver.PlayInOrderNextSource
+import com.android.purebilibili.feature.video.playback.resolver.resolvePlayInOrderNextSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

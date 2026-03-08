@@ -4,6 +4,7 @@ package com.android.purebilibili.core.util
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.android.purebilibili.data.model.VideoQuality
 
 /**
  * 网络工具类
@@ -68,15 +69,18 @@ object NetworkUtils {
         isLoggedIn: Boolean,
         isVip: Boolean
     ): Int {
+        val autoHighestEnabled = context.getSharedPreferences("quality_settings", Context.MODE_PRIVATE)
+            .getBoolean("auto_highest_quality", false)
         val storedQuality = getDefaultQualityId(context)
-        val effectiveQuality = resolvePlayableDefaultQualityId(
+        val effectiveQuality = resolvePlaybackDefaultQualityId(
             storedQuality = storedQuality,
+            autoHighestEnabled = autoHighestEnabled,
             isLoggedIn = isLoggedIn,
             isVip = isVip
         )
         Logger.d(
             "NetworkUtils",
-            " 获取有效默认画质: stored=$storedQuality, effective=$effectiveQuality, isLoggedIn=$isLoggedIn, isVip=$isVip"
+            " 获取有效默认画质: stored=$storedQuality, autoHighest=$autoHighestEnabled, effective=$effectiveQuality, isLoggedIn=$isLoggedIn, isVip=$isVip"
         )
         return effectiveQuality
     }
@@ -91,6 +95,23 @@ object NetworkUtils {
             else -> "未连接"
         }
     }
+}
+
+internal fun resolvePlaybackDefaultQualityId(
+    storedQuality: Int,
+    autoHighestEnabled: Boolean,
+    isLoggedIn: Boolean,
+    isVip: Boolean
+): Int {
+    if (autoHighestEnabled) {
+        return VideoQuality.SUPER_8K.code
+    }
+
+    return resolvePlayableDefaultQualityId(
+        storedQuality = storedQuality,
+        isLoggedIn = isLoggedIn,
+        isVip = isVip
+    )
 }
 
 internal fun resolvePlayableDefaultQualityId(

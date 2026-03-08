@@ -17,6 +17,7 @@ import coil.decode.ImageDecoderDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.lifecycle.BackgroundManager
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.network.WbiKeyManager
@@ -34,12 +35,10 @@ import com.android.purebilibili.feature.plugin.DanmakuEnhancePlugin
 import com.android.purebilibili.feature.plugin.EyeProtectionPlugin
 import com.android.purebilibili.feature.plugin.SponsorBlockPlugin
 import com.android.purebilibili.feature.plugin.TodayWatchPlugin
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private const val TAG = "PureApplication"
 
@@ -78,6 +77,8 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
             CrashReporter.setAppForegroundState(true)
         }
     }
+
+    private val startupOrchestrator by lazy { AppStartupOrchestrator() }
     
     //  Coil 图片加载器 - 优化内存和磁盘缓存
     override fun newImageLoader(): ImageLoader {
@@ -130,110 +131,87 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
             }
         } else {
-            CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            AppScope.ioScope.launch {
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
             }
         }
-        
-        //  关键初始化（同步，必须在启动时完成）
-        NetworkModule.init(this)
-        TokenManager.init(this)
-        com.android.purebilibili.data.repository.VideoRepository.init(this) //  [新增] 初始化 VideoRepo
-        BackgroundManager.init(this)  // 📱 后台状态管理
-        com.android.purebilibili.core.store.PlayerSettingsCache.init(this) // 🎬 [新增] 播放器设置缓存
-        initPlaylistRestore() // 🎵 [优化] 播放队列恢复可延后，避免阻塞冷启动主线程
-        
-        createNotificationChannel()
-        
-        initTelemetry() // [优化] 埋点初始化支持延后到首屏阶段之后
-        scheduleDex2OatProfileInstall()
-        
-        //  [冷启动优化] 延迟非关键初始化到主线程空闲时 (IdleHandler 确保首帧绘制后再执行)
-        Looper.myQueue().addIdleHandler {
-            // [Moved] 插件系统初始化
-            PluginManager.initialize(this)
-            PluginManager.register(SponsorBlockPlugin())
-            PluginManager.register(AdFilterPlugin())
-            PluginManager.register(DanmakuEnhancePlugin())
-            PluginManager.register(EyeProtectionPlugin())
-            PluginManager.register(TodayWatchPlugin())
-            Logger.d(TAG, " Plugin system initialized with 5 built-in plugins")
 
-            // [Moved] JSON 规则插件系统初始化
-            com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
-            Logger.d(TAG, " JSON plugin system initialized")
-            
-            // [Moved] 下载管理器 initialization (IO heavy)
-            com.android.purebilibili.feature.download.DownloadManager.init(this)
-            
-            // [Moved] 同步配置
-            CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-                val sponsorBlockEnabled = com.android.purebilibili.core.store.SettingsManager
-                    .getSponsorBlockEnabled(this@PureApplication)
-                    .first()
-                PluginManager.setEnabled("sponsor_block", sponsorBlockEnabled)
-                Logger.d(TAG, " SponsorBlock plugin synced: enabled=$sponsorBlockEnabled")
-                
-                SettingsManager.forceDanmakuDefaults(this@PureApplication)
-            }
+        startupOrchestrator.runImmediate(::runStartupTask)
+        startupOrchestrator.scheduleDeferred(::runStartupTask)
+    }
 
-            //  恢复 WBI 密钥缓存
-            WbiKeyManager.restoreFromStorage(this)
-            
-            //  同步应用图标状态（确保只有一个图标在桌面显示）
-            syncAppIconState()
-            
-            //  异步预热 WBI Keys，减少首次视频加载延迟
-            CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-                try {
-                    WbiKeyManager.getWbiKeys()
-                    Logger.d(TAG, " WBI Keys preloaded successfully")
-                } catch (e: Exception) {
-                    android.util.Log.w(TAG, " WBI Keys preload failed: ${e.message}")
-                }
-            }
-            
-            false // 返回 false 表示只执行一次
+    private fun runStartupTask(task: AppStartupTask) {
+        when (task.id) {
+            "network_module_init" -> NetworkModule.init(this)
+            "token_manager_init" -> TokenManager.init(this)
+            "video_repository_init" -> com.android.purebilibili.data.repository.VideoRepository.init(this)
+            "background_manager_init" -> BackgroundManager.init(this)
+            "player_settings_cache_init" -> com.android.purebilibili.core.store.PlayerSettingsCache.init(this)
+            "notification_channel_init" -> createNotificationChannel()
+            "playlist_restore" -> initPlaylistRestoreNow()
+            "telemetry_init" -> initTelemetryNow()
+            "plugin_init" -> initPluginStackNow()
+            "dex2oat_profile_install" -> requestDex2OatProfileInstallNow()
         }
     }
 
-    private fun initPlaylistRestore() {
-        if (shouldDeferPlaylistRestoreAtStartup()) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
-                    com.android.purebilibili.feature.video.player.PlaylistManager.init(this@PureApplication)
-                }
-            }, deferredNonCriticalStartupDelayMs())
-            return
+    private fun initPlaylistRestoreNow() {
+        AppScope.ioScope.launch {
+            com.android.purebilibili.feature.video.player.PlaylistManager.init(this@PureApplication)
         }
-        com.android.purebilibili.feature.video.player.PlaylistManager.init(this)
     }
 
-    private fun initTelemetry() {
-        if (shouldDeferTelemetryInitAtStartup()) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                initCrashlytics()
-                initAnalytics()
-                attachTelemetryListener()
-            }, deferredNonCriticalStartupDelayMs())
-            return
-        }
+    private fun initTelemetryNow() {
         initCrashlytics()
         initAnalytics()
         attachTelemetryListener()
     }
 
-    private fun scheduleDex2OatProfileInstall() {
-        if (!shouldRequestDex2OatProfileInstall(Build.VERSION.SDK_INT)) return
-        Handler(Looper.getMainLooper()).postDelayed({
-            runCatching {
-                ProfileInstaller.writeProfile(this)
-            }.onSuccess {
-                Logger.d(TAG, "📦 Requested ART profile installation for dex2oat")
-            }.onFailure { throwable ->
-                Logger.w(TAG, "⚠️ ART profile installation request failed", throwable)
+    private fun initPluginStackNow() {
+        PluginManager.initialize(this)
+        PluginManager.register(SponsorBlockPlugin())
+        PluginManager.register(AdFilterPlugin())
+        PluginManager.register(DanmakuEnhancePlugin())
+        PluginManager.register(EyeProtectionPlugin())
+        PluginManager.register(TodayWatchPlugin())
+        Logger.d(TAG, " Plugin system initialized with 5 built-in plugins")
+
+        com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
+        Logger.d(TAG, " JSON plugin system initialized")
+
+        com.android.purebilibili.feature.download.DownloadManager.init(this)
+
+        AppScope.ioScope.launch {
+            val sponsorBlockEnabled = com.android.purebilibili.core.store.SettingsManager
+                .getSponsorBlockEnabled(this@PureApplication)
+                .first()
+            PluginManager.setEnabled("sponsor_block", sponsorBlockEnabled)
+            Logger.d(TAG, " SponsorBlock plugin synced: enabled=$sponsorBlockEnabled")
+
+            SettingsManager.forceDanmakuDefaults(this@PureApplication)
+        }
+
+        WbiKeyManager.restoreFromStorage(this)
+        syncAppIconState()
+
+        AppScope.ioScope.launch {
+            try {
+                WbiKeyManager.getWbiKeys()
+                Logger.d(TAG, " WBI Keys preloaded successfully")
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, " WBI Keys preload failed: ${e.message}")
             }
-        }, dex2OatProfileInstallDelayMs())
+        }
+    }
+
+    private fun requestDex2OatProfileInstallNow() {
+        runCatching {
+            ProfileInstaller.writeProfile(this)
+        }.onSuccess {
+            Logger.d(TAG, "📦 Requested ART profile installation for dex2oat")
+        }.onFailure { throwable ->
+            Logger.w(TAG, "⚠️ ART profile installation request failed", throwable)
+        }
     }
 
     private fun attachTelemetryListener() {
@@ -380,7 +358,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
      */
     private fun syncAppIconState() {
         // [Optim] Use IO dispatcher to prevent ANR during startup (PackageManager is heavy)
-        CoroutineScope(Dispatchers.IO).launch {
+        AppScope.ioScope.launch {
             try {
                 val pm = packageManager
                 val packageName = this@PureApplication.packageName

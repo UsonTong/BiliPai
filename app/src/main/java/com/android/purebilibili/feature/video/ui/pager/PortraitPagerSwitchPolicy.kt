@@ -25,6 +25,16 @@ internal fun shouldApplyLoadResult(
     return true
 }
 
+internal fun shouldSkipPortraitReloadForCurrentMedia(
+    currentPlayingBvid: String?,
+    targetBvid: String,
+    currentPlayerMediaId: String?
+): Boolean {
+    val normalizedMediaId = currentPlayerMediaId?.trim().orEmpty()
+    if (normalizedMediaId.isBlank()) return false
+    return currentPlayingBvid == targetBvid && normalizedMediaId == targetBvid
+}
+
 internal fun shouldShowPortraitCover(
     isLoading: Boolean,
     isCurrentPage: Boolean,

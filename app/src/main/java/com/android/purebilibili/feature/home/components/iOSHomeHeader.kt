@@ -69,10 +69,14 @@ internal fun shouldEnableTopTabSecondaryBlur(
     hasHeaderBlur: Boolean,
     topTabMaterialMode: TopTabMaterialMode,
     isScrolling: Boolean,
-    isTransitionRunning: Boolean
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean,
+    keepDisabledAfterMotionSettles: Boolean
 ): Boolean {
     if (!hasHeaderBlur) return false
     if (topTabMaterialMode == TopTabMaterialMode.PLAIN) return false
+    if (forceLowBlurBudget) return false
+    if (keepDisabledAfterMotionSettles) return false
     if (isScrolling || isTransitionRunning) return false
     return true
 }
@@ -117,6 +121,7 @@ fun iOSHomeHeader(
     isScrolling: Boolean = false,
     isTransitionRunning: Boolean = false,
     forceLowBlurBudget: Boolean = false,
+    delaySecondaryBlurRestoreAfterMotion: Boolean = false,
     interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL
 ) {
     val haptic = rememberHapticFeedback()
@@ -159,7 +164,9 @@ fun iOSHomeHeader(
         hasHeaderBlur = hazeState != null,
         topTabMaterialMode = topTabStyle.materialMode,
         isScrolling = isScrolling,
-        isTransitionRunning = isTransitionRunning
+        isTransitionRunning = isTransitionRunning,
+        forceLowBlurBudget = forceLowBlurBudget,
+        keepDisabledAfterMotionSettles = delaySecondaryBlurRestoreAfterMotion
     )
     val isGlassSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val liquidStyle = homeSettings?.liquidGlassStyle ?: LiquidGlassStyle.CLASSIC

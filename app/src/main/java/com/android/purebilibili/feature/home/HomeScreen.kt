@@ -57,10 +57,19 @@ import com.android.purebilibili.feature.home.components.CategoryTabRow
 import com.android.purebilibili.feature.home.components.iOSHomeHeader  //  iOS 大标题头部
 import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  //  iOS 下拉刷新指示器
 import com.android.purebilibili.feature.home.components.HomeInteractionMotionBudget
+import com.android.purebilibili.feature.home.components.HOME_HEADER_SECONDARY_BLUR_RESTORE_DELAY_MS
 import com.android.purebilibili.feature.home.components.resolveHomeInteractionMotionBudget
 import com.android.purebilibili.feature.home.components.resolveHomeDrawerScrimAlpha
 import com.android.purebilibili.feature.home.components.shouldSnapHomeTopTabSelection
 import com.android.purebilibili.feature.home.components.resolveTopTabStyle
+import com.android.purebilibili.feature.home.policy.BottomBarVisibilityIntent
+import com.android.purebilibili.feature.home.policy.HomeBottomBarScrollState
+import com.android.purebilibili.feature.home.policy.reduceHomePreScroll
+import com.android.purebilibili.feature.home.policy.reduceHomeBottomBarListScroll
+import com.android.purebilibili.feature.home.policy.resolveHomeBottomBarBaseVisibility
+import com.android.purebilibili.feature.home.policy.shouldAnimateHomePagerToCategory
+import com.android.purebilibili.feature.home.policy.shouldSwitchHomeCategoryFromPager
+import com.android.purebilibili.feature.home.policy.shouldUseInitialHomePagerSnap
 //  从 cards 子包导入卡片组件
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.home.components.cards.LiveRoomCard
@@ -179,14 +188,15 @@ fun HomeScreen(
                 if (isAtTop) {
                     viewModel.refresh()
                 } else {
-                    val currentIndex = gridState?.firstVisibleItemIndex ?: 0
+                    val listState = requireNotNull(gridState)
+                    val currentIndex = listState.firstVisibleItemIndex
                     val plan = resolveScrollToTopPlan(currentIndex)
                     plan.preJumpIndex?.let { preJump ->
                         if (currentIndex > preJump) {
-                            gridState?.scrollToItem(preJump)
+                            listState.scrollToItem(preJump)
                         }
                     }
-                    gridState?.animateScrollToItem(plan.animateTargetIndex)
+                    listState.animateScrollToItem(plan.animateTargetIndex)
                 }
                 headerOffsetHeightPx = 0f
             }
@@ -213,6 +223,7 @@ fun HomeScreen(
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage) { topCategories.size }
     var hasSyncedPagerWithState by remember(topCategories) { mutableStateOf(false) }
     var programmaticPageSwitchInProgress by remember { mutableStateOf(false) }
+    var delayHeaderSecondaryBlurRestore by remember { mutableStateOf(false) }
     TrackJankStateFlag(
         stateName = "home:pager_swipe",
         isActive = pagerState.isScrollInProgress
@@ -228,14 +239,23 @@ fun HomeScreen(
         snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
             .distinctUntilChanged()
             .collect { (page, scrolling) ->
-                if (scrolling) return@collect
-                val targetCategory = resolveHomeCategoryForTopTab(
-                    index = page,
-                    topCategories = topCategories
-                )
-                if (targetCategory != state.currentCategory) {
-                    viewModel.switchCategory(targetCategory)
+                val currentCategoryIndex = resolveHomeTopTabIndex(state.currentCategory, topCategories)
+                if (!shouldSwitchHomeCategoryFromPager(
+                        hasSyncedPagerWithState = hasSyncedPagerWithState,
+                        pagerCurrentPage = page,
+                        pagerScrolling = scrolling,
+                        currentCategoryIndex = currentCategoryIndex
+                    )
+                ) {
+                    return@collect
                 }
+
+                viewModel.switchCategory(
+                    resolveHomeCategoryForTopTab(
+                        index = page,
+                        topCategories = topCategories
+                    )
+                )
             }
     }
 
@@ -261,15 +281,22 @@ fun HomeScreen(
     LaunchedEffect(state.currentCategory, topCategories) {
         val targetPage = topCategories.indexOf(state.currentCategory)
         if (targetPage < 0) return@LaunchedEffect
-        if (!hasSyncedPagerWithState) {
+        if (shouldUseInitialHomePagerSnap(
+                hasSyncedPagerWithState = hasSyncedPagerWithState,
+                targetPage = targetPage
+            )
+        ) {
             pagerState.scrollToPage(targetPage)
             hasSyncedPagerWithState = true
             return@LaunchedEffect
         }
-        if (
-            targetPage != pagerState.currentPage &&
-            !pagerState.isScrollInProgress &&
-            !programmaticPageSwitchInProgress
+        if (shouldAnimateHomePagerToCategory(
+                hasSyncedPagerWithState = hasSyncedPagerWithState,
+                targetPage = targetPage,
+                pagerCurrentPage = pagerState.currentPage,
+                pagerScrolling = pagerState.isScrollInProgress,
+                programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
+            )
         ) {
             pagerState.animateScrollToPage(targetPage)
         }
@@ -672,11 +699,12 @@ fun HomeScreen(
                     if (isAtTop) {
                         viewModel.refresh()
                     } else {
+                        val listState = requireNotNull(gridState)
                         // [性能优化] 逻辑同上，如果太远先瞬移回来
-                        if ((gridState?.firstVisibleItemIndex ?: 0) > 12) {
-                            gridState?.scrollToItem(12)
+                        if (listState.firstVisibleItemIndex > 12) {
+                            listState.scrollToItem(12)
                         }
-                        gridState?.animateScrollToItem(0)
+                        listState.animateScrollToItem(0)
                     } 
                     headerOffsetHeightPx = 0f
                 }
@@ -729,18 +757,22 @@ fun HomeScreen(
     var isVideoNavigating by remember { mutableStateOf(false) }
     
     //  [新增] 滚动方向检测状态（用于上滑隐藏模式）
-    var lastScrollOffset by remember { mutableIntStateOf(0) }
-    var lastFirstVisibleItem by remember { mutableIntStateOf(0) }
+    var bottomBarScrollState by remember(state.currentCategory) {
+        mutableStateOf(
+            HomeBottomBarScrollState(
+                firstVisibleItem = gridStates[state.currentCategory]?.firstVisibleItemIndex ?: 0,
+                scrollOffset = gridStates[state.currentCategory]?.firstVisibleItemScrollOffset ?: 0
+            )
+        )
+    }
     
     //  [新增] 滚动方向检测逻辑
     LaunchedEffect(state.currentCategory, bottomBarVisibilityMode, useSideNavigation) {
-        if (useSideNavigation) {
-            setBottomBarVisible(false)
-            return@LaunchedEffect
-        }
-        if (bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.SCROLL_HIDE) {
-            // 非滚动隐藏模式时，根据设置决定底栏可见性
-            setBottomBarVisible(bottomBarVisibilityMode == SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE)
+        resolveHomeBottomBarBaseVisibility(
+            useSideNavigation = useSideNavigation,
+            mode = bottomBarVisibilityMode
+        )?.let { isVisible ->
+            setBottomBarVisible(isVisible)
             return@LaunchedEffect
         }
         
@@ -751,31 +783,18 @@ fun HomeScreen(
         }
         .distinctUntilChanged()
         .collect { (firstVisibleItem, scrollOffset) ->
-            // 视频导航期间不处理滚动隐藏
-            if (isVideoNavigating) return@collect
-            
-            // 滚动到顶部时始终显示
-            if (firstVisibleItem == 0 && scrollOffset < 100) {
-                setBottomBarVisible(true)
-            } else {
-                // 计算滚动方向
-                val isScrollingDown = when {
-                    firstVisibleItem > lastFirstVisibleItem -> true
-                    firstVisibleItem < lastFirstVisibleItem -> false
-                    else -> scrollOffset > lastScrollOffset + 200 // [UX优化] 增大迟滞阈值 (30 -> 200) 防止微小抖动
-                }
-                val isScrollingUp = when {
-                    firstVisibleItem < lastFirstVisibleItem -> true
-                    firstVisibleItem > lastFirstVisibleItem -> false
-                    else -> scrollOffset < lastScrollOffset - 200 // [UX优化] 增大迟滞阈值
-                }
-                
-                if (isScrollingDown) setBottomBarVisible(false)
-                if (isScrollingUp) setBottomBarVisible(true)
-                
-                // 更新上次位置（用于下次比较）
-                lastScrollOffset = scrollOffset
-                lastFirstVisibleItem = firstVisibleItem
+            val scrollUpdate = reduceHomeBottomBarListScroll(
+                previousState = bottomBarScrollState,
+                firstVisibleItem = firstVisibleItem,
+                scrollOffset = scrollOffset,
+                isVideoNavigating = isVideoNavigating
+            )
+
+            bottomBarScrollState = scrollUpdate.state
+            when (scrollUpdate.visibilityIntent) {
+                BottomBarVisibilityIntent.SHOW -> setBottomBarVisible(true)
+                BottomBarVisibilityIntent.HIDE -> setBottomBarVisible(false)
+                null -> Unit
             }
         }
     }
@@ -850,41 +869,27 @@ fun HomeScreen(
     val nestedScrollConnection = remember(isHeaderCollapseEnabled, isBottomBarAutoHideEnabled, useSideNavigation, isLiquidGlassEnabled) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                
-                // Update Global Scroll Offset (accumulate)
-                // [优化] 仅当开启流体玻璃特效时才更新全局滚动状态，避免不必要的重组开销
-                resolveNextHomeGlobalScrollOffset(
-                    currentOffset = globalScrollOffset.value,
-                    scrollDeltaY = delta,
-                    liquidGlassEnabled = isLiquidGlassEnabled
-                )?.let { nextOffset ->
+                val scrollUpdate = reduceHomePreScroll(
+                    currentHeaderOffsetPx = headerOffsetHeightPx,
+                    deltaY = available.y,
+                    minHeaderOffsetPx = -headerHeightPx,
+                    isHeaderCollapseEnabled = isHeaderCollapseEnabled,
+                    isBottomBarAutoHideEnabled = isBottomBarAutoHideEnabled,
+                    useSideNavigation = useSideNavigation,
+                    liquidGlassEnabled = isLiquidGlassEnabled,
+                    currentGlobalScrollOffset = globalScrollOffset.value
+                )
+
+                headerOffsetHeightPx = scrollUpdate.headerOffsetPx
+                scrollUpdate.globalScrollOffset?.let { nextOffset ->
                     globalScrollOffset.value = nextOffset
                 }
-                
-                // Header Collapse Logic
-                if (isHeaderCollapseEnabled) {
-                    val newOffset = headerOffsetHeightPx + delta
-                    // Min height: -searchBarHeightPx (Search bar collapsed) OR 0 (Full visible)?
-                    // Actually, we want to collapse SearchBar (-52dp) but keep Tabs?
-                    // Or collapse everything?
-                    // Let's allow collapsing up to -searchBarHeightPx (hide search, keep tabs)
-                    // If we also want to hide tabs, limit = -headerHeightPx
-                    val minOffset = -headerHeightPx // Fully scroll away
-                    headerOffsetHeightPx = newOffset.coerceIn(minOffset, 0f)
-                } else {
-                    headerOffsetHeightPx = 0f // Reset to full height if disabled
+                when (scrollUpdate.bottomBarVisibilityIntent) {
+                    BottomBarVisibilityIntent.SHOW -> bottomBarVisibleState(true)
+                    BottomBarVisibilityIntent.HIDE -> bottomBarVisibleState(false)
+                    null -> Unit
                 }
-                
-                // Bottom Bar Logic
-                if (isBottomBarAutoHideEnabled && !useSideNavigation) {
-                    if (delta < -10) { //  向下滑动 (手指向上) -> 隐藏
-                         bottomBarVisibleState(false)
-                    } else if (delta > 10) { //  向上滑动 (手指向下) -> 显示
-                         bottomBarVisibleState(true)
-                    }
-                }
-                
+
                 return Offset.Zero
             }
         }
@@ -1174,6 +1179,18 @@ fun HomeScreen(
         val isFeedScrollInProgress by remember(activeGridState) {
             derivedStateOf { activeGridState?.isScrollInProgress == true }
         }
+        val isAnyHomeMotionActive =
+            pagerState.isScrollInProgress ||
+                programmaticPageSwitchInProgress ||
+                isFeedScrollInProgress
+        LaunchedEffect(isAnyHomeMotionActive) {
+            if (isAnyHomeMotionActive) {
+                delayHeaderSecondaryBlurRestore = true
+                return@LaunchedEffect
+            }
+            delay(HOME_HEADER_SECONDARY_BLUR_RESTORE_DELAY_MS)
+            delayHeaderSecondaryBlurRestore = false
+        }
         val homeInteractionMotionBudget = resolveHomeInteractionMotionBudget(
             isPagerScrolling = pagerState.isScrollInProgress,
             isProgrammaticPageSwitchInProgress = programmaticPageSwitchInProgress,
@@ -1244,6 +1261,7 @@ fun HomeScreen(
             isScrolling = isFeedScrollInProgress,
             isTransitionRunning = isHeaderTransitionRunning,
             forceLowBlurBudget = forceLowBlurBudget,
+            delaySecondaryBlurRestoreAfterMotion = delayHeaderSecondaryBlurRestore,
             interactionBudget = homeInteractionMotionBudget
         )
 

@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.video.viewmodel
 
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
+import com.android.purebilibili.feature.video.playback.resolver.AudioNextPlaybackStrategy
+import com.android.purebilibili.feature.video.playback.resolver.resolveAudioNextPlaybackStrategy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

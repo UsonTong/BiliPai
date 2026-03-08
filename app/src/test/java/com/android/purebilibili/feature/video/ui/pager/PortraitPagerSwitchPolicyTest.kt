@@ -75,6 +75,31 @@ class PortraitPagerSwitchPolicyTest {
     }
 
     @Test
+    fun shouldSkipPortraitReloadForCurrentMedia_onlyWhenBvidAndMediaIdAlreadyMatch() {
+        assertTrue(
+            shouldSkipPortraitReloadForCurrentMedia(
+                currentPlayingBvid = "BV1xx411c7mD",
+                targetBvid = "BV1xx411c7mD",
+                currentPlayerMediaId = "BV1xx411c7mD"
+            )
+        )
+        assertFalse(
+            shouldSkipPortraitReloadForCurrentMedia(
+                currentPlayingBvid = "BV1xx411c7mD",
+                targetBvid = "BV17x411w7KC",
+                currentPlayerMediaId = "BV1xx411c7mD"
+            )
+        )
+        assertFalse(
+            shouldSkipPortraitReloadForCurrentMedia(
+                currentPlayingBvid = "BV1xx411c7mD",
+                targetBvid = "BV1xx411c7mD",
+                currentPlayerMediaId = " "
+            )
+        )
+    }
+
+    @Test
     fun shouldShowPortraitCover_showOnlyWhenLoadingOrNotReady() {
         assertTrue(
             shouldShowPortraitCover(

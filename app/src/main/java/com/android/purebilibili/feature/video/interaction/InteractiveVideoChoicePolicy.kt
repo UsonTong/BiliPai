@@ -28,6 +28,21 @@ internal fun shouldTriggerInteractiveQuestion(currentPositionMs: Long, triggerTi
     return currentPositionMs >= triggerTimeMs
 }
 
+internal fun resolveInteractiveQuestionPollingIntervalMs(
+    currentPositionMs: Long,
+    triggerTimeMs: Long,
+    isPlaying: Boolean
+): Long {
+    if (!isPlaying) return 1_000L
+    val remainingMs = (triggerTimeMs - currentPositionMs).coerceAtLeast(0L)
+    return when {
+        remainingMs <= 1_000L -> 100L
+        remainingMs <= 5_000L -> 250L
+        remainingMs <= 15_000L -> 500L
+        else -> 1_000L
+    }
+}
+
 internal fun resolveInteractiveAutoChoice(
     choices: List<InteractiveChoiceUiModel>
 ): InteractiveChoiceUiModel? {
@@ -37,6 +52,16 @@ internal fun resolveInteractiveAutoChoice(
 
 internal fun normalizeInteractiveCountdownMs(rawDurationMs: Int): Long? {
     return rawDurationMs.takeIf { it > 0 }?.toLong()
+}
+
+internal fun resolveInteractiveCountdownUpdateIntervalMs(remainingMs: Long): Long {
+    val safeRemainingMs = remainingMs.coerceAtLeast(0L)
+    return when {
+        safeRemainingMs <= 1_000L -> 100L
+        safeRemainingMs <= 3_000L -> 150L
+        safeRemainingMs <= 10_000L -> 250L
+        else -> 500L
+    }
 }
 
 internal fun resolveInteractiveQuestionTriggerMs(edgeStartPositionMs: Long, triggerOffsetMs: Long): Long {

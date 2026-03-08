@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,6 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.theme.PureBiliBiliTheme
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
@@ -77,6 +79,7 @@ import com.android.purebilibili.navigation.AppNavigation
 import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URI
 import java.net.URLEncoder
 import java.net.URLDecoder
@@ -650,7 +653,7 @@ class MainActivity : ComponentActivity() {
         
         if (shouldStartLocalProxyOnAppLaunch()) {
             // Optional warmup path; default keeps proxy off cold-start critical path.
-            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            AppScope.ioScope.launch {
                 try {
                     val started = com.android.purebilibili.feature.cast.LocalProxyServer.ensureStarted()
                     if (started) {
@@ -1449,8 +1452,10 @@ class MainActivity : ComponentActivity() {
      *  解析 b23.tv 短链接并导航
      */
     private fun resolveShortLinkAndNavigate(shortUrl: String) {
-        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-            val fullUrl = com.android.purebilibili.core.util.BilibiliUrlParser.resolveShortUrl(shortUrl)
+        lifecycleScope.launch {
+            val fullUrl = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.android.purebilibili.core.util.BilibiliUrlParser.resolveShortUrl(shortUrl)
+            }
             if (fullUrl != null) {
                 val result = com.android.purebilibili.core.util.BilibiliUrlParser.parse(fullUrl)
                 if (result.isValid) {

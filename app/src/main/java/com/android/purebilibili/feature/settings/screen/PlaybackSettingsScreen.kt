@@ -1162,6 +1162,8 @@ fun PlaybackSettingsContent(
                         .getWifiQuality(context).collectAsState(initial = 80)
                     val mobileQuality by com.android.purebilibili.core.store.SettingsManager
                         .getMobileQuality(context).collectAsState(initial = 64)
+                    val autoHighestQualityEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getAutoHighestQuality(context).collectAsState(initial = false)
                     val directedTrafficEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getBiliDirectedTrafficEnabled(context).collectAsState(initial = false)
                     val isLoggedIn = !TokenManager.sessDataCache.isNullOrEmpty() ||
@@ -1197,16 +1199,41 @@ fun PlaybackSettingsContent(
 
                         Divider()
 
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Sparkles,
+                            title = "自动最高画质",
+                            subtitle = if (autoHighestQualityEnabled) {
+                                "已开启，始终请求账号与设备可用的最高画质"
+                            } else {
+                                "全局开关，开启后覆盖下方 WiFi 和流量默认画质"
+                            },
+                            checked = autoHighestQualityEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setAutoHighestQuality(context, it)
+                                }
+                            },
+                            iconTint = iOSOrange
+                        )
+
+                        Divider()
+
                         IOSSlidingSegmentedSetting(
                             title = "WiFi 默认画质：${getQualityLabel(wifiQuality)}",
-                            subtitle = resolveDefaultQualitySubtitle(
-                                rawQuality = wifiQuality,
-                                fallbackSubtitle = "仅 WiFi 环境生效",
-                                isLoggedIn = isLoggedIn,
-                                isVip = isVip
-                            ),
+                            subtitle = if (autoHighestQualityEnabled) {
+                                "已被自动最高画质覆盖，当前仅保留你的 WiFi 偏好"
+                            } else {
+                                resolveDefaultQualitySubtitle(
+                                    rawQuality = wifiQuality,
+                                    fallbackSubtitle = "仅 WiFi 环境生效",
+                                    isLoggedIn = isLoggedIn,
+                                    isVip = isVip
+                                )
+                            },
                             options = qualityOptions,
                             selectedValue = wifiQuality,
+                            enabled = !autoHighestQualityEnabled,
                             onSelectionChange = { qualityId ->
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager
@@ -1232,6 +1259,8 @@ fun PlaybackSettingsContent(
                         IOSSlidingSegmentedSetting(
                             title = "流量 默认画质：${getQualityLabel(mobileQuality)}",
                             subtitle = when {
+                                autoHighestQualityEnabled ->
+                                    "已被自动最高画质覆盖，当前仅保留你的流量偏好"
                                 isDataSaverActive && mobileQuality > effectiveQuality ->
                                     "省流量模式当前实际最高为 $effectiveQualityLabel"
                                 else -> resolveDefaultQualitySubtitle(
@@ -1243,6 +1272,7 @@ fun PlaybackSettingsContent(
                             },
                             options = qualityOptions,
                             selectedValue = mobileQuality,
+                            enabled = !autoHighestQualityEnabled,
                             onSelectionChange = { qualityId ->
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager

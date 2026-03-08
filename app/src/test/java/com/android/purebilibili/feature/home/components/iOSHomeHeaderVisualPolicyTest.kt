@@ -48,7 +48,9 @@ class iOSHomeHeaderVisualPolicyTest {
                 hasHeaderBlur = true,
                 topTabMaterialMode = TopTabMaterialMode.BLUR,
                 isScrolling = false,
-                isTransitionRunning = false
+                isTransitionRunning = false,
+                forceLowBlurBudget = false,
+                keepDisabledAfterMotionSettles = false
             )
         )
     }
@@ -60,7 +62,9 @@ class iOSHomeHeaderVisualPolicyTest {
                 hasHeaderBlur = true,
                 topTabMaterialMode = TopTabMaterialMode.LIQUID_GLASS,
                 isScrolling = true,
-                isTransitionRunning = false
+                isTransitionRunning = false,
+                forceLowBlurBudget = false,
+                keepDisabledAfterMotionSettles = false
             )
         )
         assertFalse(
@@ -68,7 +72,23 @@ class iOSHomeHeaderVisualPolicyTest {
                 hasHeaderBlur = true,
                 topTabMaterialMode = TopTabMaterialMode.BLUR,
                 isScrolling = false,
-                isTransitionRunning = true
+                isTransitionRunning = true,
+                forceLowBlurBudget = false,
+                keepDisabledAfterMotionSettles = false
+            )
+        )
+    }
+
+    @Test
+    fun `top tab secondary blur stays disabled while restore is delayed after motion`() {
+        assertFalse(
+            shouldEnableTopTabSecondaryBlur(
+                hasHeaderBlur = true,
+                topTabMaterialMode = TopTabMaterialMode.BLUR,
+                isScrolling = false,
+                isTransitionRunning = false,
+                forceLowBlurBudget = false,
+                keepDisabledAfterMotionSettles = true
             )
         )
     }

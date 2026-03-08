@@ -55,9 +55,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
             // Disable PNG crunching to avoid AAPT errors
             isCrunchPngs = false
+            buildConfigField("boolean", "ALLOW_HARDCODED_DNS_FALLBACK", "false")
             // 🔥 启用 R8 代码压缩
             isMinifyEnabled = true
             // 🔥 启用资源压缩 (移除未使用的资源)
@@ -77,6 +77,7 @@ android {
         }
         debug {
             // Debug 构建保持快速编译
+            buildConfigField("boolean", "ALLOW_HARDCODED_DNS_FALLBACK", "true")
             isMinifyEnabled = false
             isShrinkResources = false
         }
@@ -116,6 +117,12 @@ android {
         // 🔥 允许 Android 类在单元测试中返回默认值而非抛出异常
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+        textReport = true
+        abortOnError = true
+    }
     
     // 🔥 自定义 APK 输出文件名
     applicationVariants.configureEach {
@@ -140,6 +147,9 @@ kotlin {
 // }
 
 dependencies {
+    implementation(project(":settings-core"))
+    implementation(project(":network-core"))
+
     // --- 1. Compose UI ---
     implementation(platform("androidx.compose:compose-bom:2025.12.00"))  // 🔥 更新到最新版本
     implementation("androidx.activity:activity-compose:1.11.0")

@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.video.viewmodel
+package com.android.purebilibili.feature.video.policy
 
 import com.android.purebilibili.data.model.response.Page
 import com.android.purebilibili.data.model.response.UgcEpisode

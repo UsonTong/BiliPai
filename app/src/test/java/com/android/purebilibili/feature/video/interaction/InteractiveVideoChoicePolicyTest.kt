@@ -93,4 +93,50 @@ class InteractiveVideoChoicePolicyTest {
         assertEquals(999L, resolveInteractiveChoiceEdgeId(999L, "JUMP 123 700"))
         assertNull(resolveInteractiveChoiceEdgeId(0L, "not_jump"))
     }
+
+    @Test
+    fun `interactive question polling should back off aggressively when playback is paused`() {
+        assertEquals(
+            1_000L,
+            resolveInteractiveQuestionPollingIntervalMs(
+                currentPositionMs = 25_000L,
+                triggerTimeMs = 40_000L,
+                isPlaying = false
+            )
+        )
+    }
+
+    @Test
+    fun `interactive question polling should speed up near trigger point`() {
+        assertEquals(
+            100L,
+            resolveInteractiveQuestionPollingIntervalMs(
+                currentPositionMs = 39_200L,
+                triggerTimeMs = 40_000L,
+                isPlaying = true
+            )
+        )
+    }
+
+    @Test
+    fun `interactive question polling should stay moderate when trigger is still several seconds away`() {
+        assertEquals(
+            500L,
+            resolveInteractiveQuestionPollingIntervalMs(
+                currentPositionMs = 30_000L,
+                triggerTimeMs = 40_000L,
+                isPlaying = true
+            )
+        )
+    }
+
+    @Test
+    fun `interactive countdown should slow updates when there is plenty of time left`() {
+        assertEquals(500L, resolveInteractiveCountdownUpdateIntervalMs(remainingMs = 12_000L))
+    }
+
+    @Test
+    fun `interactive countdown should become tighter near the final second`() {
+        assertEquals(100L, resolveInteractiveCountdownUpdateIntervalMs(remainingMs = 900L))
+    }
 }

@@ -2,6 +2,7 @@
 package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.core.cache.PlayUrlCache
+import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.network.AppSignUtils
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.network.WbiKeyManager
@@ -14,6 +15,7 @@ import com.android.purebilibili.feature.video.subtitle.SubtitleCue
 import com.android.purebilibili.feature.video.subtitle.normalizeBilibiliSubtitleUrl
 import com.android.purebilibili.feature.video.subtitle.parseBiliSubtitleBody
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -195,15 +197,14 @@ object VideoRepository {
     }
 
     // [新增] 预加载首页数据 (在 MainActivity onCreate 调用)
-    fun preloadHomeData() {
+    fun preloadHomeData(scope: CoroutineScope = AppScope.ioScope) {
         if (isPreloading || preloadedHomeVideos != null) return
         isPreloading = true
         hasCompletedHomePreload = false
         
         com.android.purebilibili.core.util.Logger.d("VideoRepo", "🚀 Starting home data preload...")
         
-        // 使用 GlobalScope 或自定义 Scope 确保预加载不被取消
-        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+        scope.launch {
             try {
                 val feedApiType = NetworkModule.appContext
                     ?.let { SettingsManager.getFeedApiTypeSync(it) }

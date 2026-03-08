@@ -118,6 +118,9 @@ import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextConte
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitleDisplayModePreference
+import com.android.purebilibili.feature.video.policy.reduceVideoDetailPostScroll
+import com.android.purebilibili.feature.video.policy.reduceVideoDetailPreScroll
+import com.android.purebilibili.feature.video.policy.resolveVideoDetailCollapseProgress
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitlePreferenceSession
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
@@ -1851,39 +1854,27 @@ fun VideoDetailScreen(
                     val nestedScrollConnection = remember(inlinePortraitScrollEnabled, isPortraitFullscreen) {
                         object : NestedScrollConnection {
                             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                                if (!inlinePortraitScrollEnabled || isPortraitFullscreen) return Offset.Zero
-                                
-                                val delta = available.y
-                                // 上滑 (delta < 0)：隐藏播放器，消费滚动
-                                if (delta < 0) {
-                                    val nextOffset = resolveNextPlayerHeightOffset(
-                                        currentOffsetPx = playerHeightOffsetPx,
-                                        deltaPx = delta,
-                                        minOffsetPx = -collapseRangePx
-                                    ) ?: return Offset.Zero
-                                    val consumed = nextOffset - playerHeightOffsetPx
-                                    playerHeightOffsetPx = nextOffset
-                                    return Offset(0f, consumed)
-                                }
-                                return Offset.Zero
+                                val scrollUpdate = reduceVideoDetailPreScroll(
+                                    currentOffsetPx = playerHeightOffsetPx,
+                                    deltaPx = available.y,
+                                    minOffsetPx = -collapseRangePx,
+                                    inlinePortraitScrollEnabled = inlinePortraitScrollEnabled,
+                                    isPortraitFullscreen = isPortraitFullscreen
+                                ) ?: return Offset.Zero
+                                playerHeightOffsetPx = scrollUpdate.nextOffsetPx
+                                return Offset(0f, scrollUpdate.consumedDeltaPx)
                             }
 
                             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                                if (!inlinePortraitScrollEnabled || isPortraitFullscreen) return Offset.Zero
-                                
-                                val delta = available.y
-                                // 下滑 (delta > 0)：显示播放器 (且 available > 0 说明内容已滚到顶)
-                                if (delta > 0) {
-                                     val nextOffset = resolveNextPlayerHeightOffset(
-                                         currentOffsetPx = playerHeightOffsetPx,
-                                         deltaPx = delta,
-                                         minOffsetPx = -collapseRangePx
-                                     ) ?: return Offset.Zero
-                                     val consumedDelta = nextOffset - playerHeightOffsetPx
-                                     playerHeightOffsetPx = nextOffset
-                                     return Offset(0f, consumedDelta)
-                                }
-                                return Offset.Zero
+                                val scrollUpdate = reduceVideoDetailPostScroll(
+                                    currentOffsetPx = playerHeightOffsetPx,
+                                    deltaPx = available.y,
+                                    minOffsetPx = -collapseRangePx,
+                                    inlinePortraitScrollEnabled = inlinePortraitScrollEnabled,
+                                    isPortraitFullscreen = isPortraitFullscreen
+                                ) ?: return Offset.Zero
+                                playerHeightOffsetPx = scrollUpdate.nextOffsetPx
+                                return Offset(0f, scrollUpdate.consumedDeltaPx)
                             }
                         }
                     }
@@ -1899,11 +1890,11 @@ fun VideoDetailScreen(
                     //  当 playerHeightOffsetPx 为 -videoHeightPx 时，高度只剩 statusBarHeight
                     //  [Fix] 竖屏全屏模式下强制高度不受偏移影响
                     val playerHeightOffset = if (isPortraitFullscreen) 0f else playerHeightOffsetPx
-                    val collapseProgress = if (collapseRangePx > 0f) {
-                        (abs(playerHeightOffset) / collapseRangePx).coerceIn(0f, 1f)
-                    } else {
-                        0f
-                    }
+                    val collapseProgress = resolveVideoDetailCollapseProgress(
+                        playerHeightOffsetPx = playerHeightOffset,
+                        collapseRangePx = collapseRangePx,
+                        isPortraitFullscreen = isPortraitFullscreen
+                    )
                     val expandedViewportHeight = if (useOfficialInlinePortraitDetailExperience) {
                         expandedPortraitInlineSpec.heightDp.dp
                     } else {

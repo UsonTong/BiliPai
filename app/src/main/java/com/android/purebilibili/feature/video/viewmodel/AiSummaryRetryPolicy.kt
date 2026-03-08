@@ -10,8 +10,23 @@ private val AI_SUMMARY_AUTO_RETRY_DELAYS_MS = listOf(
 )
 
 internal fun resolveAiSummaryRetryDelayMs(queuedRetryCount: Int): Long {
-    return AI_SUMMARY_AUTO_RETRY_DELAYS_MS.getOrElse(queuedRetryCount) {
+    return resolveAiSummaryRetryDelayMs(
+        queuedRetryCount = queuedRetryCount,
+        isInBackground = false
+    )
+}
+
+internal fun resolveAiSummaryRetryDelayMs(
+    queuedRetryCount: Int,
+    isInBackground: Boolean
+): Long {
+    val baseDelayMs = AI_SUMMARY_AUTO_RETRY_DELAYS_MS.getOrElse(queuedRetryCount) {
         AI_SUMMARY_AUTO_RETRY_DELAYS_MS.last()
+    }
+    return if (isInBackground) {
+        maxOf(baseDelayMs, 15_000L)
+    } else {
+        baseDelayMs
     }
 }
 

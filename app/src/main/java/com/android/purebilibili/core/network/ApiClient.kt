@@ -3,6 +3,8 @@ package com.android.purebilibili.core.network
 
 import android.content.Context
 import com.android.purebilibili.BuildConfig
+import com.android.purebilibili.core.network.policy.resolveHardcodedDnsFallback
+import com.android.purebilibili.core.network.policy.shouldEnableTrustAllCertificates
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.data.model.response.*
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -1263,7 +1265,7 @@ object NetworkModule {
             .followRedirects(true)
             .followSslRedirects(true)
         
-        if (BuildConfig.DEBUG) {
+        if (shouldEnableTrustAllCertificates(BuildConfig.DEBUG)) {
             val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
                 override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
                 override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
@@ -1287,19 +1289,16 @@ object NetworkModule {
                     return addresses
                 } catch (e: Exception) {
                     com.android.purebilibili.core.util.Logger.e("ApiClient", "DNS failed for $hostname: ${e.message}")
-                    // 🔥 [Last Resort] 如果系统 DNS 失败，尝试硬编码 IP (仅针对 api.bilibili.com)
-                    if (hostname == "api.bilibili.com") {
-                        val fallbackIp = "47.103.24.173" // Bilibili 上海阿里云 IP
-                        com.android.purebilibili.core.util.Logger.w("ApiClient", "⚠️ Using Hardcoded IP for API: $fallbackIp")
-                        return listOf(java.net.InetAddress.getByName(fallbackIp))
-                    } else if (hostname == "passport.bilibili.com") {
-                        val fallbackIp = "47.103.24.175" // Passport IP (Approx)
-                        com.android.purebilibili.core.util.Logger.w("ApiClient", "⚠️ Using Hardcoded IP for Passport: $fallbackIp")
-                        return listOf(java.net.InetAddress.getByName(fallbackIp))
-                    } else if (hostname == "i0.hdslb.com") {
-                        val fallbackIp = "116.63.10.36" // Bilibili CDN IP
-                        com.android.purebilibili.core.util.Logger.w("ApiClient", "⚠️ Using Hardcoded IP for Images: $fallbackIp")
-                        return listOf(java.net.InetAddress.getByName(fallbackIp))
+                    val fallback = resolveHardcodedDnsFallback(
+                        hostname = hostname,
+                        allowHardcodedIpFallback = BuildConfig.ALLOW_HARDCODED_DNS_FALLBACK
+                    )
+                    if (fallback != null) {
+                        com.android.purebilibili.core.util.Logger.w(
+                            "ApiClient",
+                            "⚠️ Using Hardcoded IP for ${fallback.description}: ${fallback.ipAddress}"
+                        )
+                        return listOf(java.net.InetAddress.getByName(fallback.ipAddress))
                     }
                     throw e
                 }

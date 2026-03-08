@@ -43,4 +43,29 @@ class AiSummaryRetryPolicyTest {
             )
         )
     }
+
+    @Test
+    fun queuedSummaryRetryDelayShouldBackOffFurtherInBackground() {
+        assertEquals(
+            2_500L,
+            resolveAiSummaryRetryDelayMs(
+                queuedRetryCount = 0,
+                isInBackground = false
+            )
+        )
+        assertEquals(
+            15_000L,
+            resolveAiSummaryRetryDelayMs(
+                queuedRetryCount = 0,
+                isInBackground = true
+            )
+        )
+        assertEquals(
+            20_000L,
+            resolveAiSummaryRetryDelayMs(
+                queuedRetryCount = 3,
+                isInBackground = true
+            )
+        )
+    }
 }

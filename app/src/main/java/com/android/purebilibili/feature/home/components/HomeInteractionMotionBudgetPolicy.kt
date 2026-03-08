@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
+internal const val HOME_HEADER_SECONDARY_BLUR_RESTORE_DELAY_MS = 120L
+
 enum class HomeInteractionMotionBudget {
     FULL,
     REDUCED

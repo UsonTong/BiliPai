@@ -1,4 +1,4 @@
-package com.android.purebilibili.feature.video.viewmodel
+package com.android.purebilibili.feature.video.policy
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
