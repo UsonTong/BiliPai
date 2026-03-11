@@ -6,15 +6,15 @@ internal data class BottomBarVisualEffectState(
 )
 
 internal fun resolveBottomBarBlurToggleState(
-    enableBottomBarBlur: Boolean
+    enableBottomBarBlur: Boolean,
+    currentLiquidGlassEnabled: Boolean
 ): BottomBarVisualEffectState {
-    // Keep visual style stable and avoid ending up in a fully opaque white bar:
-    // - turning blur on disables liquid glass
-    // - turning blur off restores liquid glass
+    // The two effects are mutually exclusive only when enabling one of them.
+    // Turning an effect off should preserve the user's current choice for the other one.
     val nextLiquidGlassEnabled = if (enableBottomBarBlur) {
         false
     } else {
-        true
+        currentLiquidGlassEnabled
     }
     return BottomBarVisualEffectState(
         bottomBarBlurEnabled = enableBottomBarBlur,
@@ -23,10 +23,11 @@ internal fun resolveBottomBarBlurToggleState(
 }
 
 internal fun resolveLiquidGlassToggleState(
-    enableLiquidGlass: Boolean
+    enableLiquidGlass: Boolean,
+    currentBottomBarBlurEnabled: Boolean
 ): BottomBarVisualEffectState {
     return BottomBarVisualEffectState(
-        bottomBarBlurEnabled = !enableLiquidGlass,
+        bottomBarBlurEnabled = if (enableLiquidGlass) false else currentBottomBarBlurEnabled,
         liquidGlassEnabled = enableLiquidGlass
     )
 }

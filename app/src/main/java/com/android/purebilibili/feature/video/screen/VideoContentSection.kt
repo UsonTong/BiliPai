@@ -79,6 +79,30 @@ import kotlin.math.abs
 
 internal fun shouldShowDanmakuSendInput(isPlayerCollapsed: Boolean): Boolean = !isPlayerCollapsed
 
+internal data class VideoContentTabBarDanmakuActionLayoutPolicy(
+    val toggleIconSizeDp: Int,
+    val toggleHorizontalPaddingDp: Int,
+    val toggleVerticalPaddingDp: Int,
+    val sendHorizontalPaddingDp: Int,
+    val sendVerticalPaddingDp: Int,
+    val sendBadgeSizeDp: Int,
+    val settingsButtonSizeDp: Int,
+    val settingsIconSizeDp: Int
+)
+
+internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(): VideoContentTabBarDanmakuActionLayoutPolicy {
+    return VideoContentTabBarDanmakuActionLayoutPolicy(
+        toggleIconSizeDp = 16,
+        toggleHorizontalPaddingDp = 10,
+        toggleVerticalPaddingDp = 6,
+        sendHorizontalPaddingDp = 12,
+        sendVerticalPaddingDp = 8,
+        sendBadgeSizeDp = 22,
+        settingsButtonSizeDp = 40,
+        settingsIconSizeDp = 20
+    )
+}
+
 /**
  * 视频详情内容区域
  * 从 VideoDetailScreen.kt 提取出来，提高代码可维护性
@@ -335,10 +359,14 @@ fun VideoContentSection(
                 CollectionSheet(
                     ugcSeason = season,
                     currentBvid = info.bvid,
+                    currentCid = info.cid,
                     onDismiss = { showCollectionSheet = false },
                     onEpisodeClick = { episode ->
                         showCollectionSheet = false
-                        onRelatedVideoClick(episode.bvid, null)
+                        onRelatedVideoClick(
+                            episode.bvid,
+                            buildVideoNavigationOptions(targetCid = episode.cid)
+                        )
                     }
                 )
             }
@@ -752,6 +780,7 @@ private fun VideoHeaderContent(
             CollectionRow(
                 ugcSeason = season,
                 currentBvid = info.bvid,
+                currentCid = info.cid,
                 onClick = onOpenCollectionSheet
             )
         }
@@ -860,6 +889,7 @@ private fun VideoContentTabBar(
     isPlayerCollapsed: Boolean = false,
     onRestorePlayer: () -> Unit = {}
 ) {
+    val danmakuActionLayoutPolicy = remember { resolveVideoContentTabBarDanmakuActionLayoutPolicy() }
     Column(
         modifier = modifier
     ) {
@@ -955,13 +985,16 @@ private fun VideoContentTabBar(
                         indication = null,
                         onClick = onDanmakuToggle
                     )
-                    .padding(horizontal = 8.dp, vertical = 5.dp)
+                    .padding(
+                        horizontal = danmakuActionLayoutPolicy.toggleHorizontalPaddingDp.dp,
+                        vertical = danmakuActionLayoutPolicy.toggleVerticalPaddingDp.dp
+                    )
             ) {
                 Icon(
                     imageVector = if (danmakuEnabled) CupertinoIcons.Filled.TextBubble else CupertinoIcons.Outlined.TextBubble,
                     contentDescription = if (danmakuEnabled) "关闭弹幕" else "开启弹幕",
                     tint = if (danmakuEnabled) danmakuActiveColor else danmakuInactiveColor,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(danmakuActionLayoutPolicy.toggleIconSizeDp.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -986,7 +1019,10 @@ private fun VideoContentTabBar(
                             android.util.Log.d("VideoContentSection", "📤 点我发弹幕 clicked!")
                             onDanmakuSendClick()
                         }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(
+                            horizontal = danmakuActionLayoutPolicy.sendHorizontalPaddingDp.dp,
+                            vertical = danmakuActionLayoutPolicy.sendVerticalPaddingDp.dp
+                        )
                 ) {
                     Text(
                         text = "点我发弹幕",
@@ -996,7 +1032,7 @@ private fun VideoContentTabBar(
                     Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(danmakuActionLayoutPolicy.sendBadgeSizeDp.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
@@ -1011,16 +1047,22 @@ private fun VideoContentTabBar(
                 }
             }
 
-            IconButton(
-                onClick = onDanmakuSettingsClick,
-                modifier = Modifier.size(36.dp)
+            Surface(
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .size(danmakuActionLayoutPolicy.settingsButtonSizeDp.dp)
+                    .clickable(onClick = onDanmakuSettingsClick),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                Icon(
-                    imageVector = CupertinoIcons.Default.Gearshape,
-                    contentDescription = "弹幕设置",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = CupertinoIcons.Default.Gearshape,
+                        contentDescription = "弹幕设置",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(danmakuActionLayoutPolicy.settingsIconSizeDp.dp)
+                    )
+                }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))

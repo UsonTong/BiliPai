@@ -37,11 +37,16 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.Play
 fun CollectionSheet(
     ugcSeason: UgcSeason,
     currentBvid: String,
+    currentCid: Long = 0L,
     onDismiss: () -> Unit,
     onEpisodeClick: (UgcEpisode) -> Unit
 ) {
     val allEpisodes = ugcSeason.sections.flatMap { it.episodes }
-    val currentIndex = allEpisodes.indexOfFirst { it.bvid == currentBvid }
+    val currentIndex = resolveCurrentUgcEpisodeIndex(
+        episodes = allEpisodes,
+        currentBvid = currentBvid,
+        currentCid = currentCid
+    )
     
     com.android.purebilibili.core.ui.IOSModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -109,7 +114,11 @@ fun CollectionSheet(
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 itemsIndexed(allEpisodes) { index, episode ->
-                    val isCurrentEpisode = episode.bvid == currentBvid
+                    val isCurrentEpisode = isCurrentUgcEpisode(
+                        currentBvid = currentBvid,
+                        currentCid = currentCid,
+                        episode = episode
+                    )
                     
                     Row(
                         modifier = Modifier

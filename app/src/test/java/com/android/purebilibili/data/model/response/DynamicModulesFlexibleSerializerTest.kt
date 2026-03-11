@@ -175,4 +175,79 @@ class DynamicModulesFlexibleSerializerTest {
             modules?.module_dynamic?.major?.opus?.pics?.firstOrNull()?.url
         )
     }
+
+    @Test
+    fun dynamicDetailResponse_prefersFullOpusParagraphsOverPreviewDescWhenBothExist() {
+        val payload = """
+            {
+              "code": 0,
+              "data": {
+                "item": {
+                  "id_str": "172792986898006024",
+                  "modules": [
+                    {
+                      "module_dynamic": {
+                        "desc": {
+                          "text": "预览摘要"
+                        },
+                        "major": {
+                          "type": "MAJOR_TYPE_OPUS",
+                          "opus": {
+                            "summary": {
+                              "text": "预览摘要"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "module_type": "MODULE_TYPE_TITLE",
+                      "module_title": {
+                        "text": "完整标题"
+                      }
+                    },
+                    {
+                      "module_type": "MODULE_TYPE_CONTENT",
+                      "module_content": {
+                        "paragraphs": [
+                          {
+                            "para_type": 1,
+                            "text": {
+                              "nodes": [
+                                {
+                                  "word": {
+                                    "words": "第一段完整内容"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "para_type": 1,
+                            "text": {
+                              "nodes": [
+                                {
+                                  "word": {
+                                    "words": "第二段完整内容"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+        """.trimIndent()
+
+        val response = json.decodeFromString<DynamicDetailResponse>(payload)
+        val modules = response.data?.item?.modules
+
+        assertEquals("第一段完整内容\n第二段完整内容", modules?.module_dynamic?.desc?.text)
+        assertEquals("完整标题", modules?.module_dynamic?.major?.opus?.title)
+        assertEquals("第一段完整内容\n第二段完整内容", modules?.module_dynamic?.major?.opus?.summary?.text)
+    }
 }

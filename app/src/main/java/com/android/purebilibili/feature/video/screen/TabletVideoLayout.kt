@@ -669,6 +669,7 @@ private fun ScrollableVideoInfoSection(
             CollectionSheet(
                 ugcSeason = season,
                 currentBvid = info.bvid,
+                currentCid = info.cid,
                 onDismiss = { showCollectionSheet = false },
                 onEpisodeClick = { episode ->
                     showCollectionSheet = false
@@ -676,10 +677,10 @@ private fun ScrollableVideoInfoSection(
                     val options = activity?.let { 
                         android.app.ActivityOptions.makeSceneTransitionAnimation(it).toBundle() 
                     }
-                    val navOptions = android.os.Bundle(options ?: android.os.Bundle.EMPTY)
-                    if (episode.cid > 0L) {
-                        navOptions.putLong(VIDEO_NAV_TARGET_CID_KEY, episode.cid)
-                    }
+                    val navOptions = buildVideoNavigationOptions(
+                        base = options,
+                        targetCid = episode.cid
+                    )
                     onRelatedVideoClick(episode.bvid, navOptions)
                 }
             )
@@ -738,6 +739,7 @@ private fun ScrollableVideoInfoSection(
                 CollectionRow(
                     ugcSeason = season,
                     currentBvid = info.bvid,
+                    currentCid = info.cid,
                     onClick = { showCollectionSheet = true }
                 )
             }

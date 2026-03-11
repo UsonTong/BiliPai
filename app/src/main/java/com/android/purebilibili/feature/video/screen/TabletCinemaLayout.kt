@@ -450,16 +450,11 @@ private fun CinemaMetaPanel(
             CollectionSheet(
                 ugcSeason = season,
                 currentBvid = success.info.bvid,
+                currentCid = success.info.cid,
                 onDismiss = { showCollectionSheet = false },
                 onEpisodeClick = { episode ->
                     showCollectionSheet = false
-                    val navOptions = if (episode.cid > 0L) {
-                        android.os.Bundle().apply {
-                            putLong(VIDEO_NAV_TARGET_CID_KEY, episode.cid)
-                        }
-                    } else {
-                        null
-                    }
+                    val navOptions = buildVideoNavigationOptions(targetCid = episode.cid)
                     onCollectionEpisodeClick(episode.bvid, navOptions)
                 }
             )
@@ -538,6 +533,7 @@ private fun CinemaMetaPanel(
                             CollectionRow(
                                 ugcSeason = season,
                                 currentBvid = success.info.bvid,
+                                currentCid = success.info.cid,
                                 onClick = { showCollectionSheet = true }
                             )
                         }

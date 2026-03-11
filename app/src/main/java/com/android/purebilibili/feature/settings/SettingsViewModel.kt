@@ -479,7 +479,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleBottomBarBlur(value: Boolean) { 
         viewModelScope.launch { 
             val resolved = resolveBottomBarBlurToggleState(
-                enableBottomBarBlur = value
+                enableBottomBarBlur = value,
+                currentLiquidGlassEnabled = state.value.isLiquidGlassEnabled
             )
             SettingsManager.setBottomBarBlurEnabled(context, resolved.bottomBarBlurEnabled)
             SettingsManager.setLiquidGlassEnabled(context, resolved.liquidGlassEnabled)
@@ -546,7 +547,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // [New] Liquid Glass
     fun toggleLiquidGlass(enabled: Boolean) {
         viewModelScope.launch {
-            val resolved = resolveLiquidGlassToggleState(enabled)
+            val resolved = resolveLiquidGlassToggleState(
+                enableLiquidGlass = enabled,
+                currentBottomBarBlurEnabled = state.value.bottomBarBlurEnabled
+            )
             SettingsManager.setLiquidGlassEnabled(context, resolved.liquidGlassEnabled)
             SettingsManager.setBottomBarBlurEnabled(context, resolved.bottomBarBlurEnabled)
         }

@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-03-11 · 文档已同步至 v6.9.5（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-03-11 · 文档已同步至 v6.9.6（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-6.9.5-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-6.9.6-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -559,12 +559,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v6.9.5 · 2026-03-11)
+### 最近更新 (v6.9.6 · 2026-03-11)
 
-- ✨ **首页玻璃风格统一**：首页顶部搜索框、设置按钮、分类壳与底栏统一到同一套模糊 / 液态玻璃视觉语言，并补齐深浅色可读性适配。
-- 🪟 **卡片信息改为样式开关**：外观设置里的首页玻璃开关现在只控制封面与信息区的玻璃胶囊样式，关闭后播放量、评论量、时长等信息仍会继续显示。
-- 🎬 **播放器显式播放控制修复**：时间戳跳转、双击播放/暂停、播完重播等入口统一走显式 prepare + play 路径，避免 `STATE_IDLE` 下出现点击后不播放的情况。
-- 💬 **播放中评论回复保持可见**：修复视频播放时评论楼层回复预览消失、暂停后才恢复的问题，轻量渲染下仍会显示回复区。
+- ✨ **动态详情与评论链路重写**：动态详情按桌面动态接口重新解析，补齐 `opus` 正文内容合并，评论读取也改为按真实 `oid/type` 和评论总数选择正确线程。
+- 💬 **动态楼中楼补全**：动态评论弹层现在支持楼中楼预览、查看回复入口和二级评论拉取，不再只能看到主评论单层列表。
+- ⚙️ **视觉开关联动修复**：修复关闭底栏磨砂会自动打开液态玻璃，以及关闭液态玻璃会反向打开底栏磨砂的问题。
+- 📺 **合集分集跳转修复**：修复合集/分集视频里切到其他集后偶发跳回第一集的问题，相关跳转现在会保留正确的 `cid`。
 
 ### 历史版本
 

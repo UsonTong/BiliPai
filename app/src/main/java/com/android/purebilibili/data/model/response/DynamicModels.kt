@@ -151,28 +151,60 @@ object DynamicModulesFlexibleSerializer : KSerializer<DynamicModules> {
         pics: List<OpusPic>
     ): DynamicModules {
         val existing = module_dynamic
-        val hasExistingRenderable = existing?.desc?.text?.isNotBlank() == true || existing?.major != null
-        if (hasExistingRenderable) return this
-
         val descText = paragraphTexts.joinToString(separator = "\n").trim()
         val cleanTitle = title?.trim().takeUnless { it.isNullOrBlank() }
         val hasDerivedContent = descText.isNotBlank() || pics.isNotEmpty() || cleanTitle != null
         if (!hasDerivedContent) return this
 
-        val derivedDesc = if (descText.isNotBlank()) DynamicDesc(text = descText) else null
-        val derivedOpus = OpusMajor(
-            title = cleanTitle,
-            summary = if (descText.isNotBlank()) OpusSummary(text = descText) else null,
-            pics = pics
+        val existingDesc = existing?.desc
+        val existingDescText = existingDesc?.text.orEmpty()
+        val mergedDescText = when {
+            descText.isBlank() -> existingDescText
+            existingDescText.isBlank() -> descText
+            descText.length > existingDescText.length -> descText
+            else -> existingDescText
+        }
+        val mergedDesc = if (mergedDescText.isNotBlank()) {
+            DynamicDesc(
+                text = mergedDescText,
+                rich_text_nodes = if (mergedDescText == existingDescText) {
+                    existingDesc?.rich_text_nodes.orEmpty()
+                } else {
+                    emptyList()
+                }
+            )
+        } else {
+            null
+        }
+
+        val existingMajor = existing?.major
+        val existingOpus = existingMajor?.opus
+        val mergedOpus = OpusMajor(
+            jump_url = existingOpus?.jump_url.orEmpty(),
+            title = cleanTitle ?: existingOpus?.title,
+            summary = when {
+                mergedDescText.isNotBlank() -> OpusSummary(text = mergedDescText)
+                existingOpus?.summary != null -> existingOpus.summary
+                else -> null
+            },
+            pics = if (pics.isNotEmpty()) pics else existingOpus?.pics.orEmpty()
         )
-        val derivedMajor = DynamicMajor(
+        val mergedMajor = DynamicMajor(
             type = "MAJOR_TYPE_OPUS",
-            opus = derivedOpus
+            archive = existingMajor?.archive,
+            draw = existingMajor?.draw,
+            live_rcmd = existingMajor?.live_rcmd,
+            opus = mergedOpus,
+            ugc_season = existingMajor?.ugc_season
         )
         return copy(
             module_dynamic = DynamicContentModule(
-                desc = derivedDesc,
-                major = derivedMajor
+                desc = mergedDesc ?: existingDesc,
+                major = if (existingMajor == null || existingMajor.type.isBlank() || existingMajor.type == "MAJOR_TYPE_OPUS") {
+                    mergedMajor
+                } else {
+                    existingMajor
+                }
             )
         )
     }

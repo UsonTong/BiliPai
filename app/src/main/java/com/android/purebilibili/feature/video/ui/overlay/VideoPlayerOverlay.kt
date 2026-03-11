@@ -342,7 +342,7 @@ fun VideoPlayerOverlay(
     onCoin: () -> Unit = {},
     onToggleFavorite: () -> Unit = {},
     // 复用 onRelatedVideoClick 或 onVideoClick
-    onDrawerVideoClick: (String) -> Unit = {},
+    onDrawerVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> },
     // 分P
     pages: List<com.android.purebilibili.data.model.response.Page> = emptyList(),
     currentPageIndex: Int = 0,
@@ -701,7 +701,7 @@ fun VideoPlayerOverlay(
                         val target = nextEpisodeTarget
                         when {
                             target?.nextPageIndex != null -> onPageSelect(target.nextPageIndex)
-                            !target?.nextBvid.isNullOrBlank() -> onDrawerVideoClick(target?.nextBvid ?: "")
+                            !target?.nextBvid.isNullOrBlank() -> onDrawerVideoClick(target?.nextBvid ?: "", null)
                         }
                     },
                     hasNextEpisode = nextEpisodeTarget != null,
@@ -1170,12 +1170,13 @@ fun VideoPlayerOverlay(
             relatedVideos = relatedVideos,
             ugcSeason = ugcSeason,
             currentBvid = bvid,
+            currentCid = cid,
             ownerName = videoOwnerName,
             ownerFace = videoOwnerFace,
             isFollowed = isFollowed,
             onToggleFollow = onToggleFollow,
-            onVideoClick = { vid ->
-                onDrawerVideoClick(vid)
+            onVideoClick = { vid, options ->
+                onDrawerVideoClick(vid, options)
                 showEndDrawer = false
             },
             hazeState = drawerHazeState,
@@ -1393,6 +1394,7 @@ fun LandscapeEndDrawer(
     relatedVideos: List<com.android.purebilibili.data.model.response.RelatedVideo>,
     ugcSeason: com.android.purebilibili.data.model.response.UgcSeason?,
     currentBvid: String,
+    currentCid: Long,
     // UP Info
     ownerName: String,
     ownerFace: String,
@@ -1400,7 +1402,7 @@ fun LandscapeEndDrawer(
     isFollowed: Boolean,
     // Callbacks
     onToggleFollow: () -> Unit,
-    onVideoClick: (String) -> Unit,
+    onVideoClick: (String, android.os.Bundle?) -> Unit,
     hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
@@ -1596,7 +1598,7 @@ fun LandscapeEndDrawer(
                                         screenWidthDp = configuration.screenWidthDp,
                                         motionTier = overlayMotionTier,
                                         isCurrent = video.bvid == currentBvid,
-                                        onClick = { onVideoClick(video.bvid) }
+                                        onClick = { onVideoClick(video.bvid, null) }
                                     )
                                 }
                             }
@@ -1622,8 +1624,19 @@ fun LandscapeEndDrawer(
                                             layoutPolicy = layoutPolicy,
                                             screenWidthDp = configuration.screenWidthDp,
                                             motionTier = overlayMotionTier,
-                                            isCurrent = episode.bvid == currentBvid,
-                                            onClick = { onVideoClick(episode.bvid) }
+                                            isCurrent = com.android.purebilibili.feature.video.ui.components.isCurrentUgcEpisode(
+                                                currentBvid = currentBvid,
+                                                currentCid = currentCid,
+                                                episode = episode
+                                            ),
+                                            onClick = {
+                                                onVideoClick(
+                                                    episode.bvid,
+                                                    com.android.purebilibili.feature.video.screen.buildVideoNavigationOptions(
+                                                        targetCid = episode.cid
+                                                    )
+                                                )
+                                            }
                                         )
                                     }
                                 }

@@ -51,6 +51,7 @@ import com.android.purebilibili.feature.dynamic.components.DynamicTopBarWithTabs
 import com.android.purebilibili.feature.dynamic.components.DynamicDisplayMode
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentSheet
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
+import com.android.purebilibili.feature.video.ui.components.SubReplySheet
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -103,6 +104,7 @@ fun DynamicScreen(
     val selectedDynamicId by viewModel.selectedDynamicId.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val commentsLoading by viewModel.commentsLoading.collectAsState()
+    val subReplyState by viewModel.subReplyState.collectAsState()
     val likedDynamics by viewModel.likedDynamics.collectAsState()
     var showRepostDialog by remember { mutableStateOf<String?>(null) }  // 存储要转发的动态ID
     
@@ -510,9 +512,17 @@ fun DynamicScreen(
                 viewModel.postComment(dynamicId, message) { success, msg ->
                     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                 }
-            }
+            },
+            onViewReplies = { reply -> viewModel.openSubReply(reply) }
         )
     }
+
+    SubReplySheet(
+        state = subReplyState,
+        emoteMap = emptyMap(),
+        onDismiss = { viewModel.closeSubReply() },
+        onLoadMore = { viewModel.loadMoreSubReplies() }
+    )
     
     //  [新增] 转发弹窗
     showRepostDialog?.let { dynamicId ->

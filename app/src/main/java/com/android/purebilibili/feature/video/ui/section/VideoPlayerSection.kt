@@ -2967,8 +2967,8 @@ fun VideoPlayerSection(
                 onDislike = onDislike,
                 onCoin = onCoin,
                 onToggleFavorite = onToggleFavorite,
-                onDrawerVideoClick = { vid ->
-                    onRelatedVideoClick(vid, null) 
+                onDrawerVideoClick = { vid, options ->
+                    onRelatedVideoClick(vid, options) 
                 },
                 pages = uiState.info.pages,
                 currentPageIndex = currentPageIndex,

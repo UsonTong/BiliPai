@@ -611,6 +611,7 @@ fun AudioModeScreen(
             CollectionSheet(
                 ugcSeason = season,
                 currentBvid = currentInfo.bvid,
+                currentCid = currentInfo.cid,
                 onDismiss = { showCollectionSheet = false },
                 onEpisodeClick = { episode ->
                     showCollectionSheet = false

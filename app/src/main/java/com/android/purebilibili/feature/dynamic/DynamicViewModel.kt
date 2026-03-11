@@ -14,9 +14,11 @@ import com.android.purebilibili.core.util.prependDistinctByKey
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.FollowingUser
 import com.android.purebilibili.data.model.response.LiveRoom
+import com.android.purebilibili.data.repository.CommentRepository
 import com.android.purebilibili.data.repository.DynamicFeedScope
 import com.android.purebilibili.data.repository.DynamicRepository
 import com.android.purebilibili.data.repository.LiveRepository
+import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -644,6 +646,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     
     // 当前选中的动态（用于评论弹窗）
     private val _selectedDynamic = MutableStateFlow<DynamicItem?>(null)
+    private val _selectedCommentTarget = MutableStateFlow<DynamicCommentTarget?>(null)
     val selectedDynamicId: StateFlow<String?> = _selectedDynamic.asStateFlow().let { flow ->
         MutableStateFlow<String?>(null).also { derived ->
             viewModelScope.launch {
@@ -655,6 +658,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     // 评论列表
     private val _comments = MutableStateFlow<List<com.android.purebilibili.data.model.response.ReplyItem>>(emptyList())
     val comments: StateFlow<List<com.android.purebilibili.data.model.response.ReplyItem>> = _comments.asStateFlow()
+
+    private val _subReplyState = MutableStateFlow(SubReplyUiState())
+    val subReplyState: StateFlow<SubReplyUiState> = _subReplyState.asStateFlow()
     
     // [新增] 动态评论总数 (从评论接口获取实时数据)
     private val _commentTotalCount = MutableStateFlow(0)
@@ -666,26 +672,6 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     // 点赞状态缓存 (dynamicId -> isLiked)
     private val _likedDynamics = MutableStateFlow<Set<String>>(emptySet())
     val likedDynamics: StateFlow<Set<String>> = _likedDynamics.asStateFlow()
-    
-    /**
-     *  [修复] 根据动态类型获取评论 oid 和 type
-     * 
-     * 方案1 (推荐): 使用 API 返回的 basic.comment_id_str 和 basic.comment_type
-     * 方案2 (备用): 根据动态类型手动推断
-     * 
-     * 评论区类型参考: https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/readme.md
-     * - type=1, oid=aid → 视频
-     * - type=11, oid=相簿id → 图片动态 (DRAW)
-     * - type=17, oid=动态id → 纯文字/图文动态 (WORD/OPUS)
-     */
-    private fun getCommentParams(item: DynamicItem): Pair<Long, Int>? {
-        val directTarget = resolveDynamicCommentTarget(item)
-        if (directTarget != null) {
-            return Pair(directTarget.oid, directTarget.type)
-        }
-        // FORWARD 优先尝试原动态，确保无 basic 场景下仍能拿到参数
-        return item.orig?.let { getCommentParams(it) }
-    }
     
     /**
      *  [修复] 根据动态ID获取动态对象 - 同时搜索 items 和 userItems
@@ -713,7 +699,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
      */
     fun closeCommentSheet() {
         _selectedDynamic.value = null
+        _selectedCommentTarget.value = null
         _comments.value = emptyList()
+        _subReplyState.value = SubReplyUiState()
         // [新增] 清空计数
         _commentTotalCount.value = 0
     }
@@ -724,29 +712,69 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     private fun loadCommentsForDynamic(item: DynamicItem) {
         viewModelScope.launch {
             _commentsLoading.value = true
-            // [新增] 默认先使用动态列表里的计数作为初始值
-            _commentTotalCount.value = item.modules.module_stat?.comment?.count ?: 0
+            _selectedCommentTarget.value = null
+            val fallbackCount = item.modules.module_stat?.comment?.count ?: 0
+            _commentTotalCount.value = fallbackCount
             
             try {
-                val params = getCommentParams(item)
-                if (params == null) {
+                val targets = resolveDynamicCommentTargets(item)
+                if (targets.isEmpty()) {
                     com.android.purebilibili.core.util.Logger.e("DynamicVM", "无法获取评论参数: type=${item.type}")
                     return@launch
                 }
-                val (oid, type) = params
-                com.android.purebilibili.core.util.Logger.d("DynamicVM", "加载评论: oid=$oid, type=$type, dynamicType=${item.type}")
-                val response = com.android.purebilibili.core.network.NetworkModule.dynamicApi
-                    .getDynamicReplies(oid = oid, type = type)
-                com.android.purebilibili.core.util.Logger.d("DynamicVM", "评论响应: code=${response.code}, message=${response.message}, replies=${response.data?.replies?.size}")
-                if (response.code == 0 && response.data != null) {
-                    _comments.value = response.data.replies ?: emptyList()
-                    // [新增] 更新评论总数 (优先使用 page.count 或 acount)
-                    val realCount = response.data.page.count
-                    if (realCount > 0) {
-                        _commentTotalCount.value = realCount
+
+                val attempts = mutableListOf<DynamicCommentLoadAttempt>()
+                targets.forEachIndexed { index, target ->
+                    com.android.purebilibili.core.util.Logger.d(
+                        "DynamicVM",
+                        "加载动态评论候选: oid=${target.oid}, type=${target.type}, dynamicId=${item.id_str}, dynamicType=${item.type}"
+                    )
+                    val exactCount = CommentRepository.getCommentCountForSubject(
+                        oid = target.oid,
+                        type = target.type
+                    ).getOrNull()
+                    val result = CommentRepository.getCommentsForSubject(
+                        oid = target.oid,
+                        type = target.type,
+                        page = 1,
+                        ps = 20,
+                        mode = 3
+                    )
+                    result.onSuccess { data ->
+                        val payload = resolveDynamicCommentPayload(
+                            data = data,
+                            fallbackCount = exactCount ?: 0
+                        )
+                        attempts += DynamicCommentLoadAttempt(
+                            target = target,
+                            replies = payload.replies,
+                            totalCount = payload.totalCount,
+                            candidateIndex = index
+                        )
+                    }.onFailure { error ->
+                        com.android.purebilibili.core.util.Logger.w(
+                            "DynamicVM",
+                            "动态评论候选失败: oid=${target.oid}, type=${target.type}, count=$exactCount, error=${error.message}"
+                        )
+                        if ((exactCount ?: 0) > 0) {
+                            attempts += DynamicCommentLoadAttempt(
+                                target = target,
+                                replies = emptyList(),
+                                totalCount = exactCount ?: 0,
+                                candidateIndex = index
+                            )
+                        }
                     }
+                }
+
+                val selected = selectPreferredDynamicCommentAttempt(attempts = attempts)
+                if (selected != null) {
+                    _selectedCommentTarget.value = selected.target
+                    _comments.value = selected.replies
+                    _commentTotalCount.value = selected.totalCount
                 } else {
-                    com.android.purebilibili.core.util.Logger.e("DynamicVM", "评论加载失败: code=${response.code}, msg=${response.message}")
+                    _comments.value = emptyList()
+                    _commentTotalCount.value = fallbackCount
                 }
             } catch (e: Exception) {
                 com.android.purebilibili.core.util.Logger.e("DynamicVM", "加载评论异常: ${e.message}")
@@ -766,6 +794,69 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             loadCommentsForDynamic(item)
         }
     }
+
+    fun openSubReply(rootReply: com.android.purebilibili.data.model.response.ReplyItem) {
+        val target = _selectedCommentTarget.value ?: return
+        _subReplyState.value = SubReplyUiState(
+            visible = true,
+            rootReply = rootReply,
+            isLoading = true,
+            page = 1
+        )
+        loadSubReplies(
+            oid = target.oid,
+            type = target.type,
+            rootId = rootReply.rpid,
+            page = 1
+        )
+    }
+
+    fun closeSubReply() {
+        _subReplyState.value = _subReplyState.value.copy(visible = false)
+    }
+
+    fun loadMoreSubReplies() {
+        val state = _subReplyState.value
+        val target = _selectedCommentTarget.value ?: return
+        val rootReply = state.rootReply ?: return
+        if (state.isLoading || state.isEnd) return
+        val nextPage = state.page + 1
+        _subReplyState.value = state.copy(isLoading = true)
+        loadSubReplies(
+            oid = target.oid,
+            type = target.type,
+            rootId = rootReply.rpid,
+            page = nextPage
+        )
+    }
+
+    private fun loadSubReplies(oid: Long, type: Int, rootId: Long, page: Int) {
+        viewModelScope.launch {
+            val result = CommentRepository.getSubCommentsForSubject(
+                oid = oid,
+                type = type,
+                rootId = rootId,
+                page = page
+            )
+            result.onSuccess { data ->
+                val current = _subReplyState.value
+                val newItems = data.replies.orEmpty()
+                val isEnd = data.cursor.isEnd || newItems.isEmpty()
+                _subReplyState.value = current.copy(
+                    items = if (page == 1) newItems else (current.items + newItems).distinctBy { it.rpid },
+                    isLoading = false,
+                    page = page,
+                    isEnd = isEnd,
+                    error = null
+                )
+            }.onFailure { error ->
+                _subReplyState.value = _subReplyState.value.copy(
+                    isLoading = false,
+                    error = error.message
+                )
+            }
+        }
+    }
     
     /**
      *  发表评论
@@ -783,20 +874,23 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                     onResult(false, "动态不存在")
                     return@launch
                 }
-                val params = getCommentParams(item)
-                if (params == null) {
+                val target = _selectedCommentTarget.value
+                    ?: resolveDynamicCommentTargets(item).firstOrNull()
+                if (target == null) {
                     onResult(false, "无法确定评论参数")
                     return@launch
                 }
-                val (oid, type) = params
-                val response = com.android.purebilibili.core.network.NetworkModule.dynamicApi
-                    .addDynamicReply(oid = oid, type = type, message = message, csrf = csrf)
-                if (response.code == 0) {
+                val response = CommentRepository.addCommentForSubject(
+                    oid = target.oid,
+                    type = target.type,
+                    message = message
+                )
+                if (response.isSuccess) {
                     onResult(true, "评论成功")
                     // 刷新评论列表
                     loadComments(dynamicId)
                 } else {
-                    onResult(false, response.message ?: "评论失败")
+                    onResult(false, response.exceptionOrNull()?.message ?: "评论失败")
                 }
             } catch (e: Exception) {
                 onResult(false, e.message ?: "网络错误")
@@ -851,7 +945,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
                     onResult(true, if (toLiked) "已点赞" else "已取消")
                 } else {
-                    onResult(false, response.message ?: "操作失败")
+                    onResult(false, response.message.ifBlank { "操作失败" })
                 }
             } catch (e: Exception) {
                 onResult(false, e.message ?: "网络错误")
@@ -875,7 +969,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 if (response.code == 0) {
                     onResult(true, "转发成功")
                 } else {
-                    onResult(false, response.message ?: "转发失败")
+                    onResult(false, response.message.ifBlank { "转发失败" })
                 }
             } catch (e: Exception) {
                 onResult(false, e.message ?: "网络错误")

@@ -2,6 +2,7 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +16,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.feature.video.ui.components.RichCommentText
+import com.android.purebilibili.feature.video.ui.components.resolveInlineSubReplyToggleLabel
+import com.android.purebilibili.feature.video.ui.components.resolveVisibleSubReplies
+import com.android.purebilibili.feature.video.ui.components.shouldShowInlineSubReplyToggle
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 
@@ -33,7 +38,8 @@ fun DynamicCommentSheet(
     totalCount: Int,  //  [新增] 总评论数
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onPostComment: (String) -> Unit
+    onPostComment: (String) -> Unit,
+    onViewReplies: (ReplyItem) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var commentText by remember { mutableStateOf("") }
@@ -113,7 +119,10 @@ fun DynamicCommentSheet(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(comments) { reply ->
-                        CommentItem(reply = reply)
+                        CommentItem(
+                            reply = reply,
+                            onViewReplies = onViewReplies
+                        )
                     }
                 }
             }
@@ -166,8 +175,21 @@ fun DynamicCommentSheet(
  *  单条评论项
  */
 @Composable
-private fun CommentItem(reply: ReplyItem) {
+private fun CommentItem(
+    reply: ReplyItem,
+    onViewReplies: (ReplyItem) -> Unit
+) {
     val member = reply.member
+    var isSubPreviewExpanded by remember(reply.rpid) { mutableStateOf(false) }
+    val visibleSubReplies = remember(reply.replies, isSubPreviewExpanded) {
+        resolveVisibleSubReplies(
+            replies = reply.replies,
+            expanded = isSubPreviewExpanded
+        )
+    }
+    val showInlineToggle = remember(reply.replies) {
+        shouldShowInlineSubReplyToggle(reply.replies.orEmpty().size)
+    }
     
     Row(modifier = Modifier.fillMaxWidth()) {
         // 头像
@@ -230,6 +252,70 @@ private fun CommentItem(reply: ReplyItem) {
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
                 )
+            }
+
+            if (com.android.purebilibili.feature.dynamic.canOpenDynamicSubReplies(reply)) {
+                if (visibleSubReplies.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        visibleSubReplies.forEach { subReply ->
+                            val subEmoteMap = remember(subReply.content.emote) {
+                                subReply.content.emote?.mapValues { it.value.url } ?: emptyMap()
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${subReply.member.uname}:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Box(modifier = Modifier.weight(1f)) {
+                                    RichCommentText(
+                                        text = subReply.content.message,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        emoteMap = subEmoteMap,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showInlineToggle) {
+                            Text(
+                                text = resolveInlineSubReplyToggleLabel(expanded = isSubPreviewExpanded),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.clickable { isSubPreviewExpanded = !isSubPreviewExpanded }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = { onViewReplies(reply) },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "查看回复(${com.android.purebilibili.feature.dynamic.resolveDynamicSubReplyCount(reply)})",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }

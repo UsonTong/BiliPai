@@ -31,12 +31,17 @@ import androidx.compose.ui.platform.LocalContext
 fun CollectionRow(
     ugcSeason: UgcSeason,
     currentBvid: String,
+    currentCid: Long = 0L,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 计算当前视频在合集中的位置
     val allEpisodes = ugcSeason.sections.flatMap { it.episodes }
-    val currentIndex = allEpisodes.indexOfFirst { it.bvid == currentBvid }
+    val currentIndex = resolveCurrentUgcEpisodeIndex(
+        episodes = allEpisodes,
+        currentBvid = currentBvid,
+        currentCid = currentCid
+    )
     val currentPosition = if (currentIndex >= 0) currentIndex + 1 else 0
     val totalCount = allEpisodes.size.takeIf { it > 0 } ?: ugcSeason.ep_count
     

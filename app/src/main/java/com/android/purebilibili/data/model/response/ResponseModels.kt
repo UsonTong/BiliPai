@@ -27,6 +27,18 @@ data class ReplyResponse(
 )
 
 @Serializable
+data class ReplyCountResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: ReplyCountData? = null
+)
+
+@Serializable
+data class ReplyCountData(
+    val count: Int = 0
+)
+
+@Serializable
 data class ReplyData(
     //  WBI API 使用 cursor
     val cursor: ReplyCursor = ReplyCursor(),

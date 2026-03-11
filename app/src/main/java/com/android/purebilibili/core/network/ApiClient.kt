@@ -487,6 +487,12 @@ interface BilibiliApi {
         @Query("ps") ps: Int = 20 // 每页数量
     ): ReplyResponse
 
+    @GET("x/v2/reply/count")
+    suspend fun getReplyCount(
+        @Query("oid") oid: Long,
+        @Query("type") type: Int
+    ): ReplyCountResponse
+
     // [新增] 发送评论
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/v2/reply/add")
@@ -799,6 +805,9 @@ data class DynamicThumbRequest(
 private const val DYNAMIC_FEED_FEATURES =
     "itemOpusStyle,listOnlyfans"
 
+private const val DYNAMIC_DETAIL_FEATURES =
+    "itemOpusStyle,listOnlyfans,opusBigCover,commentsNewVersion,onlyfansVote,onlyfansAssetsV2,decorationCard,forwardListHidden,ugcDelete"
+
 interface DynamicApi {
     //  添加 features 参数以获取 rich_text_nodes 表情数据
     @GET("x/polymer/web-dynamic/v1/feed/all")
@@ -821,7 +830,7 @@ interface DynamicApi {
     @GET("x/polymer/web-dynamic/desktop/v1/detail")
     suspend fun getDynamicDetail(
         @Query("id") id: String,
-        @Query("features") features: String = "itemOpusStyle",
+        @Query("features") features: String = DYNAMIC_DETAIL_FEATURES,
         @Query("timezone_offset") timezoneOffset: Int = -480
     ): DynamicDetailResponse
 
@@ -829,7 +838,7 @@ interface DynamicApi {
     @GET("x/polymer/web-dynamic/v1/detail")
     suspend fun getDynamicDetailFallback(
         @Query("id") id: String,
-        @Query("features") features: String = "itemOpusStyle"
+        @Query("features") features: String = DYNAMIC_DETAIL_FEATURES
     ): DynamicDetailResponse
     
     //  [新增] 获取动态评论列表 (type=17 表示动态)

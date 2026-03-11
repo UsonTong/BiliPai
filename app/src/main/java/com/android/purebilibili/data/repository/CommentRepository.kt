@@ -88,37 +88,38 @@ object CommentRepository {
 
     private suspend fun fetchCommentsByApi(
         apiClient: BilibiliApi,
-        aid: Long,
+        oid: Long,
+        type: Int,
         page: Int,
         ps: Int,
         mode: Int
     ): ReplyResponse {
         return when (mode) {
             2 -> {
-                Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=0 (时间)")
+                Logger.d("CommentRepo", " getComments (Legacy): oid=$oid, type=$type, page=$page, sort=0 (时间)")
                 apiClient.getReplyListLegacy(
-                    oid = aid,
-                    type = 1,
+                    oid = oid,
+                    type = type,
                     pn = page,
                     ps = ps,
                     sort = 0
                 )
             }
             1 -> {
-                Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=2 (回复数)")
+                Logger.d("CommentRepo", " getComments (Legacy): oid=$oid, type=$type, page=$page, sort=2 (回复数)")
                 apiClient.getReplyListLegacy(
-                    oid = aid,
-                    type = 1,
+                    oid = oid,
+                    type = type,
                     pn = page,
                     ps = ps,
                     sort = 2
                 )
             }
             4 -> {
-                Logger.d("CommentRepo", " getComments (Legacy): aid=$aid, page=$page, sort=1 (点赞数)")
+                Logger.d("CommentRepo", " getComments (Legacy): oid=$oid, type=$type, page=$page, sort=1 (点赞数)")
                 apiClient.getReplyListLegacy(
-                    oid = aid,
-                    type = 1,
+                    oid = oid,
+                    type = type,
                     pn = page,
                     ps = ps,
                     sort = 1
@@ -126,10 +127,10 @@ object CommentRepository {
             }
             else -> {
                 val (imgKey, subKey) = getWbiKeys(apiClient)
-                Logger.d("CommentRepo", " getComments (WBI): aid=$aid, page=$page, mode=3 (热度)")
+                Logger.d("CommentRepo", " getComments (WBI): oid=$oid, type=$type, page=$page, mode=3 (热度)")
                 val params = TreeMap<String, String>()
-                params["oid"] = aid.toString()
-                params["type"] = "1"
+                params["oid"] = oid.toString()
+                params["type"] = type.toString()
                 params["mode"] = "3"
                 params["ps"] = ps.toString()
                 params["plat"] = "1"
@@ -147,14 +148,15 @@ object CommentRepository {
     }
 
     private suspend fun fetchGuestHotCommentsCompat(
-        aid: Long,
+        oid: Long,
+        type: Int,
         page: Int,
         ps: Int
     ): ReplyResponse {
-        Logger.d("CommentRepo", " getComments (CompatMain): aid=$aid, page=$page, mode=3 (热度)")
+        Logger.d("CommentRepo", " getComments (CompatMain): oid=$oid, type=$type, page=$page, mode=3 (热度)")
         val params = TreeMap<String, String>()
-        params["oid"] = aid.toString()
-        params["type"] = "1"
+        params["oid"] = oid.toString()
+        params["type"] = type.toString()
         params["mode"] = "3"
         params["ps"] = ps.toString()
         params["plat"] = "1"
@@ -174,6 +176,16 @@ object CommentRepository {
      * 3=最热(WBI mode=3), 2=最新(legacy sort=0), 4=点赞(legacy sort=1), 1=回复(legacy sort=2)
      */
     suspend fun getComments(aid: Long, page: Int, ps: Int = 20, mode: Int = 3): Result<ReplyData> = withContext(Dispatchers.IO) {
+        getCommentsForSubject(oid = aid, type = 1, page = page, ps = ps, mode = mode)
+    }
+
+    suspend fun getCommentsForSubject(
+        oid: Long,
+        type: Int,
+        page: Int,
+        ps: Int = 20,
+        mode: Int = 3
+    ): Result<ReplyData> = withContext(Dispatchers.IO) {
         try {
             // 确保 buvid3 已初始化
             VideoRepository.ensureBuvid3()
@@ -182,7 +194,8 @@ object CommentRepository {
             val primaryMode = readPlan.primary
             val primaryResponse = fetchCommentsByApi(
                 apiClient = resolveReadApi(primaryMode),
-                aid = aid,
+                oid = oid,
+                type = type,
                 page = page,
                 ps = ps,
                 mode = mode
@@ -198,10 +211,11 @@ object CommentRepository {
             ) {
                 Logger.w(
                     "CommentRepo",
-                    "getComments empty-success fallback triggered: from=$primaryMode to=compat-main, aid=$aid, page=$page, mode=$mode, total=${primaryResponse.data?.getAllCount() ?: 0}"
+                    "getComments empty-success fallback triggered: from=$primaryMode to=compat-main, oid=$oid, type=$type, page=$page, mode=$mode, total=${primaryResponse.data?.getAllCount() ?: 0}"
                 )
                 val compatResponse = fetchGuestHotCommentsCompat(
-                    aid = aid,
+                    oid = oid,
+                    type = type,
                     page = page,
                     ps = ps
                 )
@@ -213,11 +227,12 @@ object CommentRepository {
                     val fallbackMode = readPlan.fallback
                     Logger.w(
                         "CommentRepo",
-                        "getComments compat fallback triggered: code=${compatResponse.code}, from=compat-main to=$fallbackMode, aid=$aid, page=$page, mode=$mode"
+                        "getComments compat fallback triggered: code=${compatResponse.code}, from=compat-main to=$fallbackMode, oid=$oid, type=$type, page=$page, mode=$mode"
                     )
                     fetchCommentsByApi(
                         apiClient = resolveReadApi(fallbackMode),
-                        aid = aid,
+                        oid = oid,
+                        type = type,
                         page = page,
                         ps = ps,
                         mode = mode
@@ -233,11 +248,12 @@ object CommentRepository {
                 val fallbackMode = readPlan.fallback
                 Logger.w(
                     "CommentRepo",
-                    "getComments fallback triggered: code=${primaryResponse.code}, from=$primaryMode to=$fallbackMode, aid=$aid, page=$page, mode=$mode"
+                    "getComments fallback triggered: code=${primaryResponse.code}, from=$primaryMode to=$fallbackMode, oid=$oid, type=$type, page=$page, mode=$mode"
                 )
                 fetchCommentsByApi(
                     apiClient = resolveReadApi(fallbackMode),
-                    aid = aid,
+                    oid = oid,
+                    type = type,
                     page = page,
                     ps = ps,
                     mode = mode
@@ -254,18 +270,35 @@ object CommentRepository {
             }
             Logger.d(
                 "CommentRepo",
-                " getComments result: mode=$mode($sortLabel), replies=${finalResponse.data?.replies?.size ?: 0}, code=${finalResponse.code}"
+                " getComments result: oid=$oid, type=$type, mode=$mode($sortLabel), replies=${finalResponse.data?.replies?.size ?: 0}, code=${finalResponse.code}"
             )
 
             if (finalResponse.code == 0) {
                 Result.success(finalResponse.data ?: ReplyData())
             } else {
                 val errorMsg = resolveCommentReadErrorMessage(finalResponse.code)
-                android.util.Log.e("CommentRepo", " getComments failed: ${finalResponse.code} - ${finalResponse.message}")
+                android.util.Log.e("CommentRepo", " getComments failed: oid=$oid, type=$type, ${finalResponse.code} - ${finalResponse.message}")
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            android.util.Log.e("CommentRepo", " getComments exception: ${e.message}", e)
+            android.util.Log.e("CommentRepo", " getComments exception: oid=$oid, type=$type, ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCommentCountForSubject(
+        oid: Long,
+        type: Int
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            VideoRepository.ensureBuvid3()
+            val response = api.getReplyCount(oid = oid, type = type)
+            if (response.code == 0) {
+                Result.success(response.data?.count ?: 0)
+            } else {
+                Result.failure(Exception(resolveCommentReadErrorMessage(response.code)))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -274,16 +307,33 @@ object CommentRepository {
      * 获取二级评论（楼中楼）
      */
     suspend fun getSubComments(aid: Long, rootId: Long, page: Int, ps: Int = 20): Result<ReplyData> = withContext(Dispatchers.IO) {
+        getSubCommentsForSubject(
+            oid = aid,
+            type = 1,
+            rootId = rootId,
+            page = page,
+            ps = ps
+        )
+    }
+
+    suspend fun getSubCommentsForSubject(
+        oid: Long,
+        type: Int,
+        rootId: Long,
+        page: Int,
+        ps: Int = 20
+    ): Result<ReplyData> = withContext(Dispatchers.IO) {
         try {
             // 确保 buvid3 已初始化
             VideoRepository.ensureBuvid3()
             
-            Logger.d("CommentRepo", " getSubComments: aid=$aid, rootId=$rootId, page=$page")
+            Logger.d("CommentRepo", " getSubComments: oid=$oid, type=$type, rootId=$rootId, page=$page")
             val hasSession = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty()
             val readPlan = resolveCommentReadPlan(hasSession = hasSession)
             val primaryMode = readPlan.primary
             val primaryResponse = resolveReadApi(primaryMode).getReplyReply(
-                oid = aid,
+                oid = oid,
+                type = type,
                 root = rootId,
                 pn = page,
                 ps = ps
@@ -296,10 +346,11 @@ object CommentRepository {
                 val fallbackMode = readPlan.fallback
                 Logger.w(
                     "CommentRepo",
-                    "getSubComments fallback triggered: code=${primaryResponse.code}, from=$primaryMode to=$fallbackMode, aid=$aid, root=$rootId, page=$page"
+                    "getSubComments fallback triggered: code=${primaryResponse.code}, from=$primaryMode to=$fallbackMode, oid=$oid, type=$type, root=$rootId, page=$page"
                 )
                 resolveReadApi(fallbackMode).getReplyReply(
-                    oid = aid,
+                    oid = oid,
+                    type = type,
                     root = rootId,
                     pn = page,
                     ps = ps
@@ -308,18 +359,18 @@ object CommentRepository {
                 primaryResponse
             }
             
-            Logger.d("CommentRepo", " getSubComments response: code=${finalResponse.code}, replies=${finalResponse.data?.replies?.size ?: 0}")
+            Logger.d("CommentRepo", " getSubComments response: oid=$oid, type=$type, code=${finalResponse.code}, replies=${finalResponse.data?.replies?.size ?: 0}")
             
             if (finalResponse.code == 0) {
                 Result.success(finalResponse.data ?: ReplyData())
             } else {
-                android.util.Log.e("CommentRepo", " getSubComments failed: ${finalResponse.code} - ${finalResponse.message}")
+                android.util.Log.e("CommentRepo", " getSubComments failed: oid=$oid, type=$type, ${finalResponse.code} - ${finalResponse.message}")
                 val errorMsg = resolveCommentReadErrorMessage(finalResponse.code)
                     .replace("评论", "回复")
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            android.util.Log.e("CommentRepo", " getSubComments exception: ${e.message}", e)
+            android.util.Log.e("CommentRepo", " getSubComments exception: oid=$oid, type=$type, ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -380,6 +431,24 @@ object CommentRepository {
         parent: Long = 0,
         pictures: List<ReplyPicture> = emptyList()
     ): Result<ReplyItem?> = withContext(Dispatchers.IO) {
+        addCommentForSubject(
+            oid = aid,
+            type = 1,
+            message = message,
+            root = root,
+            parent = parent,
+            pictures = pictures
+        )
+    }
+
+    suspend fun addCommentForSubject(
+        oid: Long,
+        type: Int,
+        message: String,
+        root: Long = 0,
+        parent: Long = 0,
+        pictures: List<ReplyPicture> = emptyList()
+    ): Result<ReplyItem?> = withContext(Dispatchers.IO) {
         try {
             val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
             if (csrf.isNullOrEmpty()) {
@@ -388,8 +457,8 @@ object CommentRepository {
             val picturePayload = buildPicturesPayload(pictures)
             
             val response = api.addReply(
-                oid = aid,
-                type = 1,
+                oid = oid,
+                type = type,
                 message = message,
                 root = root.takeIf { it > 0L },
                 parent = parent.takeIf { it > 0L },
@@ -402,7 +471,7 @@ object CommentRepository {
             } else {
                 Logger.e(
                     "CommentRepo",
-                    "addComment failed: aid=$aid, root=$root, parent=$parent, pictureCount=${pictures.size}, code=${response.code}, message=${response.message}"
+                    "addComment failed: oid=$oid, type=$type, root=$root, parent=$parent, pictureCount=${pictures.size}, code=${response.code}, message=${response.message}"
                 )
                 val errorMsg = when (response.code) {
                     -101 -> "请先登录"
@@ -419,7 +488,7 @@ object CommentRepository {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Logger.e("CommentRepo", "addComment exception: aid=$aid, root=$root, parent=$parent", e)
+            Logger.e("CommentRepo", "addComment exception: oid=$oid, type=$type, root=$root, parent=$parent", e)
             Result.failure(e)
         }
     }
