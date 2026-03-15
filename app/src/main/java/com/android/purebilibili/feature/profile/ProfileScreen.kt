@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.border
@@ -59,6 +60,7 @@ import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.BiliGradientButton
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
 import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperLayout
+import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform
 import com.android.purebilibili.core.ui.wallpaper.resolveProfileWallpaperLayout
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.WindowWidthSizeClass
@@ -421,7 +423,7 @@ private fun BoxScope.ProfileBackground(
     val windowSizeClass = LocalWindowSizeClass.current
     val isTablet = windowSizeClass.shouldUseSplitLayout
     val isImmersive = user.topPhoto.isNotEmpty()
-    val bgAlignmentBias by viewModel.getProfileBgAlignment(isTablet).collectAsState(0f)
+    val bgTransform by viewModel.getProfileBgTransform(isTablet).collectAsState(ProfileWallpaperTransform())
     val profileWallpaperLayout = remember(windowSizeClass.widthSizeClass) {
         resolveProfileWallpaperLayout(windowSizeClass.widthSizeClass)
     }
@@ -429,6 +431,7 @@ private fun BoxScope.ProfileBackground(
     if (isImmersive) {
         when (profileWallpaperLayout) {
             ProfileWallpaperLayout.TOP_BANNER_BLUR_BG -> {
+                val bannerHeight = resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass).dp
                 // 1. 底层：高斯模糊填充 (填补图片不够长的区域)
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -437,8 +440,16 @@ private fun BoxScope.ProfileBackground(
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(
+                        bgTransform.offsetX,
+                        bgTransform.offsetY
+                    ),
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = bgTransform.scale,
+                            scaleY = bgTransform.scale
+                        )
                         .blur(60.dp)
                 )
 
@@ -450,9 +461,16 @@ private fun BoxScope.ProfileBackground(
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
+                    alignment = androidx.compose.ui.BiasAlignment(
+                        bgTransform.offsetX,
+                        bgTransform.offsetY
+                    ),
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = bgTransform.scale,
+                            scaleY = bgTransform.scale
+                        )
                         .alpha(0.14f)
                 )
 
@@ -464,11 +482,45 @@ private fun BoxScope.ProfileBackground(
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
+                    alignment = androidx.compose.ui.BiasAlignment(
+                        bgTransform.offsetX,
+                        bgTransform.offsetY
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass).dp)
+                        .height(bannerHeight)
+                        .graphicsLayer(
+                            scaleX = bgTransform.scale,
+                            scaleY = bgTransform.scale
+                        )
                         .align(Alignment.TopCenter)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = bannerHeight - 92.dp)
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) {
+                                    listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.06f),
+                                        Color.Black.copy(alpha = 0.20f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.36f)
+                                    )
+                                } else {
+                                    listOf(
+                                        Color.Transparent,
+                                        Color.White.copy(alpha = 0.04f),
+                                        Color.Black.copy(alpha = 0.08f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.24f)
+                                    )
+                                }
+                            )
+                        )
                 )
             }
 
@@ -480,8 +532,16 @@ private fun BoxScope.ProfileBackground(
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(
+                        bgTransform.offsetX,
+                        bgTransform.offsetY
+                    ),
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = bgTransform.scale,
+                            scaleY = bgTransform.scale
+                        )
                         .blur(58.dp)
                 )
                 Box(
@@ -506,8 +566,16 @@ private fun BoxScope.ProfileBackground(
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        alignment = androidx.compose.ui.BiasAlignment(0f, bgAlignmentBias),
-                        modifier = Modifier.fillMaxSize()
+                        alignment = androidx.compose.ui.BiasAlignment(
+                            bgTransform.offsetX,
+                            bgTransform.offsetY
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = bgTransform.scale,
+                                scaleY = bgTransform.scale
+                            )
                     )
                 }
             }
@@ -688,8 +756,7 @@ fun MobileProfileContent(
     // [New] Adjustment Sheet State
     var showAdjustmentSheet by remember { mutableStateOf(false) }
     var tempSelectedUri by remember { mutableStateOf<Uri?>(null) }
-    val initialMobileBias by viewModel.getProfileBgAlignment(false).collectAsState(0f)
-    val initialTabletBias by viewModel.getProfileBgAlignment(true).collectAsState(0f)
+    val customBackgroundUri by viewModel.getProfileBgUri().collectAsState(null)
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -703,15 +770,15 @@ fun MobileProfileContent(
     
     // [New] Adjustment Sheet
     if (showAdjustmentSheet && tempSelectedUri != null) {
-        WallpaperAdjustmentSheet(
+        ProfileWallpaperAdjustmentSheet(
             imageUri = tempSelectedUri.toString(),
-            initialMobileBias = initialMobileBias,
-            initialTabletBias = initialTabletBias,
+            initialMobileTransform = ProfileWallpaperTransform(),
+            initialTabletTransform = ProfileWallpaperTransform(),
             onDismiss = { showAdjustmentSheet = false },
-            onSave = { mBias, tBias ->
+            onSave = { mobileTransform, tabletTransform ->
                 showAdjustmentSheet = false
                 tempSelectedUri?.let { uri ->
-                    viewModel.updateCustomBackground(uri, mBias, tBias)
+                    viewModel.updateCustomBackground(uri, mobileTransform, tabletTransform)
                 }
             }
         )
@@ -840,7 +907,9 @@ fun MobileProfileContent(
                     ProfileWallpaperActionCard(
                         isImmersive = isImmersive,
                         onOfficialWallpaperClick = { showWallpaperSheet = true },
-                        onLocalAlbumClick = { showPhotoPickerDialog = true }
+                        onLocalAlbumClick = { showPhotoPickerDialog = true },
+                        onResetWallpaperClick = { viewModel.clearCustomBackground() },
+                        isResetEnabled = !customBackgroundUri.isNullOrEmpty()
                     )
                 }
             }
@@ -1081,7 +1150,9 @@ fun UserInfoSection(
 private fun ProfileWallpaperActionCard(
     isImmersive: Boolean,
     onOfficialWallpaperClick: () -> Unit,
-    onLocalAlbumClick: () -> Unit
+    onLocalAlbumClick: () -> Unit,
+    onResetWallpaperClick: () -> Unit,
+    isResetEnabled: Boolean
 ) {
     val configuration = LocalConfiguration.current
     val columnCount = remember(configuration.screenWidthDp) {
@@ -1134,31 +1205,46 @@ private fun ProfileWallpaperActionCard(
             tonalElevation = 0.dp
         ) {
             if (columnCount == 2) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        ProfileWallpaperActionButton(
+                            modifier = Modifier.weight(1f),
+                            title = "官方壁纸",
+                            subtitle = "精选背景",
+                            icon = CupertinoIcons.Default.Photo,
+                            containerColor = buttonColor,
+                            contentColor = contentColor,
+                            secondaryColor = secondaryColor,
+                            onClick = onOfficialWallpaperClick
+                        )
+                        ProfileWallpaperActionButton(
+                            modifier = Modifier.weight(1f),
+                            title = "本地相册",
+                            subtitle = "自定义照片",
+                            icon = CupertinoIcons.Default.Folder,
+                            containerColor = buttonColor,
+                            contentColor = contentColor,
+                            secondaryColor = secondaryColor,
+                            onClick = onLocalAlbumClick
+                        )
+                    }
                     ProfileWallpaperActionButton(
-                        modifier = Modifier.weight(1f),
-                        title = "官方壁纸",
-                        subtitle = "精选背景",
-                        icon = CupertinoIcons.Default.Photo,
+                        title = "恢复默认",
+                        subtitle = "移除自定义背景",
+                        icon = CupertinoIcons.Default.ArrowCounterclockwise,
                         containerColor = buttonColor,
                         contentColor = contentColor,
                         secondaryColor = secondaryColor,
-                        onClick = onOfficialWallpaperClick
-                    )
-                    ProfileWallpaperActionButton(
-                        modifier = Modifier.weight(1f),
-                        title = "本地相册",
-                        subtitle = "自定义照片",
-                        icon = CupertinoIcons.Default.Folder,
-                        containerColor = buttonColor,
-                        contentColor = contentColor,
-                        secondaryColor = secondaryColor,
-                        onClick = onLocalAlbumClick
+                        enabled = isResetEnabled,
+                        onClick = onResetWallpaperClick
                     )
                 }
             } else {
@@ -1186,6 +1272,16 @@ private fun ProfileWallpaperActionCard(
                         secondaryColor = secondaryColor,
                         onClick = onLocalAlbumClick
                     )
+                    ProfileWallpaperActionButton(
+                        title = "恢复默认",
+                        subtitle = "移除自定义背景",
+                        icon = CupertinoIcons.Default.ArrowCounterclockwise,
+                        containerColor = buttonColor,
+                        contentColor = contentColor,
+                        secondaryColor = secondaryColor,
+                        enabled = isResetEnabled,
+                        onClick = onResetWallpaperClick
+                    )
                 }
             }
         }
@@ -1201,15 +1297,18 @@ private fun ProfileWallpaperActionButton(
     contentColor: Color,
     secondaryColor: Color,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val effectiveContentColor = if (enabled) contentColor else contentColor.copy(alpha = 0.38f)
+    val effectiveSecondaryColor = if (enabled) secondaryColor else secondaryColor.copy(alpha = 0.5f)
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        color = containerColor,
+        color = if (enabled) containerColor else containerColor.copy(alpha = 0.55f),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
     ) {
@@ -1222,7 +1321,7 @@ private fun ProfileWallpaperActionButton(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
-                color = Color.White.copy(alpha = if (contentColor == Color.White) 0.16f else 0.55f),
+                color = Color.White.copy(alpha = if (effectiveContentColor == Color.White) 0.16f else 0.55f),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Box(
@@ -1233,7 +1332,7 @@ private fun ProfileWallpaperActionButton(
                     Icon(
                         imageVector = icon,
                         contentDescription = title,
-                        tint = contentColor,
+                        tint = effectiveContentColor,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1245,13 +1344,13 @@ private fun ProfileWallpaperActionButton(
                     text = title,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = contentColor
+                    color = effectiveContentColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.labelSmall,
-                    color = secondaryColor
+                    color = effectiveSecondaryColor
                 )
             }
         }

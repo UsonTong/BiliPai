@@ -369,6 +369,16 @@ fun CategoryTabRow(
                     }
                 }
             }
+            val viewportAnchorIndex by remember(pagerState, selectedIndex) {
+                derivedStateOf {
+                    resolveTopTabViewportAnchorIndex(
+                        selectedIndex = selectedIndex,
+                        pagerCurrentPage = pagerState?.currentPage,
+                        pagerTargetPage = pagerState?.targetPage,
+                        pagerIsScrolling = pagerState?.isScrollInProgress == true
+                    )
+                }
+            }
             
             // [简化] 是否正在交互（用于指示器缩放效果）
             var isInteracting by remember { mutableStateOf(false) }
@@ -389,8 +399,8 @@ fun CategoryTabRow(
                 }
             }
 
-            LaunchedEffect(selectedIndex, interactionBudget, firstVisibleIndex, lastVisibleIndex) {
-                val targetIndex = selectedIndex.coerceIn(0, categories.size - 1)
+            LaunchedEffect(viewportAnchorIndex, interactionBudget, firstVisibleIndex, lastVisibleIndex) {
+                val targetIndex = viewportAnchorIndex.coerceIn(0, categories.size - 1)
                 if (!shouldAnimateTopTabAutoScroll(targetIndex, firstVisibleIndex, lastVisibleIndex, interactionBudget)) {
                     return@LaunchedEffect
                 }

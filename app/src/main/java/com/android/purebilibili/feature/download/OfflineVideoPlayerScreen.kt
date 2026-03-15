@@ -40,6 +40,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlinx.coroutines.delay
@@ -67,6 +68,7 @@ fun OfflineVideoPlayerScreen(
     val activity = context as? Activity
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+    val miniPlayerManager = remember(context) { MiniPlayerManager.getInstance(context) }
     
     val tasks by DownloadManager.tasks.collectAsState()
     val task = tasks[taskId]
@@ -118,7 +120,7 @@ fun OfflineVideoPlayerScreen(
         return
     }
     
-    val file = File(task.filePath!!)
+    val file = File(task.filePath)
     if (!file.exists()) {
         Box(
             modifier = Modifier.fillMaxSize().background(Color.Black),
@@ -141,6 +143,15 @@ fun OfflineVideoPlayerScreen(
             prepare()
             playWhenReady = true
         }
+    }
+    val offlineSessionRegistered = remember(file.exists(), task.filePath) {
+        shouldRegisterOfflinePlaybackSession(
+            fileExists = file.exists(),
+            filePath = task.filePath
+        )
+    }
+    val offlineMiniPlayerPayload = remember(task) {
+        resolveOfflineMiniPlayerPayload(task)
     }
     
     // 进度状态
@@ -210,12 +221,51 @@ fun OfflineVideoPlayerScreen(
     
     DisposableEffect(Unit) {
         onDispose {
+            if (miniPlayerManager.isPlayerManaged(player)) {
+                miniPlayerManager.dismiss()
+            } else {
+                miniPlayerManager.clearExternalPlayerIfMatches(player)
+            }
             player.release()
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             activity?.let { act ->
                 val windowInsetsController = WindowCompat.getInsetsController(act.window, act.window.decorView)
                 windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
             }
+        }
+    }
+
+    DisposableEffect(player, offlineSessionRegistered, offlineMiniPlayerPayload) {
+        if (offlineSessionRegistered) {
+            miniPlayerManager.setVideoInfo(
+                bvid = offlineMiniPlayerPayload.bvid,
+                title = offlineMiniPlayerPayload.title,
+                cover = offlineMiniPlayerPayload.coverUrl,
+                owner = offlineMiniPlayerPayload.owner,
+                cid = offlineMiniPlayerPayload.cid,
+                externalPlayer = player
+            )
+            miniPlayerManager.updateMediaMetadata(
+                title = offlineMiniPlayerPayload.title,
+                artist = offlineMiniPlayerPayload.owner,
+                coverUrl = offlineMiniPlayerPayload.coverUrl
+            )
+        }
+
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (!offlineSessionRegistered) return
+                miniPlayerManager.updateMediaMetadata(
+                    title = offlineMiniPlayerPayload.title,
+                    artist = offlineMiniPlayerPayload.owner,
+                    coverUrl = offlineMiniPlayerPayload.coverUrl
+                )
+            }
+        }
+        player.addListener(listener)
+
+        onDispose {
+            player.removeListener(listener)
         }
     }
     

@@ -42,7 +42,9 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImagePainter
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.theme.BiliPink
@@ -93,6 +95,11 @@ private val PLUGIN_INSTALL_HTTPS_HOSTS = setOf(
     "www.bilipai.app",
     "plugins.bilipai.app"
 )
+
+internal fun resolveDrawableAspectRatio(width: Int, height: Int): Float? {
+    if (width <= 0 || height <= 0) return null
+    return width.toFloat() / height.toFloat()
+}
 
 internal fun resolveShortcutRoute(host: String): String? {
     return when (host) {
@@ -980,8 +987,23 @@ class MainActivity : ComponentActivity() {
                     val splashTailScrimAlpha = customSplashOverlayScrimAlpha(splashFadeProgress)
 
                     if (customSplashShouldRender(showSplash, splashOverlayAlpha) && splashUri.isNotEmpty()) {
-                        val splashWallpaperLayout = remember(windowSizeClass.widthSizeClass) {
-                            resolveSplashWallpaperLayout(windowSizeClass.widthSizeClass)
+                        val splashProbePainter = rememberAsyncImagePainter(model = splashUri)
+                        val splashAspectRatio by remember(splashProbePainter.state) {
+                            derivedStateOf {
+                                when (val state = splashProbePainter.state) {
+                                    is AsyncImagePainter.State.Success -> resolveDrawableAspectRatio(
+                                        width = state.result.drawable.intrinsicWidth,
+                                        height = state.result.drawable.intrinsicHeight
+                                    )
+                                    else -> null
+                                }
+                            }
+                        }
+                        val splashWallpaperLayout = remember(windowSizeClass.widthSizeClass, splashAspectRatio) {
+                            resolveSplashWallpaperLayout(
+                                widthSizeClass = windowSizeClass.widthSizeClass,
+                                imageAspectRatio = splashAspectRatio
+                            )
                         }
                         Box(
                             modifier = Modifier

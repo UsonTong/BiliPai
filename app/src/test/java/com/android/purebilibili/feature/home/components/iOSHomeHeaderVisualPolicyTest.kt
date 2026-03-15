@@ -18,6 +18,65 @@ import org.junit.Test
 class iOSHomeHeaderVisualPolicyTest {
 
     @Test
+    fun `wide liquid glass chrome prefers flat treatment to avoid center seam`() {
+        assertEquals(
+            HomeTopChromeSurfaceTreatment.FLAT_GLASS,
+            resolveHomeTopChromeSurfaceTreatment(
+                renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+                preferFlatGlass = true
+            )
+        )
+        assertEquals(
+            HomeTopChromeSurfaceTreatment.FLAT_GLASS,
+            resolveHomeTopChromeSurfaceTreatment(
+                renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_HAZE,
+                preferFlatGlass = true
+            )
+        )
+    }
+
+    @Test
+    fun `compact controls keep structured glass treatment`() {
+        assertEquals(
+            HomeTopChromeSurfaceTreatment.STRUCTURED_GLASS,
+            resolveHomeTopChromeSurfaceTreatment(
+                renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+                preferFlatGlass = false
+            )
+        )
+        assertEquals(
+            HomeTopChromeSurfaceTreatment.STRUCTURED_GLASS,
+            resolveHomeTopChromeSurfaceTreatment(
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                preferFlatGlass = true
+            )
+        )
+    }
+
+    @Test
+    fun `wide blur chrome softens highlight and underlay to avoid banding`() {
+        val baseHighlight = Color.White.copy(alpha = 0.10f)
+        val softenedHighlight = resolveHomeTopChromeHighlightOverlayColor(
+            baseColor = baseHighlight,
+            renderMode = HomeTopChromeRenderMode.BLUR,
+            softenWideChrome = true
+        )
+        val defaultUnderlay = resolveHomeTopInnerUnderlayColor(
+            isLightMode = true,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val softenedUnderlay = resolveHomeTopInnerUnderlayColor(
+            isLightMode = true,
+            renderMode = HomeTopChromeRenderMode.BLUR,
+            softenWideChrome = true
+        )
+
+        assertTrue(softenedHighlight.alpha < baseHighlight.alpha)
+        assertTrue(softenedUnderlay.alpha < defaultUnderlay.alpha)
+        assertTrue(softenedUnderlay.alpha > 0f)
+    }
+
+    @Test
     fun `home header trims top chrome heights for better content density`() {
         assertEquals(48.dp, resolveHomeTopSearchBarHeight())
         assertEquals(56.dp, resolveHomeTopTabRowHeight(isTabFloating = true))
@@ -29,6 +88,15 @@ class iOSHomeHeaderVisualPolicyTest {
         assertEquals(14.dp, resolveHomeTopSearchRowHorizontalPadding())
         assertEquals(34.dp, resolveHomeTopSearchPillHeight())
         assertEquals(14.dp, resolveHomeTopTabHorizontalPadding(isTabFloating = true))
+    }
+
+    @Test
+    fun `home header uses symmetrical edge controls around search bar`() {
+        assertEquals(40.dp, resolveHomeTopAvatarOuterSize())
+        assertEquals(40.dp, resolveHomeTopSettingsButtonSize())
+        assertEquals(30.dp, resolveHomeTopAvatarInnerSize())
+        assertEquals(20.dp, resolveHomeTopSettingsIconSize())
+        assertEquals(6.dp, resolveHomeTopEdgeControlGap())
     }
 
     @Test

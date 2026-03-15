@@ -15,6 +15,35 @@ class WallpaperPresentationPolicyTest {
     }
 
     @Test
+    fun splash_compactWidth_usesPosterCardForExtremeAspectMismatch() {
+        assertEquals(
+            SplashWallpaperLayout.POSTER_CARD_BLUR_BG,
+            resolveSplashWallpaperLayout(
+                widthSizeClass = WindowWidthSizeClass.Compact,
+                imageAspectRatio = 0.42f
+            )
+        )
+        assertEquals(
+            SplashWallpaperLayout.POSTER_CARD_BLUR_BG,
+            resolveSplashWallpaperLayout(
+                widthSizeClass = WindowWidthSizeClass.Compact,
+                imageAspectRatio = 1.0f
+            )
+        )
+    }
+
+    @Test
+    fun splash_compactWidth_keepsFullCropForPhoneLikePosterRatio() {
+        assertEquals(
+            SplashWallpaperLayout.FULL_CROP,
+            resolveSplashWallpaperLayout(
+                widthSizeClass = WindowWidthSizeClass.Compact,
+                imageAspectRatio = 0.56f
+            )
+        )
+    }
+
+    @Test
     fun splash_tabletWidth_usesPosterCardWithBlurBackground() {
         assertEquals(
             SplashWallpaperLayout.POSTER_CARD_BLUR_BG,

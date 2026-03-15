@@ -98,6 +98,23 @@ internal fun shouldShowSearchHotSection(
     hotSearchEnabled: Boolean
 ): Boolean = hotSearchEnabled && hotItemCount > 0
 
+internal fun shouldShowSearchHotHeader(
+    hotItemCount: Int,
+    hotSearchEnabled: Boolean
+): Boolean = hotItemCount > 0
+
+internal data class SearchTopBarLayoutSpec(
+    val showInlineHotToggle: Boolean,
+    val placeholderMaxLines: Int
+)
+
+internal fun resolveSearchTopBarLayoutSpec(): SearchTopBarLayoutSpec {
+    return SearchTopBarLayoutSpec(
+        showInlineHotToggle = false,
+        placeholderMaxLines = 1
+    )
+}
+
 internal data class SearchHomeContentMotionSpec(
     val fadeInDurationMillis: Int,
     val fadeOutDurationMillis: Int,
@@ -236,9 +253,9 @@ fun SearchScreen(
     val searchHazeEnabled = shouldEnableSearchHazeSource(searchMotionBudget)
     val effectiveCardTransitionEnabled =
         cardTransitionEnabled && searchMotionBudget == SearchMotionBudget.FULL
-    val showHotSection by remember(state.hotList, hotSearchEnabled) {
+    val showHotSectionHeader by remember(state.hotList, hotSearchEnabled) {
         derivedStateOf {
-            shouldShowSearchHotSection(
+            shouldShowSearchHotHeader(
                 hotItemCount = state.hotList.size,
                 hotSearchEnabled = hotSearchEnabled
             )
@@ -701,7 +718,7 @@ fun SearchScreen(
                 val exitOffsetPx = with(density) { searchHomeMotionSpec.exitOffsetDp.dp.roundToPx() }
 
                 AnimatedContent(
-                    targetState = showHotSection,
+                targetState = showHotSectionHeader,
                     transitionSpec = {
                         val resolvedEnterOffset = if (searchHomeMotionSpec.enterFromTop) {
                             -enterOffsetPx
@@ -798,7 +815,13 @@ fun SearchScreen(
                                 item {
                                     SearchHotSection(
                                         hotList = state.hotList,
+                                        hotSearchEnabled = hotSearchEnabled,
                                         hotColumns = searchLayoutPolicy.hotSearchColumns,
+                                        onToggleHotSearch = {
+                                            scope.launch {
+                                                SettingsManager.setSearchHotSectionEnabled(context, !hotSearchEnabled)
+                                            }
+                                        },
                                         onItemClick = {
                                             viewModel.search(it)
                                             keyboardController?.hide()
@@ -825,7 +848,13 @@ fun SearchScreen(
                                 item {
                                     SearchHotSection(
                                         hotList = state.hotList,
+                                        hotSearchEnabled = hotSearchEnabled,
                                         hotColumns = searchLayoutPolicy.hotSearchColumns,
+                                        onToggleHotSearch = {
+                                            scope.launch {
+                                                SettingsManager.setSearchHotSectionEnabled(context, !hotSearchEnabled)
+                                            }
+                                        },
                                         onItemClick = {
                                             viewModel.search(it)
                                             keyboardController?.hide()
@@ -862,12 +891,6 @@ fun SearchScreen(
                 onClearQuery = { viewModel.onQueryChange("") },
                 focusRequester = searchFocusRequester,  //  传递 focusRequester
                 placeholder = state.defaultSearchHint.ifBlank { "搜索视频、UP主..." },
-                hotSearchEnabled = hotSearchEnabled,
-                onToggleHotSearch = {
-                    scope.launch {
-                        SettingsManager.setSearchHotSectionEnabled(context, !hotSearchEnabled)
-                    }
-                },
                 reducedMotionBudget = searchMotionBudget == SearchMotionBudget.REDUCED,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -938,12 +961,11 @@ fun SearchTopBar(
     onSearch: (String) -> Unit,
     onClearQuery: () -> Unit,
     placeholder: String = "搜索视频、UP主...",
-    hotSearchEnabled: Boolean = true,
-    onToggleHotSearch: () -> Unit = {},
     focusRequester: androidx.compose.ui.focus.FocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
     reducedMotionBudget: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val layoutSpec = remember { resolveSearchTopBarLayoutSpec() }
     //  Focus 状态追踪
     var isFocused by remember { mutableStateOf(false) }
     
@@ -1042,7 +1064,9 @@ fun SearchTopBar(
                                         style = TextStyle(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f),
                                             fontSize = 15.sp
-                                        )
+                                        ),
+                                        maxLines = layoutSpec.placeholderMaxLines,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                                 inner()
@@ -1065,30 +1089,7 @@ fun SearchTopBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Surface(
-                    onClick = onToggleHotSearch,
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (hotSearchEnabled) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
-                    }
-                ) {
-                    Text(
-                        text = if (hotSearchEnabled) "热搜开" else "热搜关",
-                        color = if (hotSearchEnabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 TextButton(
                     onClick = { onSearch(query) },
@@ -1278,71 +1279,105 @@ fun SearchDiscoverySection(
 @Composable
 fun SearchHotSection(
     hotList: List<HotItem>,
+    hotSearchEnabled: Boolean,
     hotColumns: Int = 2,
+    onToggleHotSearch: () -> Unit,
     onItemClick: (String) -> Unit
 ) {
-    if (hotList.isNotEmpty()) {
+    val showHotBody = shouldShowSearchHotSection(
+        hotItemCount = hotList.size,
+        hotSearchEnabled = hotSearchEnabled
+    )
+    if (shouldShowSearchHotHeader(hotList.size, hotSearchEnabled)) {
         Column {
             //  热搜标题
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "", // 🔥
-                    fontSize = 16.sp
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    "热门搜索",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "", // 🔥
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "热门搜索",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Surface(
+                    onClick = onToggleHotSearch,
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (hotSearchEnabled) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+                    }
+                ) {
+                    Text(
+                        text = if (hotSearchEnabled) "热搜开" else "热搜关",
+                        color = if (hotSearchEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            
-            //  热搜列表 (动态布局)
-            val safeColumns = hotColumns.coerceAtLeast(1)
-            val displayList = hotList.take(20)
-            
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                displayList.chunked(safeColumns).forEachIndexed { rowIndex, rowItems ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        rowItems.forEachIndexed { indexInRow, hotItem ->
-                            val globalIndex = rowIndex * safeColumns + indexInRow
-                            val isTop3 = globalIndex < 3
-                            
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { onItemClick(hotItem.keyword) },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 排名序号
-                                Text(
-                                    text = "${globalIndex + 1}",
-                                    fontSize = 14.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = if (isTop3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.width(24.dp)
-                                )
-                                
-                                // 标题
-                                Text(
-                                    text = hotItem.show_name,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
+
+            if (showHotBody) {
+                //  热搜列表 (动态布局)
+                val safeColumns = hotColumns.coerceAtLeast(1)
+                val displayList = hotList.take(20)
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    displayList.chunked(safeColumns).forEachIndexed { rowIndex, rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEachIndexed { indexInRow, hotItem ->
+                                val globalIndex = rowIndex * safeColumns + indexInRow
+                                val isTop3 = globalIndex < 3
+
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onItemClick(hotItem.keyword) },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 排名序号
+                                    Text(
+                                        text = "${globalIndex + 1}",
+                                        fontSize = 14.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        color = if (isTop3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.width(24.dp)
+                                    )
+
+                                    // 标题
+                                    Text(
+                                        text = hotItem.show_name,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
                             }
-                        }
-                        // 如果不足一行，补空位占位
-                        if (rowItems.size < safeColumns) {
-                            Spacer(modifier = Modifier.weight((safeColumns - rowItems.size).toFloat()))
+                            // 如果不足一行，补空位占位
+                            if (rowItems.size < safeColumns) {
+                                Spacer(modifier = Modifier.weight((safeColumns - rowItems.size).toFloat()))
+                            }
                         }
                     }
                 }

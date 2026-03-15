@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -16,6 +17,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -78,6 +80,18 @@ import com.android.purebilibili.feature.video.ui.section.AiSummaryPromptCard
 import kotlin.math.abs
 
 internal fun shouldShowDanmakuSendInput(isPlayerCollapsed: Boolean): Boolean = !isPlayerCollapsed
+
+internal data class VideoContentTabBarLayoutSpec(
+    val tabsRowWeight: Float,
+    val tabsRowScrollable: Boolean
+)
+
+internal fun resolveVideoContentTabBarLayoutSpec(): VideoContentTabBarLayoutSpec {
+    return VideoContentTabBarLayoutSpec(
+        tabsRowWeight = 1f,
+        tabsRowScrollable = true
+    )
+}
 
 internal data class VideoContentTabBarDanmakuActionLayoutPolicy(
     val toggleIconSizeDp: Int,
@@ -889,6 +903,7 @@ private fun VideoContentTabBar(
     isPlayerCollapsed: Boolean = false,
     onRestorePlayer: () -> Unit = {}
 ) {
+    val layoutSpec = remember { resolveVideoContentTabBarLayoutSpec() }
     val danmakuActionLayoutPolicy = remember { resolveVideoContentTabBarDanmakuActionLayoutPolicy() }
     Column(
         modifier = modifier
@@ -900,38 +915,49 @@ private fun VideoContentTabBar(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            tabs.forEachIndexed { index, title ->
-                val isSelected = selectedTabIndex == index
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable { onTabSelected(index) }
-                        .padding(vertical = 10.dp, horizontal = 12.dp) // Increased padding
-                ) {
-                    Text(
-                        text = title,
-                        fontSize = if (isSelected) 17.sp else 16.sp, // Increased font size
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, // Slightly bolder unselected
-                        color = if (isSelected) MaterialTheme.colorScheme.primary 
-                               else MaterialTheme.colorScheme.onSurface, // More visible unselected color
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
+            Row(
+                modifier = Modifier
+                    .weight(layoutSpec.tabsRowWeight)
+                    .then(
+                        if (layoutSpec.tabsRowScrollable) {
+                            Modifier.horizontalScroll(rememberScrollState())
+                        } else {
+                            Modifier
+                        }
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    val isSelected = selectedTabIndex == index
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .width( if (isSelected) 32.dp else 0.dp) // Wider indicator, hide when unselected
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(1.5.dp))
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    )
-                }
-                if (index < tabs.lastIndex) {
-                    Spacer(modifier = Modifier.width(16.dp))
+                            .clickable { onTabSelected(index) }
+                            .padding(vertical = 10.dp, horizontal = 12.dp) // Increased padding
+                    ) {
+                        Text(
+                            text = title,
+                            fontSize = if (isSelected) 17.sp else 16.sp, // Increased font size
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, // Slightly bolder unselected
+                            color = if (isSelected) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface, // More visible unselected color
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(if (isSelected) 32.dp else 0.dp) // Wider indicator, hide when unselected
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(1.5.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        )
+                    }
+                    if (index < tabs.lastIndex) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
                 }
             }
-            
-            Spacer(modifier = Modifier.weight(1f))
 
             // [新增] 恢复画面按钮 (仅在播放器折叠时显示)
             AnimatedVisibility(

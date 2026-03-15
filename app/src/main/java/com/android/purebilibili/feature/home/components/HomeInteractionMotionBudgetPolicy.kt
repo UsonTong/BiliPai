@@ -36,3 +36,13 @@ internal fun shouldSnapHomeTopTabSelection(
     currentPage: Int,
     targetPage: Int
 ): Boolean = currentPage != targetPage
+
+internal fun resolveTopTabViewportAnchorIndex(
+    selectedIndex: Int,
+    pagerCurrentPage: Int?,
+    pagerTargetPage: Int?,
+    pagerIsScrolling: Boolean
+): Int {
+    if (!pagerIsScrolling) return selectedIndex
+    return pagerTargetPage ?: pagerCurrentPage ?: selectedIndex
+}

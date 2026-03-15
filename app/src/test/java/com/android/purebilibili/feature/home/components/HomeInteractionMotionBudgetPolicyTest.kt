@@ -72,4 +72,30 @@ class HomeInteractionMotionBudgetPolicyTest {
         assertTrue(shouldSnapHomeTopTabSelection(currentPage = 0, targetPage = 1))
         assertFalse(shouldSnapHomeTopTabSelection(currentPage = 2, targetPage = 2))
     }
+
+    @Test
+    fun activePagerSwipe_prefersPagerTargetForTopTabViewportAnchor() {
+        assertEquals(
+            4,
+            resolveTopTabViewportAnchorIndex(
+                selectedIndex = 2,
+                pagerCurrentPage = 2,
+                pagerTargetPage = 4,
+                pagerIsScrolling = true
+            )
+        )
+    }
+
+    @Test
+    fun idlePager_keepsSettledSelectionForTopTabViewportAnchor() {
+        assertEquals(
+            1,
+            resolveTopTabViewportAnchorIndex(
+                selectedIndex = 1,
+                pagerCurrentPage = 3,
+                pagerTargetPage = 4,
+                pagerIsScrolling = false
+            )
+        )
+    }
 }

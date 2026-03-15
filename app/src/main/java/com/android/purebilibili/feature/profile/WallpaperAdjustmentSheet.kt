@@ -11,11 +11,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform
+import com.android.purebilibili.core.ui.wallpaper.applyGestureToProfileWallpaperTransform
+import com.android.purebilibili.core.ui.wallpaper.sanitizeProfileWallpaperTransform
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.material.icons.Icons
@@ -199,6 +208,241 @@ fun WallpaperAdjustmentSheet(
                     modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileWallpaperAdjustmentSheet(
+    imageUri: String,
+    initialMobileTransform: ProfileWallpaperTransform = ProfileWallpaperTransform(),
+    initialTabletTransform: ProfileWallpaperTransform = ProfileWallpaperTransform(),
+    onSave: (mobileTransform: ProfileWallpaperTransform, tabletTransform: ProfileWallpaperTransform) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var mobileTransform by remember {
+        mutableStateOf(sanitizeProfileWallpaperTransform(initialMobileTransform))
+    }
+    var tabletTransform by remember {
+        mutableStateOf(sanitizeProfileWallpaperTransform(initialTabletTransform))
+    }
+
+    val currentTransform = if (selectedTab == 0) mobileTransform else tabletTransform
+    val currentTransformState = rememberUpdatedState(currentTransform)
+    fun updateCurrentTransform(transform: ProfileWallpaperTransform) {
+        if (selectedTab == 0) {
+            mobileTransform = sanitizeProfileWallpaperTransform(transform)
+        } else {
+            tabletTransform = sanitizeProfileWallpaperTransform(transform)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = null
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "取消",
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .clickable { onDismiss() },
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "调整壁纸位置",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+
+                Text(
+                    text = "保存",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .clickable { onSave(mobileTransform, tabletTransform) },
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                TabItem(
+                    title = "手机端",
+                    icon = Icons.Outlined.PhoneAndroid,
+                    isSelected = selectedTab == 0,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedTab = 0 }
+                )
+                TabItem(
+                    title = "平板端",
+                    icon = Icons.Outlined.TabletAndroid,
+                    isSelected = selectedTab == 1,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedTab = 1 }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(328.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                val aspectRatio = if (selectedTab == 0) 9f / 18f else 16f / 10f
+                val width = if (selectedTab == 0) 150.dp else 292.dp
+                val height = width / aspectRatio
+
+                Card(
+                    shape = RoundedCornerShape(if (selectedTab == 0) 16.dp else 12.dp),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    modifier = Modifier.size(width = width, height = height)
+                ) {
+                    var previewSize by remember(selectedTab) { mutableStateOf(IntSize.Zero) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onSizeChanged { previewSize = it }
+                            .pointerInput(selectedTab, previewSize) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    updateCurrentTransform(
+                                        applyGestureToProfileWallpaperTransform(
+                                            current = currentTransformState.value,
+                                            panX = pan.x,
+                                            panY = pan.y,
+                                            zoomChange = zoom,
+                                            containerWidthPx = previewSize.width.toFloat(),
+                                            containerHeightPx = previewSize.height.toFloat()
+                                        )
+                                    )
+                                }
+                            }
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            alignment = androidx.compose.ui.BiasAlignment(
+                                currentTransform.offsetX,
+                                currentTransform.offsetY
+                            ),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(
+                                    scaleX = currentTransform.scale,
+                                    scaleY = currentTransform.scale
+                                )
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = 0.42f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(88.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = 0.24f),
+                                            Color.Black.copy(alpha = 0.46f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        Text(
+                            text = "双指缩放  单指拖动",
+                            color = Color.White.copy(alpha = 0.86f),
+                            fontSize = 10.sp,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = if (selectedTab == 0) "手机端参数" else "平板端参数",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "缩放 ${"%.2f".format(currentTransform.scale)}x  横向 ${"%.2f".format(currentTransform.offsetX)}  纵向 ${"%.2f".format(currentTransform.offsetY)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+
+                TextButton(
+                    onClick = { updateCurrentTransform(ProfileWallpaperTransform()) }
+                ) {
+                    Text("重置位置")
+                }
+            }
+
+            Text(
+                text = "不同设备分别保存；首次设置会以居中参数作为默认值。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

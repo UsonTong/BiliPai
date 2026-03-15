@@ -133,13 +133,13 @@ fun SplashWallpaperPickerSheet(
                         modifier = Modifier.weight(1f)
                     ) {
                         items(officialWallpapers) { item ->
-                            val isSelected = selectedUrl == item.thumb || selectedUrl == item.image
-                            val rawUrl = item.thumb.ifEmpty { item.image }
-                            val imageUrl = normalizeSplashWallpaperUrl(rawUrl)
+                            val detailUrl = resolveOfficialWallpaperDetailUrl(item)
+                            val imageUrl = resolveOfficialWallpaperThumbnailUrl(item)
+                            val isSelected = selectedUrl == detailUrl
 
                             Column(
                                 modifier = Modifier
-                                    .clickable { selectedUrl = rawUrl }
+                                    .clickable { selectedUrl = detailUrl }
                                     .animateContentSize(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {

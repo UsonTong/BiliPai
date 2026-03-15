@@ -136,14 +136,13 @@ fun OfficialWallpaperSheet(
                         modifier = Modifier.weight(1f)
                     ) {
                         items(officialWallpapers) { item ->
-                            val isSelected = selectedUrl == item.thumb || selectedUrl == item.image
-                            // 优先使用 thumb, 假如没有则 image，并修复 URL
-                            val rawUrl = item.thumb.ifEmpty { item.image }
-                            val imageUrl = fixWallpaperUrl(rawUrl)
+                            val detailUrl = resolveOfficialWallpaperDetailUrl(item)
+                            val imageUrl = resolveOfficialWallpaperThumbnailUrl(item)
+                            val isSelected = selectedUrl == detailUrl
                             
                             Column(
                                 modifier = Modifier
-                                    .clickable { selectedUrl = rawUrl }
+                                    .clickable { selectedUrl = detailUrl }
                                     .animateContentSize(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -239,30 +238,32 @@ fun OfficialWallpaperSheet(
                         // [New] Adjustment Sheet Logic
                         var showAdjustmentSheet by remember { mutableStateOf(false) }
                         var showSplashAdjustmentSheet by remember { mutableStateOf(false) }
-                        val initialMobileBias by viewModel.getProfileBgAlignment(false).collectAsState(0f)
-                        val initialTabletBias by viewModel.getProfileBgAlignment(true).collectAsState(0f)
                         val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(0f)
                         val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(0f)
                         
                         // [New] Adjustment Sheet
                          if (showAdjustmentSheet && selectedUrl != null) {
-                             WallpaperAdjustmentSheet(
+                             ProfileWallpaperAdjustmentSheet(
                                  imageUri = fixWallpaperUrl(selectedUrl),
-                                 initialMobileBias = initialMobileBias,
-                                 initialTabletBias = initialTabletBias,
+                                 initialMobileTransform = com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform(),
+                                 initialTabletTransform = com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform(),
                                  onDismiss = { showAdjustmentSheet = false },
-                                 onSave = { mBias, tBias ->
+                                 onSave = { mobileTransform, tabletTransform ->
                                      showAdjustmentSheet = false
                                      // Save with adjustments
                                      selectedUrl?.let { url ->
-                                        viewModel.saveWallpaper(url, mBias, tBias) {
+                                        viewModel.saveWallpaper(
+                                            url = url,
+                                            mobileTransform = mobileTransform,
+                                            tabletTransform = tabletTransform
+                                        ) {
                                             onDismiss()
                                             Toast.makeText(context, "背景设置成功", Toast.LENGTH_SHORT).show()
                                         }
                                      }
                                  }
                              )
-                         }
+                        }
 
                         if (showSplashAdjustmentSheet && selectedUrl != null) {
                             WallpaperAdjustmentSheet(

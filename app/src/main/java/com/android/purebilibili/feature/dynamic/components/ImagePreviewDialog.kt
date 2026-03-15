@@ -66,6 +66,7 @@ import android.app.Activity
 import android.content.ContextWrapper
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.toArgb
+import com.android.purebilibili.core.util.rememberHapticFeedback
 
 /**
  *  图片预览对话框 - 支持左右滑动切换和3D立体动画
@@ -82,6 +83,7 @@ private data class ImagePreviewOverlayRequest(
     val initialIndex: Int,
     val sourceRect: androidx.compose.ui.geometry.Rect?,
     val textContent: ImagePreviewTextContent?,
+    val onImageLongPress: ((String) -> Unit)?,
     val onDismiss: () -> Unit
 )
 
@@ -107,6 +109,7 @@ fun ImagePreviewDialog(
     initialIndex: Int,
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
     textContent: ImagePreviewTextContent? = null,
+    onImageLongPress: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val latestOnDismiss by rememberUpdatedState(onDismiss)
@@ -120,6 +123,7 @@ fun ImagePreviewDialog(
                 initialIndex = initialIndex,
                 sourceRect = sourceRect,
                 textContent = textContent,
+                onImageLongPress = onImageLongPress,
                 onDismiss = { latestOnDismiss() }
             )
         )
@@ -153,6 +157,7 @@ fun ImagePreviewOverlayHost(
                 initialIndex = request.initialIndex,
                 sourceRect = request.sourceRect,
                 textContent = request.textContent,
+                onImageLongPress = request.onImageLongPress,
                 onDismiss = {
                     ImagePreviewOverlayController.dismiss(request.token)
                     request.onDismiss()
@@ -171,12 +176,14 @@ private fun ImagePreviewOverlayContent(
     initialIndex: Int,
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
     textContent: ImagePreviewTextContent? = null,
+    onImageLongPress: ((String) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val haptic = rememberHapticFeedback()
     var isSaving by remember { mutableStateOf(false) }
     
     //  获取 Activity 和 Window 用于沉浸式控制
@@ -215,6 +222,15 @@ private fun ImagePreviewOverlayContent(
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
     var isVerticalDismissDragging by remember { mutableStateOf(false) }
     val verticalDismissOffsetYPx = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    fun handleImageSaveResult(success: Boolean) {
+        haptic(resolveImagePreviewSaveFeedback(success))
+        Toast.makeText(
+            context,
+            if (success) "图片已保存到相册" else "保存失败，请重试",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
     
     // 启动入场动画 - 使用轻阻尼弹簧，保留自然惯性
     LaunchedEffect(Unit) {
@@ -281,13 +297,30 @@ private fun ImagePreviewOverlayContent(
                 isSaving = false
                 pendingSaveUrl = null
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        if (success) "图片已保存到相册" else "保存失败，请重试",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    handleImageSaveResult(success)
                 }
             }
+        }
+    }
+
+    fun requestSaveCurrentImage(imageUrl: String) {
+        if (imageUrl.isEmpty() || isSaving) return
+        if (onImageLongPress != null) {
+            onImageLongPress(imageUrl)
+            return
+        }
+        if (storagePermission.isGranted) {
+            isSaving = true
+            scope.launch {
+                val success = saveImageToGallery(context, imageUrl)
+                isSaving = false
+                withContext(Dispatchers.Main) {
+                    handleImageSaveResult(success)
+                }
+            }
+        } else {
+            pendingSaveUrl = imageUrl
+            storagePermission.request()
         }
     }
     
@@ -554,6 +587,11 @@ private fun ImagePreviewOverlayContent(
                                     }
                                 }
                             },
+                            onLongPress = {
+                                if (page == pagerState.currentPage) {
+                                    requestSaveCurrentImage(imageUrl)
+                                }
+                            },
                             onClick = {
                                 // 点击图片关闭预览
                                  triggerDismiss()
@@ -815,27 +853,7 @@ private fun ImagePreviewOverlayContent(
                     //  下载按钮
                     FilledIconButton(
                         onClick = {
-                            if (!isSaving && currentImageUrl.isNotEmpty()) {
-                                //  检查权限（Android 10+ 自动授权）
-                                if (storagePermission.isGranted) {
-                                    isSaving = true
-                                    scope.launch {
-                                        val success = saveImageToGallery(context, currentImageUrl)
-                                        isSaving = false
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(
-                                                context,
-                                                if (success) "图片已保存到相册" else "保存失败，请重试",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                } else {
-                                    // 保存待执行的 URL，请求权限
-                                    pendingSaveUrl = currentImageUrl
-                                    storagePermission.request()
-                                }
-                            }
+                            requestSaveCurrentImage(currentImageUrl)
                         },
                         enabled = !isSaving,
                         colors = IconButtonDefaults.filledIconButtonColors(

@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toSize
 import coil.ImageLoader
@@ -38,6 +39,8 @@ private enum class ZoomableImageGestureMode {
     IMAGE_INTERACTION,
     VERTICAL_DISMISS
 }
+
+internal const val ZOOMABLE_IMAGE_TAG = "zoomable_image"
 
 /**
  * 可缩放的图片组件
@@ -58,6 +61,7 @@ fun ZoomableImage(
     onVerticalDismissDrag: (Float) -> Unit = {},
     onVerticalDismissDragEnd: () -> Unit = {},
     onVerticalDismissDragCancel: () -> Unit = {},
+    onLongPress: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
@@ -143,6 +147,7 @@ fun ZoomableImage(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { onDoubleTap(it) },
+                    onLongPress = { onLongPress() },
                     onTap = { onClick() }
                 )
             }
@@ -281,7 +286,9 @@ fun ZoomableImage(
             contentDescription = contentDescription,
             imageLoader = imageLoader,
             modifier = Modifier
+                .fillMaxSize()
                 .align(Alignment.Center)
+                .testTag(ZOOMABLE_IMAGE_TAG)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale

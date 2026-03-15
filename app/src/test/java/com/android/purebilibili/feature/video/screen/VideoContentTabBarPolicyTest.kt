@@ -8,6 +8,14 @@ import kotlin.test.assertTrue
 class VideoContentTabBarPolicyTest {
 
     @Test
+    fun `tab bar layout reserves trailing danmaku action area`() {
+        val spec = resolveVideoContentTabBarLayoutSpec()
+
+        assertEquals(1f, spec.tabsRowWeight)
+        assertTrue(spec.tabsRowScrollable)
+    }
+
+    @Test
     fun `danmaku input visible when player is expanded`() {
         assertTrue(
             shouldShowDanmakuSendInput(

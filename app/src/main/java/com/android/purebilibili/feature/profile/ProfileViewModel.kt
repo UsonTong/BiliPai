@@ -15,6 +15,7 @@ import java.net.SocketTimeoutException
 
 import android.net.Uri
 import android.content.Context
+import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform
 import com.android.purebilibili.core.store.SettingsManager
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -170,15 +171,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
      */
     fun updateCustomBackground(
         uri: Uri, 
-        mobileBias: Float = 0f, 
-        tabletBias: Float = 0f
+        mobileTransform: ProfileWallpaperTransform = ProfileWallpaperTransform(),
+        tabletTransform: ProfileWallpaperTransform = ProfileWallpaperTransform()
     ) {
         viewModelScope.launch {
             try {
                 val context = getApplication<Application>()
                 
-                SettingsManager.setProfileBgAlignment(context, false, mobileBias)
-                SettingsManager.setProfileBgAlignment(context, true, tabletBias)
+                SettingsManager.setProfileBgTransform(context, false, mobileTransform)
+                SettingsManager.setProfileBgTransform(context, true, tabletTransform)
                 
                 // 1. 创建图片保存目录
                 val imagesDir = File(context.filesDir, "images")
@@ -316,6 +317,20 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
      */
     // [New] Alignment State
     fun getProfileBgAlignment(isTablet: Boolean) = SettingsManager.getProfileBgAlignment(getApplication(), isTablet)
+    fun getProfileBgTransform(isTablet: Boolean) = SettingsManager.getProfileBgTransform(getApplication(), isTablet)
+    fun getProfileBgUri() = SettingsManager.getProfileBgUri(getApplication())
+
+    fun clearCustomBackground() {
+        viewModelScope.launch {
+            val context = getApplication<Application>()
+            SettingsManager.setProfileBgUri(context, null)
+            SettingsManager.resetProfileBgTransform(context)
+            runCatching {
+                File(context.filesDir, "images/profile_bg.jpg").delete()
+            }
+            loadProfile()
+        }
+    }
 
     /**
      * 保存壁纸 (下载并设置为背景)
@@ -323,8 +338,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
      */
     fun saveWallpaper(
         url: String, 
-        mobileBias: Float = 0f, 
-        tabletBias: Float = 0f,
+        mobileTransform: ProfileWallpaperTransform = ProfileWallpaperTransform(),
+        tabletTransform: ProfileWallpaperTransform = ProfileWallpaperTransform(),
         onComplete: () -> Unit = {}
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -332,8 +347,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             try {
                 // 保存对齐设置
                 val context = getApplication<Application>()
-                SettingsManager.setProfileBgAlignment(context, false, mobileBias)
-                SettingsManager.setProfileBgAlignment(context, true, tabletBias)
+                SettingsManager.setProfileBgTransform(context, false, mobileTransform)
+                SettingsManager.setProfileBgTransform(context, true, tabletTransform)
                 
                 // 修复 URL 协议 (强制 HTTPS)
                 var finalUrl = url

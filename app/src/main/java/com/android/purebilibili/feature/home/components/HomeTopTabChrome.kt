@@ -47,6 +47,7 @@ internal fun HomeTopTabChrome(
     isScrolling: Boolean,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
+    preferFlatGlass: Boolean,
     tabBorderAlpha: Float,
     tabHighlightColor: Color,
     tabContentUnderlayColor: Color,
@@ -88,7 +89,8 @@ internal fun HomeTopTabChrome(
                     motionTier = motionTier,
                     isScrolling = isScrolling,
                     isTransitionRunning = isTransitionRunning,
-                    forceLowBlurBudget = forceLowBlurBudget
+                    forceLowBlurBudget = forceLowBlurBudget,
+                    preferFlatGlass = preferFlatGlass
                 )
                 .then(
                     if (isTabFloating) {

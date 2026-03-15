@@ -2692,6 +2692,10 @@ object SettingsManager {
     // ========== [New] 个人中心自定义背景 ==========
 
     private val KEY_PROFILE_BG_URI = stringPreferencesKey("profile_bg_uri")
+    private val KEY_PROFILE_BG_SCALE_MOBILE = floatPreferencesKey("profile_bg_scale_mobile")
+    private val KEY_PROFILE_BG_SCALE_TABLET = floatPreferencesKey("profile_bg_scale_tablet")
+    private val KEY_PROFILE_BG_OFFSET_X_MOBILE = floatPreferencesKey("profile_bg_offset_x_mobile")
+    private val KEY_PROFILE_BG_OFFSET_X_TABLET = floatPreferencesKey("profile_bg_offset_x_tablet")
 
     /**
      * 获取自定义个人中心背景图 URI
@@ -2714,24 +2718,80 @@ object SettingsManager {
     private val KEY_PROFILE_BG_ALIGNMENT_MOBILE = floatPreferencesKey("profile_bg_alignment_mobile")
     private val KEY_PROFILE_BG_ALIGNMENT_TABLET = floatPreferencesKey("profile_bg_alignment_tablet")
 
+    fun getProfileBgTransform(
+        context: Context,
+        isTablet: Boolean
+    ): Flow<com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform> = context.settingsDataStore.data
+        .map { preferences ->
+            com.android.purebilibili.core.ui.wallpaper.sanitizeProfileWallpaperTransform(
+                com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform(
+                    scale = if (isTablet) {
+                        preferences[KEY_PROFILE_BG_SCALE_TABLET] ?: 1f
+                    } else {
+                        preferences[KEY_PROFILE_BG_SCALE_MOBILE] ?: 1f
+                    },
+                    offsetX = if (isTablet) {
+                        preferences[KEY_PROFILE_BG_OFFSET_X_TABLET] ?: 0f
+                    } else {
+                        preferences[KEY_PROFILE_BG_OFFSET_X_MOBILE] ?: 0f
+                    },
+                    offsetY = if (isTablet) {
+                        preferences[KEY_PROFILE_BG_ALIGNMENT_TABLET] ?: 0f
+                    } else {
+                        preferences[KEY_PROFILE_BG_ALIGNMENT_MOBILE] ?: 0f
+                    }
+                )
+            )
+        }
+
+    suspend fun setProfileBgTransform(
+        context: Context,
+        isTablet: Boolean,
+        transform: com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform
+    ) {
+        val safeTransform =
+            com.android.purebilibili.core.ui.wallpaper.sanitizeProfileWallpaperTransform(transform)
+        context.settingsDataStore.edit { preferences ->
+            val scaleKey = if (isTablet) KEY_PROFILE_BG_SCALE_TABLET else KEY_PROFILE_BG_SCALE_MOBILE
+            val offsetXKey = if (isTablet) KEY_PROFILE_BG_OFFSET_X_TABLET else KEY_PROFILE_BG_OFFSET_X_MOBILE
+            val offsetYKey = if (isTablet) KEY_PROFILE_BG_ALIGNMENT_TABLET else KEY_PROFILE_BG_ALIGNMENT_MOBILE
+            preferences[scaleKey] = safeTransform.scale
+            preferences[offsetXKey] = safeTransform.offsetX
+            preferences[offsetYKey] = safeTransform.offsetY
+        }
+    }
+
+    suspend fun resetProfileBgTransform(context: Context) {
+        context.settingsDataStore.edit { preferences ->
+            preferences.remove(KEY_PROFILE_BG_SCALE_MOBILE)
+            preferences.remove(KEY_PROFILE_BG_SCALE_TABLET)
+            preferences.remove(KEY_PROFILE_BG_OFFSET_X_MOBILE)
+            preferences.remove(KEY_PROFILE_BG_OFFSET_X_TABLET)
+            preferences.remove(KEY_PROFILE_BG_ALIGNMENT_MOBILE)
+            preferences.remove(KEY_PROFILE_BG_ALIGNMENT_TABLET)
+        }
+    }
+
     /**
      * 获取个人中心背景图对齐方式 (竖向Bias: -1.0 Top ~ 1.0 Bottom, Default 0.0 Center)
      * 分为移动端和平板端独立存储
      */
     fun getProfileBgAlignment(context: Context, isTablet: Boolean): Flow<Float> = context.settingsDataStore.data
-        .map { preferences -> 
+        .map { preferences ->
             if (isTablet) {
                 preferences[KEY_PROFILE_BG_ALIGNMENT_TABLET] ?: 0f
             } else {
-                preferences[KEY_PROFILE_BG_ALIGNMENT_MOBILE] ?: 0f // 默认居中
+                preferences[KEY_PROFILE_BG_ALIGNMENT_MOBILE] ?: 0f
             }
         }
 
     suspend fun setProfileBgAlignment(context: Context, isTablet: Boolean, bias: Float) {
-        context.settingsDataStore.edit { preferences ->
-            val key = if (isTablet) KEY_PROFILE_BG_ALIGNMENT_TABLET else KEY_PROFILE_BG_ALIGNMENT_MOBILE
-            preferences[key] = bias.coerceIn(-1f, 1f)
-        }
+        val currentTransform = getProfileBgTransform(context, isTablet).first()
+        setProfileBgTransform(
+            context = context,
+            isTablet = isTablet,
+            transform = currentTransform.copy(offsetY = bias)
+        )
     }
 
     private val shareableSettingDefinitions: List<ShareablePreferenceDefinition> by lazy {
