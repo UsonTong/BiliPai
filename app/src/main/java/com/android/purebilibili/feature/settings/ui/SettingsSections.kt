@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.ui.rememberAppCollectionIcon
+import com.android.purebilibili.core.ui.rememberAppDynamicIcon
+import com.android.purebilibili.core.ui.rememberAppLockIcon
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.util.EasterEggs
@@ -27,6 +30,7 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import com.android.purebilibili.core.ui.components.AppAdaptiveSwitch
+import com.android.purebilibili.core.ui.components.resolveAdaptiveListComponentVisualSpec
 
 // ═══════════════════════════════════════════════════
 //  UI 组件 (Stateless Components)
@@ -82,9 +86,9 @@ fun FollowAuthorSection(
     onDonateClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
-    val telegramVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TELEGRAM, uiPreset)
-    val twitterVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TWITTER, uiPreset)
-    val donateVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DONATE, uiPreset)
+    val telegramVisual = rememberSettingsEntryVisual(SettingsSearchTarget.TELEGRAM, uiPreset)
+    val twitterVisual = rememberSettingsEntryVisual(SettingsSearchTarget.TWITTER, uiPreset)
+    val donateVisual = rememberSettingsEntryVisual(SettingsSearchTarget.DONATE, uiPreset)
 
     SettingsCardGroup {
         SettingClickableItem(
@@ -126,9 +130,9 @@ fun GeneralSection(
     onBottomBarClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
-    val appearanceVisual = resolveSettingsEntryVisual(SettingsSearchTarget.APPEARANCE, uiPreset)
-    val playbackVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PLAYBACK, uiPreset)
-    val bottomBarVisual = resolveSettingsEntryVisual(SettingsSearchTarget.BOTTOM_BAR, uiPreset)
+    val appearanceVisual = rememberSettingsEntryVisual(SettingsSearchTarget.APPEARANCE, uiPreset)
+    val playbackVisual = rememberSettingsEntryVisual(SettingsSearchTarget.PLAYBACK, uiPreset)
+    val bottomBarVisual = rememberSettingsEntryVisual(SettingsSearchTarget.BOTTOM_BAR, uiPreset)
 
     SettingsCardGroup {
         SettingClickableItem(
@@ -166,8 +170,8 @@ fun SupportToolsSection(
     onOpenLinksClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
-    val tipsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.TIPS, uiPreset)
-    val openLinksVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_LINKS, uiPreset)
+    val tipsVisual = rememberSettingsEntryVisual(SettingsSearchTarget.TIPS, uiPreset)
+    val openLinksVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_LINKS, uiPreset)
 
     SettingsCardGroup {
         SettingClickableItem(
@@ -250,9 +254,11 @@ fun SettingsSubpageEntrySection(
     onExtensionsAndDebugClick: () -> Unit,
     onAboutAndSupportClick: () -> Unit
 ) {
+    val contentAndStorageIcon = rememberAppCollectionIcon()
+    val privacyIcon = rememberAppLockIcon()
     SettingsCardGroup {
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Folder,
+            icon = contentAndStorageIcon,
             title = "内容与存储",
             value = "推荐流、下载与缓存",
             onClick = onContentAndStorageClick,
@@ -260,7 +266,7 @@ fun SettingsSubpageEntrySection(
         )
         SettingsDivider(startIndent = 66.dp)
         SettingClickableItem(
-            icon = CupertinoIcons.Default.Lock,
+            icon = privacyIcon,
             title = "隐私与安全",
             value = "无痕模式、权限与黑名单",
             onClick = onPrivacyAndSecurityClick,
@@ -292,6 +298,7 @@ fun FeedApiSection(
     incrementalTimelineRefreshEnabled: Boolean,
     onIncrementalTimelineRefreshChange: (Boolean) -> Unit
 ) {
+    val feedIcon = rememberAppDynamicIcon()
     SettingsCardGroup {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -299,7 +306,7 @@ fun FeedApiSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = CupertinoIcons.Default.RectangleStack,
+                    imageVector = feedIcon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
                     tint = iOSOrange
@@ -348,6 +355,8 @@ private fun FeedSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     iconTint: Color
 ) {
+    val uiPreset = LocalUiPreset.current
+    val visualSpec = resolveAdaptiveListComponentVisualSpec(uiPreset)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -357,12 +366,17 @@ private fun FeedSwitchItem(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconTint.copy(alpha = 0.12f)),
+                .size(visualSpec.iconContainerSizeDp.dp)
+                .clip(RoundedCornerShape(visualSpec.iconCornerRadiusDp.dp))
+                .background(iconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+            )
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -400,8 +414,8 @@ fun PrivacySection(
     onBlockedListClick: () -> Unit // [New]
 ) {
     val uiPreset = LocalUiPreset.current
-    val permissionVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PERMISSION, uiPreset)
-    val blockedListVisual = resolveSettingsEntryVisual(SettingsSearchTarget.BLOCKED_LIST, uiPreset)
+    val permissionVisual = rememberSettingsEntryVisual(SettingsSearchTarget.PERMISSION, uiPreset)
+    val blockedListVisual = rememberSettingsEntryVisual(SettingsSearchTarget.BLOCKED_LIST, uiPreset)
 
     SettingsCardGroup {
         SettingSwitchItem(
@@ -443,10 +457,10 @@ fun DataStorageSection(
     onClearCacheClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
-    val settingsShareVisual = resolveSettingsEntryVisual(SettingsSearchTarget.SETTINGS_SHARE, uiPreset)
-    val webDavVisual = resolveSettingsEntryVisual(SettingsSearchTarget.WEBDAV_BACKUP, uiPreset)
-    val downloadPathVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DOWNLOAD_PATH, uiPreset)
-    val clearCacheVisual = resolveSettingsEntryVisual(SettingsSearchTarget.CLEAR_CACHE, uiPreset)
+    val settingsShareVisual = rememberSettingsEntryVisual(SettingsSearchTarget.SETTINGS_SHARE, uiPreset)
+    val webDavVisual = rememberSettingsEntryVisual(SettingsSearchTarget.WEBDAV_BACKUP, uiPreset)
+    val downloadPathVisual = rememberSettingsEntryVisual(SettingsSearchTarget.DOWNLOAD_PATH, uiPreset)
+    val clearCacheVisual = rememberSettingsEntryVisual(SettingsSearchTarget.CLEAR_CACHE, uiPreset)
 
     SettingsCardGroup {
         SettingClickableItem(
@@ -499,8 +513,8 @@ fun DeveloperSection(
     onExportLogsClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
-    val pluginsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.PLUGINS, uiPreset)
-    val exportLogsVisual = resolveSettingsEntryVisual(SettingsSearchTarget.EXPORT_LOGS, uiPreset)
+    val pluginsVisual = rememberSettingsEntryVisual(SettingsSearchTarget.PLUGINS, uiPreset)
+    val exportLogsVisual = rememberSettingsEntryVisual(SettingsSearchTarget.EXPORT_LOGS, uiPreset)
 
     SettingsCardGroup {
         SettingSwitchItem(
@@ -561,12 +575,12 @@ fun AboutSection(
     versionClickThreshold: Int = EasterEggs.VERSION_EASTER_EGG_THRESHOLD
 ) {
     val uiPreset = LocalUiPreset.current
-    val disclaimerVisual = resolveSettingsEntryVisual(SettingsSearchTarget.DISCLAIMER, uiPreset)
-    val licensesVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_LICENSES, uiPreset)
-    val openSourceHomeVisual = resolveSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_HOME, uiPreset)
-    val checkUpdateVisual = resolveSettingsEntryVisual(SettingsSearchTarget.CHECK_UPDATE, uiPreset)
-    val releaseNotesVisual = resolveSettingsEntryVisual(SettingsSearchTarget.VIEW_RELEASE_NOTES, uiPreset)
-    val replayOnboardingVisual = resolveSettingsEntryVisual(SettingsSearchTarget.REPLAY_ONBOARDING, uiPreset)
+    val disclaimerVisual = rememberSettingsEntryVisual(SettingsSearchTarget.DISCLAIMER, uiPreset)
+    val licensesVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_LICENSES, uiPreset)
+    val openSourceHomeVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_HOME, uiPreset)
+    val checkUpdateVisual = rememberSettingsEntryVisual(SettingsSearchTarget.CHECK_UPDATE, uiPreset)
+    val releaseNotesVisual = rememberSettingsEntryVisual(SettingsSearchTarget.VIEW_RELEASE_NOTES, uiPreset)
+    val replayOnboardingVisual = rememberSettingsEntryVisual(SettingsSearchTarget.REPLAY_ONBOARDING, uiPreset)
 
     val safeThreshold = versionClickThreshold.coerceAtLeast(1)
     val normalizedClickCount = versionClickCount.coerceAtLeast(0)

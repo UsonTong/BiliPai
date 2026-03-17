@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.space
 
 import com.android.purebilibili.data.model.response.FavFolder
+import com.android.purebilibili.feature.space.SpaceMainTab
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -97,5 +98,31 @@ class SpaceProfileEnhancementPolicyTest {
         assertEquals("", normalizeSpaceTopPhotoUrl("{}"))
         assertEquals("", normalizeSpaceTopPhotoUrl("N/A"))
         assertEquals("", normalizeSpaceTopPhotoUrl("about:blank"))
+    }
+
+    @Test
+    fun `buildInitialTabShellState populates each tab`() {
+        val shell = buildInitialTabShellState(selectedTab = SpaceMainTab.DYNAMIC)
+
+        assertEquals(SpaceMainTab.DYNAMIC, shell.selectedTab)
+        assertEquals(4, shell.tabStates.size)
+        assertFalse(shell.tabStates[SpaceMainTab.HOME]?.hasLoaded ?: true)
+    }
+
+    @Test
+    fun `buildHeaderState collects favorite folders`() {
+        val header = buildHeaderState(
+            userInfo = null,
+            relationStat = null,
+            upStat = null,
+            topVideo = null,
+            notice = "notice",
+            createdFavorites = listOf(FavFolder(id = 1, title = "c", media_count = 1)),
+            collectedFavorites = listOf(FavFolder(id = 2, title = "col", media_count = 2))
+        )
+
+        assertEquals("notice", header.notice)
+        assertEquals(1, header.createdFavorites.size)
+        assertEquals(2, header.collectedFavorites.first().id)
     }
 }

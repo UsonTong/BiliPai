@@ -13,6 +13,9 @@ class AdaptiveListComponentPolicyTest {
 
         assertEquals(48, spec.searchBarHeightDp)
         assertEquals(28, spec.searchBarCornerRadiusDp)
+        assertEquals(40, spec.iconContainerSizeDp)
+        assertEquals(22, spec.iconGlyphSizeDp)
+        assertEquals(0.18f, spec.iconBackgroundAlpha, 0.0001f)
         assertEquals(1f, spec.dividerThicknessDp)
         assertEquals(16, spec.dividerStartIndentDp)
     }
@@ -23,6 +26,9 @@ class AdaptiveListComponentPolicyTest {
 
         assertEquals(40, spec.searchBarHeightDp)
         assertEquals(10, spec.searchBarCornerRadiusDp)
+        assertEquals(36, spec.iconContainerSizeDp)
+        assertEquals(20, spec.iconGlyphSizeDp)
+        assertEquals(0.12f, spec.iconBackgroundAlpha, 0.0001f)
         assertEquals(66, spec.dividerStartIndentDp)
         assertTrue(spec.groupCornerRadiusDp < resolveAdaptiveListComponentVisualSpec(UiPreset.MD3).groupCornerRadiusDp)
     }

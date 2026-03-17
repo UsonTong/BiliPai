@@ -3,12 +3,26 @@ package com.android.purebilibili.feature.dynamic.components
 import com.android.purebilibili.core.util.BilibiliUrlParser
 import com.android.purebilibili.data.model.response.ArchiveMajor
 import com.android.purebilibili.data.model.response.DynamicItem
+import com.android.purebilibili.data.model.response.LiveRcmdMajor
 import com.android.purebilibili.data.model.response.UgcSeasonMajor
+import com.android.purebilibili.feature.dynamic.model.LiveContentInfo
+import kotlinx.serialization.json.Json
 
-internal sealed interface DynamicCardClickAction {
-    data class OpenVideo(val bvid: String) : DynamicCardClickAction
-    data class OpenDynamicDetail(val dynamicId: String) : DynamicCardClickAction
-    data object None : DynamicCardClickAction
+internal sealed interface DynamicCardPrimaryAction {
+    data class OpenVideo(val bvid: String) : DynamicCardPrimaryAction
+    data class OpenDynamicDetail(val dynamicId: String) : DynamicCardPrimaryAction
+    data class OpenLive(val roomId: Long, val title: String, val uname: String) : DynamicCardPrimaryAction
+    data class OpenUser(val mid: Long) : DynamicCardPrimaryAction
+    data object None : DynamicCardPrimaryAction
+}
+
+internal sealed interface DynamicCardMediaAction {
+    data class PreviewImages(
+        val images: List<String>,
+        val initialIndex: Int
+    ) : DynamicCardMediaAction
+
+    data object None : DynamicCardMediaAction
 }
 
 internal fun resolveBvidFromRawVideoTarget(rawValue: String?): String? {
@@ -52,14 +66,87 @@ internal fun resolveUgcSeasonArchiveFallback(season: UgcSeasonMajor): ArchiveMaj
     )
 }
 
-internal fun resolveDynamicCardClickAction(item: DynamicItem): DynamicCardClickAction {
-    val major = item.modules.module_dynamic?.major
+internal fun resolveDynamicCardPrimaryAction(item: DynamicItem): DynamicCardPrimaryAction {
+    val target = item.orig ?: item
+    val authorMid = target.modules.module_author?.mid ?: 0L
+    val major = target.modules.module_dynamic?.major
     val bvid = major?.archive?.let(::resolveArchivePlayableBvid)
         ?: major?.ugc_season?.let(::resolveUgcSeasonPlayableBvid)
     if (bvid != null) {
-        return DynamicCardClickAction.OpenVideo(bvid)
+        return DynamicCardPrimaryAction.OpenVideo(bvid)
     }
 
-    val dynamicId = item.id_str.trim().takeIf { it.isNotEmpty() } ?: return DynamicCardClickAction.None
-    return DynamicCardClickAction.OpenDynamicDetail(dynamicId)
+    major?.live_rcmd?.let { live ->
+        resolveLivePrimaryAction(
+            liveRcmd = live,
+            fallbackName = target.modules.module_author?.name.orEmpty()
+        )?.let { return it }
+    }
+
+    val dynamicId = target.id_str.trim().takeIf { it.isNotEmpty() }
+    if (dynamicId != null) {
+        return DynamicCardPrimaryAction.OpenDynamicDetail(dynamicId)
+    }
+
+    if (authorMid > 0) {
+        return DynamicCardPrimaryAction.OpenUser(authorMid)
+    }
+
+    return DynamicCardPrimaryAction.None
+}
+
+internal fun resolveDynamicCardMediaAction(
+    item: DynamicItem,
+    clickedIndex: Int
+): DynamicCardMediaAction {
+    val target = item.orig ?: item
+    val major = target.modules.module_dynamic?.major
+    if (major == null) return DynamicCardMediaAction.None
+    val images = when {
+        major.draw != null && major.draw.items.isNotEmpty() -> major.draw.items.map { it.src }
+        major.opus != null && major.opus.pics.isNotEmpty() -> major.opus.pics.map { it.url }
+        else -> emptyList()
+    }
+    if (clickedIndex !in images.indices) return DynamicCardMediaAction.None
+    return DynamicCardMediaAction.PreviewImages(
+        images = images,
+        initialIndex = clickedIndex
+    )
+}
+
+internal fun dispatchDynamicCardPrimaryAction(
+    action: DynamicCardPrimaryAction,
+    onVideoClick: (String) -> Unit,
+    onDynamicDetailClick: ((String) -> Unit)?,
+    onUserClick: (Long) -> Unit,
+    onLiveClick: (Long, String, String) -> Unit
+) {
+    when (action) {
+        is DynamicCardPrimaryAction.OpenVideo -> onVideoClick(action.bvid)
+        is DynamicCardPrimaryAction.OpenDynamicDetail -> onDynamicDetailClick?.invoke(action.dynamicId)
+        is DynamicCardPrimaryAction.OpenLive -> onLiveClick(action.roomId, action.title, action.uname)
+        is DynamicCardPrimaryAction.OpenUser -> onUserClick(action.mid)
+        DynamicCardPrimaryAction.None -> Unit
+    }
+}
+
+private val dynamicLiveJson = Json { ignoreUnknownKeys = true }
+
+private fun resolveLivePrimaryAction(
+    liveRcmd: LiveRcmdMajor,
+    fallbackName: String = ""
+): DynamicCardPrimaryAction.OpenLive? {
+    val payload = runCatching {
+        dynamicLiveJson.decodeFromString<LiveContentInfo>(liveRcmd.content)
+    }.getOrNull()
+
+    val liveInfo = payload?.live_play_info ?: return null
+    val roomId = liveInfo.room_id.takeIf { it > 0 } ?: return null
+    val title = liveInfo.title.ifBlank { liveInfo.link }
+    val uname = fallbackName.ifBlank { liveInfo.uid.takeIf { it > 0 }?.toString().orEmpty() }
+    return DynamicCardPrimaryAction.OpenLive(
+        roomId = roomId,
+        title = title.ifBlank { "直播间" },
+        uname = uname
+    )
 }

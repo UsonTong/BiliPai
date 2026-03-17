@@ -29,27 +29,85 @@ internal fun resolveReadableTextColor(
     }
 }
 
+internal fun resolveReadableThemeTextColor(
+    candidate: Color,
+    background: Color,
+    fallbacks: List<Color>,
+    minimumContrast: Float
+): Color {
+    if (calculateContrastRatio(candidate, background) >= minimumContrast) {
+        return candidate
+    }
+
+    return fallbacks.firstOrNull { fallback ->
+        calculateContrastRatio(fallback, background) >= minimumContrast
+    } ?: candidate
+}
+
 internal fun enforceDynamicLightTextContrast(
     scheme: ColorScheme
 ): ColorScheme {
+    val accentFallbacks = listOf(
+        scheme.onSurface,
+        scheme.onBackground,
+        scheme.inverseOnSurface,
+        scheme.scrim
+    )
+    val surfaceFallbacks = listOf(
+        scheme.onBackground,
+        scheme.onSurface,
+        scheme.inverseOnSurface,
+        scheme.scrim
+    )
+    val surfaceVariantFallbacks = listOf(
+        scheme.onSurface,
+        scheme.onBackground,
+        scheme.inverseOnSurface,
+        scheme.scrim
+    )
+
     return scheme.copy(
-        onBackground = resolveReadableTextColor(
+        onBackground = resolveReadableThemeTextColor(
             candidate = scheme.onBackground,
             background = scheme.background,
-            fallback = TextPrimary,
+            fallbacks = surfaceFallbacks,
             minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
         ),
-        onSurface = resolveReadableTextColor(
+        onSurface = resolveReadableThemeTextColor(
             candidate = scheme.onSurface,
             background = scheme.surface,
-            fallback = TextPrimary,
+            fallbacks = surfaceFallbacks,
             minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
         ),
-        onSurfaceVariant = resolveReadableTextColor(
+        onSurfaceVariant = resolveReadableThemeTextColor(
             candidate = scheme.onSurfaceVariant,
             background = scheme.surfaceVariant,
-            fallback = TextSecondary,
+            fallbacks = surfaceVariantFallbacks,
             minimumContrast = SECONDARY_TEXT_MIN_CONTRAST
+        ),
+        onPrimary = resolveReadableThemeTextColor(
+            candidate = scheme.onPrimary,
+            background = scheme.primary,
+            fallbacks = accentFallbacks,
+            minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
+        ),
+        onPrimaryContainer = resolveReadableThemeTextColor(
+            candidate = scheme.onPrimaryContainer,
+            background = scheme.primaryContainer,
+            fallbacks = accentFallbacks,
+            minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
+        ),
+        onSecondary = resolveReadableThemeTextColor(
+            candidate = scheme.onSecondary,
+            background = scheme.secondary,
+            fallbacks = accentFallbacks,
+            minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
+        ),
+        onSecondaryContainer = resolveReadableThemeTextColor(
+            candidate = scheme.onSecondaryContainer,
+            background = scheme.secondaryContainer,
+            fallbacks = accentFallbacks,
+            minimumContrast = PRIMARY_TEXT_MIN_CONTRAST
         )
     )
 }

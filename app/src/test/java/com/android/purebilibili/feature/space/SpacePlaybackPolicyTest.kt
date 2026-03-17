@@ -4,6 +4,7 @@ import com.android.purebilibili.data.model.response.SpaceVideoItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SpacePlaybackPolicyTest {
 
@@ -65,5 +66,40 @@ class SpacePlaybackPolicyTest {
 
         assertEquals("BV1", resolveSpacePlayAllStartTarget(videos))
         assertNull(resolveSpacePlayAllStartTarget(emptyList()))
+    }
+
+    @Test
+    fun resolveSpacePriorityTabLoadState_keeps_tabs_independent() {
+        val shell = buildInitialTabShellState(selectedTab = SpaceMainTab.CONTRIBUTION)
+            .withUpdatedTab(SpaceMainTab.CONTRIBUTION) { it.copy(isLoading = true, hasLoaded = true) }
+            .withUpdatedTab(SpaceMainTab.DYNAMIC) { it.copy(error = "动态失败", hasLoaded = true) }
+
+        val state = resolveSpacePriorityTabLoadState(shell)
+
+        assertTrue(state.contribution.isLoading)
+        assertEquals("动态失败", state.dynamic.error)
+        assertEquals(false, state.collections.hasLoaded)
+    }
+
+    @Test
+    fun resolveSpaceCollectionDetailRequest_validates_supported_targets() {
+        val season = resolveSpaceCollectionDetailRequest(
+            type = "season",
+            id = 12L,
+            mid = 34L,
+            title = "合集"
+        )
+        val favorite = resolveSpaceCollectionDetailRequest(
+            type = "favorite",
+            id = 56L,
+            mid = 0L,
+            title = "收藏夹"
+        )
+
+        assertEquals(SpaceCollectionDetailType.SEASON, season?.type)
+        assertEquals("合集", season?.title)
+        assertEquals(SpaceCollectionDetailType.FAVORITE, favorite?.type)
+        assertNull(resolveSpaceCollectionDetailRequest("series", id = 0L, mid = 1L, title = ""))
+        assertNull(resolveSpaceCollectionDetailRequest("unknown", id = 1L, mid = 1L, title = ""))
     }
 }

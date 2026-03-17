@@ -16,8 +16,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,13 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.imageLoader
 import com.android.purebilibili.core.util.responsiveContentWidth
+import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.repository.DynamicRepository
 import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.ChevronBackward
+import com.android.purebilibili.feature.dynamic.components.DynamicCommentOverlayHost
+import com.android.purebilibili.feature.dynamic.components.RepostDialog
 
 private sealed interface DynamicDetailUiState {
     data object Loading : DynamicDetailUiState
@@ -49,6 +53,7 @@ fun DynamicDetailScreen(
     onUserClick: (Long) -> Unit,
     onLiveClick: (roomId: Long, title: String, uname: String) -> Unit = { _, _, _ -> }
 ) {
+    val interactionViewModel: DynamicViewModel = viewModel()
     var retryToken by rememberSaveable { mutableIntStateOf(0) }
     val uiState by produceState<DynamicDetailUiState>(
         initialValue = DynamicDetailUiState.Loading,
@@ -66,6 +71,8 @@ fun DynamicDetailScreen(
 
     val context = LocalContext.current
     val gifImageLoader = context.imageLoader
+    val likedDynamics by interactionViewModel.likedDynamics.collectAsState()
+    var showRepostDialog by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -73,7 +80,7 @@ fun DynamicDetailScreen(
                 title = { Text("动态详情") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(CupertinoIcons.Outlined.ChevronBackward, contentDescription = "返回")
+                        Icon(rememberAppBackIcon(), contentDescription = "返回")
                     }
                 }
             )
@@ -127,9 +134,35 @@ fun DynamicDetailScreen(
                             onVideoClick = onVideoClick,
                             onUserClick = onUserClick,
                             onLiveClick = onLiveClick,
-                            gifImageLoader = gifImageLoader
+                            gifImageLoader = gifImageLoader,
+                            onCommentClick = { interactionViewModel.openCommentSheet(state.item) },
+                            onRepostClick = { showRepostDialog = it },
+                            onLikeClick = { targetDynamicId ->
+                                interactionViewModel.likeDynamic(targetDynamicId) { _, msg ->
+                                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            isLiked = likedDynamics.contains(state.item.id_str)
                         )
                     }
+                }
+
+                DynamicCommentOverlayHost(
+                    viewModel = interactionViewModel,
+                    primaryItems = listOf(state.item),
+                    toastContext = context
+                )
+
+                showRepostDialog?.let { repostDynamicId ->
+                    RepostDialog(
+                        onDismiss = { showRepostDialog = null },
+                        onRepost = { content ->
+                            interactionViewModel.repostDynamic(repostDynamicId, content) { success, msg ->
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                if (success) showRepostDialog = null
+                            }
+                        }
+                    )
                 }
             }
         }

@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.ui.common.CopySelectionDialog
+import com.android.purebilibili.core.ui.rememberAppMoreIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.data.model.response.DynamicDesc
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.feature.dynamic.resolveDynamicCardContentPadding
@@ -62,7 +64,14 @@ fun DynamicCardV2(
     val content = item.modules.module_dynamic
     val stat = item.modules.module_stat
     val type = DynamicType.fromApiValue(item.type)
-    val cardClickAction = remember(item) { resolveDynamicCardClickAction(item) }
+    val cardClickAction = remember(item) { resolveDynamicCardPrimaryAction(item) }
+    val isPrimaryClickEnabled = remember(cardClickAction, onDynamicDetailClick) {
+        when (cardClickAction) {
+            is DynamicCardPrimaryAction.OpenDynamicDetail -> onDynamicDetailClick != null
+            DynamicCardPrimaryAction.None -> false
+            else -> true
+        }
+    }
 
     //  [优化] 卡片式设计：圆角 + 微阴影 + 更好的间距
     //  [优化] 使用 GlassCard 替换 Surface
@@ -70,12 +79,14 @@ fun DynamicCardV2(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = resolveDynamicCardOuterPadding(), vertical = 6.dp)
-            .clickable(enabled = onDynamicDetailClick != null && cardClickAction != DynamicCardClickAction.None) {
-                when (cardClickAction) {
-                    is DynamicCardClickAction.OpenVideo -> onVideoClick(cardClickAction.bvid)
-                    is DynamicCardClickAction.OpenDynamicDetail -> onDynamicDetailClick?.invoke(cardClickAction.dynamicId)
-                    DynamicCardClickAction.None -> Unit
-                }
+            .clickable(enabled = isPrimaryClickEnabled) {
+                dispatchDynamicCardPrimaryAction(
+                    action = cardClickAction,
+                    onVideoClick = onVideoClick,
+                    onDynamicDetailClick = onDynamicDetailClick,
+                    onUserClick = onUserClick,
+                    onLiveClick = onLiveClick
+                )
             },
         backgroundColor = MaterialTheme.colorScheme.surface, // 纯白背景，减少割裂感
         shape = RoundedCornerShape(20.dp) // 更大的圆角
@@ -105,7 +116,15 @@ fun DynamicCardV2(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .clickable(enabled = author.mid > 0) { onUserClick(author.mid) },
+                        .clickable(enabled = author.mid > 0) {
+                            dispatchDynamicCardPrimaryAction(
+                                action = DynamicCardPrimaryAction.OpenUser(author.mid),
+                                onVideoClick = onVideoClick,
+                                onDynamicDetailClick = onDynamicDetailClick,
+                                onUserClick = onUserClick,
+                                onLiveClick = onLiveClick
+                            )
+                        },
                     contentScale = ContentScale.Crop
                 )
                 
@@ -129,7 +148,7 @@ fun DynamicCardV2(
                 Box {
                     IconButton(onClick = { showMoreMenu = true }) {
                         Icon(
-                            CupertinoIcons.Default.Ellipsis,
+                            rememberAppMoreIcon(),
                             contentDescription = "更多",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
                         )
@@ -167,7 +186,7 @@ fun DynamicCardV2(
                             text = { Text("不感兴趣", color = MaterialTheme.colorScheme.onSurface) },
                             leadingIcon = { 
                                 Icon(
-                                    CupertinoIcons.Default.EyeSlash,
+                                    rememberAppVisibilityOffIcon(),
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurface
@@ -224,8 +243,11 @@ fun DynamicCardV2(
                 items = draw.items,
                 gifImageLoader = gifImageLoader,
                 onImageClick = { index, rect ->
-                    selectedImageIndex = index
-                    sourceRect = rect
+                    val action = resolveDynamicCardMediaAction(item, index)
+                    if (action is DynamicCardMediaAction.PreviewImages) {
+                        selectedImageIndex = action.initialIndex
+                        sourceRect = rect
+                    }
                 }
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -297,8 +319,11 @@ fun DynamicCardV2(
                     items = drawItems,
                     gifImageLoader = gifImageLoader,
                     onImageClick = { index, rect ->
-                        selectedImageIndex = index
-                        sourceRect = rect
+                        val action = resolveDynamicCardMediaAction(item, index)
+                        if (action is DynamicCardMediaAction.PreviewImages) {
+                            selectedImageIndex = action.initialIndex
+                            sourceRect = rect
+                        }
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -346,7 +371,15 @@ fun DynamicCardV2(
         content?.major?.live_rcmd?.let { liveRcmd ->
             LiveCard(
                 liveRcmd = liveRcmd,
-                onLiveClick = onLiveClick
+                onLiveClick = { roomId, title, uname ->
+                    dispatchDynamicCardPrimaryAction(
+                        action = DynamicCardPrimaryAction.OpenLive(roomId, title, uname),
+                        onVideoClick = onVideoClick,
+                        onDynamicDetailClick = onDynamicDetailClick,
+                        onUserClick = onUserClick,
+                        onLiveClick = onLiveClick
+                    )
+                }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }

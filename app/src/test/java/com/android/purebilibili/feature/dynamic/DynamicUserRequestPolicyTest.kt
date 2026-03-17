@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.dynamic
 
+import com.android.purebilibili.data.model.response.DynamicItem
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -30,6 +31,34 @@ class DynamicUserRequestPolicyTest {
                 requestUid = 123L,
                 activeRequestToken = 11L,
                 requestToken = 10L
+            )
+        )
+    }
+
+    @Test
+    fun `selected user reload policy retries same user when scoped state is empty or failed`() {
+        assertFalse(
+            shouldReloadSelectedUserDynamics(
+                previousUid = 123L,
+                nextUid = 123L,
+                currentItems = listOf(DynamicItem(id_str = "cached")),
+                userError = null
+            )
+        )
+        assertTrue(
+            shouldReloadSelectedUserDynamics(
+                previousUid = 123L,
+                nextUid = 123L,
+                currentItems = emptyList(),
+                userError = null
+            )
+        )
+        assertTrue(
+            shouldReloadSelectedUserDynamics(
+                previousUid = 123L,
+                nextUid = 123L,
+                currentItems = listOf(DynamicItem(id_str = "cached")),
+                userError = "加载失败"
             )
         )
     }

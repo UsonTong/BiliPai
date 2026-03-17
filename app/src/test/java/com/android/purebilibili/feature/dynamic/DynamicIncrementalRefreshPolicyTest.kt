@@ -17,6 +17,17 @@ class DynamicIncrementalRefreshPolicyTest {
     }
 
     @Test
+    fun resolveIncrementalRefreshBoundary_countsAllPrependedItems() {
+        val result = resolveIncrementalRefreshBoundary(
+            existingKeys = listOf("old_a"),
+            mergedKeys = listOf("new_1", "new_2", "new_3", "old_a")
+        )
+
+        assertEquals("old_a", result.boundaryKey)
+        assertEquals(3, result.prependedCount)
+    }
+
+    @Test
     fun resolveIncrementalRefreshBoundary_returnsNoBoundaryWhenExistingEmpty() {
         val result = resolveIncrementalRefreshBoundary(
             existingKeys = emptyList(),

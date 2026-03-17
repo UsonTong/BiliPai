@@ -5,8 +5,15 @@ import com.android.purebilibili.data.model.response.ReplyData
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.ReplyPage
 import com.android.purebilibili.data.model.response.ReplyTop
+import com.android.purebilibili.data.model.response.ArchiveMajor
+import com.android.purebilibili.data.model.response.DynamicContentModule
+import com.android.purebilibili.data.model.response.DynamicItem
+import com.android.purebilibili.data.model.response.DynamicMajor
+import com.android.purebilibili.data.model.response.DynamicModules
+import com.android.purebilibili.feature.dynamic.components.DynamicCardPrimaryAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class DynamicCommentLoadPolicyTest {
 
@@ -49,5 +56,33 @@ class DynamicCommentLoadPolicyTest {
         val selected = selectPreferredDynamicCommentAttempt(attempts = attempts)
 
         assertEquals(DynamicCommentTarget(oid = 967717348014293017L, type = 17), selected?.target)
+    }
+
+    @Test
+    fun `detail interaction model reuses feed primary action and comment targets`() {
+        val item = DynamicItem(
+            id_str = "966281785469042740",
+            type = "DYNAMIC_TYPE_AV",
+            basic = com.android.purebilibili.data.model.response.DynamicBasic(
+                comment_id_str = "1129813966",
+                comment_type = 1
+            ),
+            modules = DynamicModules(
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        archive = ArchiveMajor(bvid = "BV1xx411c7mD")
+                    )
+                )
+            )
+        )
+
+        val model = resolveDynamicDetailInteractionModel(item)
+
+        val primaryAction = assertIs<DynamicCardPrimaryAction.OpenVideo>(model.primaryAction)
+        assertEquals("BV1xx411c7mD", primaryAction.bvid)
+        assertEquals(
+            listOf(DynamicCommentTarget(oid = 1129813966L, type = 1)),
+            model.commentTargets
+        )
     }
 }

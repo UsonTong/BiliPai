@@ -4333,12 +4333,14 @@ class PlayerViewModel : ViewModel() {
             directVideoUrl to directAudioUrl
         } else {
             val playUrlData = VideoRepository.getPlayUrlData(targetBvid, targetCid, qualityId)
-            val dash = playUrlData?.dash
-            val dashVideo = dash?.video?.firstOrNull { it.id == qualityId }
-                ?: dash?.video?.maxByOrNull { it.id }
-            val dashAudio = dash?.audio?.firstOrNull()
-            val videoUrl = dashVideo?.getValidUrl().orEmpty()
-            val audioUrl = dashAudio?.getValidUrl().orEmpty()
+            val selection = playUrlData?.let {
+                playbackUseCase.resolvePlaybackSelection(
+                    playUrlData = it,
+                    targetQuality = qualityId
+                )
+            }
+            val videoUrl = selection?.videoUrl.orEmpty()
+            val audioUrl = selection?.audioUrl.orEmpty()
             if (videoUrl.isBlank() || audioUrl.isBlank()) {
                 return null
             }
@@ -4534,6 +4536,8 @@ class PlayerViewModel : ViewModel() {
                 _uiState.value = current.copy(
                     playUrl = result.videoUrl, audioUrl = result.audioUrl,
                     currentQuality = result.actualQuality, isQualitySwitching = false, requestedQuality = null,
+                    qualityIds = result.qualityIds.ifEmpty { current.qualityIds },
+                    qualityLabels = result.qualityLabels.ifEmpty { current.qualityLabels },
                     //  [修复] 更新缓存的DASH流，否则后续画质切换可能失败
                     cachedDashVideos = result.cachedDashVideos.ifEmpty { current.cachedDashVideos },
                     cachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
@@ -4592,33 +4596,32 @@ class PlayerViewModel : ViewModel() {
                     val isHevcSupported = com.android.purebilibili.core.util.MediaUtils.isHevcSupported()
                     val isAv1Supported = com.android.purebilibili.core.util.MediaUtils.isAv1Supported()
                     
-                    val dashVideo = playUrlData.dash?.getBestVideo(
-                        current.currentQuality,
-                        preferCodec = videoCodecPreference,
-                        secondPreferCodec = videoSecondCodecPreference,
+                    val selection = playbackUseCase.resolvePlaybackSelection(
+                        playUrlData = playUrlData,
+                        targetQuality = current.currentQuality,
+                        audioQualityPreference = audioQualityPreference,
+                        videoCodecPreference = videoCodecPreference,
+                        videoSecondCodecPreference = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
                         isAv1Supported = isAv1Supported
                     )
-                    
-                    val dashAudio = playUrlData.dash?.getBestAudio(audioQualityPreference)
-                    
-                    val videoUrl = dashVideo?.getValidUrl() ?: playUrlData.durl?.firstOrNull()?.url ?: ""
-                    val audioUrl = dashAudio?.getValidUrl()
                     val restoredPosition = if (ignoreSavedProgress) {
                         0L
                     } else {
                         playbackUseCase.getCachedPosition(currentBvid, page.cid)
                     }
                     
-                    if (videoUrl.isNotEmpty()) {
-                        if (dashVideo != null) playbackUseCase.playDashVideo(videoUrl, audioUrl, restoredPosition)
-                        else playbackUseCase.playVideo(videoUrl, restoredPosition)
+                    if (selection != null) {
+                        if (selection.isDashPlayback) playbackUseCase.playDashVideo(selection.videoUrl, selection.audioUrl, restoredPosition)
+                        else playbackUseCase.playVideo(selection.videoUrl, restoredPosition)
                         
                         _uiState.value = subtitleClearedState.copy(
-                            info = current.info.copy(cid = page.cid), playUrl = videoUrl, audioUrl = audioUrl,
+                            info = current.info.copy(cid = page.cid), playUrl = selection.videoUrl, audioUrl = selection.audioUrl,
                             startPosition = restoredPosition, isQualitySwitching = false,
-                            cachedDashVideos = playUrlData.dash?.video ?: emptyList(),
-                            cachedDashAudios = playUrlData.dash?.audio ?: emptyList()
+                            qualityIds = selection.qualityIds,
+                            qualityLabels = selection.qualityLabels,
+                            cachedDashVideos = selection.cachedDashVideos,
+                            cachedDashAudios = selection.cachedDashAudios
                         )
                         interactiveCurrentEdgeId = 0L
                         loadPlayerInfo(currentBvid, page.cid)
@@ -4741,34 +4744,34 @@ class PlayerViewModel : ViewModel() {
             val isHevcSupported = com.android.purebilibili.core.util.MediaUtils.isHevcSupported()
             val isAv1Supported = com.android.purebilibili.core.util.MediaUtils.isAv1Supported()
 
-            val dashVideo = playUrlData.dash?.getBestVideo(
-                current.currentQuality,
-                preferCodec = videoCodecPreference,
-                secondPreferCodec = videoSecondCodecPreference,
+            val selection = playbackUseCase.resolvePlaybackSelection(
+                playUrlData = playUrlData,
+                targetQuality = current.currentQuality,
+                audioQualityPreference = audioQualityPreference,
+                videoCodecPreference = videoCodecPreference,
+                videoSecondCodecPreference = videoSecondCodecPreference,
                 isHevcSupported = isHevcSupported,
                 isAv1Supported = isAv1Supported
-            )
-            val dashAudio = playUrlData.dash?.getBestAudio(audioQualityPreference)
-            val videoUrl = dashVideo?.getValidUrl() ?: playUrlData.durl?.firstOrNull()?.url.orEmpty()
-            val audioUrl = dashAudio?.getValidUrl()
-            if (videoUrl.isBlank()) return false
+            ) ?: return false
 
-            if (dashVideo != null) {
-                playbackUseCase.playDashVideo(videoUrl, audioUrl, 0L)
+            if (selection.isDashPlayback) {
+                playbackUseCase.playDashVideo(selection.videoUrl, selection.audioUrl, 0L)
             } else {
-                playbackUseCase.playVideo(videoUrl, 0L)
+                playbackUseCase.playVideo(selection.videoUrl, 0L)
             }
 
             currentCid = targetCid
             subtitleLoadToken += 1
             _uiState.value = clearSubtitleFields(current).copy(
                 info = current.info.copy(cid = targetCid),
-                playUrl = videoUrl,
-                audioUrl = audioUrl,
+                playUrl = selection.videoUrl,
+                audioUrl = selection.audioUrl,
                 startPosition = 0L,
                 videoDurationMs = playUrlData.timelength.coerceAtLeast(0L),
-                cachedDashVideos = playUrlData.dash?.video ?: emptyList(),
-                cachedDashAudios = playUrlData.dash?.audio ?: emptyList()
+                qualityIds = selection.qualityIds,
+                qualityLabels = selection.qualityLabels,
+                cachedDashVideos = selection.cachedDashVideos,
+                cachedDashAudios = selection.cachedDashAudios
             )
             loadPlayerInfo(
                 currentBvid,

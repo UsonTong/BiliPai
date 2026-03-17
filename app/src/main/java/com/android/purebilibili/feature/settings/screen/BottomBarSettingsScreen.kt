@@ -3,12 +3,14 @@ package com.android.purebilibili.feature.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LiveTv
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -51,6 +53,11 @@ import com.android.purebilibili.core.theme.BottomBarColorNames  //  颜色名称
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.rememberAppBackIcon
+import com.android.purebilibili.core.ui.resolveAppBookmarkIcon
+import com.android.purebilibili.core.ui.resolveAppDynamicIcon
+import com.android.purebilibili.core.ui.resolveAppHomeIcon
+import com.android.purebilibili.core.ui.resolveAppSettingsIcon
+import com.android.purebilibili.core.ui.resolveAppTvIcon
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -75,18 +82,35 @@ data class TopTabConfig(
     val fixedVisible: Boolean = false
 )
 
-internal fun resolveBottomBarTabIcon(id: String): ImageVector {
-    return when (id) {
-        "HOME" -> CupertinoIcons.Default.House
-        "DYNAMIC" -> CupertinoIcons.Default.RectangleStack
-        "STORY" -> CupertinoIcons.Default.PlayCircle
-        "HISTORY" -> CupertinoIcons.Default.Clock
-        "PROFILE" -> CupertinoIcons.Default.PersonCircle
-        "FAVORITE" -> CupertinoIcons.Default.Star
-        "LIVE" -> CupertinoIcons.Default.Video
-        "WATCHLATER" -> CupertinoIcons.Default.Bookmark
-        "SETTINGS" -> CupertinoIcons.Default.Gearshape
-        else -> CupertinoIcons.Default.House
+internal fun resolveBottomBarTabIcon(
+    id: String,
+    uiPreset: UiPreset = UiPreset.IOS
+): ImageVector {
+    return when (uiPreset) {
+        UiPreset.MD3 -> when (id) {
+            "HOME" -> resolveAppHomeIcon(uiPreset)
+            "DYNAMIC" -> resolveAppDynamicIcon(uiPreset)
+            "STORY" -> Icons.Outlined.PlayCircleOutline
+            "HISTORY" -> Icons.Outlined.History
+            "PROFILE" -> Icons.Outlined.Person
+            "FAVORITE" -> Icons.Outlined.StarBorder
+            "LIVE" -> resolveAppTvIcon(uiPreset)
+            "WATCHLATER" -> resolveAppBookmarkIcon(uiPreset)
+            "SETTINGS" -> resolveAppSettingsIcon(uiPreset)
+            else -> resolveAppHomeIcon(uiPreset)
+        }
+        UiPreset.IOS -> when (id) {
+            "HOME" -> CupertinoIcons.Default.House
+            "DYNAMIC" -> CupertinoIcons.Default.RectangleStack
+            "STORY" -> CupertinoIcons.Default.PlayCircle
+            "HISTORY" -> CupertinoIcons.Default.Clock
+            "PROFILE" -> CupertinoIcons.Default.PersonCircle
+            "FAVORITE" -> CupertinoIcons.Default.Star
+            "LIVE" -> CupertinoIcons.Default.Video
+            "WATCHLATER" -> CupertinoIcons.Default.Bookmark
+            "SETTINGS" -> CupertinoIcons.Default.Gearshape
+            else -> CupertinoIcons.Default.House
+        }
     }
 }
 
@@ -123,16 +147,16 @@ internal fun resolveTopTabIcon(
 /**
  * 所有可用的底栏项目
  */
-val allBottomBarTabs = listOf(
-    BottomBarTabConfig("HOME", "首页", resolveBottomBarTabIcon("HOME"), isDefault = true),
-    BottomBarTabConfig("DYNAMIC", "动态", resolveBottomBarTabIcon("DYNAMIC"), isDefault = true),
-    BottomBarTabConfig("STORY", "短视频", resolveBottomBarTabIcon("STORY"), isDefault = false),
-    BottomBarTabConfig("HISTORY", "历史", resolveBottomBarTabIcon("HISTORY"), isDefault = true),
-    BottomBarTabConfig("PROFILE", "我的", resolveBottomBarTabIcon("PROFILE"), isDefault = true),
-    BottomBarTabConfig("FAVORITE", "收藏", resolveBottomBarTabIcon("FAVORITE"), isDefault = false),
-    BottomBarTabConfig("LIVE", "直播", resolveBottomBarTabIcon("LIVE"), isDefault = false),
-    BottomBarTabConfig("WATCHLATER", "稍后看", resolveBottomBarTabIcon("WATCHLATER"), isDefault = false),
-    BottomBarTabConfig("SETTINGS", "设置", resolveBottomBarTabIcon("SETTINGS"), isDefault = false)
+internal fun resolveAllBottomBarTabs(uiPreset: UiPreset = UiPreset.IOS): List<BottomBarTabConfig> = listOf(
+    BottomBarTabConfig("HOME", "首页", resolveBottomBarTabIcon("HOME", uiPreset), isDefault = true),
+    BottomBarTabConfig("DYNAMIC", "动态", resolveBottomBarTabIcon("DYNAMIC", uiPreset), isDefault = true),
+    BottomBarTabConfig("STORY", "短视频", resolveBottomBarTabIcon("STORY", uiPreset), isDefault = false),
+    BottomBarTabConfig("HISTORY", "历史", resolveBottomBarTabIcon("HISTORY", uiPreset), isDefault = true),
+    BottomBarTabConfig("PROFILE", "我的", resolveBottomBarTabIcon("PROFILE", uiPreset), isDefault = true),
+    BottomBarTabConfig("FAVORITE", "收藏", resolveBottomBarTabIcon("FAVORITE", uiPreset), isDefault = false),
+    BottomBarTabConfig("LIVE", "直播", resolveBottomBarTabIcon("LIVE", uiPreset), isDefault = false),
+    BottomBarTabConfig("WATCHLATER", "稍后看", resolveBottomBarTabIcon("WATCHLATER", uiPreset), isDefault = false),
+    BottomBarTabConfig("SETTINGS", "设置", resolveBottomBarTabIcon("SETTINGS", uiPreset), isDefault = false)
 )
 
 private val defaultTopTabIds = listOf("RECOMMEND", "FOLLOW", "POPULAR", "LIVE", "GAME")
@@ -202,6 +226,7 @@ fun BottomBarSettingsContent(
             animationEnabled = cardAnimationEnabled
         )
     }
+    val allBottomBarTabs = remember(uiPreset) { resolveAllBottomBarTabs(uiPreset) }
     val allTopTabs = remember(uiPreset) { resolveAllTopTabs(uiPreset) }
 
     LaunchedEffect(Unit) {

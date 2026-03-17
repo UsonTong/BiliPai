@@ -2,6 +2,9 @@ package com.android.purebilibili.feature.video.usecase
 
 import com.android.purebilibili.data.model.response.DashAudio
 import com.android.purebilibili.data.model.response.DashVideo
+import com.android.purebilibili.data.model.response.Dash
+import com.android.purebilibili.data.model.response.Durl
+import com.android.purebilibili.data.model.response.PlayUrlData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -89,6 +92,32 @@ class VideoPlaybackUseCaseQualitySwitchTest {
     }
 
     @Test
+    fun `buildQualitySelectionState keeps api advertised 1080P label when dash is capped at 720P`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.buildQualitySelectionState(
+            apiQualities = listOf(80, 64, 32, 16),
+            dashVideoIds = listOf(64, 32, 16)
+        )
+
+        assertEquals(listOf(80, 64, 32, 16), result.qualityIds)
+        assertEquals(listOf("1080P", "720P", "480P", "360P"), result.qualityLabels)
+    }
+
+    @Test
+    fun `buildQualitySelectionState keeps vip tiers visible after api re-fetch`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.buildQualitySelectionState(
+            apiQualities = listOf(120, 116, 80, 64, 32),
+            dashVideoIds = listOf(120, 80, 64, 32)
+        )
+
+        assertEquals(listOf(120, 116, 80, 64, 32, 16), result.qualityIds)
+        assertEquals(listOf("4K", "1080P60", "1080P", "720P", "480P", "360P"), result.qualityLabels)
+    }
+
+    @Test
     fun `resolveAutoHighestTargetQuality caps non vip users at 1080p`() {
         val useCase = VideoPlaybackUseCase()
 
@@ -153,5 +182,67 @@ class VideoPlaybackUseCaseQualitySwitchTest {
             "PLAY_DIAG playback_selection bvid=BV1TEST12345 cid=9527 default=80 target=80 returned=64 selectedDash=80 merged=[80, 64, 32, 16] isLoggedIn=true isVip=false",
             result
         )
+    }
+
+    @Test
+    fun `resolvePlaybackSelection chooses requested dash quality and keeps merged labels`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.resolvePlaybackSelection(
+            playUrlData = PlayUrlData(
+                quality = 64,
+                acceptQuality = listOf(80, 64, 32, 16),
+                dash = Dash(
+                    video = listOf(
+                        DashVideo(id = 80, baseUrl = "https://example.com/1080-hevc.m4s", codecs = "hev1"),
+                        DashVideo(id = 64, baseUrl = "https://example.com/720-avc.m4s", codecs = "avc1")
+                    ),
+                    audio = listOf(
+                        DashAudio(id = 30280, baseUrl = "https://example.com/audio-192.m4s", bandwidth = 192000)
+                    )
+                )
+            ),
+            targetQuality = 80,
+            audioQualityPreference = 30280,
+            videoCodecPreference = "hev1",
+            videoSecondCodecPreference = "avc1",
+            isHevcSupported = true,
+            isAv1Supported = false
+        )
+
+        assertNotNull(result)
+        assertEquals("https://example.com/1080-hevc.m4s", result?.videoUrl)
+        assertEquals("https://example.com/audio-192.m4s", result?.audioUrl)
+        assertEquals(80, result?.actualQuality)
+        assertEquals(listOf(80, 64, 32, 16), result?.qualityIds)
+        assertEquals(listOf("1080P", "720P", "480P", "360P"), result?.qualityLabels)
+    }
+
+    @Test
+    fun `resolvePlaybackSelection falls back to durl when dash is missing`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.resolvePlaybackSelection(
+            playUrlData = PlayUrlData(
+                quality = 32,
+                acceptQuality = listOf(32, 16),
+                durl = listOf(
+                    Durl(url = "https://example.com/480.mp4")
+                )
+            ),
+            targetQuality = 32,
+            audioQualityPreference = -1,
+            videoCodecPreference = "hev1",
+            videoSecondCodecPreference = "avc1",
+            isHevcSupported = true,
+            isAv1Supported = false
+        )
+
+        assertNotNull(result)
+        assertEquals("https://example.com/480.mp4", result?.videoUrl)
+        assertEquals(null, result?.audioUrl)
+        assertEquals(32, result?.actualQuality)
+        assertEquals(listOf(32, 16), result?.qualityIds)
+        assertEquals(listOf("480P", "360P"), result?.qualityLabels)
     }
 }

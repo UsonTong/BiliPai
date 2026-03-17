@@ -45,6 +45,7 @@ import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSOrange
 import com.android.purebilibili.core.theme.iOSPurple
 import com.android.purebilibili.core.theme.iOSTeal
+import com.android.purebilibili.core.theme.LocalUiPreset
 
 /**
  *  权限管理页面
@@ -328,6 +329,8 @@ private fun PermissionItem(
     isGranted: Boolean,
     onOpenSettings: (() -> Unit)?
 ) {
+    val uiPreset = LocalUiPreset.current
+    val visualSpec = remember(uiPreset) { resolveAdaptiveListComponentVisualSpec(uiPreset) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,16 +341,16 @@ private fun PermissionItem(
         // 图标
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(info.iconTint.copy(alpha = 0.12f)),
+                .size(visualSpec.iconContainerSizeDp.dp)
+                .clip(RoundedCornerShape(visualSpec.iconCornerRadiusDp.dp))
+                .background(info.iconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 info.icon,
                 contentDescription = null,
                 tint = info.iconTint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
             )
         }
         

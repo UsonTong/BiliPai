@@ -34,14 +34,20 @@ class ThemeContrastPolicyTest {
             surface = Color(0xFFFFFFFF),
             onSurface = Color(0xFFF4F4F4),
             surfaceVariant = Color(0xFFF2F2F2),
-            onSurfaceVariant = Color(0xFFECECEC)
+            onSurfaceVariant = Color(0xFFECECEC),
+            primary = Color(0xFFF5F3F7),
+            onPrimary = Color(0xFFFFFFFF),
+            primaryContainer = Color(0xFFF7F5F9),
+            onPrimaryContainer = Color(0xFFFFFFFF)
         )
 
         val result = enforceDynamicLightTextContrast(scheme)
 
-        assertEquals(TextPrimary, result.onBackground)
-        assertEquals(TextPrimary, result.onSurface)
-        assertEquals(TextSecondary, result.onSurfaceVariant)
+        assertTrue(calculateContrastRatio(result.onBackground, result.background) >= 4.5f)
+        assertTrue(calculateContrastRatio(result.onSurface, result.surface) >= 4.5f)
+        assertTrue(calculateContrastRatio(result.onSurfaceVariant, result.surfaceVariant) >= 3.0f)
+        assertTrue(calculateContrastRatio(result.onPrimary, result.primary) >= 4.5f)
+        assertTrue(calculateContrastRatio(result.onPrimaryContainer, result.primaryContainer) >= 4.5f)
     }
 
     @Test

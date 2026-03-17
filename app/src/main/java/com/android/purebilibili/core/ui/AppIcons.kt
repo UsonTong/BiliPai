@@ -2,13 +2,20 @@ package com.android.purebilibili.core.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.Comment
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.FolderCopy
 import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.LiveTv
@@ -17,15 +24,20 @@ import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.PersonAddAlt1
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.ThumbUpOffAlt
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Wifi
@@ -430,6 +442,36 @@ fun rememberAppProfileAddIcon(): ImageVector = resolveAppProfileAddIcon(LocalUiP
 @Composable
 fun rememberAppLockIcon(): ImageVector = resolveAppLockIcon(LocalUiPreset.current)
 
+@Composable
+fun rememberAppHomeIcon(): ImageVector = resolveAppHomeIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppDynamicIcon(): ImageVector = resolveAppDynamicIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppPlayIcon(): ImageVector = resolveAppPlayIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppCollectionIcon(): ImageVector = resolveAppCollectionIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppCommentIcon(): ImageVector = resolveAppCommentIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppLikeIcon(): ImageVector = resolveAppLikeIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppLikeFilledIcon(): ImageVector = resolveAppLikeFilledIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppShareIcon(): ImageVector = resolveAppShareIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppVisibilityOnIcon(): ImageVector = resolveAppVisibilityOnIcon(LocalUiPreset.current)
+
+@Composable
+fun rememberAppVisibilityOffIcon(): ImageVector = resolveAppVisibilityOffIcon(LocalUiPreset.current)
+
 fun resolveAppBackIcon(uiPreset: UiPreset): ImageVector =
     if (uiPreset == UiPreset.MD3) Icons.AutoMirrored.Filled.ArrowBack else CupertinoIcons.Outlined.ChevronBackward
 
@@ -509,7 +551,7 @@ fun resolveAppWifiIcon(uiPreset: UiPreset): ImageVector =
     if (uiPreset == UiPreset.MD3) Icons.Outlined.Wifi else CupertinoIcons.Outlined.Wifi
 
 fun resolveAppChevronForwardIcon(uiPreset: UiPreset): ImageVector =
-    if (uiPreset == UiPreset.MD3) Icons.Outlined.KeyboardArrowRight else CupertinoIcons.Outlined.ChevronForward
+    if (uiPreset == UiPreset.MD3) Icons.AutoMirrored.Outlined.KeyboardArrowRight else CupertinoIcons.Outlined.ChevronForward
 
 fun resolveAppChevronDownIcon(uiPreset: UiPreset): ImageVector =
     if (uiPreset == UiPreset.MD3) Icons.Outlined.KeyboardArrowDown else CupertinoIcons.Outlined.ChevronDown
@@ -519,3 +561,33 @@ fun resolveAppProfileAddIcon(uiPreset: UiPreset): ImageVector =
 
 fun resolveAppLockIcon(uiPreset: UiPreset): ImageVector =
     if (uiPreset == UiPreset.MD3) Icons.Outlined.Lock else CupertinoIcons.Outlined.Lock
+
+fun resolveAppHomeIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.Home else CupertinoIcons.Outlined.House
+
+fun resolveAppDynamicIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.DynamicFeed else CupertinoIcons.Outlined.RectangleStack
+
+fun resolveAppPlayIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.PlayArrow else CupertinoIcons.Outlined.Play
+
+fun resolveAppCollectionIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.FolderCopy else CupertinoIcons.Outlined.CupertinoFolder
+
+fun resolveAppCommentIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.AutoMirrored.Outlined.Comment else CupertinoIcons.Outlined.Message
+
+fun resolveAppLikeIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.ThumbUpOffAlt else CupertinoIcons.Outlined.HandThumbsup
+
+fun resolveAppLikeFilledIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Filled.ThumbUp else CupertinoIcons.Filled.HandThumbsup
+
+fun resolveAppShareIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.Share else CupertinoIcons.Outlined.ArrowTurnUpRight
+
+fun resolveAppVisibilityOnIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.Visibility else CupertinoIcons.Outlined.Eye
+
+fun resolveAppVisibilityOffIcon(uiPreset: UiPreset): ImageVector =
+    if (uiPreset == UiPreset.MD3) Icons.Outlined.VisibilityOff else CupertinoIcons.Outlined.EyeSlash

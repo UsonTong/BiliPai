@@ -1,5 +1,9 @@
 package com.android.purebilibili.feature.dynamic
 
+import com.android.purebilibili.core.util.appendDistinctByKey
+import com.android.purebilibili.core.util.prependDistinctByKey
+import com.android.purebilibili.data.model.response.DynamicItem
+
 internal fun resolveDynamicListTopPaddingExtraDp(isHorizontalMode: Boolean): Int {
     return if (isHorizontalMode) 168 else 100
 }
@@ -58,4 +62,104 @@ internal fun shouldResetFollowedUserListToTopOnRefresh(
     if (prependedCount <= 0) return false
     if (selectedUserId != null) return false
     return boundaryKey != handledBoundaryKey
+}
+
+enum class DynamicFeedErrorSource {
+    NONE,
+    INITIAL_LOAD,
+    REFRESH,
+    APPEND
+}
+
+internal fun resolveDynamicActiveLoadingState(
+    currentState: DynamicUiState,
+    selectedUserId: Long?
+): Boolean {
+    return if (selectedUserId != null) currentState.userIsLoading else currentState.isLoading
+}
+
+internal fun resolveDynamicActiveError(
+    currentState: DynamicUiState,
+    selectedUserId: Long?
+): String? {
+    return if (selectedUserId != null) currentState.userError else currentState.error
+}
+
+internal fun resolveDynamicFeedStateForLoadStart(
+    currentState: DynamicUiState,
+    refresh: Boolean,
+    showLoading: Boolean
+): DynamicUiState {
+    val baseState = currentState.copy(
+        error = null,
+        errorSource = DynamicFeedErrorSource.NONE
+    )
+    return when {
+        refresh && showLoading -> baseState.copy(isLoading = true)
+        !refresh -> baseState.copy(isLoading = true)
+        else -> baseState
+    }
+}
+
+internal fun resolveDynamicFeedStateAfterSuccess(
+    currentState: DynamicUiState,
+    incomingItems: List<DynamicItem>,
+    isRefresh: Boolean,
+    incrementalRefreshEnabled: Boolean,
+    hasMore: Boolean
+): DynamicUiState {
+    val currentItems = currentState.items
+    val mergedItems = when {
+        isRefresh && incrementalRefreshEnabled -> prependDistinctByKey(
+            existing = currentItems,
+            incoming = incomingItems,
+            keySelector = ::dynamicFeedItemKey
+        )
+        isRefresh -> incomingItems
+        else -> appendDistinctByKey(
+            existing = currentItems,
+            incoming = incomingItems,
+            keySelector = ::dynamicFeedItemKey
+        )
+    }
+    val boundary = when {
+        isRefresh && incrementalRefreshEnabled -> resolveIncrementalRefreshBoundary(
+            existingKeys = currentItems.map(::dynamicFeedItemKey),
+            mergedKeys = mergedItems.map(::dynamicFeedItemKey)
+        )
+        isRefresh -> IncrementalRefreshBoundary(
+            boundaryKey = null,
+            prependedCount = 0
+        )
+        else -> IncrementalRefreshBoundary(
+            boundaryKey = currentState.incrementalRefreshBoundaryKey,
+            prependedCount = currentState.incrementalPrependedCount
+        )
+    }
+    return currentState.copy(
+        items = mergedItems,
+        isLoading = false,
+        error = null,
+        errorSource = DynamicFeedErrorSource.NONE,
+        hasMore = hasMore,
+        incrementalRefreshBoundaryKey = boundary.boundaryKey,
+        incrementalPrependedCount = boundary.prependedCount
+    )
+}
+
+internal fun resolveDynamicFeedStateAfterFailure(
+    currentState: DynamicUiState,
+    errorMessage: String,
+    refresh: Boolean
+): DynamicUiState {
+    val source = when {
+        currentState.items.isEmpty() -> DynamicFeedErrorSource.INITIAL_LOAD
+        refresh -> DynamicFeedErrorSource.REFRESH
+        else -> DynamicFeedErrorSource.APPEND
+    }
+    return currentState.copy(
+        isLoading = false,
+        error = errorMessage,
+        errorSource = source
+    )
 }

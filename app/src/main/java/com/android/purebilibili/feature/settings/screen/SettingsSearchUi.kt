@@ -47,7 +47,7 @@ internal fun SettingsSearchResultsSection(
             )
         } else {
             results.forEachIndexed { index, result ->
-                val visual = resolveSettingsEntryVisual(result.target, uiPreset)
+                val visual = rememberSettingsEntryVisual(result.target, uiPreset)
                 IOSClickableItem(
                     icon = visual.icon,
                     iconPainter = visual.iconResId?.let { painterResource(id = it) },

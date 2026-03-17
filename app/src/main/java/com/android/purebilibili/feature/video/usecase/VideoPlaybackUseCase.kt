@@ -71,7 +71,20 @@ data class QualitySwitchResult(
     val actualQuality: Int,
     val wasFallback: Boolean,
     val cachedDashVideos: List<DashVideo>,
-    val cachedDashAudios: List<DashAudio>
+    val cachedDashAudios: List<DashAudio>,
+    val qualityIds: List<Int> = emptyList(),
+    val qualityLabels: List<String> = emptyList()
+)
+
+data class PlaybackSelectionResult(
+    val videoUrl: String,
+    val audioUrl: String?,
+    val actualQuality: Int,
+    val isDashPlayback: Boolean,
+    val cachedDashVideos: List<DashVideo>,
+    val cachedDashAudios: List<DashAudio>,
+    val qualityIds: List<Int>,
+    val qualityLabels: List<String>
 )
 
 internal fun shouldPreparePlayerOnLoad(playWhenReady: Boolean): Boolean = true
@@ -112,6 +125,11 @@ class VideoPlaybackUseCase(
         val switchableQualities: List<Int>,
         val apiOnlyHighQualities: List<Int>,
         val mergedQualityIds: List<Int>
+    )
+
+    internal data class QualitySelectionState(
+        val qualityIds: List<Int>,
+        val qualityLabels: List<String>
     )
     
     private var exoPlayer: ExoPlayer? = null
@@ -251,20 +269,18 @@ class VideoPlaybackUseCase(
                     
                     val isHevcSupported = com.android.purebilibili.core.util.MediaUtils.isHevcSupported()
                     val isAv1Supported = com.android.purebilibili.core.util.MediaUtils.isAv1Supported()
-                    
-                    val dashVideo = playData.dash?.getBestVideo(
-                        targetQn, 
-                        preferCodec = videoCodecPreference,
-                        secondPreferCodec = videoSecondCodecPreference,
+
+                    val selection = resolvePlaybackSelection(
+                        playUrlData = playData,
+                        targetQuality = targetQn,
+                        audioQualityPreference = audioQualityPreference,
+                        videoCodecPreference = videoCodecPreference,
+                        videoSecondCodecPreference = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
                         isAv1Supported = isAv1Supported
                     )
-                    val dashAudio = playData.dash?.getBestAudio(audioQualityPreference)
-                    
-                    val videoUrl = getValidVideoUrl(dashVideo, playData)
-                    val audioUrl = dashAudio?.getValidUrl()?.takeIf { it.isNotEmpty() }
-                    
-                    if (videoUrl.isEmpty()) {
+
+                    if (selection == null) {
                         PlaybackCooldownManager.recordFailure(bvid, "播放地址为空")
                         return@fold VideoLoadResult.Error(
                             error = VideoLoadError.PlayUrlEmpty,
@@ -285,16 +301,11 @@ class VideoPlaybackUseCase(
                     val dashVideoIds = playData.dash?.video?.map { it.id }?.distinct() ?: emptyList()
 
                     val qualityMergeResult = mergeQualityOptions(apiQualities, dashVideoIds)
-                    val mergedQualityIds = qualityMergeResult.mergedQualityIds
-                    
-                    // 统一输出纯画质文案，避免向用户暴露 qn 数字编码。
-                    val mergedQualityLabels = mergedQualityIds.map { qn ->
-                        qualityManager.getQualityLabel(qn)
-                    }
+                    val qualitySelectionState = buildQualitySelectionState(apiQualities, dashVideoIds)
                     
                     Logger.d(
                         "VideoPlaybackUseCase",
-                        " Quality merge: api=$apiQualities, dash=$dashVideoIds, switchable=${qualityMergeResult.switchableQualities}, apiOnlyHigh=${qualityMergeResult.apiOnlyHighQualities}, merged=$mergedQualityIds"
+                        " Quality merge: api=$apiQualities, dash=$dashVideoIds, switchable=${qualityMergeResult.switchableQualities}, apiOnlyHigh=${qualityMergeResult.apiOnlyHighQualities}, merged=${qualitySelectionState.qualityIds}"
                     )
                     Logger.d(
                         "VideoPlaybackUseCase",
@@ -304,8 +315,8 @@ class VideoPlaybackUseCase(
                             defaultQuality = defaultQuality,
                             targetQuality = targetQn,
                             returnedQuality = playData.quality,
-                            selectedDashQuality = dashVideo?.id,
-                            mergedQualityIds = mergedQualityIds,
+                            selectedDashQuality = selection.actualQuality.takeIf { selection.isDashPlayback },
+                            mergedQualityIds = qualitySelectionState.qualityIds,
                             isLoggedIn = isLogin,
                             isVip = isEffectiveVip
                         )
@@ -333,14 +344,14 @@ class VideoPlaybackUseCase(
                     
                     VideoLoadResult.Success(
                         info = info,
-                        playUrl = videoUrl,
-                        audioUrl = audioUrl,
+                        playUrl = selection.videoUrl,
+                        audioUrl = selection.audioUrl,
                         related = relatedVideos,
-                        quality = dashVideo?.id ?: playData.quality, // Prefer DASH quality ID
-                        qualityIds = mergedQualityIds,
-                        qualityLabels = mergedQualityLabels,
-                        cachedDashVideos = playData.dash?.video ?: emptyList(),
-                        cachedDashAudios = playData.dash?.audio ?: emptyList(),
+                        quality = selection.actualQuality,
+                        qualityIds = selection.qualityIds,
+                        qualityLabels = selection.qualityLabels,
+                        cachedDashVideos = selection.cachedDashVideos,
+                        cachedDashAudios = selection.cachedDashAudios,
                         emoteMap = emoteMap,
                         isLoggedIn = isLogin,
                         isVip = isEffectiveVip, // Pass effective VIP status (true if actual VIP or Unlocked)
@@ -534,37 +545,33 @@ class VideoPlaybackUseCase(
         val dashVideoIds = playUrlData.dash?.video?.map { it.id }?.distinct()?.sortedDescending()
         Logger.d("VideoPlaybackUseCase", " API returned: quality=$returnedQuality, accept_quality=$acceptQualities")
         Logger.d("VideoPlaybackUseCase", " DASH videos available: $dashVideoIds")
-        
-        val dashVideo = playUrlData.dash?.getBestVideo(qualityId)
 
-        val dashAudio = playUrlData.dash?.getBestAudio(audioQualityPreference) // [修复] 使用偏好
-        
-        Logger.d("VideoPlaybackUseCase", " getBestVideo selected: ${dashVideo?.id}")
-        
-        val videoUrl = getValidVideoUrl(dashVideo, playUrlData)
-        val audioUrl = dashAudio?.getValidUrl()
-        
-        if (videoUrl.isEmpty()) {
+        val selection = resolvePlaybackSelection(
+            playUrlData = playUrlData,
+            targetQuality = qualityId,
+            audioQualityPreference = audioQualityPreference
+        ) ?: run {
             Logger.d("VideoPlaybackUseCase", " Video URL is empty")
             return null
         }
         
-        if (dashVideo != null) {
-            playDashVideo(videoUrl, audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
+        if (selection.isDashPlayback) {
+            playDashVideo(selection.videoUrl, selection.audioUrl, currentPos, playWhenReady = true) // Switching quality should always auto-play
         } else {
-            playVideo(videoUrl, currentPos, playWhenReady = true)
+            playVideo(selection.videoUrl, currentPos, playWhenReady = true)
         }
         
-        val actualQuality = dashVideo?.id ?: playUrlData.quality
-        Logger.d("VideoPlaybackUseCase", " Quality switch result: target=$qualityId, actual=$actualQuality")
+        Logger.d("VideoPlaybackUseCase", " Quality switch result: target=$qualityId, actual=${selection.actualQuality}")
         
         return QualitySwitchResult(
-            videoUrl = videoUrl,
-            audioUrl = audioUrl,
-            actualQuality = actualQuality,
-            wasFallback = actualQuality != qualityId,
-            cachedDashVideos = playUrlData.dash?.video ?: emptyList(),
-            cachedDashAudios = playUrlData.dash?.audio ?: emptyList()
+            videoUrl = selection.videoUrl,
+            audioUrl = selection.audioUrl,
+            actualQuality = selection.actualQuality,
+            wasFallback = selection.actualQuality != qualityId,
+            cachedDashVideos = selection.cachedDashVideos,
+            cachedDashAudios = selection.cachedDashAudios,
+            qualityIds = selection.qualityIds,
+            qualityLabels = selection.qualityLabels
         )
     }
     
@@ -586,6 +593,42 @@ class VideoPlaybackUseCase(
      */
     fun seekTo(position: Long) {
         exoPlayer?.seekTo(position)
+    }
+
+    fun resolvePlaybackSelection(
+        playUrlData: PlayUrlData,
+        targetQuality: Int,
+        audioQualityPreference: Int = -1,
+        videoCodecPreference: String = "hev1",
+        videoSecondCodecPreference: String = "avc1",
+        isHevcSupported: Boolean = com.android.purebilibili.core.util.MediaUtils.isHevcSupported(),
+        isAv1Supported: Boolean = com.android.purebilibili.core.util.MediaUtils.isAv1Supported()
+    ): PlaybackSelectionResult? {
+        val dashVideo = playUrlData.dash?.getBestVideo(
+            targetQuality,
+            preferCodec = videoCodecPreference,
+            secondPreferCodec = videoSecondCodecPreference,
+            isHevcSupported = isHevcSupported,
+            isAv1Supported = isAv1Supported
+        )
+        val dashAudio = playUrlData.dash?.getBestAudio(audioQualityPreference)
+        val videoUrl = getValidVideoUrl(dashVideo, playUrlData)
+        if (videoUrl.isBlank()) return null
+
+        val qualitySelectionState = buildQualitySelectionState(
+            apiQualities = playUrlData.accept_quality,
+            dashVideoIds = playUrlData.dash?.video?.map { it.id }?.distinct() ?: emptyList()
+        )
+        return PlaybackSelectionResult(
+            videoUrl = videoUrl,
+            audioUrl = dashAudio?.getValidUrl(),
+            actualQuality = dashVideo?.id ?: playUrlData.quality,
+            isDashPlayback = dashVideo != null,
+            cachedDashVideos = playUrlData.dash?.video ?: emptyList(),
+            cachedDashAudios = playUrlData.dash?.audio ?: emptyList(),
+            qualityIds = qualitySelectionState.qualityIds,
+            qualityLabels = qualitySelectionState.qualityLabels
+        )
     }
     
     private fun getValidVideoUrl(dashVideo: DashVideo?, playData: PlayUrlData): String {
@@ -619,6 +662,20 @@ class VideoPlaybackUseCase(
             switchableQualities = switchableQualities,
             apiOnlyHighQualities = apiOnlyHighQualities,
             mergedQualityIds = mergedQualityIds
+        )
+    }
+
+    internal fun buildQualitySelectionState(
+        apiQualities: List<Int>,
+        dashVideoIds: List<Int>
+    ): QualitySelectionState {
+        val mergedQualityIds = mergeQualityOptions(
+            apiQualities = apiQualities,
+            dashVideoIds = dashVideoIds
+        ).mergedQualityIds
+        return QualitySelectionState(
+            qualityIds = mergedQualityIds,
+            qualityLabels = mergedQualityIds.map(qualityManager::getQualityLabel)
         )
     }
 

@@ -42,6 +42,9 @@ internal data class AdaptiveListComponentVisualSpec(
     val groupCornerRadiusDp: Int,
     val groupTonalElevationDp: Int,
     val iconCornerRadiusDp: Int,
+    val iconContainerSizeDp: Int,
+    val iconGlyphSizeDp: Int,
+    val iconBackgroundAlpha: Float,
     val gridCornerRadiusDp: Int,
     val searchBarCornerRadiusDp: Int,
     val searchBarHeightDp: Int,
@@ -58,6 +61,9 @@ internal fun resolveAdaptiveListComponentVisualSpec(
             groupCornerRadiusDp = 28,
             groupTonalElevationDp = 3,
             iconCornerRadiusDp = 12,
+            iconContainerSizeDp = 40,
+            iconGlyphSizeDp = 22,
+            iconBackgroundAlpha = 0.18f,
             gridCornerRadiusDp = 24,
             searchBarCornerRadiusDp = 28,
             searchBarHeightDp = 48,
@@ -70,6 +76,9 @@ internal fun resolveAdaptiveListComponentVisualSpec(
             groupCornerRadiusDp = 20,
             groupTonalElevationDp = 1,
             iconCornerRadiusDp = 10,
+            iconContainerSizeDp = 36,
+            iconGlyphSizeDp = 20,
+            iconBackgroundAlpha = 0.12f,
             gridCornerRadiusDp = 20,
             searchBarCornerRadiusDp = 10,
             searchBarHeightDp = 40,
@@ -184,12 +193,17 @@ fun IOSSwitchItem(
         if (icon != null) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(visualSpec.iconContainerSizeDp.dp)
                     .clip(RoundedCornerShape(iconCornerRadius))
-                    .background(iconTint.copy(alpha = 0.12f)),
+                    .background(iconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                )
             }
             Spacer(modifier = Modifier.width(14.dp))
         }
@@ -243,26 +257,46 @@ fun IOSClickableItem(
                 if (iconTint != Color.Unspecified) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(visualSpec.iconContainerSizeDp.dp)
                             .clip(RoundedCornerShape(iconCornerRadius))
-                            .background(iconTint.copy(alpha = 0.12f)),
+                            .background(iconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (icon != null) {
-                            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                tint = iconTint,
+                                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                            )
                         } else if (iconPainter != null) {
-                            Icon(painter = iconPainter, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                            Icon(
+                                painter = iconPainter,
+                                contentDescription = null,
+                                tint = iconTint,
+                                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                            )
                         }
                     }
                 } else {
                     Box(
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(visualSpec.iconContainerSizeDp.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (icon != null) {
-                            Icon(icon, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(36.dp))
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(visualSpec.iconContainerSizeDp.dp)
+                            )
                         } else if (iconPainter != null) {
-                            Icon(painter = iconPainter, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(36.dp))
+                            Icon(
+                                painter = iconPainter,
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(visualSpec.iconContainerSizeDp.dp)
+                            )
                         }
                     }
                 }
@@ -375,7 +409,7 @@ fun IOSGridItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(iOSCornerRadius.Small * cornerRadiusScale))
-                .background(iconTint.copy(alpha = 0.12f)),
+                .background(iconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
             contentAlignment = Alignment.Center
         ) {
             Icon(

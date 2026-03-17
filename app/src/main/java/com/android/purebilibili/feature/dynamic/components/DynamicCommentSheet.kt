@@ -1,6 +1,7 @@
 // 文件路径: feature/dynamic/components/DynamicCommentSheet.kt
 package com.android.purebilibili.feature.dynamic.components
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,19 +15,74 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.ReplyItem
+import com.android.purebilibili.feature.dynamic.DynamicViewModel
+import com.android.purebilibili.feature.dynamic.resolveDynamicCommentSheetTotalCount
 import com.android.purebilibili.feature.video.ui.components.RichCommentText
 import com.android.purebilibili.feature.video.ui.components.resolveInlineSubReplyToggleLabel
 import com.android.purebilibili.feature.video.ui.components.resolveVisibleSubReplies
 import com.android.purebilibili.feature.video.ui.components.shouldShowInlineSubReplyToggle
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
+
+@Composable
+fun DynamicCommentOverlayHost(
+    viewModel: DynamicViewModel,
+    primaryItems: List<DynamicItem>,
+    secondaryItems: List<DynamicItem> = emptyList(),
+    toastContext: Context
+) {
+    val selectedDynamicId by viewModel.selectedDynamicId.collectAsState()
+    val comments by viewModel.comments.collectAsState()
+    val commentsLoading by viewModel.commentsLoading.collectAsState()
+    val subReplyState by viewModel.subReplyState.collectAsState()
+    val liveCommentCount by viewModel.commentTotalCount.collectAsState()
+    val inspectionMode = LocalInspectionMode.current
+
+    if (!selectedDynamicId.isNullOrBlank()) {
+        val dynamicId = requireNotNull(selectedDynamicId)
+        val dynamicItem = remember(dynamicId, primaryItems, secondaryItems) {
+            primaryItems.find { it.id_str == dynamicId }
+                ?: secondaryItems.find { it.id_str == dynamicId }
+        }
+        val fallbackCount = dynamicItem?.modules?.module_stat?.comment?.count ?: 0
+        val totalCount = remember(liveCommentCount, fallbackCount) {
+            resolveDynamicCommentSheetTotalCount(
+                liveCount = liveCommentCount,
+                fallbackCount = fallbackCount
+            )
+        }
+
+        DynamicCommentSheet(
+            comments = comments,
+            totalCount = totalCount,
+            isLoading = commentsLoading,
+            onDismiss = { viewModel.closeCommentSheet() },
+            onPostComment = { message ->
+                viewModel.postComment(dynamicId, message) { _, msg ->
+                    if (!inspectionMode) {
+                        android.widget.Toast.makeText(toastContext, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onViewReplies = { reply -> viewModel.openSubReply(reply) }
+        )
+    }
+
+    DynamicSubReplyPreviewHost(
+        state = subReplyState,
+        onDismiss = { viewModel.closeSubReply() },
+        onLoadMore = { viewModel.loadMoreSubReplies() }
+    )
+}
 
 /**
  *  动态评论底部弹窗

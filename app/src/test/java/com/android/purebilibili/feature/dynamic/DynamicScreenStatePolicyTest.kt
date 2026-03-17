@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.dynamic
 
+import com.android.purebilibili.data.model.response.DynamicItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -130,4 +131,95 @@ class DynamicScreenStatePolicyTest {
             )
         )
     }
+
+    @Test
+    fun `incremental refresh prepends new items without dropping current list`() {
+        val existing = listOf(buildDynamicItem("old_a"), buildDynamicItem("old_b"))
+        val result = resolveDynamicFeedStateAfterSuccess(
+            currentState = DynamicUiState(items = existing),
+            incomingItems = listOf(buildDynamicItem("new_1"), buildDynamicItem("new_2")),
+            isRefresh = true,
+            incrementalRefreshEnabled = true,
+            hasMore = true
+        )
+
+        assertEquals(
+            listOf("new_1", "new_2", "old_a", "old_b"),
+            result.items.map { it.id_str }
+        )
+        assertEquals("old_a", result.incrementalRefreshBoundaryKey)
+        assertEquals(2, result.incrementalPrependedCount)
+        assertEquals(DynamicFeedErrorSource.NONE, result.errorSource)
+    }
+
+    @Test
+    fun `pagination failure preserves existing items and marks append error`() {
+        val existing = listOf(buildDynamicItem("keep_me"))
+        val result = resolveDynamicFeedStateAfterFailure(
+            currentState = DynamicUiState(items = existing),
+            errorMessage = "网络错误",
+            refresh = false
+        )
+
+        assertEquals(existing, result.items)
+        assertEquals("网络错误", result.error)
+        assertEquals(DynamicFeedErrorSource.APPEND, result.errorSource)
+    }
+
+    @Test
+    fun `first load error is recorded as initial load source`() {
+        val result = resolveDynamicFeedStateAfterFailure(
+            currentState = DynamicUiState(),
+            errorMessage = "未登录",
+            refresh = true
+        )
+
+        assertEquals(DynamicFeedErrorSource.INITIAL_LOAD, result.errorSource)
+        assertEquals("未登录", result.error)
+    }
+
+    @Test
+    fun `refresh failure with existing items is not treated as append failure`() {
+        val result = resolveDynamicFeedStateAfterFailure(
+            currentState = DynamicUiState(items = listOf(buildDynamicItem("keep_me"))),
+            errorMessage = "刷新失败",
+            refresh = true
+        )
+
+        assertEquals(DynamicFeedErrorSource.REFRESH, result.errorSource)
+        assertEquals("刷新失败", result.error)
+    }
+
+    @Test
+    fun `selected user presentation state uses user scoped loading and error`() {
+        val state = DynamicUiState(
+            isLoading = false,
+            error = "主时间线错误",
+            userIsLoading = true,
+            userError = "用户动态错误"
+        )
+
+        assertTrue(
+            resolveDynamicActiveLoadingState(
+                currentState = state,
+                selectedUserId = 10001L
+            )
+        )
+        assertEquals(
+            "用户动态错误",
+            resolveDynamicActiveError(
+                currentState = state,
+                selectedUserId = 10001L
+            )
+        )
+        assertEquals(
+            "主时间线错误",
+            resolveDynamicActiveError(
+                currentState = state,
+                selectedUserId = null
+            )
+        )
+    }
 }
+
+private fun buildDynamicItem(id: String) = DynamicItem(id_str = id)

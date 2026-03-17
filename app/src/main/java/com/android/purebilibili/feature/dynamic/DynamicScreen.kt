@@ -50,8 +50,11 @@ import com.android.purebilibili.feature.dynamic.resolveDynamicHorizontalUserList
 import com.android.purebilibili.feature.dynamic.resolveDynamicHorizontalUserListSpacing
 
 import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
+import com.android.purebilibili.feature.dynamic.components.DynamicCommentOverlayHost
 import com.android.purebilibili.feature.dynamic.components.DynamicSidebar
 import com.android.purebilibili.feature.dynamic.components.DynamicTopBarWithTabs
+import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOnIcon
 import com.android.purebilibili.feature.dynamic.components.DynamicDisplayMode
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentSheet
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
@@ -162,6 +165,18 @@ fun DynamicScreen(
     
     //  [修改] 判断是否加载更多（区分全部动态和用户动态）
     val currentHasMore = if (selectedUserId != null) state.hasUserMore else state.hasMore
+    val activeLoading = remember(state, selectedUserId) {
+        resolveDynamicActiveLoadingState(
+            currentState = state,
+            selectedUserId = selectedUserId
+        )
+    }
+    val activeError = remember(state, selectedUserId) {
+        resolveDynamicActiveError(
+            currentState = state,
+            selectedUserId = selectedUserId
+        )
+    }
 
     var handledUserListRefreshBoundary by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(
@@ -190,7 +205,7 @@ fun DynamicScreen(
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItems > 0 && lastVisibleItemIndex >= totalItems - 3 && !state.isLoading && currentHasMore
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 3 && !activeLoading && currentHasMore
         }
     }
     //  [埋点] 页面浏览追踪
@@ -341,6 +356,8 @@ fun DynamicScreen(
                             Box(modifier = Modifier.fillMaxSize()) {
                                 DynamicList(
                                     state = state,
+                                    activeLoading = activeLoading,
+                                    activeError = activeError,
                                     hasMore = currentHasMore,
                                     filteredItems = filteredItems,
                                     listState = listState,
@@ -380,12 +397,14 @@ fun DynamicScreen(
                                 )
                             }
                             
-                            // 错误提示
-                            ErrorOverlay(
-                                error = state.error,
+                                // 错误提示
+                                ErrorOverlay(
+                                error = activeError,
                                 activeItemsCount = filteredItems.size,
                                 onLoginClick = onLoginClick,
-                                onRetry = { viewModel.refresh() },
+                                onRetry = {
+                                    selectedUserId?.let(viewModel::selectUser) ?: viewModel.refresh()
+                                },
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         }
@@ -404,6 +423,8 @@ fun DynamicScreen(
                         Box {
                              DynamicList(
                                  state = state,
+                                 activeLoading = activeLoading,
+                                 activeError = activeError,
                                  hasMore = currentHasMore,
                                  filteredItems = filteredItems,
                                  listState = listState,
@@ -480,10 +501,12 @@ fun DynamicScreen(
                         }
                         
                         ErrorOverlay(
-                            error = state.error,
+                            error = activeError,
                             activeItemsCount = filteredItems.size,
                             onLoginClick = onLoginClick,
-                            onRetry = { viewModel.refresh() },
+                            onRetry = {
+                                selectedUserId?.let(viewModel::selectUser) ?: viewModel.refresh()
+                            },
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -492,7 +515,7 @@ fun DynamicScreen(
         }
     }
     
-    DynamicInteractionOverlayHost(
+    DynamicCommentOverlayHost(
         viewModel = viewModel,
         primaryItems = state.items,
         secondaryItems = state.userItems,
@@ -513,63 +536,14 @@ fun DynamicScreen(
     }
 }
 
-@Composable
-private fun DynamicInteractionOverlayHost(
-    viewModel: DynamicViewModel,
-    primaryItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
-    secondaryItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
-    toastContext: android.content.Context
-) {
-    val selectedDynamicId by viewModel.selectedDynamicId.collectAsState()
-    val comments by viewModel.comments.collectAsState()
-    val commentsLoading by viewModel.commentsLoading.collectAsState()
-    val subReplyState by viewModel.subReplyState.collectAsState()
-    val liveCommentCount by viewModel.commentTotalCount.collectAsState()
-    val inspectionMode = LocalInspectionMode.current
-
-    if (shouldShowDynamicCommentSheet(selectedDynamicId)) {
-        val dynamicId = requireNotNull(selectedDynamicId)
-        val dynamicItem = remember(dynamicId, primaryItems, secondaryItems) {
-            primaryItems.find { it.id_str == dynamicId }
-                ?: secondaryItems.find { it.id_str == dynamicId }
-        }
-        val fallbackCount = dynamicItem?.modules?.module_stat?.comment?.count ?: 0
-        val totalCount = remember(liveCommentCount, fallbackCount) {
-            resolveDynamicCommentSheetTotalCount(
-                liveCount = liveCommentCount,
-                fallbackCount = fallbackCount
-            )
-        }
-
-        DynamicCommentSheet(
-            comments = comments,
-            totalCount = totalCount,
-            isLoading = commentsLoading,
-            onDismiss = { viewModel.closeCommentSheet() },
-            onPostComment = { message ->
-                viewModel.postComment(dynamicId, message) { _, msg ->
-                    if (!inspectionMode) {
-                        android.widget.Toast.makeText(toastContext, msg, android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-            onViewReplies = { reply -> viewModel.openSubReply(reply) }
-        )
-    }
-
-    DynamicSubReplyPreviewHost(
-        state = subReplyState,
-        onDismiss = { viewModel.closeSubReply() },
-        onLoadMore = { viewModel.loadMoreSubReplies() }
-    )
-}
-
 /**
  *  动态列表内容
  */
 @Composable
 private fun DynamicList(
     state: DynamicUiState,
+    activeLoading: Boolean,
+    activeError: String?,
     hasMore: Boolean,
     filteredItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
     listState: androidx.compose.foundation.lazy.LazyListState,
@@ -599,7 +573,7 @@ private fun DynamicList(
         modifier = modifier.fillMaxSize().responsiveContentWidth(maxWidth = resolveDynamicFeedMaxWidth())
     ) {
         // 空状态
-        if (filteredItems.isEmpty() && !state.isLoading && state.error == null) {
+        if (filteredItems.isEmpty() && !activeLoading && activeError == null) {
             item {
                 EmptyState(
                     message = "暂无动态",
@@ -631,7 +605,7 @@ private fun DynamicList(
         }
         
         // 加载中
-        if (shouldShowDynamicLoadingFooter(isLoading = state.isLoading, activeItemsCount = filteredItems.size)) {
+        if (shouldShowDynamicLoadingFooter(isLoading = activeLoading, activeItemsCount = filteredItems.size)) {
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -728,9 +702,9 @@ private fun HorizontalUserList(
                         ) {
                             Icon(
                                 imageVector = if (showHiddenUsers) {
-                                    CupertinoIcons.Default.Eye
+                                    rememberAppVisibilityOnIcon()
                                 } else {
-                                    CupertinoIcons.Default.EyeSlash
+                                    rememberAppVisibilityOffIcon()
                                 },
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant

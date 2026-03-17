@@ -5,8 +5,13 @@ import com.android.purebilibili.data.model.response.SpaceDynamicContent
 import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.SpaceDynamicMajor
 import com.android.purebilibili.data.model.response.SpaceDynamicModules
+import com.android.purebilibili.data.model.response.SpaceDynamicOpus
+import com.android.purebilibili.data.model.response.SpaceDynamicDrawItem
+import com.android.purebilibili.feature.dynamic.components.DynamicCardPrimaryAction
+import com.android.purebilibili.feature.dynamic.components.resolveDynamicCardPrimaryAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class SpaceDynamicNavigationPolicyTest {
@@ -47,5 +52,31 @@ class SpaceDynamicNavigationPolicyTest {
         val action = resolveSpaceDynamicClickAction(dynamic)
 
         assertTrue(action is SpaceDynamicClickAction.None)
+    }
+
+    @Test
+    fun resolveSpaceDynamicClickAction_matches_shared_dynamic_primary_action() {
+        val dynamic = SpaceDynamicItem(
+            id_str = "2468",
+            modules = SpaceDynamicModules(
+                module_dynamic = SpaceDynamicContent(
+                    major = SpaceDynamicMajor(
+                        opus = SpaceDynamicOpus(
+                            title = "图文标题",
+                            pics = listOf(SpaceDynamicDrawItem(src = "a"))
+                        )
+                    )
+                )
+            )
+        )
+
+        val sharedAction = assertIs<DynamicCardPrimaryAction.OpenDynamicDetail>(
+            resolveDynamicCardPrimaryAction(resolveSpaceDynamicCardItem(dynamic))
+        )
+        val spaceAction = assertIs<SpaceDynamicClickAction.OpenDynamicDetail>(
+            resolveSpaceDynamicClickAction(dynamic)
+        )
+
+        assertEquals(sharedAction.dynamicId, spaceAction.dynamicId)
     }
 }

@@ -8,6 +8,31 @@ data class SpaceExternalPlaylist(
     val startIndex: Int
 )
 
+enum class SpaceCollectionDetailType(val raw: String) {
+    SEASON("season"),
+    SERIES("series"),
+    FAVORITE("favorite");
+
+    companion object {
+        fun fromRaw(raw: String): SpaceCollectionDetailType? {
+            return entries.firstOrNull { it.raw == raw.trim().lowercase() }
+        }
+    }
+}
+
+data class SpaceCollectionDetailRequest(
+    val type: SpaceCollectionDetailType,
+    val id: Long,
+    val mid: Long,
+    val title: String
+)
+
+data class SpacePriorityTabLoadState(
+    val contribution: SpaceTabContentState,
+    val dynamic: SpaceTabContentState,
+    val collections: SpaceTabContentState
+)
+
 fun buildExternalPlaylistFromSpaceVideos(
     videos: List<SpaceVideoItem>,
     clickedBvid: String? = null
@@ -37,6 +62,33 @@ fun buildExternalPlaylistFromSpaceVideos(
 
 fun resolveSpacePlayAllStartTarget(videos: List<SpaceVideoItem>): String? {
     return videos.firstOrNull()?.bvid
+}
+
+fun resolveSpacePriorityTabLoadState(
+    shell: SpaceTabShellState
+): SpacePriorityTabLoadState {
+    return SpacePriorityTabLoadState(
+        contribution = shell.tabStates[SpaceMainTab.CONTRIBUTION] ?: SpaceTabContentState(),
+        dynamic = shell.tabStates[SpaceMainTab.DYNAMIC] ?: SpaceTabContentState(),
+        collections = shell.tabStates[SpaceMainTab.COLLECTIONS] ?: SpaceTabContentState()
+    )
+}
+
+fun resolveSpaceCollectionDetailRequest(
+    type: String,
+    id: Long,
+    mid: Long,
+    title: String
+): SpaceCollectionDetailRequest? {
+    val detailType = SpaceCollectionDetailType.fromRaw(type) ?: return null
+    if (id <= 0L) return null
+    if (detailType != SpaceCollectionDetailType.FAVORITE && mid <= 0L) return null
+    return SpaceCollectionDetailRequest(
+        type = detailType,
+        id = id,
+        mid = mid,
+        title = title.trim()
+    )
 }
 
 internal fun parseSpaceVideoLengthToSeconds(length: String): Long {

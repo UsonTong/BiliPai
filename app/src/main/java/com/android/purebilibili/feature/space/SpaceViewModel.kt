@@ -61,6 +61,9 @@ sealed class SpaceUiState {
         val isLoadingArticles: Boolean = false,
         val hasMoreAudios: Boolean = true,
         val hasMoreArticles: Boolean = true
+        ,
+        val headerState: SpaceHeaderState = SpaceHeaderState(null, null, null, null, "", emptyList(), emptyList()),
+        val tabShellState: SpaceTabShellState = buildInitialTabShellState()
     ) : SpaceUiState()
     data class Error(val message: String) : SpaceUiState()
 }
@@ -203,7 +206,28 @@ class SpaceViewModel(
                         seasonArchives = seasonArchives,
                         seriesArchives = seriesArchives,
                         createdFavoriteFolders = createdFavoriteFolders,
-                        collectedFavoriteFolders = collectedFavoriteFolders
+                        collectedFavoriteFolders = collectedFavoriteFolders,
+                        headerState = buildHeaderState(
+                            userInfo = userInfo,
+                            relationStat = relationStat,
+                            upStat = upStat,
+                            topVideo = null,
+                            notice = "",
+                            createdFavorites = createdFavoriteFolders,
+                            collectedFavorites = collectedFavoriteFolders
+                        ),
+                        tabShellState = buildInitialTabShellState(
+                            selectedTab = tabIndexToMainTab(_selectedMainTab.value)
+                        )
+                            .withUpdatedTab(SpaceMainTab.CONTRIBUTION) { it.copy(hasLoaded = true) }
+                            .withUpdatedTab(SpaceMainTab.COLLECTIONS) {
+                                it.copy(
+                                    hasLoaded = seasons.isNotEmpty() ||
+                                        series.isNotEmpty() ||
+                                        createdFavoriteFolders.isNotEmpty() ||
+                                        collectedFavoriteFolders.isNotEmpty()
+                                )
+                            }
                     )
                 } else {
                     _uiState.value = SpaceUiState.Error("获取用户信息失败")
@@ -216,8 +240,13 @@ class SpaceViewModel(
     }
 
     fun selectMainTab(tab: Int) {
+        val newTab = com.android.purebilibili.feature.space.tabIndexToMainTab(tab)
         _selectedMainTab.value = tab
         savedStateHandle[KEY_SELECTED_MAIN_TAB] = tab
+        val current = _uiState.value as? SpaceUiState.Success ?: return
+        _uiState.value = current.copy(
+            tabShellState = current.tabShellState.withSelectedTab(newTab)
+        )
     }
     
     fun loadMoreVideos() {
@@ -521,20 +550,36 @@ class SpaceViewModel(
         
         viewModelScope.launch {
             try {
+                _uiState.value = current.markTabLoading(SpaceMainTab.HOME)
                 val topVideoDeferred = async { fetchTopArc(currentMid) }
                 val noticeDeferred = async { fetchNotice(currentMid) }
                 
                 val topVideo = topVideoDeferred.await()
                 val notice = noticeDeferred.await()
                 
-                _uiState.value = current.copy(
+                val latest = _uiState.value as? SpaceUiState.Success ?: current
+                _uiState.value = latest.copy(
                     topVideo = topVideo,
-                    notice = notice ?: ""
-                )
+                    notice = notice ?: "",
+                    headerState = buildHeaderState(
+                        userInfo = latest.userInfo,
+                        relationStat = latest.relationStat,
+                        upStat = latest.upStat,
+                        topVideo = topVideo,
+                        notice = notice ?: "",
+                        createdFavorites = latest.createdFavoriteFolders,
+                        collectedFavorites = latest.collectedFavoriteFolders
+                    )
+                ).markTabResult(SpaceMainTab.HOME)
                 
                 android.util.Log.d("SpaceVM", " loadSpaceHome: topVideo=${topVideo?.title}, notice=${notice?.take(50)}")
             } catch (e: Exception) {
                 android.util.Log.e("SpaceVM", "loadSpaceHome error: ${e.message}", e)
+                val latest = _uiState.value as? SpaceUiState.Success ?: return@launch
+                _uiState.value = latest.markTabResult(
+                    tab = SpaceMainTab.HOME,
+                    error = e.message ?: "加载失败"
+                )
             }
         }
     }
@@ -580,13 +625,14 @@ class SpaceViewModel(
         if (!refresh && !current.hasMoreDynamics) return
         
         viewModelScope.launch {
-            _uiState.value = current.copy(
+            var currentState = current.markTabLoading(SpaceMainTab.DYNAMIC).copy(
                 isLoadingDynamics = true,
                 lastDynamicLoadFailed = false
             )
+            _uiState.value = currentState
             
             try {
-                val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
+                currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 var offset = if (refresh) "" else current.dynamicOffset
                 val accumulated = if (refresh) mutableListOf() else currentState.dynamics.toMutableList()
                 var hasMore = true
@@ -634,6 +680,9 @@ class SpaceViewModel(
                     isLoadingDynamics = false,
                     hasLoadedDynamicsOnce = true,
                     lastDynamicLoadFailed = failed
+                ).markTabResult(
+                    SpaceMainTab.DYNAMIC,
+                    error = if (failed) "加载失败" else null
                 )
                 android.util.Log.d(
                     "SpaceVM",
@@ -647,6 +696,9 @@ class SpaceViewModel(
                     hasLoadedDynamicsOnce = true,
                     lastDynamicLoadFailed = true,
                     hasMoreDynamics = false
+                ).markTabResult(
+                    SpaceMainTab.DYNAMIC,
+                    error = e.message ?: "加载失败"
                 )
             }
         }
@@ -682,7 +734,7 @@ class SpaceViewModel(
         if (!refresh && !current.hasMoreAudios) return
         
         viewModelScope.launch {
-            _uiState.value = current.copy(isLoadingAudios = true)
+            _uiState.value = current.copy(isLoadingAudios = true).markTabLoading(SpaceMainTab.CONTRIBUTION)
             val page = if (refresh) 1 else current.audioPage + 1
             
             try {
@@ -699,13 +751,23 @@ class SpaceViewModel(
                         audioPage = page,
                         hasMoreAudios = hasMore,
                         isLoadingAudios = false
-                    )
+                    ).markTabResult(SpaceMainTab.CONTRIBUTION)
                 } else {
-                     _uiState.value = currentState.copy(isLoadingAudios = false)
+                     _uiState.value = currentState.copy(
+                         isLoadingAudios = false
+                     ).markTabResult(
+                         tab = SpaceMainTab.CONTRIBUTION,
+                         error = "音频加载失败"
+                     )
                 }
             } catch (e: Exception) {
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
-                _uiState.value = currentState.copy(isLoadingAudios = false)
+                _uiState.value = currentState.copy(
+                    isLoadingAudios = false
+                ).markTabResult(
+                    tab = SpaceMainTab.CONTRIBUTION,
+                    error = e.message ?: "音频加载失败"
+                )
             }
         }
     }
@@ -716,7 +778,7 @@ class SpaceViewModel(
         if (!refresh && !current.hasMoreArticles) return
         
         viewModelScope.launch {
-            _uiState.value = current.copy(isLoadingArticles = true)
+            _uiState.value = current.copy(isLoadingArticles = true).markTabLoading(SpaceMainTab.CONTRIBUTION)
             val page = if (refresh) 1 else current.articlePage + 1
             
             try {
@@ -733,13 +795,23 @@ class SpaceViewModel(
                          articlePage = page,
                          hasMoreArticles = hasMore,
                          isLoadingArticles = false
-                     )
+                     ).markTabResult(SpaceMainTab.CONTRIBUTION)
                  } else {
-                     _uiState.value = currentState.copy(isLoadingArticles = false)
+                     _uiState.value = currentState.copy(
+                         isLoadingArticles = false
+                     ).markTabResult(
+                         tab = SpaceMainTab.CONTRIBUTION,
+                         error = "专栏加载失败"
+                     )
                  }
             } catch (e: Exception) {
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
-                _uiState.value = currentState.copy(isLoadingArticles = false)
+                _uiState.value = currentState.copy(
+                    isLoadingArticles = false
+                ).markTabResult(
+                    tab = SpaceMainTab.CONTRIBUTION,
+                    error = e.message ?: "专栏加载失败"
+                )
             }
         }
     }
@@ -771,7 +843,10 @@ class SpaceViewModel(
         viewModelScope.launch {
             // 1. 乐观更新 UI
             val newUserInfo = current.userInfo.copy(isFollowed = !isFollowing)
-            _uiState.value = current.copy(userInfo = newUserInfo)
+            _uiState.value = current.copy(
+                userInfo = newUserInfo,
+                headerState = current.headerState.copy(userInfo = newUserInfo)
+            )
             
             try {
                 // 2. 调用统一仓库逻辑
@@ -786,7 +861,10 @@ class SpaceViewModel(
                     val latestState = _uiState.value as? SpaceUiState.Success
                     if (latestState != null) {
                         _uiState.value = latestState.copy(
-                            userInfo = latestState.userInfo.copy(isFollowed = !isFollowing)
+                            userInfo = latestState.userInfo.copy(isFollowed = !isFollowing),
+                            headerState = latestState.headerState.copy(
+                                userInfo = latestState.userInfo.copy(isFollowed = !isFollowing)
+                            )
                         )
                     }
 
@@ -798,14 +876,20 @@ class SpaceViewModel(
                     if (relationStat != null) {
                         val currentState = _uiState.value as? SpaceUiState.Success
                         if (currentState != null) {
-                            _uiState.value = currentState.copy(relationStat = relationStat)
+                            _uiState.value = currentState.copy(
+                                relationStat = relationStat,
+                                headerState = currentState.headerState.copy(relationStat = relationStat)
+                            )
                         }
                     }
                 }
             } catch (e: Exception) {
                 // 失败回滚
                 com.android.purebilibili.core.util.Logger.e("SpaceVM", "modifyRelation error: ${e.message}", e)
-                _uiState.value = current.copy(userInfo = current.userInfo) // Revert
+                _uiState.value = current.copy(
+                    userInfo = current.userInfo,
+                    headerState = current.headerState.copy(userInfo = current.userInfo)
+                ) // Revert
             }
         }
     }
@@ -874,6 +958,37 @@ class SpaceViewModel(
             _isFollowGroupsLoading.value = false
         }
     }
+
+    private fun tabIndexToMainTab(index: Int): SpaceMainTab {
+        return when (index) {
+            0 -> SpaceMainTab.HOME
+            1 -> SpaceMainTab.DYNAMIC
+            2 -> SpaceMainTab.CONTRIBUTION
+            3 -> SpaceMainTab.COLLECTIONS
+            else -> SpaceMainTab.HOME
+        }
+    }
+
+    private fun SpaceUiState.Success.markTabLoading(tab: SpaceMainTab): SpaceUiState.Success {
+        return copy(
+            tabShellState = tabShellState.withUpdatedTab(tab) {
+                it.copy(isLoading = true, error = null)
+            }
+        )
+    }
+
+    private fun SpaceUiState.Success.markTabResult(
+        tab: SpaceMainTab,
+        error: String? = null,
+        hasLoaded: Boolean = true
+    ): SpaceUiState.Success {
+        return copy(
+            tabShellState = tabShellState.withUpdatedTab(tab) {
+                it.copy(isLoading = false, error = error, hasLoaded = hasLoaded)
+            }
+        )
+    }
+
 
     private companion object {
         const val KEY_SELECTED_MAIN_TAB = "space_selected_main_tab"

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.imageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 //  已改用 MaterialTheme.colorScheme.primary
@@ -54,8 +55,20 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.spring
+import com.android.purebilibili.feature.dynamic.DynamicViewModel
+import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
+import com.android.purebilibili.feature.dynamic.components.DynamicCommentOverlayHost
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
+import com.android.purebilibili.feature.dynamic.components.RepostDialog
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.rememberAppBackIcon
+import com.android.purebilibili.core.ui.rememberAppCollectionIcon
+import com.android.purebilibili.core.ui.rememberAppDynamicIcon
+import com.android.purebilibili.core.ui.rememberAppHomeIcon
+import com.android.purebilibili.core.ui.rememberAppMoreIcon
+import com.android.purebilibili.core.ui.rememberAppPlayIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOnIcon
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -63,6 +76,7 @@ fun SpaceScreen(
     mid: Long,
     onBack: () -> Unit,
     onVideoClick: (String) -> Unit,
+    onUserClick: (Long) -> Unit = {},
     onPlayAllAudioClick: ((String) -> Unit)? = null,
     onDynamicDetailClick: (String) -> Unit = {},
     onViewAllClick: (String, Long, Long, String) -> Unit = { _, _, _, _ -> }, // type, id, mid, title
@@ -71,14 +85,15 @@ fun SpaceScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val context = LocalContext.current
+    val dynamicInteractionViewModel: DynamicViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val likedDynamics by dynamicInteractionViewModel.likedDynamics.collectAsState()
     val followGroupDialogVisible by viewModel.followGroupDialogVisible.collectAsState()
     val followGroupTags by viewModel.followGroupTags.collectAsState()
     val followGroupSelectedTagIds by viewModel.followGroupSelectedTagIds.collectAsState()
     val isFollowGroupsLoading by viewModel.isFollowGroupsLoading.collectAsState()
     val isSavingFollowGroups by viewModel.isSavingFollowGroups.collectAsState()
-    val selectedMainTab by viewModel.selectedMainTab.collectAsState()
-    
     // [Block] Repository & State
     val blockedUpRepository = remember { com.android.purebilibili.data.repository.BlockedUpRepository(context) }
     val isBlocked by blockedUpRepository.isBlocked(mid).collectAsState(initial = false)
@@ -86,6 +101,7 @@ fun SpaceScreen(
     var showBlockMenu by remember { mutableStateOf(false) }
     var showBlockConfirmDialog by remember { mutableStateOf(false) }
     var showTopPhotoPreview by remember(mid) { mutableStateOf(false) }
+    var showRepostDialog by remember { mutableStateOf<String?>(null) }
     
     // [Blur] Haze State
     val hazeState = rememberRecoverableHazeState()
@@ -112,7 +128,7 @@ fun SpaceScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(CupertinoIcons.Default.ChevronBackward, contentDescription = "返回")
+                            Icon(rememberAppBackIcon(), contentDescription = "返回")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -122,7 +138,7 @@ fun SpaceScreen(
                     scrollBehavior = scrollBehavior,
                     actions = {
                         IconButton(onClick = { showBlockMenu = true }) {
-                            Icon(CupertinoIcons.Default.Ellipsis, contentDescription = "更多")
+                            Icon(rememberAppMoreIcon(), contentDescription = "更多")
                         }
                         
                         DropdownMenu(
@@ -138,7 +154,7 @@ fun SpaceScreen(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        if (isBlocked) CupertinoIcons.Default.Eye else CupertinoIcons.Default.EyeSlash,
+                                        if (isBlocked) rememberAppVisibilityOnIcon() else rememberAppVisibilityOffIcon(),
                                         contentDescription = null,
                                         tint = if (isBlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                     )
@@ -183,11 +199,14 @@ fun SpaceScreen(
                 }
                 
                 is SpaceUiState.Success -> {
+                    val sharedDynamicItems = remember(state.dynamics) {
+                        resolveSpaceDynamicCardItems(state.dynamics)
+                    }
                     SpaceContent(
                         state = state,
-                        selectedTab = selectedMainTab,
                         onMainTabSelected = { viewModel.selectMainTab(it) },
                         onVideoClick = onVideoClick,
+                        onUserClick = onUserClick,
                         onPlayAllAudioClick = onPlayAllAudioClick,
                         onDynamicDetailClick = onDynamicDetailClick,
                         onLoadMore = { viewModel.loadMoreVideos() },
@@ -205,8 +224,27 @@ fun SpaceScreen(
                         onTopPhotoClick = {
                             showTopPhotoPreview = true
                         },
+                        spaceDynamicItems = sharedDynamicItems,
+                        likedDynamics = likedDynamics,
+                        onSpaceDynamicCommentClick = { dynamicItem ->
+                            dynamicInteractionViewModel.openCommentSheet(dynamicItem)
+                        },
+                        onSpaceDynamicRepostClick = { dynamicId ->
+                            showRepostDialog = dynamicId
+                        },
+                        onSpaceDynamicLikeClick = { dynamicId ->
+                            dynamicInteractionViewModel.likeDynamic(dynamicId) { _, msg ->
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope
+                    )
+
+                    DynamicCommentOverlayHost(
+                        viewModel = dynamicInteractionViewModel,
+                        primaryItems = sharedDynamicItems,
+                        toastContext = context
                     )
                 }
             }
@@ -221,6 +259,18 @@ fun SpaceScreen(
             images = listOf(topPhotoPreviewUrl),
             initialIndex = 0,
             onDismiss = { showTopPhotoPreview = false }
+        )
+    }
+
+    showRepostDialog?.let { dynamicId ->
+        RepostDialog(
+            onDismiss = { showRepostDialog = null },
+            onRepost = { content ->
+                dynamicInteractionViewModel.repostDynamic(dynamicId, content) { success, msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    if (success) showRepostDialog = null
+                }
+            }
         )
     }
     
@@ -349,9 +399,9 @@ fun SpaceScreen(
 @Composable
 private fun SpaceContent(
     state: SpaceUiState.Success,
-    selectedTab: Int,
     onMainTabSelected: (Int) -> Unit,
     onVideoClick: (String) -> Unit,
+    onUserClick: (Long) -> Unit,
     onPlayAllAudioClick: ((String) -> Unit)?,
     onDynamicDetailClick: (String) -> Unit,
     onLoadMore: () -> Unit,
@@ -366,10 +416,17 @@ private fun SpaceContent(
     contentPadding: PaddingValues, // [Blur] Receive padding from Scaffold
     onFollowClick: () -> Unit,
     onTopPhotoClick: () -> Unit,
+    spaceDynamicItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
+    likedDynamics: Set<String>,
+    onSpaceDynamicCommentClick: (com.android.purebilibili.data.model.response.DynamicItem) -> Unit,
+    onSpaceDynamicRepostClick: (String) -> Unit,
+    onSpaceDynamicLikeClick: (String) -> Unit,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     val context = LocalContext.current
+    val gifImageLoader = context.imageLoader
+    val selectedTab = mainTabToTabIndex(state.tabShellState.selectedTab)
     val playSpaceVideo: (String) -> Unit = { clickedBvid ->
         val externalPlaylist = buildExternalPlaylistFromSpaceVideos(
             videos = state.videos,
@@ -433,9 +490,9 @@ private fun SpaceContent(
         item(span = { GridItemSpan(maxLineSpan) }) {
             SpaceHeader(
 
-                userInfo = state.userInfo,
-                relationStat = state.relationStat,
-                upStat = state.upStat,
+                userInfo = state.headerState.userInfo ?: state.userInfo,
+                relationStat = state.headerState.relationStat ?: state.relationStat,
+                upStat = state.headerState.upStat ?: state.upStat,
                 onFollowClick = onFollowClick,
                 onTopPhotoClick = onTopPhotoClick,
                 sharedTransitionScope = sharedTransitionScope,
@@ -762,7 +819,7 @@ private fun SpaceContent(
                 if (state.topVideo != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         SpaceHomeTopVideo(
-                            topVideo = state.topVideo,
+                            topVideo = state.headerState.topVideo ?: state.topVideo,
                             onVideoClick = onVideoClick
                         )
                     }
@@ -791,14 +848,19 @@ private fun SpaceContent(
                 }
                 
                 // 公告
-                if (state.notice.isNotEmpty()) {
+                val notice = state.headerState.notice.ifEmpty { state.notice }
+                if (notice.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        SpaceHomeNotice(notice = state.notice)
+                        SpaceHomeNotice(notice = notice)
                     }
                 }
                 
                 // 如果啥都没有
-                if (state.videos.isEmpty() && state.topVideo == null && state.notice.isEmpty() && state.articles.isEmpty()) {
+                if (state.videos.isEmpty() &&
+                    (state.headerState.topVideo ?: state.topVideo) == null &&
+                    notice.isEmpty() &&
+                    state.articles.isEmpty()
+                ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Box(
                             modifier = Modifier
@@ -857,16 +919,22 @@ private fun SpaceContent(
                         }
                     }
                 } else {
-                    state.dynamics.forEachIndexed { index, dynamic ->
+                    spaceDynamicItems.forEachIndexed { index, dynamic ->
                         item(key = "dynamic_${dynamic.id_str}", span = { GridItemSpan(maxLineSpan) }) {
-                            SpaceDynamicCard(
-                                dynamic = dynamic,
+                            DynamicCardV2(
+                                item = dynamic,
                                 onVideoClick = onVideoClick,
-                                onDynamicDetailClick = onDynamicDetailClick
+                                onUserClick = onUserClick,
+                                onDynamicDetailClick = onDynamicDetailClick,
+                                gifImageLoader = gifImageLoader,
+                                onCommentClick = { onSpaceDynamicCommentClick(dynamic) },
+                                onRepostClick = onSpaceDynamicRepostClick,
+                                onLikeClick = onSpaceDynamicLikeClick,
+                                isLiked = likedDynamics.contains(dynamic.id_str)
                             )
                             
                             // 触发加载更多
-                            if (index == state.dynamics.size - 3 && state.hasMoreDynamics && !state.isLoadingDynamics) {
+                            if (index == spaceDynamicItems.size - 3 && state.hasMoreDynamics && !state.isLoadingDynamics) {
                                 LaunchedEffect(index) { onLoadMoreDynamic() }
                             }
                         }
@@ -1687,11 +1755,15 @@ private fun SpaceTabRow(
     collectionsCount: Int,
     onTabSelected: (Int) -> Unit
 ) {
+    val homeIcon = rememberAppHomeIcon()
+    val dynamicIcon = rememberAppDynamicIcon()
+    val playIcon = rememberAppPlayIcon()
+    val collectionIcon = rememberAppCollectionIcon()
     val tabs = listOf(
-        TabItem(0, "主页", CupertinoIcons.Default.House),
-        TabItem(1, "动态", CupertinoIcons.Default.Bell),
-        TabItem(2, "投稿", CupertinoIcons.Default.PlayCircle, if (videoCount > 999) "999+" else if (videoCount > 0) videoCount.toString() else null),
-        TabItem(3, "合集和系列", CupertinoIcons.Default.Folder, if (collectionsCount > 0) collectionsCount.toString() else null)
+        TabItem(0, "主页", homeIcon),
+        TabItem(1, "动态", dynamicIcon),
+        TabItem(2, "投稿", playIcon, if (videoCount > 999) "999+" else if (videoCount > 0) videoCount.toString() else null),
+        TabItem(3, "合集和系列", collectionIcon, if (collectionsCount > 0) collectionsCount.toString() else null)
     )
     
     Column {

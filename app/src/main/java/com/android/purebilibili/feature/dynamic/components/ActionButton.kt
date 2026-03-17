@@ -10,10 +10,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-//  Cupertino Icons - iOS SF Symbols 风格图标
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.*
-import io.github.alexzhirkevich.cupertino.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +23,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.ui.rememberAppCommentIcon
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
+import com.android.purebilibili.core.ui.rememberAppShareIcon
 /**
  *  iOS 风格操作按钮 - 现代化胶囊设计
  * 
@@ -72,10 +72,10 @@ fun ActionButton(
     
     //  优雅的图标 - 根据状态切换填充/描边
     val buttonIcon = when {
-        isLike && isActive -> CupertinoIcons.Filled.HandThumbsup
-        isLike -> CupertinoIcons.Default.HandThumbsup
-        isForward -> CupertinoIcons.Default.ArrowTurnUpRight
-        isComment -> CupertinoIcons.Default.Message
+        isLike && isActive -> rememberAppLikeFilledIcon()
+        isLike -> rememberAppLikeIcon()
+        isForward -> rememberAppShareIcon()
+        isComment -> rememberAppCommentIcon()
         else -> icon
     }
     

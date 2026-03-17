@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import com.android.purebilibili.core.ui.rememberAppBackIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOnIcon
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.feature.dynamic.resolveDynamicSidebarWidth
@@ -122,7 +125,7 @@ fun DynamicSidebar(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (showHiddenUsers) CupertinoIcons.Default.Eye else CupertinoIcons.Default.EyeSlash,
+                                imageVector = if (showHiddenUsers) rememberAppVisibilityOnIcon() else rememberAppVisibilityOffIcon(),
                                 contentDescription = null,
                                 tint = if (showHiddenUsers) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
@@ -167,7 +170,7 @@ fun DynamicSidebar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = CupertinoIcons.Default.ChevronBackward,
+                        imageVector = rememberAppBackIcon(),
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp)

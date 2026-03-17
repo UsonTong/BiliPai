@@ -45,8 +45,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 116
-        versionName = "7.0.0 Beta4"
+        versionCode = 117
+        versionName = "7.0.0 Beta5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -102,6 +102,7 @@ android {
             isShrinkResources = false
         }
         create("dev") {
+            // Dev 保持“接近发布”的验证语义，不用于日常本地快速迭代。
             initWith(getByName("release"))
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
@@ -339,6 +340,18 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+}
+
+tasks.register("assembleFast") {
+    group = "build"
+    description = "Assembles the fast local development variant (debug)."
+    dependsOn("assembleDebug")
+}
+
+tasks.register("installFast") {
+    group = "install"
+    description = "Installs the fast local development variant (debug) on a connected device."
+    dependsOn("installDebug")
 }
 
 if (file("google-services.json").exists()) {

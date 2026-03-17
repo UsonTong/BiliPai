@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.theme.UiPreset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -22,6 +23,13 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.Tag
 import io.github.alexzhirkevich.cupertino.icons.outlined.XmarkCircle
 
 class SettingsEntryVisualPolicyTest {
+
+    private val md3Palette = SettingsEntryThemePalette(
+        primary = Color(0xFF112233),
+        secondary = Color(0xFF223344),
+        tertiary = Color(0xFF334455),
+        error = Color(0xFF445566)
+    )
 
     @Test
     fun `general section entries should use distinct icons`() {
@@ -55,15 +63,53 @@ class SettingsEntryVisualPolicyTest {
             Icons.Outlined.Palette,
             resolveSettingsEntryVisual(
                 SettingsSearchTarget.APPEARANCE,
-                UiPreset.MD3
+                UiPreset.MD3,
+                md3Palette
             ).icon
         )
         assertEquals(
             Icons.Outlined.Security,
             resolveSettingsEntryVisual(
                 SettingsSearchTarget.PERMISSION,
-                UiPreset.MD3
+                UiPreset.MD3,
+                md3Palette
             ).icon
+        )
+    }
+
+    @Test
+    fun `md3 preset should derive settings entry tints from theme palette roles`() {
+        assertEquals(
+            md3Palette.tertiary,
+            resolveSettingsEntryVisual(
+                SettingsSearchTarget.APPEARANCE,
+                UiPreset.MD3,
+                md3Palette
+            ).iconTint
+        )
+        assertEquals(
+            md3Palette.secondary,
+            resolveSettingsEntryVisual(
+                SettingsSearchTarget.PERMISSION,
+                UiPreset.MD3,
+                md3Palette
+            ).iconTint
+        )
+        assertEquals(
+            md3Palette.primary,
+            resolveSettingsEntryVisual(
+                SettingsSearchTarget.TELEGRAM,
+                UiPreset.MD3,
+                md3Palette
+            ).iconTint
+        )
+        assertEquals(
+            md3Palette.error,
+            resolveSettingsEntryVisual(
+                SettingsSearchTarget.CLEAR_CACHE,
+                UiPreset.MD3,
+                md3Palette
+            ).iconTint
         )
     }
 

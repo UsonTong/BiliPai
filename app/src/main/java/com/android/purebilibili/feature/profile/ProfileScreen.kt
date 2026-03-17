@@ -65,6 +65,7 @@ import com.android.purebilibili.core.ui.rememberAppDownloadIcon
 import com.android.purebilibili.core.ui.rememberAppFolderIcon
 import com.android.purebilibili.core.ui.rememberAppHistoryIcon
 import com.android.purebilibili.core.ui.rememberAppInboxIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
 import com.android.purebilibili.core.ui.rememberAppLockIcon
 import com.android.purebilibili.core.ui.rememberAppPhotoIcon
 import com.android.purebilibili.core.ui.rememberAppProfileAddIcon
@@ -1390,7 +1391,12 @@ fun UserInfoText(user: UserState, centered: Boolean = false, forceWhite: Boolean
         Spacer(modifier = Modifier.width(8.dp))
         if (user.isVip) {
             Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(4.dp)) {
-                Text(user.vipLabel.ifEmpty { "大会员" }, fontSize = 10.sp, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Text(
+                    user.vipLabel.ifEmpty { "大会员" },
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
             }
         } else {
             Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp)) {
@@ -1716,9 +1722,11 @@ fun ProfileTripleActionEntry(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val likeIcon = rememberAppLikeIcon()
+            val bookmarkIcon = rememberAppBookmarkIcon()
             // 点赞图标 (带进度环)
             com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
-                icon = CupertinoIcons.Outlined.HandThumbsup,
+                icon = likeIcon,
                 text = "149",
                 progress = longPressProgress,
                 progressColor = MaterialTheme.colorScheme.primary,
@@ -1736,7 +1744,7 @@ fun ProfileTripleActionEntry(
 
             // 收藏图标
             com.android.purebilibili.feature.video.ui.section.TripleProgressIcon(
-                icon = CupertinoIcons.Outlined.Bookmark,
+                icon = bookmarkIcon,
                 text = "7",
                 progress = longPressProgress,
                 progressColor = MaterialTheme.colorScheme.primary,

@@ -1105,6 +1105,8 @@ private fun VideoContentTabBar(
                 enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
                 exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start)
             ) {
+                val sendBadgeContainerColor = MaterialTheme.colorScheme.primary
+                val sendBadgeContentColor = MaterialTheme.colorScheme.onPrimary
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -1129,13 +1131,13 @@ private fun VideoContentTabBar(
                         modifier = Modifier
                             .size(danmakuActionLayoutPolicy.sendBadgeSizeDp.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(sendBadgeContainerColor),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "弹",
                             fontSize = 10.sp,
-                            color = Color.White,
+                            color = sendBadgeContentColor,
                             fontWeight = FontWeight.Bold
                         )
                     }

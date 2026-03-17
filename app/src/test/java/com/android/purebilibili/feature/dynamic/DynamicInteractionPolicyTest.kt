@@ -1,15 +1,24 @@
 package com.android.purebilibili.feature.dynamic
 
 import com.android.purebilibili.data.model.response.ArchiveMajor
+import com.android.purebilibili.data.model.response.DynamicAuthorModule
 import com.android.purebilibili.data.model.response.DynamicBasic
 import com.android.purebilibili.data.model.response.DynamicContentModule
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.DynamicMajor
 import com.android.purebilibili.data.model.response.DynamicModules
+import com.android.purebilibili.data.model.response.LiveRcmdMajor
+import com.android.purebilibili.data.model.response.OpusMajor
 import com.android.purebilibili.data.model.response.UgcSeasonMajor
+import com.android.purebilibili.feature.dynamic.components.DynamicCardMediaAction
+import com.android.purebilibili.feature.dynamic.components.DynamicCardPrimaryAction
+import com.android.purebilibili.feature.dynamic.components.resolveDynamicCardMediaAction
+import com.android.purebilibili.feature.dynamic.components.resolveDynamicCardPrimaryAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 class DynamicInteractionPolicyTest {
@@ -153,4 +162,143 @@ class DynamicInteractionPolicyTest {
             targets
         )
     }
+
+    @Test
+    fun `resolve primary action prefers video even when forwarded`() {
+        val forwarded = DynamicItem(
+            type = "DYNAMIC_TYPE_FORWARD",
+            orig = DynamicItem(
+                id_str = "orig",
+                modules = DynamicModules(
+                    module_dynamic = DynamicContentModule(
+                        major = DynamicMajor(
+                            archive = ArchiveMajor(bvid = "BV1xx411c7mD")
+                        )
+                    )
+                )
+            )
+        )
+
+        val action = resolveDynamicCardPrimaryAction(forwarded)
+
+        val videoAction = assertIs<DynamicCardPrimaryAction.OpenVideo>(action)
+        assertEquals("BV1xx411c7mD", videoAction.bvid)
+    }
+
+    @Test
+    fun `resolve primary action returns live when content present`() {
+        val liveJson = """{"live_play_info":{"room_id":123,"title":"Live","uid":456}}"""
+        val item = DynamicItem(
+            modules = DynamicModules(
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        live_rcmd = LiveRcmdMajor(content = liveJson)
+                    )
+                )
+            )
+        )
+
+        val action = resolveDynamicCardPrimaryAction(item)
+
+        val live = assertIs<DynamicCardPrimaryAction.OpenLive>(action)
+        assertEquals(123L, live.roomId)
+        assertEquals("Live", live.title)
+        assertEquals("456", live.uname)
+    }
+
+    @Test
+    fun `resolve primary action falls back to dynamic detail when no video`() {
+        val action = resolveDynamicCardPrimaryAction(buildDynamicItem("123"))
+
+        val detailAction = assertIs<DynamicCardPrimaryAction.OpenDynamicDetail>(action)
+        assertEquals("123", detailAction.dynamicId)
+    }
+
+    @Test
+    fun `resolve primary action opens author when nothing else`() {
+        val action = resolveDynamicCardPrimaryAction(
+            DynamicItem(
+                modules = DynamicModules(
+                    module_author = DynamicAuthorModule(mid = 987654321L)
+                )
+            )
+        )
+
+        val userAction = assertIs<DynamicCardPrimaryAction.OpenUser>(action)
+        assertEquals(987654321L, userAction.mid)
+    }
+
+    @Test
+    fun `resolve media action previews draw images`() {
+        val item = DynamicItem(
+            modules = DynamicModules(
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        draw = com.android.purebilibili.data.model.response.DrawMajor(
+                            items = listOf(
+                                com.android.purebilibili.data.model.response.DrawItem(src = "a"),
+                                com.android.purebilibili.data.model.response.DrawItem(src = "b")
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val action = resolveDynamicCardMediaAction(item, clickedIndex = 1)
+
+        assertTrue(action is DynamicCardMediaAction.PreviewImages)
+        assertEquals(listOf("a", "b"), action.images)
+        assertEquals(1, action.initialIndex)
+    }
+
+    @Test
+    fun `resolve media action previews opus images from forwarded card`() {
+        val item = DynamicItem(
+            type = "DYNAMIC_TYPE_FORWARD",
+            orig = DynamicItem(
+                modules = DynamicModules(
+                    module_dynamic = DynamicContentModule(
+                        major = DynamicMajor(
+                            opus = OpusMajor(
+                                pics = listOf(
+                                    com.android.purebilibili.data.model.response.OpusPic(url = "x"),
+                                    com.android.purebilibili.data.model.response.OpusPic(url = "y")
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val action = resolveDynamicCardMediaAction(item, clickedIndex = 0)
+
+        assertTrue(action is DynamicCardMediaAction.PreviewImages)
+        assertEquals(listOf("x", "y"), action.images)
+        assertEquals(0, action.initialIndex)
+    }
+
+    @Test
+    fun `like count policy returns copied items instead of mutating raw models`() {
+        val original = buildDynamicItem("123").copy(
+            modules = DynamicModules(
+                module_stat = com.android.purebilibili.data.model.response.DynamicStatModule(
+                    like = com.android.purebilibili.data.model.response.StatItem(count = 7)
+                )
+            )
+        )
+
+        val updated = applyDynamicLikeCountChange(
+            items = listOf(original),
+            dynamicId = "123",
+            toLiked = true
+        )
+
+        assertNotSame(original, updated.first())
+        assertEquals(7, original.modules.module_stat?.like?.count)
+        assertEquals(8, updated.first().modules.module_stat?.like?.count)
+    }
 }
+
+private fun buildDynamicItem(id: String) = DynamicItem(id_str = id)

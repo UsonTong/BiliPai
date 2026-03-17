@@ -397,9 +397,12 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         _selectedUserId.value = uid
         
         if (uid != null) {
-            val shouldReload = uid != previousUid ||
-                _uiState.value.userItems.isEmpty() ||
-                _uiState.value.error != null
+            val shouldReload = shouldReloadSelectedUserDynamics(
+                previousUid = previousUid,
+                nextUid = uid,
+                currentItems = _uiState.value.userItems,
+                userError = _uiState.value.userError
+            )
             if (!shouldReload) return
 
             // 切换用户时立即清空旧数据，并废弃旧请求
@@ -409,8 +412,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             _uiState.value = _uiState.value.copy(
                 userItems = emptyList(),
                 hasUserMore = true,
-                isLoading = true,
-                error = null
+                userIsLoading = true,
+                userError = null
             )
             userDynamicsJob = viewModelScope.launch {
                 delay(USER_SELECTION_DEBOUNCE_MS)
@@ -424,8 +427,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             _uiState.value = _uiState.value.copy(
                 userItems = emptyList(),
                 hasUserMore = true,
-                isLoading = false,
-                error = null
+                userIsLoading = false,
+                userError = null
             )
         }
     }
@@ -442,7 +445,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         isUserLoadingLocked = true
         
         try {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(userIsLoading = true, userError = null)
             
             val result = DynamicRepository.getUserDynamicFeed(uid, refresh)
             
@@ -462,8 +465,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                     val mergedItems = currentItems + items
                     _uiState.value = _uiState.value.copy(
                         userItems = mergedItems,
-                        isLoading = false,
-                        error = null,
+                        userIsLoading = false,
+                        userError = null,
                         hasUserMore = DynamicRepository.userHasMoreData(uid)
                     )
                 },
@@ -478,8 +481,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                         return@fold
                     }
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message ?: "加载失败"
+                        userIsLoading = false,
+                        userError = error.message ?: "加载失败"
                     )
                 }
             )
@@ -587,22 +590,24 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         if (isTimelineLoadingLocked && !refresh) return
         isTimelineLoadingLocked = true
         
+        val requestState = resolveDynamicFeedStateForLoadStart(
+            currentState = _uiState.value,
+            refresh = refresh,
+            showLoading = showLoading
+        )
+        _uiState.value = requestState
+        
         try {
-            if (refresh) {
-                if (showLoading) {
-                    _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-                } else {
-                    _uiState.value = _uiState.value.copy(error = null)
-                }
-            } else {
-                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            }
-            
             // [新增] 检查登录状态
             if (com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty()) {
-                _uiState.value = _uiState.value.copy(
+                _uiState.value = requestState.copy(
                     isLoading = false,
                     error = "未登录，请先登录",
+                    errorSource = if (refresh && requestState.items.isNotEmpty()) {
+                        DynamicFeedErrorSource.REFRESH
+                    } else {
+                        DynamicFeedErrorSource.INITIAL_LOAD
+                    },
                     items = emptyList()
                 )
                 return
@@ -615,50 +620,22 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
             result.fold(
                 onSuccess = { items ->
-                    val currentState = _uiState.value
-                    val currentItems = currentState.items
-                    val mergedItems = when {
-                        refresh && incrementalTimelineRefreshEnabled -> prependDistinctByKey(
-                            existing = currentItems,
-                            incoming = items,
-                            keySelector = ::dynamicItemKey
-                        )
-                        refresh -> items
-                        else -> appendDistinctByKey(
-                            existing = currentItems,
-                            incoming = items,
-                            keySelector = ::dynamicItemKey
-                        )
-                    }
-                    val boundary = when {
-                        refresh && incrementalTimelineRefreshEnabled -> resolveIncrementalRefreshBoundary(
-                            existingKeys = currentItems.map(::dynamicItemKey),
-                            mergedKeys = mergedItems.map(::dynamicItemKey)
-                        )
-                        refresh -> IncrementalRefreshBoundary(
-                            boundaryKey = null,
-                            prependedCount = 0
-                        )
-                        else -> IncrementalRefreshBoundary(
-                            boundaryKey = currentState.incrementalRefreshBoundaryKey,
-                            prependedCount = currentState.incrementalPrependedCount
-                        )
-                    }
-                    _uiState.value = _uiState.value.copy(
-                        items = mergedItems,
-                        isLoading = false,
-                        error = null,
-                        hasMore = DynamicRepository.hasMoreData(DynamicFeedScope.DYNAMIC_SCREEN),
-                        incrementalRefreshBoundaryKey = boundary.boundaryKey,
-                        incrementalPrependedCount = boundary.prependedCount
+                    val successState = resolveDynamicFeedStateAfterSuccess(
+                        currentState = requestState,
+                        incomingItems = items,
+                        isRefresh = refresh,
+                        incrementalRefreshEnabled = incrementalTimelineRefreshEnabled,
+                        hasMore = DynamicRepository.hasMoreData(DynamicFeedScope.DYNAMIC_SCREEN)
                     )
-                    saveDynamicCache(mergedItems)
+                    _uiState.value = successState
+                    saveDynamicCache(successState.items)
                     rebuildFollowedUsers()
                 },
                 onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = error.message ?: "加载失败"
+                    _uiState.value = resolveDynamicFeedStateAfterFailure(
+                        currentState = requestState,
+                        errorMessage = error.message ?: "加载失败",
+                        refresh = refresh
                     )
                 }
             )
@@ -722,6 +699,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
      *  [修复] 根据动态ID获取动态对象 - 同时搜索 items 和 userItems
      */
     private fun findDynamicById(dynamicId: String): DynamicItem? {
+        _selectedDynamic.value?.takeIf { it.id_str == dynamicId }?.let { return it }
         // 先在全部动态中搜索
         _uiState.value.items.find { it.id_str == dynamicId }?.let { return it }
         // 再在用户专属动态中搜索
@@ -737,6 +715,11 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         if (item != null) {
             loadCommentsForDynamic(item)
         }
+    }
+
+    fun openCommentSheet(item: DynamicItem) {
+        _selectedDynamic.value = item
+        loadCommentsForDynamic(item)
     }
     
     /**
@@ -887,17 +870,16 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 val current = _subReplyState.value
                 val newItems = data.replies.orEmpty()
                 val isEnd = data.cursor.isEnd || newItems.isEmpty()
-                _subReplyState.value = current.copy(
-                    items = if (page == 1) newItems else (current.items + newItems).distinctBy { it.rpid },
-                    isLoading = false,
+                _subReplyState.value = resolveDynamicSubReplyStateAfterSuccess(
+                    currentState = current,
+                    newItems = newItems,
                     page = page,
-                    isEnd = isEnd,
-                    error = null
+                    isEnd = isEnd
                 )
             }.onFailure { error ->
-                _subReplyState.value = _subReplyState.value.copy(
-                    isLoading = false,
-                    error = error.message
+                _subReplyState.value = resolveDynamicSubReplyStateAfterFailure(
+                    currentState = _subReplyState.value,
+                    errorMessage = error.message
                 )
             }
         }
@@ -1056,8 +1038,11 @@ data class DynamicUiState(
     val userItems: List<DynamicItem> = emptyList(), //  [新增] 选中 UP主的动态
     val isLoading: Boolean = false,
     val error: String? = null,
+    val userIsLoading: Boolean = false,
+    val userError: String? = null,
     val hasMore: Boolean = true,
     val hasUserMore: Boolean = true, //  [新增] UP主动态是否有更多
     val incrementalRefreshBoundaryKey: String? = null,
-    val incrementalPrependedCount: Int = 0
+    val incrementalPrependedCount: Int = 0,
+    val errorSource: DynamicFeedErrorSource = DynamicFeedErrorSource.NONE
 )

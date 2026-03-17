@@ -45,10 +45,19 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
     val favoriteDetailProgressState = _favoriteDetailProgressState.asStateFlow()
 
     fun init(type: String, id: Long, mid: Long, title: String) {
-        this.type = type
-        this.id = id
-        this.mid = mid
-        this.pageTitle = title
+        val request = resolveSpaceCollectionDetailRequest(type, id, mid, title)
+        if (request == null) {
+            this.type = ""
+            this.id = 0L
+            this.mid = 0L
+            this.pageTitle = title
+            _uiState.value = _uiState.value.copy(title = title, items = emptyList())
+            return
+        }
+        this.type = request.type.raw
+        this.id = request.id
+        this.mid = request.mid
+        this.pageTitle = request.title
         _favoriteDetailProgressState.value = FavoriteDetailProgressState()
         
         // Update Title via UI State update (a bit tricky since BaseListViewModel sets it in init)
@@ -58,7 +67,7 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
         // We should manually call loadData() after init.
         
         // Update title in state
-        _uiState.value = _uiState.value.copy(title = title)
+        _uiState.value = _uiState.value.copy(title = request.title)
         loadData()
     }
 

@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.settings
 
 import androidx.annotation.DrawableRes
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Backup
@@ -22,9 +24,12 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Widgets
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.android.purebilibili.R
+import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSGreen
@@ -63,99 +68,184 @@ internal data class SettingsEntryVisual(
     val iconTint: Color
 )
 
+internal data class SettingsEntryThemePalette(
+    val primary: Color,
+    val secondary: Color,
+    val tertiary: Color,
+    val error: Color
+)
+
+private enum class SettingsEntryTintRole {
+    PRIMARY,
+    SECONDARY,
+    TERTIARY,
+    ERROR
+}
+
+private val PreviewMd3SettingsEntryThemePalette = SettingsEntryThemePalette(
+    primary = Color(0xFF6750A4),
+    secondary = Color(0xFF625B71),
+    tertiary = Color(0xFF7D5260),
+    error = Color(0xFFB3261E)
+)
+
+internal fun resolveMd3SettingsEntryThemePalette(
+    colorScheme: ColorScheme
+): SettingsEntryThemePalette = SettingsEntryThemePalette(
+    primary = colorScheme.primary,
+    secondary = colorScheme.secondary,
+    tertiary = colorScheme.tertiary,
+    error = colorScheme.error
+)
+
+private fun SettingsEntryThemePalette.resolve(
+    role: SettingsEntryTintRole
+): Color = when (role) {
+    SettingsEntryTintRole.PRIMARY -> primary
+    SettingsEntryTintRole.SECONDARY -> secondary
+    SettingsEntryTintRole.TERTIARY -> tertiary
+    SettingsEntryTintRole.ERROR -> error
+}
+
+private fun resolveMd3SettingsEntryTintRole(
+    target: SettingsSearchTarget
+): SettingsEntryTintRole = when (target) {
+    SettingsSearchTarget.APPEARANCE,
+    SettingsSearchTarget.PLUGINS,
+    SettingsSearchTarget.OPEN_SOURCE_HOME,
+    SettingsSearchTarget.REPLAY_ONBOARDING,
+    SettingsSearchTarget.TIPS -> SettingsEntryTintRole.TERTIARY
+
+    SettingsSearchTarget.PLAYBACK,
+    SettingsSearchTarget.BOTTOM_BAR,
+    SettingsSearchTarget.SETTINGS_SHARE,
+    SettingsSearchTarget.WEBDAV_BACKUP,
+    SettingsSearchTarget.DOWNLOAD_PATH,
+    SettingsSearchTarget.EXPORT_LOGS,
+    SettingsSearchTarget.OPEN_SOURCE_LICENSES,
+    SettingsSearchTarget.VIEW_RELEASE_NOTES,
+    SettingsSearchTarget.OPEN_LINKS,
+    SettingsSearchTarget.PERMISSION -> SettingsEntryTintRole.SECONDARY
+
+    SettingsSearchTarget.BLOCKED_LIST,
+    SettingsSearchTarget.CLEAR_CACHE -> SettingsEntryTintRole.ERROR
+
+    SettingsSearchTarget.CHECK_UPDATE,
+    SettingsSearchTarget.DONATE,
+    SettingsSearchTarget.TELEGRAM,
+    SettingsSearchTarget.TWITTER,
+    SettingsSearchTarget.DISCLAIMER -> SettingsEntryTintRole.PRIMARY
+}
+
+@Composable
+internal fun rememberSettingsEntryVisual(
+    target: SettingsSearchTarget,
+    uiPreset: UiPreset = LocalUiPreset.current
+): SettingsEntryVisual {
+    val colorScheme = MaterialTheme.colorScheme
+    val md3Palette = remember(colorScheme) {
+        resolveMd3SettingsEntryThemePalette(colorScheme)
+    }
+    return remember(target, uiPreset, md3Palette) {
+        resolveSettingsEntryVisual(target, uiPreset, md3Palette)
+    }
+}
+
 internal fun resolveSettingsEntryVisual(
     target: SettingsSearchTarget,
-    uiPreset: UiPreset = UiPreset.IOS
+    uiPreset: UiPreset = UiPreset.IOS,
+    md3Palette: SettingsEntryThemePalette = PreviewMd3SettingsEntryThemePalette
 ): SettingsEntryVisual {
     if (uiPreset == UiPreset.MD3) {
+        val iconTint = md3Palette.resolve(resolveMd3SettingsEntryTintRole(target))
         return when (target) {
             SettingsSearchTarget.APPEARANCE -> SettingsEntryVisual(
                 icon = Icons.Outlined.Palette,
-                iconTint = iOSPink
+                iconTint = iconTint
             )
             SettingsSearchTarget.PLAYBACK -> SettingsEntryVisual(
                 icon = Icons.Outlined.PlayCircle,
-                iconTint = iOSGreen
+                iconTint = iconTint
             )
             SettingsSearchTarget.BOTTOM_BAR -> SettingsEntryVisual(
                 icon = Icons.Outlined.Widgets,
-                iconTint = iOSBlue
+                iconTint = iconTint
             )
             SettingsSearchTarget.PERMISSION -> SettingsEntryVisual(
                 icon = Icons.Outlined.Security,
-                iconTint = iOSTeal
+                iconTint = iconTint
             )
             SettingsSearchTarget.BLOCKED_LIST -> SettingsEntryVisual(
                 icon = Icons.Outlined.Block,
-                iconTint = iOSRed
+                iconTint = iconTint
             )
             SettingsSearchTarget.SETTINGS_SHARE -> SettingsEntryVisual(
                 icon = Icons.Outlined.Share,
-                iconTint = iOSGreen
+                iconTint = iconTint
             )
             SettingsSearchTarget.WEBDAV_BACKUP -> SettingsEntryVisual(
                 icon = Icons.Outlined.Backup,
-                iconTint = iOSBlue
+                iconTint = iconTint
             )
             SettingsSearchTarget.DOWNLOAD_PATH -> SettingsEntryVisual(
                 icon = Icons.Outlined.Folder,
-                iconTint = iOSBlue
+                iconTint = iconTint
             )
             SettingsSearchTarget.CLEAR_CACHE -> SettingsEntryVisual(
                 icon = Icons.Outlined.DeleteOutline,
-                iconTint = iOSPink
+                iconTint = iconTint
             )
             SettingsSearchTarget.PLUGINS -> SettingsEntryVisual(
                 icon = Icons.Outlined.Extension,
-                iconTint = iOSPurple
+                iconTint = iconTint
             )
             SettingsSearchTarget.EXPORT_LOGS -> SettingsEntryVisual(
                 icon = Icons.Outlined.Article,
-                iconTint = iOSTeal
+                iconTint = iconTint
             )
             SettingsSearchTarget.OPEN_SOURCE_LICENSES -> SettingsEntryVisual(
                 icon = Icons.Outlined.Description,
-                iconTint = iOSOrange
+                iconTint = iconTint
             )
             SettingsSearchTarget.OPEN_SOURCE_HOME -> SettingsEntryVisual(
                 icon = Icons.Outlined.OpenInNew,
-                iconTint = iOSPurple
+                iconTint = iconTint
             )
             SettingsSearchTarget.CHECK_UPDATE -> SettingsEntryVisual(
                 icon = Icons.Outlined.Update,
-                iconTint = iOSBlue
+                iconTint = iconTint
             )
             SettingsSearchTarget.VIEW_RELEASE_NOTES -> SettingsEntryVisual(
                 icon = Icons.Outlined.Feed,
-                iconTint = iOSTeal
+                iconTint = iconTint
             )
             SettingsSearchTarget.REPLAY_ONBOARDING -> SettingsEntryVisual(
                 icon = Icons.Outlined.Replay,
-                iconTint = iOSPink
+                iconTint = iconTint
             )
             SettingsSearchTarget.TIPS -> SettingsEntryVisual(
                 icon = Icons.Outlined.Lightbulb,
-                iconTint = iOSOrange
+                iconTint = iconTint
             )
             SettingsSearchTarget.OPEN_LINKS -> SettingsEntryVisual(
                 icon = Icons.Outlined.Link,
-                iconTint = iOSTeal
+                iconTint = iconTint
             )
             SettingsSearchTarget.DONATE -> SettingsEntryVisual(
                 icon = Icons.Outlined.CardGiftcard,
-                iconTint = Color(0xFFFF3B30)
+                iconTint = iconTint
             )
             SettingsSearchTarget.TELEGRAM -> SettingsEntryVisual(
                 iconResId = R.drawable.ic_telegram_mono,
-                iconTint = Color(0xFF0088CC)
+                iconTint = iconTint
             )
             SettingsSearchTarget.TWITTER -> SettingsEntryVisual(
                 icon = AppIcons.Twitter,
-                iconTint = Color(0xFF1DA1F2)
+                iconTint = iconTint
             )
             SettingsSearchTarget.DISCLAIMER -> SettingsEntryVisual(
                 icon = Icons.Outlined.WarningAmber,
-                iconTint = iOSBlue
+                iconTint = iconTint
             )
         }
     }
