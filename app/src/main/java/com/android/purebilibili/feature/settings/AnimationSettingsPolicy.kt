@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.settings
 
+import com.android.purebilibili.core.store.LiquidGlassMode
+import com.android.purebilibili.core.store.normalizeLiquidGlassStrength
+
 internal const val PREDICTIVE_BACK_TOGGLE_TITLE = "启用预测性返回预览"
 internal const val PREDICTIVE_BACK_TOGGLE_ACTIVE_SUBTITLE =
     "当前使用系统原生返回预览，关闭后改用经典回退动画"
@@ -13,6 +16,13 @@ internal data class PredictiveBackToggleUiState(
     val enabled: Boolean,
     val checked: Boolean,
     val subtitle: String
+)
+
+internal data class LiquidGlassPreviewUiState(
+    val modeLabel: String,
+    val subtitle: String,
+    val normalizedStrength: Float,
+    val strengthLabel: String
 )
 
 internal fun resolvePredictiveBackToggleUiState(
@@ -36,5 +46,23 @@ internal fun resolvePredictiveBackToggleUiState(
         } else {
             PREDICTIVE_BACK_TOGGLE_INACTIVE_SUBTITLE
         }
+    )
+}
+
+internal fun resolveLiquidGlassPreviewUiState(
+    mode: LiquidGlassMode,
+    strength: Float
+): LiquidGlassPreviewUiState {
+    val normalizedStrength = normalizeLiquidGlassStrength(strength)
+    val subtitle = when (mode) {
+        LiquidGlassMode.CLEAR -> "更清晰、更通透，折射更克制"
+        LiquidGlassMode.BALANCED -> "通透与柔化平衡，适合作为默认效果"
+        LiquidGlassMode.FROSTED -> "更柔和、更雾化，适合弱化背景干扰"
+    }
+    return LiquidGlassPreviewUiState(
+        modeLabel = mode.label,
+        subtitle = subtitle,
+        normalizedStrength = normalizedStrength,
+        strengthLabel = "${(normalizedStrength * 100).toInt()}%"
     )
 }

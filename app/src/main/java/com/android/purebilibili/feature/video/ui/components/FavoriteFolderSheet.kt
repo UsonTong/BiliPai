@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +28,10 @@ fun FavoriteFolderSheet(
     onCreateFolder: (String, String, Boolean) -> Unit = { _, _, _ -> }
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val maxSheetHeight = remember(configuration.screenHeightDp) {
+        (configuration.screenHeightDp.dp * 0.72f).coerceAtLeast(360.dp)
+    }
 
     if (showCreateDialog) {
         CreateFolderDialog(
@@ -46,7 +51,7 @@ fun FavoriteFolderSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .heightIn(max = maxSheetHeight)
         ) {
             Box(
                 modifier = Modifier
@@ -90,7 +95,7 @@ fun FavoriteFolderSheet(
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(vertical = 8.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.weight(1f)
                 ) {
                     items(folders) { folder ->
                         FavoriteFolderItem(
@@ -106,7 +111,9 @@ fun FavoriteFolderSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .navigationBarsPadding()
+                    .padding(top = 8.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(

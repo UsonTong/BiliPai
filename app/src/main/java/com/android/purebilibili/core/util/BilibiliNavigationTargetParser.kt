@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 sealed interface BilibiliNavigationTarget {
     data class Video(val videoId: String) : BilibiliNavigationTarget
     data class Dynamic(val dynamicId: String) : BilibiliNavigationTarget
+    data class Search(val keyword: String) : BilibiliNavigationTarget
     data class Space(val mid: Long) : BilibiliNavigationTarget
     data class Live(val roomId: Long) : BilibiliNavigationTarget
     data class BangumiSeason(val seasonId: Long) : BilibiliNavigationTarget
@@ -94,6 +95,14 @@ object BilibiliNavigationTargetParser {
                 pathSegments.firstOrNull()?.toLongOrNull()?.let {
                     return BilibiliNavigationTarget.Space(it)
                 }
+            }
+
+            host == "search" -> {
+                return BilibiliNavigationTarget.Search(
+                    keyword = queryMap["keyword"]
+                        ?.takeIf { it.isNotBlank() }
+                        ?: queryMap["query"].orEmpty()
+                )
             }
 
             host == "live" -> {

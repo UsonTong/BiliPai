@@ -86,6 +86,10 @@ class DanmakuManager private constructor(
             instance = null
             Log.d(TAG, " DanmakuManager instance cleared")
         }
+
+        fun trimCachesForBackgroundIfPresent() {
+            instance?.trimCachesForBackground()
+        }
     }
     
     // 视图和控制器
@@ -1497,7 +1501,17 @@ class DanmakuManager private constructor(
         
         Log.d(TAG, " All references cleared")
     }
-    
+
+    fun trimCachesForBackground() {
+        Log.d(TAG, " trimCachesForBackground: dropping parsed danmaku caches")
+        cachedDanmakuList = null
+        sourceDanmakuList = null
+        sourceAdvancedDanmakuList = null
+        rawDanmakuList = null
+        _advancedDanmakuFlow.value = emptyList()
+        controller?.clear()
+    }
+
     /**
      * 设置弹幕点击监听器
      *

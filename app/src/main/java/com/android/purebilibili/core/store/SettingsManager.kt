@@ -57,6 +57,30 @@ enum class LiquidGlassStyle(val value: Int) {
     }
 }
 
+enum class LiquidGlassMode(val value: Int, val label: String) {
+    CLEAR(0, "通透玻璃"),
+    BALANCED(1, "平衡"),
+    FROSTED(2, "柔和磨砂");
+
+    companion object {
+        fun fromValue(value: Int): LiquidGlassMode = entries.find { it.value == value } ?: BALANCED
+    }
+}
+
+internal fun resolveLegacyLiquidGlassMode(style: LiquidGlassStyle): LiquidGlassMode = when (style) {
+    LiquidGlassStyle.IOS26 -> LiquidGlassMode.CLEAR
+    LiquidGlassStyle.CLASSIC -> LiquidGlassMode.BALANCED
+    LiquidGlassStyle.SIMP_MUSIC -> LiquidGlassMode.FROSTED
+}
+
+internal fun resolveDefaultLiquidGlassStrength(mode: LiquidGlassMode): Float = when (mode) {
+    LiquidGlassMode.CLEAR -> 0.42f
+    LiquidGlassMode.BALANCED -> 0.52f
+    LiquidGlassMode.FROSTED -> 0.62f
+}
+
+internal fun normalizeLiquidGlassStrength(value: Float): Float = value.coerceIn(0f, 1f)
+
 enum class HomeHeaderBlurMode(val value: Int, val label: String) {
     FOLLOW_PRESET(0, "跟随预设"),
     ALWAYS_ON(1, "始终开启"),
@@ -74,7 +98,7 @@ internal fun resolveHomeHeaderBlurEnabled(
     uiPreset: UiPreset
 ): Boolean {
     return when (mode) {
-        HomeHeaderBlurMode.FOLLOW_PRESET -> uiPreset == UiPreset.IOS
+        HomeHeaderBlurMode.FOLLOW_PRESET -> true
         HomeHeaderBlurMode.ALWAYS_ON -> true
         HomeHeaderBlurMode.ALWAYS_OFF -> false
     }
@@ -171,6 +195,8 @@ data class HomeSettings(
     val isBottomBarBlurEnabled: Boolean = true,
     val isLiquidGlassEnabled: Boolean = true, // [New]
     val liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
+    val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
+    val liquidGlassStrength: Float = 0.52f,
     val isHeaderCollapseEnabled: Boolean = true, // [New] 首页顶部栏自动收缩开关
     val gridColumnCount: Int = 0, // [New] 网格列数 (0=自动, 1-6=固定)
     val cardAnimationEnabled: Boolean = false,    //  卡片进场动画（默认关闭）
@@ -487,6 +513,8 @@ object SettingsManager {
     private val KEY_HOME_INFO_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_info_glass_badges_visible")
     //  [合并] 崩溃追踪同意弹窗
     private val KEY_CRASH_TRACKING_CONSENT_SHOWN = booleanPreferencesKey("crash_tracking_consent_shown")
+    private val KEY_LIQUID_GLASS_MODE = intPreferencesKey("liquid_glass_mode")
+    private val KEY_LIQUID_GLASS_STRENGTH = floatPreferencesKey("liquid_glass_strength")
     //  [新增] 底栏自定义 - 顺序和可见性
     private val KEY_BOTTOM_BAR_ORDER = stringPreferencesKey("bottom_bar_order")  // 逗号分隔的项目顺序
     private val KEY_BOTTOM_BAR_VISIBLE_TABS = stringPreferencesKey("bottom_bar_visible_tabs")  // 逗号分隔的可见项目
@@ -512,6 +540,15 @@ object SettingsManager {
             rawMode = preferences[KEY_HOME_HEADER_BLUR_MODE],
             legacyEnabled = preferences[KEY_HEADER_BLUR_ENABLED]
         )
+        val legacyStyle = LiquidGlassStyle.fromValue(
+            preferences[KEY_LIQUID_GLASS_STYLE] ?: LiquidGlassStyle.CLASSIC.value
+        )
+        val liquidGlassMode = preferences[KEY_LIQUID_GLASS_MODE]
+            ?.let(LiquidGlassMode::fromValue)
+            ?: resolveLegacyLiquidGlassMode(legacyStyle)
+        val liquidGlassStrength = normalizeLiquidGlassStrength(
+            preferences[KEY_LIQUID_GLASS_STRENGTH] ?: resolveDefaultLiquidGlassStrength(liquidGlassMode)
+        )
         return HomeSettings(
             displayMode = preferences[KEY_DISPLAY_MODE] ?: 0,
             isBottomBarFloating = preferences[KEY_BOTTOM_BAR_FLOATING] ?: true,
@@ -522,9 +559,9 @@ object SettingsManager {
             isHeaderCollapseEnabled = preferences[KEY_HEADER_COLLAPSE_ENABLED] ?: true,
             isBottomBarBlurEnabled = preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true,
             isLiquidGlassEnabled = preferences[KEY_LIQUID_GLASS_ENABLED] ?: true,
-            liquidGlassStyle = LiquidGlassStyle.fromValue(
-                preferences[KEY_LIQUID_GLASS_STYLE] ?: LiquidGlassStyle.CLASSIC.value
-            ),
+            liquidGlassStyle = legacyStyle,
+            liquidGlassMode = liquidGlassMode,
+            liquidGlassStrength = liquidGlassStrength,
             gridColumnCount = preferences[KEY_GRID_COLUMN_COUNT] ?: 0,
             cardAnimationEnabled = preferences[KEY_CARD_ANIMATION_ENABLED] ?: false,
             cardTransitionEnabled = preferences[KEY_CARD_TRANSITION_ENABLED] ?: true,
@@ -1410,6 +1447,41 @@ object SettingsManager {
 
     suspend fun setLiquidGlassStyle(context: Context, style: LiquidGlassStyle) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_LIQUID_GLASS_STYLE] = style.value }
+    }
+
+    fun getLiquidGlassMode(context: Context): Flow<LiquidGlassMode> = context.settingsDataStore.data
+        .map { preferences ->
+            preferences[KEY_LIQUID_GLASS_MODE]
+                ?.let(LiquidGlassMode::fromValue)
+                ?: resolveLegacyLiquidGlassMode(
+                    LiquidGlassStyle.fromValue(
+                        preferences[KEY_LIQUID_GLASS_STYLE] ?: LiquidGlassStyle.CLASSIC.value
+                    )
+                )
+        }
+
+    suspend fun setLiquidGlassMode(context: Context, mode: LiquidGlassMode) {
+        context.settingsDataStore.edit { preferences -> preferences[KEY_LIQUID_GLASS_MODE] = mode.value }
+    }
+
+    fun getLiquidGlassStrength(context: Context): Flow<Float> = context.settingsDataStore.data
+        .map { preferences ->
+            val mode = preferences[KEY_LIQUID_GLASS_MODE]
+                ?.let(LiquidGlassMode::fromValue)
+                ?: resolveLegacyLiquidGlassMode(
+                    LiquidGlassStyle.fromValue(
+                        preferences[KEY_LIQUID_GLASS_STYLE] ?: LiquidGlassStyle.CLASSIC.value
+                    )
+                )
+            normalizeLiquidGlassStrength(
+                preferences[KEY_LIQUID_GLASS_STRENGTH] ?: resolveDefaultLiquidGlassStrength(mode)
+            )
+        }
+
+    suspend fun setLiquidGlassStrength(context: Context, strength: Float) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIQUID_GLASS_STRENGTH] = normalizeLiquidGlassStrength(strength)
+        }
     }
     
     //  [修复] --- 模糊强度 (THIN, THICK, APPLE_DOCK) ---

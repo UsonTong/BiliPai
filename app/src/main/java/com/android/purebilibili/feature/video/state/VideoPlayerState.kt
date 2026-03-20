@@ -20,11 +20,13 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.Format
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import coil.imageLoader
@@ -39,6 +41,7 @@ import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.core.util.NetworkUtils
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.feature.video.playback.policy.resolvePlaybackWakeMode
+import com.android.purebilibili.feature.video.ui.overlay.PlaybackDebugInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -49,6 +52,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 
 private const val NOTIFICATION_ID = 1001
@@ -118,6 +123,96 @@ internal fun resolveApiDimensionIsVertical(
     return effectiveHeight > effectiveWidth
 }
 
+internal fun formatPlaybackDebugBitrate(bitsPerSecond: Int): String {
+    if (bitsPerSecond <= 0) return ""
+    return if (bitsPerSecond >= 1_000_000) {
+        val mbps = bitsPerSecond / 1_000_000f
+        val decimals = if (abs(mbps - mbps.roundToInt()) < 0.05f) 0 else 1
+        "%.${decimals}f Mbps".format(java.util.Locale.US, mbps)
+    } else {
+        "${(bitsPerSecond / 1000f).roundToInt()} kbps"
+    }
+}
+
+internal fun formatPlaybackDebugFrameRate(frameRate: Float): String {
+    if (frameRate <= 0f) return ""
+    val roundedInt = frameRate.roundToInt().toFloat()
+    return when {
+        abs(frameRate - roundedInt) < 0.01f -> "${roundedInt.toInt()} fps"
+        abs(frameRate * 10f - (frameRate * 10f).roundToInt()) < 0.01f ->
+            "%.1f fps".format(java.util.Locale.US, frameRate)
+        else -> "%.2f fps".format(java.util.Locale.US, frameRate)
+    }
+}
+
+internal fun resolvePlaybackCodecLabel(sampleMimeType: String?): String {
+    val mime = sampleMimeType?.lowercase()?.trim().orEmpty()
+    if (mime.isBlank()) return ""
+    return when {
+        mime.contains("hevc") || mime.contains("h265") -> "HEVC"
+        mime.contains("avc") || mime.contains("h264") -> "H.264"
+        mime.contains("av01") || mime.contains("av1") -> "AV1"
+        mime.contains("vp9") -> "VP9"
+        mime.contains("mp4a") || mime.contains("aac") -> "AAC"
+        mime.contains("opus") -> "Opus"
+        mime.contains("flac") -> "FLAC"
+        mime.contains("eac3") -> "E-AC-3"
+        mime.contains("ac3") -> "AC-3"
+        else -> mime.substringAfter('/').uppercase()
+    }
+}
+
+internal fun applyPlaybackResolutionDebugInfo(
+    current: PlaybackDebugInfo,
+    width: Int,
+    height: Int
+): PlaybackDebugInfo {
+    if (width <= 0 || height <= 0) return current
+    return current.copy(resolution = "$width x $height")
+}
+
+internal fun applyVideoFormatDebugInfo(
+    current: PlaybackDebugInfo,
+    format: Format?,
+    decoderName: String? = null
+): PlaybackDebugInfo {
+    if (format == null && decoderName.isNullOrBlank()) return current
+    val bitrate = formatPlaybackDebugBitrate(format?.bitrate ?: 0)
+    val codec = resolvePlaybackCodecLabel(format?.sampleMimeType)
+    val frameRate = formatPlaybackDebugFrameRate(format?.frameRate ?: 0f)
+    var updated = current
+    if (format != null) {
+        updated = applyPlaybackResolutionDebugInfo(updated, format.width, format.height).copy(
+            videoBitrate = bitrate.ifBlank { updated.videoBitrate },
+            videoCodec = codec.ifBlank { updated.videoCodec },
+            frameRate = frameRate.ifBlank { updated.frameRate }
+        )
+    }
+    if (!decoderName.isNullOrBlank()) {
+        updated = updated.copy(videoDecoder = decoderName)
+    }
+    return updated
+}
+
+internal fun applyAudioFormatDebugInfo(
+    current: PlaybackDebugInfo,
+    format: Format?,
+    decoderName: String? = null
+): PlaybackDebugInfo {
+    if (format == null && decoderName.isNullOrBlank()) return current
+    var updated = current
+    if (format != null) {
+        updated = updated.copy(
+            audioBitrate = formatPlaybackDebugBitrate(format.bitrate).ifBlank { updated.audioBitrate },
+            audioCodec = resolvePlaybackCodecLabel(format.sampleMimeType).ifBlank { updated.audioCodec }
+        )
+    }
+    if (!decoderName.isNullOrBlank()) {
+        updated = updated.copy(audioDecoder = decoderName)
+    }
+    return updated
+}
+
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class VideoPlayerState(
     val context: Context,
@@ -141,6 +236,9 @@ class VideoPlayerState(
     // 🎯 API 预判断值（用于视频加载前的 UI 显示）
     private val _apiDimension = MutableStateFlow<Pair<Int, Int>?>(null)
     val apiDimension: StateFlow<Pair<Int, Int>?> = _apiDimension.asStateFlow()
+
+    private val _debugInfo = MutableStateFlow(PlaybackDebugInfo())
+    val debugInfo: StateFlow<PlaybackDebugInfo> = _debugInfo.asStateFlow()
     
     // 📱 竖屏全屏模式状态
     private val _isPortraitFullscreen = MutableStateFlow(false)
@@ -165,6 +263,11 @@ class VideoPlayerState(
         override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
             if (videoSize.width > 0 && videoSize.height > 0) {
                 _videoSize.value = Pair(videoSize.width, videoSize.height)
+                _debugInfo.value = applyPlaybackResolutionDebugInfo(
+                    current = _debugInfo.value,
+                    width = videoSize.width,
+                    height = videoSize.height
+                )
                 val isVertical = videoSize.height > videoSize.width
                 _isVerticalVideo.value = isVertical
                 _verticalVideoSource.value = VerticalVideoSource.PLAYER
@@ -198,13 +301,69 @@ class VideoPlayerState(
             }
         }
     }
+
+    private val analyticsListener = object : AnalyticsListener {
+        override fun onVideoInputFormatChanged(
+            eventTime: AnalyticsListener.EventTime,
+            format: Format,
+            decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?
+        ) {
+            _debugInfo.value = applyVideoFormatDebugInfo(
+                current = _debugInfo.value,
+                format = format
+            )
+        }
+
+        override fun onAudioInputFormatChanged(
+            eventTime: AnalyticsListener.EventTime,
+            format: Format,
+            decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?
+        ) {
+            _debugInfo.value = applyAudioFormatDebugInfo(
+                current = _debugInfo.value,
+                format = format
+            )
+        }
+
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMsMs: Long
+        ) {
+            _debugInfo.value = applyVideoFormatDebugInfo(
+                current = _debugInfo.value,
+                format = null,
+                decoderName = decoderName
+            )
+        }
+
+        override fun onAudioDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMsMs: Long
+        ) {
+            _debugInfo.value = applyAudioFormatDebugInfo(
+                current = _debugInfo.value,
+                format = null,
+                decoderName = decoderName
+            )
+        }
+    }
     
     init {
         player.addListener(playerListener) // 使用统一的 listener
+        player.addAnalyticsListener(analyticsListener)
         // 初始检查
         val size = player.videoSize
         if (size.width > 0 && size.height > 0) {
             _videoSize.value = Pair(size.width, size.height)
+            _debugInfo.value = applyPlaybackResolutionDebugInfo(
+                current = _debugInfo.value,
+                width = size.width,
+                height = size.height
+            )
             _isVerticalVideo.value = size.height > size.width
             _verticalVideoSource.value = VerticalVideoSource.PLAYER
         }
@@ -252,6 +411,7 @@ class VideoPlayerState(
     fun resetVideoSize() {
         _videoSize.value = Pair(0, 0)
         _apiDimension.value = null
+        _debugInfo.value = PlaybackDebugInfo()
         _isVerticalVideo.value = false
         _verticalVideoSource.value = VerticalVideoSource.UNKNOWN
         // 不重置 _isPortraitFullscreen，保持竖屏全屏状态
@@ -259,6 +419,7 @@ class VideoPlayerState(
     
     fun release() {
         player.removeListener(playerListener)
+        player.removeAnalyticsListener(analyticsListener)
     }
 
     fun updateMediaMetadata(title: String, artist: String, coverUrl: String) {

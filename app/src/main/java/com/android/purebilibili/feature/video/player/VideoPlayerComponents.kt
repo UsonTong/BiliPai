@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.purebilibili.core.theme.BiliPink
+import com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.bouncyClickable
 import com.android.purebilibili.data.model.response.RelatedVideo
@@ -752,6 +753,7 @@ fun PagesSelector(
 ) {
     //  展开/收起状态
     var isExpanded by remember { mutableStateOf(false) }
+    val selectedColors = resolveAdaptivePrimaryAccentColors(MaterialTheme.colorScheme)
     
     Column(
         modifier = Modifier
@@ -830,7 +832,7 @@ fun PagesSelector(
                             
                             Surface(
                                 onClick = { onPageSelect(actualIndex) },
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                color = if (isSelected) selectedColors.backgroundColor else MaterialTheme.colorScheme.surfaceVariant,
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -841,7 +843,7 @@ fun PagesSelector(
                                         text = "P${page.page}",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.primary
+                                        color = if (isSelected) selectedColors.contentColor else MaterialTheme.colorScheme.primary
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
@@ -849,7 +851,7 @@ fun PagesSelector(
                                         fontSize = 12.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = if (isSelected) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isSelected) selectedColors.contentColor.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -874,7 +876,7 @@ fun PagesSelector(
                     
                     Surface(
                         onClick = { onPageSelect(index) },
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (isSelected) selectedColors.backgroundColor else MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.width(120.dp)
                     ) {
@@ -885,7 +887,7 @@ fun PagesSelector(
                                 text = "P${page.page}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.primary
+                                color = if (isSelected) selectedColors.contentColor else MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -893,7 +895,7 @@ fun PagesSelector(
                                 fontSize = 13.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                color = if (isSelected) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isSelected) selectedColors.contentColor.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

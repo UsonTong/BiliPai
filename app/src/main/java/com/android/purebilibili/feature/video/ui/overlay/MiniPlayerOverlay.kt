@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.media3.ui.PlayerView
 //  已改用 MaterialTheme.colorScheme.primary
 import kotlinx.coroutines.delay
@@ -66,6 +67,9 @@ fun MiniPlayerOverlay(
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     
     //  [调试] 仅在状态变化时记录，避免组合阶段高频日志
     val currentMode = miniPlayerManager.getCurrentMode()
@@ -178,6 +182,7 @@ fun MiniPlayerOverlay(
     
     val shouldPollProgress = shouldPollMiniPlayerProgress(
         playerExists = player != null,
+        hostLifecycleStarted = hostLifecycleStarted,
         isMiniMode = miniPlayerManager.isMiniMode,
         isActive = miniPlayerManager.isActive,
         isLiveMode = miniPlayerManager.isLiveMode  // 📺 直播不轮询进度

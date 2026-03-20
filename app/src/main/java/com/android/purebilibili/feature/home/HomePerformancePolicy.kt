@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.home
 
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
+import com.android.purebilibili.core.theme.UiPreset
+
 internal data class HomePerformanceConfig(
     val headerBlurEnabled: Boolean,
     val bottomBarBlurEnabled: Boolean,
@@ -19,6 +22,7 @@ internal fun resolveHomePreloadAheadCount(
 }
 
 internal fun resolveHomePerformanceConfig(
+    uiPreset: UiPreset = UiPreset.IOS,
     headerBlurEnabled: Boolean,
     bottomBarBlurEnabled: Boolean,
     liquidGlassEnabled: Boolean,
@@ -31,7 +35,10 @@ internal fun resolveHomePerformanceConfig(
     // Feature retired: keep parameter for compatibility, but never apply runtime smoothness downgrade.
     val shouldPrioritizeSmoothness = false
     val effectiveDataSaver = isDataSaverActive
-    val effectiveLiquidGlass = liquidGlassEnabled && !shouldPrioritizeSmoothness
+    val effectiveLiquidGlass = resolveEffectiveLiquidGlassEnabled(
+        requestedEnabled = liquidGlassEnabled,
+        uiPreset = uiPreset
+    ) && !shouldPrioritizeSmoothness
     val effectivePreloadAheadCount = when {
         shouldPrioritizeSmoothness -> normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)
         else -> resolveHomePreloadAheadCount(

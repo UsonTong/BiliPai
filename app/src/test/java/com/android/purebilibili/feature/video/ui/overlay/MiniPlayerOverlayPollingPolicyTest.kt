@@ -12,6 +12,7 @@ class MiniPlayerOverlayPollingPolicyTest {
         assertTrue(
             shouldPollMiniPlayerProgress(
                 playerExists = true,
+                hostLifecycleStarted = true,
                 isMiniMode = true,
                 isActive = true
             )
@@ -23,6 +24,7 @@ class MiniPlayerOverlayPollingPolicyTest {
         assertFalse(
             shouldPollMiniPlayerProgress(
                 playerExists = false,
+                hostLifecycleStarted = true,
                 isMiniMode = true,
                 isActive = true
             )
@@ -30,6 +32,7 @@ class MiniPlayerOverlayPollingPolicyTest {
         assertFalse(
             shouldPollMiniPlayerProgress(
                 playerExists = true,
+                hostLifecycleStarted = true,
                 isMiniMode = false,
                 isActive = true
             )
@@ -37,6 +40,7 @@ class MiniPlayerOverlayPollingPolicyTest {
         assertFalse(
             shouldPollMiniPlayerProgress(
                 playerExists = true,
+                hostLifecycleStarted = true,
                 isMiniMode = true,
                 isActive = false
             )
@@ -55,9 +59,22 @@ class MiniPlayerOverlayPollingPolicyTest {
         assertFalse(
             shouldPollMiniPlayerProgress(
                 playerExists = true,
+                hostLifecycleStarted = true,
                 isMiniMode = true,
                 isActive = true,
                 isLiveMode = true
+            )
+        )
+    }
+
+    @Test
+    fun pollingDisabled_whenHostLifecycleStopped() {
+        assertFalse(
+            shouldPollMiniPlayerProgress(
+                playerExists = true,
+                hostLifecycleStarted = false,
+                isMiniMode = true,
+                isActive = true
             )
         )
     }

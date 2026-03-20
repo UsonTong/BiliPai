@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class CommonListAppearancePolicyTest {
 
     @Test
-    fun md3FollowPreset_disablesHeaderBlurForCommonList() {
+    fun md3FollowPreset_keepsHeaderBlurForCommonList() {
         val enabled = resolveCommonListHeaderBlurEnabled(
             homeSettings = HomeSettings(
                 headerBlurMode = HomeHeaderBlurMode.FOLLOW_PRESET
@@ -18,7 +18,7 @@ class CommonListAppearancePolicyTest {
             uiPreset = UiPreset.MD3
         )
 
-        assertFalse(enabled)
+        assertTrue(enabled)
     }
 
     @Test
@@ -47,7 +47,7 @@ class CommonListAppearancePolicyTest {
         )
 
         assertFalse(appearance.glassEnabled)
-        assertFalse(appearance.blurEnabled)
+        assertTrue(appearance.blurEnabled)
         assertFalse(appearance.showCoverGlassBadges)
         assertFalse(appearance.showInfoGlassBadges)
     }

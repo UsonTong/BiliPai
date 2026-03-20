@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
@@ -92,6 +93,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.lifecycle.compose.currentStateAsState
 import com.android.purebilibili.feature.video.danmaku.FaceOcclusionModuleState
 import dev.chrisbanes.haze.HazeState
 
@@ -142,6 +144,13 @@ internal fun shouldReleaseCastBindingAfterDialogVisibilityChange(
     currentVisible: Boolean
 ): Boolean {
     return previousVisible && !currentVisible
+}
+
+internal fun shouldPollInlineVideoOverlayProgress(
+    playerExists: Boolean,
+    hostLifecycleStarted: Boolean
+): Boolean {
+    return playerExists && hostLifecycleStarted
 }
 
 internal fun shouldShowCenterPlayButton(
@@ -227,6 +236,7 @@ fun VideoPlayerOverlay(
     isScreenLocked: Boolean = false,
     onLockToggle: () -> Unit = {},
     showStats: Boolean = false,
+    debugInfo: PlaybackDebugInfo = PlaybackDebugInfo(),
     realResolution: String = "",
     isQualitySwitching: Boolean = false,
     isBuffering: Boolean = false,  // 缓冲状态
@@ -370,7 +380,20 @@ fun VideoPlayerOverlay(
     
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     val configuration = LocalConfiguration.current
+    val effectiveDebugInfo = remember(debugInfo, realResolution) {
+        if (debugInfo.resolution.isBlank() && realResolution.isNotBlank()) {
+            debugInfo.copy(resolution = realResolution)
+        } else {
+            debugInfo
+        }
+    }
+    val debugRows = remember(effectiveDebugInfo) {
+        resolvePlaybackDebugRows(effectiveDebugInfo)
+    }
     val showFullscreenLockButton by SettingsManager
         .getShowFullscreenLockButton(context)
         .collectAsState(initial = true)
@@ -494,7 +517,26 @@ fun VideoPlayerOverlay(
         }
     }
 
-    val progressState by produceState(initialValue = PlayerProgress(), key1 = player, key2 = isVisible) {
+    val progressState by produceState(
+        initialValue = PlayerProgress(),
+        key1 = player,
+        key2 = isVisible,
+        key3 = hostLifecycleStarted
+    ) {
+        if (!shouldPollInlineVideoOverlayProgress(
+                playerExists = true,
+                hostLifecycleStarted = hostLifecycleStarted
+            )
+        ) {
+            val duration = if (player.duration < 0) 0L else player.duration
+            value = PlayerProgress(
+                current = player.currentPosition,
+                duration = duration,
+                buffered = player.bufferedPosition
+            )
+            isPlaying = player.isPlaying
+            return@produceState
+        }
         while (isActive) {
             //  [修复] 始终更新进度，不仅在播放时
             // 这样横竖屏切换后也能显示正确的进度
@@ -807,7 +849,7 @@ fun VideoPlayerOverlay(
         }
 
         // --- 4.  [新增] 真实分辨率统计信息 (仅在设置开启时显示) ---
-        if (showStats && realResolution.isNotEmpty() && isVisible) {
+        if (showStats && debugRows.isNotEmpty() && isVisible) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -824,13 +866,32 @@ fun VideoPlayerOverlay(
                         vertical = overlayVisualPolicy.statsVerticalPaddingDp.dp
                     )
             ) {
-                Text(
-                    text = "Resolution: $realResolution",
-                    color = Color.Green,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = overlayVisualPolicy.statsFontSp.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    debugRows.forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.widthIn(min = 164.dp)
+                        ) {
+                            Text(
+                                text = row.label,
+                                color = Color.White.copy(alpha = 0.72f),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = overlayVisualPolicy.statsFontSp.sp,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Text(
+                                text = row.value,
+                                color = Color(0xFF9BFFB0),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = overlayVisualPolicy.statsFontSp.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -848,21 +909,13 @@ fun VideoPlayerOverlay(
             enter = scaleIn(tween(250)) + fadeIn(tween(200)),
             exit = scaleOut(tween(200)) + fadeOut(tween(200))
         ) {
-            Surface(
+            OverlayPlaybackButton(
+                isPlaying = false,
                 onClick = { player.play(); isPlaying = true },
-                color = Color.Black.copy(alpha = 0.5f),
-                shape = CircleShape,
-                modifier = Modifier.size(overlayVisualPolicy.centerPlayButtonSizeDp.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        CupertinoIcons.Default.Play,
-                        contentDescription = "播放",
-                        tint = Color.White.copy(alpha = 0.95f),
-                        modifier = Modifier.size(overlayVisualPolicy.centerPlayIconSizeDp.dp)
-                    )
-                }
-            }
+                outerSize = overlayVisualPolicy.centerPlayButtonSizeDp.dp,
+                innerSize = overlayVisualPolicy.centerPlayInnerButtonSizeDp.dp,
+                glyphSize = overlayVisualPolicy.centerPlayIconSizeDp.dp
+            )
         }
 
         // --- 5.4  缓冲加载指示器 ---

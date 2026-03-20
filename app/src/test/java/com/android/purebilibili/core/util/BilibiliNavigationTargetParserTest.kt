@@ -48,6 +48,16 @@ class BilibiliNavigationTargetParserTest {
     }
 
     @Test
+    fun parse_searchDeepLink_resolvesSearchTarget() {
+        val target = BilibiliNavigationTargetParser.parse(
+            "bilibili://search?keyword=%E9%BB%91%E7%A5%9E%E8%AF%9D"
+        )
+
+        assertIs<BilibiliNavigationTarget.Search>(target)
+        assertEquals("黑神话", target.keyword)
+    }
+
+    @Test
     fun parse_nonBilibiliUrl_returnsNull() {
         val target = BilibiliNavigationTargetParser.parse("https://example.com/video/1")
 

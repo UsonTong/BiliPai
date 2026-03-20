@@ -63,6 +63,7 @@ internal data class AdaptiveListComponentVisualSpec(
 )
 
 internal data class AdaptiveSwitchVisualSpec(
+    val usePlatformDefaults: Boolean,
     val checkedThumbColor: Color,
     val checkedTrackColor: Color,
     val uncheckedThumbColor: Color,
@@ -132,6 +133,7 @@ internal fun resolveAdaptiveSwitchVisualSpec(
 ): AdaptiveSwitchVisualSpec {
     return if (uiPreset == UiPreset.MD3) {
         AdaptiveSwitchVisualSpec(
+            usePlatformDefaults = true,
             checkedThumbColor = colorScheme.onPrimary,
             checkedTrackColor = colorScheme.primary,
             uncheckedThumbColor = colorScheme.surface,
@@ -140,6 +142,7 @@ internal fun resolveAdaptiveSwitchVisualSpec(
         )
     } else {
         AdaptiveSwitchVisualSpec(
+            usePlatformDefaults = false,
             checkedThumbColor = Color.White,
             checkedTrackColor = colorScheme.primary,
             uncheckedThumbColor = Color.White,
@@ -182,20 +185,29 @@ fun AppAdaptiveSwitch(
         )
     }
     if (uiPreset == UiPreset.MD3) {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            modifier = modifier,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = switchSpec.checkedThumbColor,
-                checkedTrackColor = switchSpec.checkedTrackColor,
-                checkedBorderColor = switchSpec.checkedTrackColor,
-                uncheckedThumbColor = switchSpec.uncheckedThumbColor,
-                uncheckedTrackColor = switchSpec.uncheckedTrackColor,
-                uncheckedBorderColor = switchSpec.uncheckedBorderColor
+        if (switchSpec.usePlatformDefaults) {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                modifier = modifier
             )
-        )
+        } else {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                modifier = modifier,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = switchSpec.checkedThumbColor,
+                    checkedTrackColor = switchSpec.checkedTrackColor,
+                    checkedBorderColor = switchSpec.checkedTrackColor,
+                    uncheckedThumbColor = switchSpec.uncheckedThumbColor,
+                    uncheckedTrackColor = switchSpec.uncheckedTrackColor,
+                    uncheckedBorderColor = switchSpec.uncheckedBorderColor
+                )
+            )
+        }
     } else {
         CupertinoSwitch(
             checked = checked,

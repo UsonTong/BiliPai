@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-03-16 · 文档已同步至 v7.0.0 Beta4（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-03-20 · 文档已同步至 v7.0.0 RC2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.0.0%20Beta4-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.0.0%20RC2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -560,12 +560,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.0.0 Beta4 · 2026-03-16)
+### 最近更新 (v7.0.0 RC2 · 2026-03-20)
 
-- 🫧 **首页顶部毛玻璃与一体化头部继续修复**：修复搜索框/标签栏模糊断层、统一顶部面板在普通模糊下局部失效、顶部其它区域不模糊、首屏卡片被头部压住，以及搜索框滚动时错误消失的问题，iOS 预设下的首页头部也改成了更统一的一体式结构。
-- 🧭 **首页分页与顶部收缩同步更稳定**：修复左右切换到“关注”等分页时顶部空白的问题，header 停稳后会按目标分页自己的滚动位置恢复展开或收缩状态。
-- 🎬 **视频详情页布局、手势和发送链路修复**：修复竖屏视频收缩时控件不跟随缩放、长按倍速上滑锁定失效，以及评论发送后一直转圈无法继续发送下一条的问题。
-- 🎨 **主题色与 MD3 细节校正**：`已关注` 视觉统一回到主题语义色，`MD3` 预设下“清除缓存”对话框的超高空白面板问题也已修复。
+- 🫧 **首页液态玻璃与壳层继续收口**：首页顶部、底栏和标签壳层进一步统一到新的玻璃表面策略，新增 `CLEAR / BALANCED / FROSTED` 三档液态玻璃模式与强度调节，MD3 预设下也会自动避开不合适的玻璃效果。
+- 🔎 **搜索深链与导航补齐**：入口链接现在可以直接解析搜索关键字并带入搜索页，个人页、历史、收藏、稍后再看和设置等顶层导航的落点也更一致。
+- 🎨 **主题强调色与列表对比度更稳定**：引导页、番剧详情、搜索与空间筛选、通用列表等位置统一接入自适应强调色策略，暗色和 AMOLED 场景下的高亮可读性更稳。
+- 🎬 **播放器后台降载更彻底**：后台音频时会禁用视频轨、清空视频 Surface、停止后台轮询并按生命周期收紧状态收集，播放调试面板也补齐了码率、编解码器和解码器信息。
 
 ### 历史版本
 

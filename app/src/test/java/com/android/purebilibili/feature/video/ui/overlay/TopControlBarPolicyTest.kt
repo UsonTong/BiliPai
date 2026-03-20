@@ -9,6 +9,50 @@ import kotlin.test.assertTrue
 class TopControlBarPolicyTest {
 
     @Test
+    fun clockPolling_runsOnlyWhenTimeVisibleAndHostStarted() {
+        assertTrue(
+            shouldPollTopControlBarClock(
+                showCurrentTime = true,
+                hostLifecycleStarted = true
+            )
+        )
+        assertFalse(
+            shouldPollTopControlBarClock(
+                showCurrentTime = true,
+                hostLifecycleStarted = false
+            )
+        )
+        assertFalse(
+            shouldPollTopControlBarClock(
+                showCurrentTime = false,
+                hostLifecycleStarted = true
+            )
+        )
+    }
+
+    @Test
+    fun batteryPolling_runsOnlyWhenBatteryVisibleAndHostStarted() {
+        assertTrue(
+            shouldPollTopControlBarBattery(
+                showBatteryLevel = true,
+                hostLifecycleStarted = true
+            )
+        )
+        assertFalse(
+            shouldPollTopControlBarBattery(
+                showBatteryLevel = true,
+                hostLifecycleStarted = false
+            )
+        )
+        assertFalse(
+            shouldPollTopControlBarBattery(
+                showBatteryLevel = false,
+                hostLifecycleStarted = true
+            )
+        )
+    }
+
+    @Test
     fun dislikeActionHiddenOnPhoneLandscape() {
         assertFalse(
             shouldShowDislikeInTopControlBar(

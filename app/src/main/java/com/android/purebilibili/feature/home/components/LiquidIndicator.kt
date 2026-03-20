@@ -30,6 +30,7 @@ import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.blur
+import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.LiquidGlassStyle
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 
@@ -72,17 +73,21 @@ fun LiquidIndicator(
     edgeWarpBoost: Float = 1f,
     chromaticBoost: Float = 1f,
     liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
+    liquidGlassTuning: LiquidGlassTuning? = null,
     backdrop: LayerBackdrop? = null // [New] Backdrop for refraction
 ) {
     val density = LocalDensity.current
-    val styleTuning = remember(liquidGlassStyle) { resolveLiquidStyleTuning(liquidGlassStyle) }
+    val resolvedTuning = remember(liquidGlassStyle, liquidGlassTuning) {
+        liquidGlassTuning ?: resolveLiquidGlassTuning(liquidGlassStyle)
+    }
+    val styleTuning = remember(resolvedTuning) { resolveLiquidStyleTuning(resolvedTuning) }
     val lensProfile = remember(
         isDragging,
         velocity,
         lensIntensityBoost,
         edgeWarpBoost,
         chromaticBoost,
-        liquidGlassStyle
+        resolvedTuning
     ) {
         resolveLiquidLensProfile(
             isDragging = isDragging,
@@ -157,20 +162,16 @@ fun LiquidIndicator(
                 .run {
                     if (isLiquidGlassEnabled && backdrop != null && shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)) {
                         // [Effect] Strong refraction for the indicator (Magnifying Glass effect)
-                        if (liquidGlassStyle == LiquidGlassStyle.SIMP_MUSIC) {
-                            // [Style: SimpMusic] Frosted Glass (Blur Only, No Deformation)
-                            val blurRadius = 36f
+                        if (resolvedTuning.mode == LiquidGlassMode.FROSTED) {
                             this.drawBackdrop(
                                 backdrop = backdrop,
                                 shape = { shape },
                                 effects = {
-                                    blur(blurRadius)
-                                    // No lens effect here
+                                    blur(resolvedTuning.backdropBlurRadius)
                                 },
                                 onDrawSurface = {
-                                    // More visible tint for frosted glass
-                                    drawRect(color.copy(alpha = 0.18f))
-                                    drawRect(Color.White.copy(alpha = 0.08f))
+                                    drawRect(color.copy(alpha = resolvedTuning.surfaceAlpha))
+                                    drawRect(Color.White.copy(alpha = resolvedTuning.whiteOverlayAlpha))
                                 }
                             )
                         } else {
@@ -191,7 +192,7 @@ fun LiquidIndicator(
                                         drawLiquidSphereSurface(
                                             baseColor = color,
                                             lensProfile = lensProfile,
-                                            style = liquidGlassStyle
+                                            tuning = resolvedTuning
                                         )
                                     }
                                 )
@@ -205,7 +206,7 @@ fun LiquidIndicator(
                                         drawLiquidSphereSurface(
                                             baseColor = color,
                                             lensProfile = lensProfile,
-                                            style = liquidGlassStyle
+                                            tuning = resolvedTuning
                                         )
                                     }
                                 )
@@ -239,6 +240,7 @@ fun SimpleLiquidIndicator(
     velocityPxPerSecond: Float = 0f,
     isLiquidGlassEnabled: Boolean = false,
     liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC,
+    liquidGlassTuning: LiquidGlassTuning? = null,
     backdrop: LayerBackdrop? = null,
     indicatorColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
     indicatorHeight: Dp = 34.dp,
@@ -249,8 +251,11 @@ fun SimpleLiquidIndicator(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val styleTuning = remember(liquidGlassStyle) { resolveLiquidStyleTuning(liquidGlassStyle) }
-    val lensProfile = remember(isDragging, velocityPxPerSecond, liquidGlassStyle) {
+    val resolvedTuning = remember(liquidGlassStyle, liquidGlassTuning) {
+        liquidGlassTuning ?: resolveLiquidGlassTuning(liquidGlassStyle)
+    }
+    val styleTuning = remember(resolvedTuning) { resolveLiquidStyleTuning(resolvedTuning) }
+    val lensProfile = remember(isDragging, velocityPxPerSecond, resolvedTuning) {
         resolveLiquidLensProfile(
             isDragging = isDragging,
             velocityPxPerSecond = velocityPxPerSecond,
@@ -309,14 +314,14 @@ fun SimpleLiquidIndicator(
                 .clip(RoundedCornerShape(cornerRadius))
                 .run {
                     if (isLiquidGlassEnabled && backdrop != null && shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)) {
-                        if (liquidGlassStyle == LiquidGlassStyle.SIMP_MUSIC) {
+                        if (resolvedTuning.mode == LiquidGlassMode.FROSTED) {
                             this.drawBackdrop(
                                 backdrop = backdrop,
                                 shape = { RoundedCornerShape(cornerRadius) },
-                                    effects = { blur(32f) },
+                                    effects = { blur(resolvedTuning.backdropBlurRadius) },
                                     onDrawSurface = {
-                                        drawRect(resolvedIndicatorColor.copy(alpha = 0.16f))
-                                        drawRect(Color.White.copy(alpha = 0.06f))
+                                        drawRect(resolvedIndicatorColor.copy(alpha = resolvedTuning.surfaceAlpha))
+                                        drawRect(Color.White.copy(alpha = resolvedTuning.whiteOverlayAlpha))
                                     }
                                 )
                         } else {
@@ -337,7 +342,7 @@ fun SimpleLiquidIndicator(
                                         drawLiquidSphereSurface(
                                             baseColor = resolvedIndicatorColor,
                                             lensProfile = lensProfile,
-                                            style = liquidGlassStyle
+                                            tuning = resolvedTuning
                                         )
                                     }
                                 )
@@ -350,7 +355,7 @@ fun SimpleLiquidIndicator(
                                         drawLiquidSphereSurface(
                                             baseColor = resolvedIndicatorColor,
                                             lensProfile = lensProfile,
-                                            style = liquidGlassStyle
+                                            tuning = resolvedTuning
                                         )
                                     }
                                 )
@@ -444,41 +449,44 @@ internal data class LiquidStyleTuning(
     val allowChromaticAberration: Boolean
 )
 
-internal fun resolveLiquidStyleTuning(style: LiquidGlassStyle): LiquidStyleTuning = when (style) {
-    LiquidGlassStyle.CLASSIC -> LiquidStyleTuning(
-        idleThresholdPxPerSecond = 110f,
-        dragMotionFloor = 0.38f,
-        lensIntensityMultiplier = 1f,
-        edgeWarpMultiplier = 1f,
-        chromaticMultiplier = 1f,
-        deformationMultiplier = 1f,
-        idleBlurRadius = 18f,
+internal fun resolveLiquidStyleTuning(tuning: LiquidGlassTuning): LiquidStyleTuning = when (tuning.mode) {
+    LiquidGlassMode.CLEAR -> LiquidStyleTuning(
+        idleThresholdPxPerSecond = 150f,
+        dragMotionFloor = 0.10f,
+        lensIntensityMultiplier = tuning.indicatorLensBoost,
+        edgeWarpMultiplier = tuning.indicatorEdgeWarpBoost,
+        chromaticMultiplier = tuning.indicatorChromaticBoost,
+        deformationMultiplier = 0.70f + tuning.strength * 0.14f,
+        idleBlurRadius = tuning.backdropBlurRadius,
         depthEffectEnabled = true,
-        allowChromaticAberration = true
+        allowChromaticAberration = tuning.chromaticAberrationEnabled
     )
-    LiquidGlassStyle.IOS26 -> LiquidStyleTuning(
-        idleThresholdPxPerSecond = 135f,
-        dragMotionFloor = 0.08f,
-        lensIntensityMultiplier = 1.06f,
-        edgeWarpMultiplier = 1.06f,
-        chromaticMultiplier = 0.62f,
-        deformationMultiplier = 0.72f,
-        idleBlurRadius = 20f,
+    LiquidGlassMode.BALANCED -> LiquidStyleTuning(
+        idleThresholdPxPerSecond = 120f,
+        dragMotionFloor = 0.24f + tuning.strength * 0.10f,
+        lensIntensityMultiplier = tuning.indicatorLensBoost,
+        edgeWarpMultiplier = tuning.indicatorEdgeWarpBoost,
+        chromaticMultiplier = tuning.indicatorChromaticBoost,
+        deformationMultiplier = 0.92f + tuning.strength * 0.14f,
+        idleBlurRadius = tuning.backdropBlurRadius,
         depthEffectEnabled = true,
-        allowChromaticAberration = true
+        allowChromaticAberration = tuning.chromaticAberrationEnabled
     )
-    LiquidGlassStyle.SIMP_MUSIC -> LiquidStyleTuning(
+    LiquidGlassMode.FROSTED -> LiquidStyleTuning(
         idleThresholdPxPerSecond = 220f,
         dragMotionFloor = 0.08f,
-        lensIntensityMultiplier = 0.6f,
-        edgeWarpMultiplier = 0.55f,
-        chromaticMultiplier = 0f,
-        deformationMultiplier = 0.45f,
-        idleBlurRadius = 32f,
+        lensIntensityMultiplier = tuning.indicatorLensBoost,
+        edgeWarpMultiplier = tuning.indicatorEdgeWarpBoost,
+        chromaticMultiplier = tuning.indicatorChromaticBoost,
+        deformationMultiplier = 0.42f + tuning.strength * 0.06f,
+        idleBlurRadius = tuning.backdropBlurRadius,
         depthEffectEnabled = false,
         allowChromaticAberration = false
     )
 }
+
+internal fun resolveLiquidStyleTuning(style: LiquidGlassStyle): LiquidStyleTuning =
+    resolveLiquidStyleTuning(resolveLiquidGlassTuning(style))
 
 internal fun resolveLiquidLensProfile(
     isDragging: Boolean,
@@ -531,17 +539,23 @@ internal fun resolveLiquidLensProfile(
 private fun DrawScope.drawLiquidSphereSurface(
     baseColor: Color,
     lensProfile: LiquidLensProfile,
-    style: LiquidGlassStyle
+    tuning: LiquidGlassTuning
 ) {
     val isMoving = lensProfile.shouldRefract
 
-    if (style == LiquidGlassStyle.IOS26) {
+    if (tuning.mode == LiquidGlassMode.CLEAR) {
         // iOS26: neutral gray capsule with slightly stronger visibility.
-        drawRect(baseColor.copy(alpha = if (isMoving) 0.09f else 0.11f))
+        drawRect(
+            baseColor.copy(
+                alpha = if (isMoving) tuning.surfaceAlpha * 0.52f else tuning.surfaceAlpha * 0.62f
+            )
+        )
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = if (isMoving) 0.13f else 0.10f),
+                    Color.White.copy(
+                        alpha = if (isMoving) tuning.whiteOverlayAlpha * 2.2f else tuning.whiteOverlayAlpha * 1.7f
+                    ),
                     Color.Transparent,
                     Color.Black.copy(alpha = if (isMoving) 0.04f else 0.03f)
                 )
@@ -566,6 +580,20 @@ private fun DrawScope.drawLiquidSphereSurface(
             ),
             cornerRadius = CornerRadius(size.height / 2f, size.height / 2f),
             style = Stroke(width = ringStroke)
+        )
+        return
+    }
+
+    if (tuning.mode == LiquidGlassMode.FROSTED) {
+        drawRect(baseColor.copy(alpha = tuning.surfaceAlpha))
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = tuning.whiteOverlayAlpha * 1.2f),
+                    Color.Transparent,
+                    Color.Black.copy(alpha = 0.03f)
+                )
+            )
         )
         return
     }

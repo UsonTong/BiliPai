@@ -3,6 +3,8 @@ package com.android.purebilibili.navigation
 import com.android.purebilibili.feature.home.components.BottomNavItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AppTopLevelNavigationPolicyTest {
 
@@ -65,5 +67,20 @@ class AppTopLevelNavigationPolicyTest {
                 tappedItem = BottomNavItem.DYNAMIC
             )
         )
+    }
+
+    @Test
+    fun profileShortcutsToTopLevelDestinations_useTopLevelNavigation() {
+        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Settings.route))
+        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.History.route))
+        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Favorite.route))
+        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.WatchLater.route))
+    }
+
+    @Test
+    fun profileShortcutsToSecondaryDestinations_keepRegularNavigation() {
+        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.DownloadList.route))
+        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Inbox.route))
+        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Following.route))
     }
 }

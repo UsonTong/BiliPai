@@ -65,6 +65,7 @@ import com.android.purebilibili.feature.settings.AppUpdateDownloadState
 import com.android.purebilibili.feature.settings.AppUpdateDownloadStatus
 import com.android.purebilibili.feature.settings.AppUpdateInstallAction
 import com.android.purebilibili.feature.settings.AppThemeMode
+import com.android.purebilibili.core.theme.resolveEffectiveDynamicColorEnabled
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.feature.settings.RELEASE_DISCLAIMER_ACK_KEY
 import com.android.purebilibili.feature.settings.completeAppUpdateDownload
@@ -230,7 +231,8 @@ private fun normalizeIntentLinkWebCandidate(rawInput: String): String? {
 
 internal data class MainActivityLinkNavigation(
     val pendingVideoId: String? = null,
-    val pendingNavigationRoute: String? = null
+    val pendingNavigationRoute: String? = null,
+    val pendingSearchKeyword: String? = null
 )
 
 internal fun resolveMainActivityLinkNavigation(
@@ -243,6 +245,11 @@ internal fun resolveMainActivityLinkNavigation(
 
         is BilibiliNavigationTarget.Dynamic -> MainActivityLinkNavigation(
             pendingNavigationRoute = resolveMainActivityDynamicRoute(target.dynamicId)
+        )
+
+        is BilibiliNavigationTarget.Search -> MainActivityLinkNavigation(
+            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.Search.route,
+            pendingSearchKeyword = target.keyword
         )
 
         is BilibiliNavigationTarget.Space -> MainActivityLinkNavigation(
@@ -892,7 +899,10 @@ class MainActivity : ComponentActivity() {
                 AppThemeMode.AMOLED -> true                // 强制纯黑
             }
             val useAmoledDarkTheme = themeMode == AppThemeMode.AMOLED
-            val effectiveDynamicColor = dynamicColor && !useAmoledDarkTheme
+            val effectiveDynamicColor = resolveEffectiveDynamicColorEnabled(
+                dynamicColorEnabled = dynamicColor,
+                amoledDarkTheme = useAmoledDarkTheme
+            )
 
             //  [新增] 根据主题动态更新状态栏样式
             LaunchedEffect(useDarkTheme) {
@@ -977,6 +987,12 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     miniPlayerManager = miniPlayerManager,
                                     isInPipMode = isInPipMode,
+                                    initialSearchKeyword = pendingSearchKeyword,
+                                    onInitialSearchKeywordConsumed = { consumedKeyword ->
+                                        if (pendingSearchKeyword == consumedKeyword) {
+                                            pendingSearchKeyword = null
+                                        }
+                                    },
                                     onVideoDetailEnter = { 
                                         isInVideoDetail = true
                                         Logger.d(TAG, " 进入视频详情页")
@@ -1520,6 +1536,7 @@ class MainActivity : ComponentActivity() {
     //  待导航的视频 ID（用于在 Compose 中触发导航）
     var pendingVideoId by mutableStateOf<String?>(null)
     var pendingRoute by mutableStateOf<String?>(null)  // 🚀 App Shortcuts: pending route
+    var pendingSearchKeyword by mutableStateOf<String?>(null)
     var pendingNavigationRoute by mutableStateOf<String?>(null)
         private set
     
@@ -1620,6 +1637,10 @@ class MainActivity : ComponentActivity() {
             Logger.d(TAG, "📺 入口链接解析到视频: $videoId")
             pendingVideoId = videoId
             return
+        }
+        navigation.pendingSearchKeyword?.let { keyword ->
+            Logger.d(TAG, "🔎 入口链接解析到搜索词: $keyword")
+            pendingSearchKeyword = keyword
         }
         navigation.pendingNavigationRoute?.let { route ->
             Logger.d(TAG, "🧭 入口链接解析到路由: $route")

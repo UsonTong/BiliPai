@@ -5,7 +5,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.allManagedAppIconLauncherAliases
+import com.android.purebilibili.core.store.resolveDefaultLiquidGlassStrength
+import com.android.purebilibili.core.store.resolveLegacyLiquidGlassMode
 import com.android.purebilibili.core.store.normalizeAppIconKey
 import com.android.purebilibili.core.store.resolveAppIconLauncherAlias
 import com.android.purebilibili.core.theme.AppFontSizePreset
@@ -61,6 +64,8 @@ data class SettingsUiState(
     // [New]
     val isLiquidGlassEnabled: Boolean = true,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC, // [New]
+    val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
+    val liquidGlassStrength: Float = 0.52f,
     // [New] 平板导航模式
     val tabletUseSidebar: Boolean = false,
     val isHeaderCollapseEnabled: Boolean = true, // [New]
@@ -96,6 +101,8 @@ data class ExtraSettings(
     val hapticFeedbackEnabled: Boolean, // [Restored]
     val isLiquidGlassEnabled: Boolean = true, // [New]
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
+    val liquidGlassMode: LiquidGlassMode, // [New]
+    val liquidGlassStrength: Float, // [New]
     val tabletUseSidebar: Boolean, // [New]
     val isHeaderCollapseEnabled: Boolean, // [New]
     val gridColumnCount: Int // [New]
@@ -138,6 +145,8 @@ private data class BaseSettings(
     val hapticFeedbackEnabled: Boolean, // [新增]
     val isLiquidGlassEnabled: Boolean, // [New]
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
+    val liquidGlassMode: LiquidGlassMode, // [New]
+    val liquidGlassStrength: Float, // [New]
     val tabletUseSidebar: Boolean, // [New]
     val isHeaderCollapseEnabled: Boolean, // [New]
     val gridColumnCount: Int // [New]
@@ -204,6 +213,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getHapticFeedbackEnabled(context).asAnyFlow(), // [新增]
         SettingsManager.getLiquidGlassEnabled(context).asAnyFlow(), // [New]
         SettingsManager.getLiquidGlassStyle(context).asAnyFlow(), // [New]
+        SettingsManager.getLiquidGlassMode(context).asAnyFlow(), // [New]
+        SettingsManager.getLiquidGlassStrength(context).asAnyFlow(), // [New]
         SettingsManager.getTabletUseSidebar(context).asAnyFlow(), // [New]
         SettingsManager.getHeaderCollapseEnabled(context).asAnyFlow(), // [New]
         SettingsManager.getGridColumnCount(context).asAnyFlow() // [New]
@@ -218,9 +229,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val hapticFeedback = values[7] as Boolean
         val liquidGlass = values[8] as Boolean
         val liquidGlassStyle = values[9] as com.android.purebilibili.core.store.LiquidGlassStyle
-        val tabletUseSidebar = values[10] as Boolean
-        val headerCollapse = values[11] as Boolean
-        val gridColumnCount = values[12] as Int
+        val liquidGlassMode = values[10] as LiquidGlassMode
+        val liquidGlassStrength = values[11] as Float
+        val tabletUseSidebar = values[12] as Boolean
+        val headerCollapse = values[13] as Boolean
+        val gridColumnCount = values[14] as Int
         
         data class Ui2(
             val f: Boolean,
@@ -233,6 +246,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val h: Boolean,
             val lg: Boolean,
             val lgs: com.android.purebilibili.core.store.LiquidGlassStyle,
+            val lgm: LiquidGlassMode,
+            val lgt: Float,
             val tus: Boolean,
             val hc: Boolean,
             val gcc: Int
@@ -248,6 +263,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedback,
             liquidGlass,
             liquidGlassStyle,
+            liquidGlassMode,
+            liquidGlassStrength,
             tabletUseSidebar,
             headerCollapse,
             gridColumnCount
@@ -274,6 +291,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = ui2.h, // [新增]
             isLiquidGlassEnabled = ui2.lg, // [New]
             liquidGlassStyle = ui2.lgs, // [New]
+            liquidGlassMode = ui2.lgm, // [New]
+            liquidGlassStrength = ui2.lgt, // [New]
             tabletUseSidebar = ui2.tus, // [New]
             isHeaderCollapseEnabled = ui2.hc, // [New]
             gridColumnCount = ui2.gcc, // [New]
@@ -347,6 +366,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = extra.isLiquidGlassEnabled, // [New]
             liquidGlassStyle = extra.liquidGlassStyle, // [New]
+            liquidGlassMode = extra.liquidGlassMode, // [New]
+            liquidGlassStrength = extra.liquidGlassStrength, // [New]
             tabletUseSidebar = extra.tabletUseSidebar, // [New]
             isHeaderCollapseEnabled = extra.isHeaderCollapseEnabled, // [New]
             gridColumnCount = extra.gridColumnCount // [New]
@@ -389,6 +410,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
             isLiquidGlassEnabled = settings.isLiquidGlassEnabled, // [New]
             liquidGlassStyle = settings.liquidGlassStyle, // [New]
+            liquidGlassMode = settings.liquidGlassMode, // [New]
+            liquidGlassStrength = settings.liquidGlassStrength, // [New]
             tabletUseSidebar = settings.tabletUseSidebar, // [New]
             isHeaderCollapseEnabled = settings.isHeaderCollapseEnabled, // [New]
             gridColumnCount = settings.gridColumnCount, // [New]
@@ -618,6 +641,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setLiquidGlassStyle(style: com.android.purebilibili.core.store.LiquidGlassStyle) {
         viewModelScope.launch {
             SettingsManager.setLiquidGlassStyle(context, style)
+            val mode = resolveLegacyLiquidGlassMode(style)
+            SettingsManager.setLiquidGlassMode(context, mode)
+            SettingsManager.setLiquidGlassStrength(context, resolveDefaultLiquidGlassStrength(mode))
+        }
+    }
+
+    fun setLiquidGlassMode(mode: LiquidGlassMode) {
+        viewModelScope.launch {
+            SettingsManager.setLiquidGlassMode(context, mode)
+        }
+    }
+
+    fun setLiquidGlassStrength(strength: Float) {
+        viewModelScope.launch {
+            SettingsManager.setLiquidGlassStrength(context, strength)
         }
     }
 

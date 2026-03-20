@@ -82,6 +82,7 @@ import com.android.purebilibili.feature.video.ui.components.PlaybackSpeed
 import com.android.purebilibili.feature.video.ui.components.toFullscreenAspectRatio
 import com.android.purebilibili.feature.video.ui.components.toVideoAspectRatio
 import com.android.purebilibili.core.ui.common.copyOnLongPress
+import androidx.lifecycle.compose.currentStateAsState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -110,6 +111,9 @@ fun FullscreenPlayerOverlay(
     val context = LocalContext.current
     val density = LocalDensity.current
     val player = miniPlayerManager.player
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
@@ -176,7 +180,11 @@ fun FullscreenPlayerOverlay(
     var currentProgress by remember { mutableFloatStateOf(0f) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
-    val currentClockText by produceState(initialValue = formatCurrentClock()) {
+    val currentClockText by produceState(initialValue = formatCurrentClock(), hostLifecycleStarted) {
+        if (!hostLifecycleStarted) {
+            value = formatCurrentClock()
+            return@produceState
+        }
         while (true) {
             value = formatCurrentClock()
             val now = System.currentTimeMillis()
@@ -206,9 +214,6 @@ fun FullscreenPlayerOverlay(
     LaunchedEffect(fixedFullscreenAspectRatio) {
         aspectRatio = fixedFullscreenAspectRatio.toVideoAspectRatio()
     }
-    
-    //  [修复] 获取生命周期用于监听前后台切换
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     
     // 进入全屏时设置横屏和沉浸式
     DisposableEffect(Unit) {
@@ -263,8 +268,12 @@ fun FullscreenPlayerOverlay(
     }
     
     // 监听播放器状态
-    LaunchedEffect(player, showControls, gestureMode) {
-        if (!shouldPollFullscreenPlayerProgress(playerExists = player != null)) {
+    LaunchedEffect(player, showControls, gestureMode, hostLifecycleStarted) {
+        if (!shouldPollFullscreenPlayerProgress(
+                playerExists = player != null,
+                hostLifecycleStarted = hostLifecycleStarted
+            )
+        ) {
             return@LaunchedEffect
         }
         while (isActive) {

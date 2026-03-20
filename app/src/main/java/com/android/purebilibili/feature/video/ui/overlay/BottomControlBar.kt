@@ -431,17 +431,13 @@ fun BottomControlBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Left: Play/Pause
-            IconButton(
+            OverlayPlaybackButton(
+                isPlaying = isPlaying,
                 onClick = onPlayPauseClick,
-                modifier = Modifier.size(layoutPolicy.playButtonSizeDp.dp)
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) CupertinoIcons.Default.Pause else CupertinoIcons.Default.Play,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(layoutPolicy.playIconSizeDp.dp)
-                )
-            }
+                outerSize = layoutPolicy.playButtonSizeDp.dp,
+                innerSize = (layoutPolicy.playButtonSizeDp - 8).dp,
+                glyphSize = layoutPolicy.playIconSizeDp.dp
+            )
 
             Spacer(modifier = Modifier.width(layoutPolicy.afterPlaySpacingDp.dp))
 

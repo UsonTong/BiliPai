@@ -90,20 +90,16 @@ import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationSta
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import dev.chrisbanes.haze.hazeEffect // [New]
 import dev.chrisbanes.haze.HazeStyle   // [New]
-import com.android.purebilibili.core.ui.effect.liquidGlassBackground // [New]
 // [LayerBackdrop] AndroidLiquidGlass library for real background refraction
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.blur
 import androidx.compose.foundation.shape.RoundedCornerShape as RoundedCornerShapeAlias
 import androidx.compose.ui.Modifier.Companion.then
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.effect.liquidGlass
-import com.android.purebilibili.core.ui.effect.simpMusicLiquidGlass // [New]
 import com.android.purebilibili.core.store.LiquidGlassStyle // [New] Top-level enum
+import com.android.purebilibili.core.store.LiquidGlassMode
 import androidx.compose.foundation.isSystemInDarkTheme // [New] Theme detection for adaptive readability
 
 /**
@@ -380,10 +376,6 @@ fun FrostedBottomBar(
     val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f // Simple darkness check
     val haptic = rememberHapticFeedback()
     
-    // [New] Adaptive Luminance for SimpMusic Style
-    // 0.0 = Black/Dark, 1.0 = White/Bright
-    var contentLuminance by remember { mutableFloatStateOf(0f) }
-    
     // 🔒 [防抖]
     var lastClickTime by remember { mutableStateOf(0L) }
     val debounceClick: (BottomNavItem, () -> Unit) -> Unit = remember {
@@ -568,6 +560,47 @@ fun FrostedBottomBar(
     // [Fix] 确保指示器互斥显示的最终逻辑
     // 当底栏停靠时，强制禁用液态玻璃（Liquid Glass），仅使用标准磨砂（Frosted Glass）
     val showGlassEffect = homeSettings.isLiquidGlassEnabled && isFloating
+    val liquidGlassTuning = remember(
+        homeSettings.liquidGlassMode,
+        homeSettings.liquidGlassStrength,
+        homeSettings.liquidGlassStyle
+    ) {
+        resolveLiquidGlassTuning(
+            mode = homeSettings.liquidGlassMode,
+            strength = homeSettings.liquidGlassStrength
+        )
+    }
+    val contentLuminance = remember(showGlassEffect, liquidGlassTuning.mode, isDarkTheme) {
+        if (showGlassEffect && liquidGlassTuning.mode == LiquidGlassMode.FROSTED) {
+            if (isDarkTheme) 0.18f else 0.82f
+        } else {
+            0f
+        }
+    }
+    val isGlassSupported = remember { shouldAllowHomeChromeLiquidGlass(android.os.Build.VERSION.SDK_INT) }
+    val allowHazeLiquidGlassFallback = remember {
+        shouldAllowDirectHazeLiquidGlassFallback(android.os.Build.VERSION.SDK_INT)
+    }
+    val bottomChromeMaterialMode = when {
+        showGlassEffect -> TopTabMaterialMode.LIQUID_GLASS
+        hazeState != null -> TopTabMaterialMode.BLUR
+        else -> TopTabMaterialMode.PLAIN
+    }
+    val bottomChromeRenderMode = remember(
+        bottomChromeMaterialMode,
+        isGlassSupported,
+        backdrop,
+        hazeState,
+        allowHazeLiquidGlassFallback
+    ) {
+        resolveHomeTopChromeRenderMode(
+            materialMode = bottomChromeMaterialMode,
+            isGlassSupported = isGlassSupported,
+            hasBackdrop = backdrop != null,
+            hasHazeState = hazeState != null,
+            allowHazeLiquidGlassFallback = allowHazeLiquidGlassFallback
+        )
+    }
     // [Refraction] 图标+文字模式下，提高镜片高度并轻微下移，让标签文字稳定进入折射区域
     val bottomIndicatorHeight = resolveBottomIndicatorHeightDp(
         labelMode = labelMode,
@@ -610,113 +643,30 @@ fun FrostedBottomBar(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .run {
-                        val isSupported = shouldAllowHomeChromeLiquidGlass(android.os.Build.VERSION.SDK_INT)
-                        val allowDirectHazeLiquidGlassFallback =
-                            shouldAllowDirectHazeLiquidGlassFallback(android.os.Build.VERSION.SDK_INT)
-                        val scrollState = com.android.purebilibili.feature.home.LocalHomeScrollOffset.current
-                        
-                        if (showGlassEffect && isSupported && backdrop != null) {
-                            // [LayerBackdrop Mode] Real background refraction using captured layer
-                            val scrollValue = scrollState.floatValue
-                            val isDark = isSystemInDarkTheme()
-
-                            when (homeSettings.liquidGlassStyle) {
-                                LiquidGlassStyle.SIMP_MUSIC -> {
-                                    // [Style: SimpMusic] Adaptive Lens with Vibrancy & Blur
-                                    this.simpMusicLiquidGlass(
-                                        backdrop = backdrop,
-                                        shape = barShape,
-                                        onLuminanceChanged = { contentLuminance = it }
-                                    )
-                                }
-                                LiquidGlassStyle.IOS26 -> {
-                                    // [Style: iOS26] Keep lens stable; no vertical-scroll driven refraction.
-                                    this.drawBackdrop(
-                                        backdrop = backdrop,
-                                        shape = { barShape },
-                                        effects = {
-                                            lens(
-                                                refractionHeight = 148f,
-                                                refractionAmount = 44f,
-                                                depthEffect = isFloating,
-                                                chromaticAberration = false
-                                            )
-                                        },
-                                        onDrawSurface = {
-                                            val baseAlpha = if (isDark) 0.46f else 0.63f
-                                            drawRect(barColor.copy(alpha = baseAlpha))
-                                            drawRect(Color.White.copy(alpha = if (isDark) 0.06f else 0.10f))
-                                        }
-                                    )
-                                }
-                                LiquidGlassStyle.CLASSIC -> {
-                                    // [Style: Classic] BiliPai's Wavy Ripple
-                                    val dynamicRefractionAmount = 65f + (scrollValue * 0.05f).coerceIn(0f, 40f)
-                                    this.drawBackdrop(
-                                        backdrop = backdrop,
-                                        shape = { barShape },
-                                        effects = {
-                                            lens(
-                                                refractionHeight = 200f,
-                                                refractionAmount = dynamicRefractionAmount,
-                                                depthEffect = isFloating,
-                                                chromaticAberration = true
-                                            )
-                                        },
-                                        onDrawSurface = {
-                                            val baseAlpha = if (isDark) 0.50f else 0.75f
-                                            val scrollImpact = (scrollValue * 0.0005f).coerceIn(0f, 0.1f)
-                                            val overlayAlpha = baseAlpha + scrollImpact
-                                            drawRect(barColor.copy(alpha = overlayAlpha))
-                                        }
-                                    )
-                                }
-                            }
-                        } else if (
-                            showGlassEffect &&
-                            isSupported &&
-                            allowDirectHazeLiquidGlassFallback &&
-                            hazeState != null
-                        ) {
-                            // [Haze Fallback] Use Haze blur when no backdrop available
-                            this
-                                .hazeEffect(
-                                     state = hazeState,
-                                     style = HazeStyle(
-                                         tint = null,
-                                         blurRadius = 0.1.dp, // Minimal radius for clear glass look
-                                         noiseFactor = 0f
-                                     )
-                                 )
-                                .liquidGlassBackground(
-                                    refractIntensity = 0.6f,
-                                    scrollOffsetProvider = {
-                                        if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) 0f
-                                        else scrollState.floatValue
-                                    },
-                                    backgroundColor = barColor.copy(alpha = 0.1f)
-                                )
-                        } else {
-                            // Standard Fallback: Solid Background + Blur
-                            this
-                                .background(barColor)
-                                .then(
-                                    if (hazeState != null) {
-                                        Modifier.unifiedBlur(
-                                            hazeState = hazeState,
-                                            surfaceType = BlurSurfaceType.BOTTOM_BAR,
-                                            motionTier = motionTier,
-                                            isScrolling = isActivelyScrolling,
-                                            isTransitionRunning = isTransitionRunning,
-                                            forceLowBudget = forceLowBlurBudget
-                                        )
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                        }
-                    }
+                    .appChromeLiquidSurface(
+                        renderMode = bottomChromeRenderMode,
+                        shape = barShape,
+                        surfaceColor = barColor,
+                        hazeState = hazeState,
+                        backdrop = backdrop,
+                        liquidStyle = homeSettings.liquidGlassStyle,
+                        liquidGlassTuning = liquidGlassTuning,
+                        motionTier = motionTier,
+                        isScrolling = isActivelyScrolling,
+                        isTransitionRunning = isTransitionRunning,
+                        forceLowBlurBudget = forceLowBlurBudget,
+                        style = AppChromeLiquidSurfaceStyle(
+                            blurSurfaceType = BlurSurfaceType.BOTTOM_BAR,
+                            depthEffect = isFloating,
+                            refractionAmountScrollMultiplier = 0.02f,
+                            refractionAmountScrollCap = 14f,
+                            surfaceAlphaScrollMultiplier = 0.00015f,
+                            surfaceAlphaScrollCap = 0.04f,
+                            darkThemeWhiteOverlayMultiplier = 0.86f,
+                            useTuningSurfaceAlpha = true,
+                            hazeBackgroundAlphaMultiplier = 0.4f
+                        )
+                    )
             )
 
             Surface(
@@ -748,7 +698,7 @@ fun FrostedBottomBar(
                         // 2) 指示器使用全局 backdrop 并绘制在图标层下方，避免文字/图标发虚
                         val iconBackdrop = rememberLayerBackdrop()
                         val isDark = isSystemInDarkTheme()
-                        val movingIndicatorColor = if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) {
+                        val movingIndicatorColor = if (liquidGlassTuning.useNeutralIndicatorTint) {
                             resolveIos26BottomIndicatorGrayColor(isDarkTheme = isDark)
                         } else {
                             MaterialTheme.colorScheme.primary
@@ -783,19 +733,14 @@ fun FrostedBottomBar(
                             maxWidthToItemRatio = indicatorPolicy.maxWidthToItemRatio,
                             indicatorHeight = bottomIndicatorHeight,
                             isLiquidGlassEnabled = showGlassEffect,
-                            lensIntensityBoost = if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) 1.35f else 1.85f,
-                            edgeWarpBoost = if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) 1.38f else 1.92f,
-                            chromaticBoost = if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) 1.08f else 1.75f,
+                            lensIntensityBoost = liquidGlassTuning.indicatorLensBoost,
+                            edgeWarpBoost = liquidGlassTuning.indicatorEdgeWarpBoost,
+                            chromaticBoost = liquidGlassTuning.indicatorChromaticBoost,
                             liquidGlassStyle = homeSettings.liquidGlassStyle, // [New] Pass style
+                            liquidGlassTuning = liquidGlassTuning,
                             // Dynamic refraction: moving -> refract icons/text/cover, static -> keep pure color.
                             backdrop = indicatorBackdrop,
-                            color = movingIndicatorColor.copy(
-                                alpha = if (homeSettings.liquidGlassStyle == LiquidGlassStyle.IOS26) {
-                                    if (isDark) 0.30f else 0.38f
-                                } else {
-                                    0.14f
-                                }
-                            )
+                            color = movingIndicatorColor.copy(alpha = liquidGlassTuning.indicatorTintAlpha)
                         )
 
                         Box(
@@ -827,7 +772,8 @@ fun FrostedBottomBar(
                                 ),
                                 // [New] Param for adaptive text color
                                 contentLuminance = contentLuminance,
-                                liquidGlassStyle = homeSettings.liquidGlassStyle
+                                liquidGlassStyle = homeSettings.liquidGlassStyle,
+                                liquidGlassTuning = liquidGlassTuning
                             )
                         }
                     }
@@ -1067,7 +1013,8 @@ private fun BottomBarContent(
     currentPosition: Float, // [新增] 当前指示器位置，用于动态插值
     dragModifier: Modifier = Modifier,
     contentLuminance: Float = 0f, // [New]
-    liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC // [New]
+    liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
+    liquidGlassTuning: LiquidGlassTuning = resolveLiquidGlassTuning(liquidGlassStyle)
 ) {
     val scope = rememberCoroutineScope()
     Row(
@@ -1116,7 +1063,8 @@ private fun BottomBarContent(
                 onDynamicDoubleTap = onDynamicDoubleTap,
                 isTablet = isTablet,
                 contentLuminance = contentLuminance, // [New]
-                liquidGlassStyle = liquidGlassStyle // [New]
+                liquidGlassStyle = liquidGlassStyle, // [New]
+                liquidGlassTuning = liquidGlassTuning
             )
         }
 
@@ -1193,7 +1141,8 @@ private fun BottomBarItem(
     onDynamicDoubleTap: () -> Unit,
     isTablet: Boolean,
     contentLuminance: Float = 0f, // [New]
-    liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC // [New]
+    liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
+    liquidGlassTuning: LiquidGlassTuning = resolveLiquidGlassTuning(liquidGlassStyle)
 ) {
     val scope = rememberCoroutineScope()
     var isPending by remember { mutableStateOf(false) }
@@ -1211,7 +1160,7 @@ private fun BottomBarItem(
     val unselectedColor = if (isLightMode) {
         // [Force] Light Mode: Always use Black for maximum readability
         androidx.compose.ui.graphics.Color.Black
-    } else if (liquidGlassStyle == LiquidGlassStyle.SIMP_MUSIC) {
+    } else if (liquidGlassTuning.mode == com.android.purebilibili.core.store.LiquidGlassMode.FROSTED) {
         // Luminance > 0.6 (Bright background) -> Black text
         // Luminance < 0.6 (Dark background) -> White text
         if (contentLuminance > 0.6f) androidx.compose.ui.graphics.Color.Black.copy(alpha=0.8f) 

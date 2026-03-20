@@ -81,6 +81,8 @@ import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
 import com.android.purebilibili.core.store.AppNavigationSettings
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.resolveEffectiveHomeSettings
+import com.android.purebilibili.core.theme.LocalUiPreset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier // 确保 Modifier 被导入
 import androidx.compose.foundation.layout.Box // 确保 Box 被导入
@@ -156,6 +158,8 @@ fun AppNavigation(
     //  PiP 支持参数
     //  PiP 支持参数
     isInPipMode: Boolean = false,
+    initialSearchKeyword: String? = null,
+    onInitialSearchKeywordConsumed: (String) -> Unit = {},
     onVideoDetailEnter: () -> Unit = {},
     onVideoDetailExit: () -> Unit = {},
     onAudioModeEnter: () -> Unit = {},
@@ -168,9 +172,16 @@ fun AppNavigation(
     // 单一首页视觉配置源：减少根导航层多路 DataStore 收集导致的全局重组。
     val context = androidx.compose.ui.platform.LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val uiPreset = LocalUiPreset.current
     val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(
         initial = com.android.purebilibili.core.store.HomeSettings()
     )
+    val effectiveHomeSettings = remember(homeSettings, uiPreset) {
+        resolveEffectiveHomeSettings(
+            homeSettings = homeSettings,
+            uiPreset = uiPreset
+        )
+    }
     val appearance = remember(homeSettings) { resolveAppNavigationAppearance(homeSettings) }
     val cardTransitionEnabled = appearance.cardTransitionEnabled
     val predictiveBackAnimationEnabled = appearance.predictiveBackAnimationEnabled
@@ -976,16 +987,23 @@ fun AppNavigation(
             popEnterTransition = { slideEnterRight(navMotionSpec) },
             popExitTransition = { slideExitRight(navMotionSpec) }
         ) {
+            val navigateFromProfile: (String) -> Unit = { route ->
+                if (shouldUseTopLevelNavigationFromProfile(route)) {
+                    navigateTo(route)
+                } else {
+                    navController.navigate(route)
+                }
+            }
             ProfileScreen(
                 onBack = { navController.popBackStack() },
                 onGoToLogin = { navController.navigate(ScreenRoutes.Login.route) },
                 onLogoutSuccess = { homeViewModel.refresh() },
-                onSettingsClick = { navController.navigate(ScreenRoutes.Settings.route) },
-                onHistoryClick = { navController.navigate(ScreenRoutes.History.route) },
-                onFavoriteClick = { navController.navigate(ScreenRoutes.Favorite.route) },
+                onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
+                onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
+                onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
                 onFollowingClick = { mid -> navController.navigate(ScreenRoutes.Following.createRoute(mid)) },
                 onDownloadClick = { navController.navigate(ScreenRoutes.DownloadList.route) },
-                onWatchLaterClick = { navController.navigate(ScreenRoutes.WatchLater.route) },
+                onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
                 onInboxClick = { navController.navigate(ScreenRoutes.Inbox.route) },  //  [新增] 私信入口
                 onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }  // [新增] 三连彩蛋跳转
             )
@@ -1263,6 +1281,8 @@ fun AppNavigation(
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 SearchScreen(
                     userFace = homeState.user.face, // 传入头像 URL
+                    initialKeyword = initialSearchKeyword.orEmpty(),
+                    onInitialKeywordConsumed = onInitialSearchKeywordConsumed,
                     onBack = { navController.popBackStack() },
                     onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
                     onUpClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },  //  点击UP主跳转到空间
@@ -1864,7 +1884,7 @@ fun AppNavigation(
                                     labelMode = bottomBarLabelMode,
                                     visibleItems = visibleBottomBarItems,
                                     itemColorIndices = bottomBarItemColors,
-                                    homeSettings = homeSettings,
+                                    homeSettings = effectiveHomeSettings,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                     forceLowBlurBudget = false,
@@ -1893,7 +1913,7 @@ fun AppNavigation(
                                 labelMode = bottomBarLabelMode,
                                 visibleItems = visibleBottomBarItems,
                                 itemColorIndices = bottomBarItemColors,
-                                homeSettings = homeSettings,
+                                homeSettings = effectiveHomeSettings,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                 forceLowBlurBudget = false,

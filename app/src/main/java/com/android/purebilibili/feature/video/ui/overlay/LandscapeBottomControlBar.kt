@@ -156,17 +156,13 @@ fun LandscapeBottomControlBar(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 播放/暂停按钮
-                IconButton(
+                OverlayPlaybackButton(
+                    isPlaying = isPlaying,
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        if (isPlaying) CupertinoIcons.Default.Pause else CupertinoIcons.Default.Play,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                    outerSize = 42.dp,
+                    innerSize = 34.dp,
+                    glyphSize = 22.dp
+                )
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 

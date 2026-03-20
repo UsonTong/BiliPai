@@ -57,28 +57,28 @@ fun resolveTopTabVisualTuning(): TopTabVisualTuning = TopTabVisualTuning()
 internal fun resolveMd3TopTabVisualSpec(isFloatingStyle: Boolean): Md3TopTabVisualSpec {
     return if (isFloatingStyle) {
         Md3TopTabVisualSpec(
-            rowHeight = 52.dp,
-            selectedCapsuleHeight = 3.dp,
-            selectedCapsuleCornerRadius = 2.dp,
+            rowHeight = 48.dp,
+            selectedCapsuleHeight = 2.dp,
+            selectedCapsuleCornerRadius = 1.dp,
             selectedCapsuleTonalElevation = 0.dp,
             selectedCapsuleShadowElevation = 0.dp,
-            itemHorizontalPadding = 16.dp,
+            itemHorizontalPadding = 14.dp,
             iconSize = 18.dp,
-            labelTextSize = 14.sp,
-            labelLineHeight = 20.sp,
+            labelTextSize = 13.sp,
+            labelLineHeight = 18.sp,
             iconLabelSpacing = 0.dp
         )
     } else {
         Md3TopTabVisualSpec(
-            rowHeight = 48.dp,
-            selectedCapsuleHeight = 3.dp,
-            selectedCapsuleCornerRadius = 2.dp,
+            rowHeight = 44.dp,
+            selectedCapsuleHeight = 2.dp,
+            selectedCapsuleCornerRadius = 1.dp,
             selectedCapsuleTonalElevation = 0.dp,
             selectedCapsuleShadowElevation = 0.dp,
-            itemHorizontalPadding = 16.dp,
-            iconSize = 18.dp,
-            labelTextSize = 14.sp,
-            labelLineHeight = 20.sp,
+            itemHorizontalPadding = 12.dp,
+            iconSize = 16.dp,
+            labelTextSize = 13.sp,
+            labelLineHeight = 18.sp,
             iconLabelSpacing = 0.dp
         )
     }

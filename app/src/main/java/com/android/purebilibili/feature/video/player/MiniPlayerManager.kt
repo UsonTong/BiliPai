@@ -52,6 +52,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.VideoActivity
+import com.android.purebilibili.feature.video.danmaku.DanmakuManager
 import com.android.purebilibili.feature.video.playback.policy.resolvePlaybackWakeMode
 import com.android.purebilibili.feature.video.state.isPlaybackActiveForLifecycle
 import com.android.purebilibili.feature.video.usecase.VideoLoadResult
@@ -133,6 +134,31 @@ internal fun shouldDisableVideoTrackOnEnterBackground(
     shouldContinueBackgroundAudio: Boolean
 ): Boolean {
     return shouldPauseBuffering || shouldContinueBackgroundAudio
+}
+
+internal fun shouldClearVideoSurfaceOnEnterBackground(
+    shouldDisableVideoTrack: Boolean,
+    shouldContinueBackgroundAudio: Boolean
+): Boolean {
+    return shouldDisableVideoTrack && shouldContinueBackgroundAudio
+}
+
+internal fun shouldTrimDanmakuCachesOnEnterBackground(
+    shouldDisableVideoTrack: Boolean
+): Boolean {
+    return shouldDisableVideoTrack
+}
+
+internal fun resolveTrackSelectionParametersForBackground(
+    currentTrackSelectionParameters: androidx.media3.common.TrackSelectionParameters,
+    shouldDisableVideoTrack: Boolean
+): androidx.media3.common.TrackSelectionParameters {
+    if (!shouldDisableVideoTrack) return currentTrackSelectionParameters
+    return currentTrackSelectionParameters
+        .buildUpon()
+        .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+        .setMaxVideoSize(0, 0)
+        .build()
 }
 
 internal fun shouldPauseBackgroundBuffering(
@@ -506,10 +532,20 @@ class MiniPlayerManager private constructor(private val context: Context) :
             if (savedTrackParams == null) {
                 savedTrackParams = currentPlayer.trackSelectionParameters
             }
-            currentPlayer.trackSelectionParameters = currentPlayer.trackSelectionParameters
-                .buildUpon()
-                .setMaxVideoSize(0, 0)
-                .build()
+            currentPlayer.trackSelectionParameters = resolveTrackSelectionParametersForBackground(
+                currentTrackSelectionParameters = currentPlayer.trackSelectionParameters,
+                shouldDisableVideoTrack = true
+            )
+        }
+        if (shouldClearVideoSurfaceOnEnterBackground(
+                shouldDisableVideoTrack = shouldDisableVideoTrack,
+                shouldContinueBackgroundAudio = shouldKeepBackgroundAudio
+            )
+        ) {
+            currentPlayer.clearVideoSurface()
+        }
+        if (shouldTrimDanmakuCachesOnEnterBackground(shouldDisableVideoTrack)) {
+            DanmakuManager.trimCachesForBackgroundIfPresent()
         }
         if (shouldPauseBuffering) {
             currentPlayer.pause()

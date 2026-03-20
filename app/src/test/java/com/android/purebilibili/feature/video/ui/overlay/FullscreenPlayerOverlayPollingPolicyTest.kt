@@ -11,16 +11,28 @@ class FullscreenPlayerOverlayPollingPolicyTest {
     fun pollingDisabled_withoutPlayer() {
         assertFalse(
             shouldPollFullscreenPlayerProgress(
-                playerExists = false
+                playerExists = false,
+                hostLifecycleStarted = true
             )
         )
     }
 
     @Test
-    fun pollingEnabled_withPlayer() {
+    fun pollingEnabled_withPlayerAndStartedHost() {
         assertTrue(
             shouldPollFullscreenPlayerProgress(
-                playerExists = true
+                playerExists = true,
+                hostLifecycleStarted = true
+            )
+        )
+    }
+
+    @Test
+    fun pollingDisabled_whenHostLifecycleStopped() {
+        assertFalse(
+            shouldPollFullscreenPlayerProgress(
+                playerExists = true,
+                hostLifecycleStarted = false
             )
         )
     }

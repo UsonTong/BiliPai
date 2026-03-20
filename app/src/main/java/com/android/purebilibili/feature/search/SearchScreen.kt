@@ -187,11 +187,23 @@ internal fun resolveSearchHomeContentMotionSpec(
     }
 }
 
+internal fun shouldApplyInitialSearchKeyword(
+    initialKeyword: String,
+    currentQuery: String,
+    showResults: Boolean
+): Boolean {
+    val normalizedKeyword = initialKeyword.trim()
+    if (normalizedKeyword.isBlank()) return false
+    return normalizedKeyword != currentQuery || !showResults
+}
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel = viewModel(),
     userFace: String = "",
+    initialKeyword: String = "",
+    onInitialKeywordConsumed: (String) -> Unit = {},
     onBack: () -> Unit,
     onVideoClick: (String, Long) -> Unit,
     onUpClick: (Long) -> Unit,  //  点击UP主跳转到空间
@@ -318,6 +330,17 @@ fun SearchScreen(
     //  [埋点] 页面浏览追踪
     LaunchedEffect(Unit) {
         com.android.purebilibili.core.util.AnalyticsHelper.logScreenView("SearchScreen")
+    }
+
+    LaunchedEffect(initialKeyword) {
+        val normalizedKeyword = initialKeyword.trim()
+        if (normalizedKeyword.isNotBlank()) {
+            if (shouldApplyInitialSearchKeyword(normalizedKeyword, state.query, state.showResults)) {
+                viewModel.onQueryChange(normalizedKeyword)
+                viewModel.search(normalizedKeyword)
+            }
+            onInitialKeywordConsumed(normalizedKeyword)
+        }
     }
 
     Scaffold(
@@ -1576,15 +1599,19 @@ fun SearchFilterBar(
                 com.android.purebilibili.data.model.response.SearchType.LIVE to "直播"
             ).forEach { (type, label) ->
                 val isSelected = currentType == type
+                val chipColors = resolveSearchSelectionChipColors(
+                    isSelected = isSelected,
+                    colorScheme = MaterialTheme.colorScheme
+                )
                 Surface(
                     onClick = { onTypeChange(type) },
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    color = chipColors.backgroundColor,
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text(
                         text = label,
                         fontSize = 13.sp,
-                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                        color = chipColors.textColor,
                         fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )

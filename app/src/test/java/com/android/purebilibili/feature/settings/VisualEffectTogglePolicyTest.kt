@@ -1,6 +1,9 @@
 package com.android.purebilibili.feature.settings
 
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
+import com.android.purebilibili.core.theme.UiPreset
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -67,5 +70,39 @@ class VisualEffectTogglePolicyTest {
         )
         assertFalse(result.liquidGlassEnabled)
         assertTrue(result.bottomBarBlurEnabled)
+    }
+
+    @Test
+    fun `md3 preset always forces liquid glass off`() {
+        assertFalse(
+            resolveEffectiveLiquidGlassEnabled(
+                requestedEnabled = true,
+                uiPreset = UiPreset.MD3
+            )
+        )
+        assertFalse(
+            resolveEffectiveLiquidGlassEnabled(
+                requestedEnabled = false,
+                uiPreset = UiPreset.MD3
+            )
+        )
+    }
+
+    @Test
+    fun `ios preset preserves the stored liquid glass preference`() {
+        assertEquals(
+            true,
+            resolveEffectiveLiquidGlassEnabled(
+                requestedEnabled = true,
+                uiPreset = UiPreset.IOS
+            )
+        )
+        assertEquals(
+            false,
+            resolveEffectiveLiquidGlassEnabled(
+                requestedEnabled = false,
+                uiPreset = UiPreset.IOS
+            )
+        )
     }
 }

@@ -98,6 +98,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.currentStateAsState
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.media3.common.Player
@@ -236,8 +239,10 @@ internal fun shouldShowDanmakuLayers(
     isInPipMode: Boolean,
     danmakuEnabled: Boolean,
     isPortraitFullscreen: Boolean,
-    pipNoDanmakuEnabled: Boolean
+    pipNoDanmakuEnabled: Boolean,
+    hostLifecycleStarted: Boolean
 ): Boolean {
+    if (!hostLifecycleStarted) return false
     if (!danmakuEnabled || isPortraitFullscreen) return false
     if (isInPipMode && pipNoDanmakuEnabled) return false
     return true
@@ -586,6 +591,21 @@ internal fun shouldRebindPlayerSurfaceOnForeground(
     return hasPlayerView && !isInPipMode
 }
 
+internal fun shouldBindInlinePlayerViewToPlayer(
+    isPortraitFullscreen: Boolean,
+    hostLifecycleStarted: Boolean,
+    isInPipMode: Boolean
+): Boolean {
+    return !isPortraitFullscreen && (hostLifecycleStarted || isInPipMode)
+}
+
+internal fun shouldLoadDanmakuForForegroundHost(
+    hostLifecycleStarted: Boolean,
+    shouldLoadImmediately: Boolean
+): Boolean {
+    return hostLifecycleStarted && shouldLoadImmediately
+}
+
 internal fun rebindPlayerSurfaceIfNeeded(
     playerView: PlayerView,
     player: Player
@@ -803,6 +823,9 @@ fun VideoPlayerSection(
     onSubtitleDisplayModePreferenceOverrideChange: (SubtitleDisplayMode) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     val configuration = LocalConfiguration.current
     val uiLayoutWidthDp = remember(configuration.screenWidthDp, viewportWidthDpOverride) {
         (viewportWidthDpOverride ?: configuration.screenWidthDp).coerceAtLeast(1)
@@ -823,11 +846,12 @@ fun VideoPlayerSection(
 
     val playerInteractionSettings by com.android.purebilibili.core.store.SettingsManager
         .getPlayerInteractionSettings(context)
-        .collectAsState(
-            initial = com.android.purebilibili.core.store.PlayerInteractionSettings(
+        .collectAsStateWithLifecycle(
+            initialValue = com.android.purebilibili.core.store.PlayerInteractionSettings(
                 hiResLongPressCompatHintShown = com.android.purebilibili.core.store.SettingsManager
                     .getHiResLongPressCompatHintShownSync(context)
-            )
+            ),
+            lifecycle = lifecycleOwner.lifecycle
         )
 
     val gestureSensitivity = playerInteractionSettings.gestureSensitivity
@@ -978,12 +1002,8 @@ fun VideoPlayerSection(
     }
 
     // 📱 [优化] 复用 VideoPlayerState 中的视频尺寸状态，避免重复监听
-    val videoSizeState by playerState.videoSize.collectAsState()
-    val realResolution = if (videoSizeState.first > 0 && videoSizeState.second > 0) {
-        "${videoSizeState.first} x ${videoSizeState.second}"
-    } else {
-        ""
-    }
+    val videoSizeState by playerState.videoSize.collectAsStateWithLifecycle()
+    val debugInfo by playerState.debugInfo.collectAsStateWithLifecycle()
 
     // 控制器显示状态
     var showControls by remember { mutableStateOf(true) }
@@ -1008,6 +1028,17 @@ fun VideoPlayerSection(
     var orientationHintText by remember { mutableStateOf(resolveOrientationSwitchHintText(isFullscreen)) }
     var hasObservedOrientationChange by remember { mutableStateOf(false) }
     val gestureMotionSpec = remember { resolveVideoGestureMotionSpec() }
+    val shouldBindInlinePlayerView = remember(
+        isPortraitFullscreen,
+        hostLifecycleStarted,
+        isInPipMode
+    ) {
+        shouldBindInlinePlayerViewToPlayer(
+            isPortraitFullscreen = isPortraitFullscreen,
+            hostLifecycleStarted = hostLifecycleStarted,
+            isInPipMode = isInPipMode
+        )
+    }
 
     // 进度手势相关状态
     var seekTargetTime by remember { mutableLongStateOf(0L) }
@@ -1676,51 +1707,96 @@ fun VideoPlayerSection(
         //  弹幕开关设置
         val danmakuEnabled by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuEnabled(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         
         //  弹幕设置（全局持久化）
         val danmakuOpacity by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuOpacity(context)
-            .collectAsState(initial = 0.85f)
+            .collectAsStateWithLifecycle(
+                initialValue = 0.85f,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuFontScale by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuFontScale(context)
-            .collectAsState(initial = 1.0f)
+            .collectAsStateWithLifecycle(
+                initialValue = 1.0f,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuSpeed by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSpeed(context)
-            .collectAsState(initial = 1.0f)
+            .collectAsStateWithLifecycle(
+                initialValue = 1.0f,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuDisplayArea by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuArea(context)
-            .collectAsState(initial = 0.5f)
+            .collectAsStateWithLifecycle(
+                initialValue = 0.5f,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuMergeDuplicates by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuMergeDuplicates(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuAllowScroll by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuAllowScroll(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuAllowTop by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuAllowTop(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuAllowBottom by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuAllowBottom(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuAllowColorful by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuAllowColorful(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuAllowSpecial by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuAllowSpecial(context)
-            .collectAsState(initial = true)
+            .collectAsStateWithLifecycle(
+                initialValue = true,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuSmartOcclusion by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSmartOcclusion(context)
-            .collectAsState(initial = false)
+            .collectAsStateWithLifecycle(
+                initialValue = false,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuFullscreenPanelWidthMode by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuFullscreenPanelWidthMode(context)
-            .collectAsState(initial = com.android.purebilibili.core.store.DanmakuPanelWidthMode.THIRD)
+            .collectAsStateWithLifecycle(
+                initialValue = com.android.purebilibili.core.store.DanmakuPanelWidthMode.THIRD,
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuBlockRulesRaw by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuBlockRulesRaw(context)
-            .collectAsState(initial = "")
+            .collectAsStateWithLifecycle(
+                initialValue = "",
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val danmakuBlockRules by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuBlockRules(context)
-            .collectAsState(initial = emptyList())
+            .collectAsStateWithLifecycle(
+                initialValue = emptyList<String>(),
+                lifecycle = lifecycleOwner.lifecycle
+            )
         val faceDetector = remember { createFaceOcclusionDetector() }
         DisposableEffect(faceDetector) {
             onDispose { faceDetector.close() }
@@ -1774,9 +1850,13 @@ fun VideoPlayerSection(
             )
         }
         //  直接加载弹幕，不再等待 duration；仓库层会回退到 metadata/fallback 段数。
-        LaunchedEffect(cid, aid, danmakuEnabled) {
+        LaunchedEffect(cid, aid, danmakuEnabled, hostLifecycleStarted) {
             danmakuManager.isEnabled = danmakuLoadPolicy.shouldEnable
-            if (!danmakuLoadPolicy.shouldLoadImmediately) {
+            if (!shouldLoadDanmakuForForegroundHost(
+                    hostLifecycleStarted = hostLifecycleStarted,
+                    shouldLoadImmediately = danmakuLoadPolicy.shouldLoadImmediately
+                )
+            ) {
                 return@LaunchedEffect
             }
 
@@ -1788,8 +1868,17 @@ fun VideoPlayerSection(
         }
 
         //  横竖屏/小窗切换后，重绑 surface 并在需要时主动恢复播放。
-        LaunchedEffect(isFullscreen, isInPipMode, playerViewRef) {
+        LaunchedEffect(
+            isFullscreen,
+            isInPipMode,
+            playerViewRef,
+            shouldBindInlinePlayerView
+        ) {
             val player = playerState.player
+            if (!shouldBindInlinePlayerView) {
+                playerViewRef?.player = null
+                return@LaunchedEffect
+            }
             val shouldRebindSurface = shouldRebindPlayerSurfaceOnForeground(
                 hasPlayerView = playerViewRef != null,
                 isInPipMode = isInPipMode,
@@ -1936,7 +2025,6 @@ fun VideoPlayerSection(
         //  [修复] 使用 LifecycleOwner 监听真正的 Activity 生命周期
         // DisposableEffect(Unit) 会在横竖屏切换时触发，导致 player 引用被清除
         //  [关键修复] 添加 ON_RESUME 事件，确保从其他视频返回后重新绑定弹幕播放器
-        val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner, playerState.player) {
             val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
                 when (event) {
@@ -1946,6 +2034,14 @@ fun VideoPlayerSection(
                         android.util.Log.d("VideoPlayerSection", " ON_RESUME: Re-attaching danmaku player")
                         danmakuManager.attachPlayer(playerState.player)
                         val player = playerState.player
+                        if (!shouldBindInlinePlayerViewToPlayer(
+                                isPortraitFullscreen = isPortraitFullscreen,
+                                hostLifecycleStarted = true,
+                                isInPipMode = isInPipMode
+                            )
+                        ) {
+                            return@LifecycleEventObserver
+                        }
                         val shouldRebindSurface = shouldRebindPlayerSurfaceOnForeground(
                             hasPlayerView = playerViewRef != null,
                             isInPipMode = isInPipMode,
@@ -2008,7 +2104,7 @@ fun VideoPlayerSection(
                         }
                         basePlayerView.apply {
                             playerViewRef = this
-                            player = if (isPortraitFullscreen) null else playerState.player
+                            player = if (shouldBindInlinePlayerView) playerState.player else null
                             setKeepContentOnPlayerReset(
                                 shouldKeepInlinePlayerContentOnReset(
                                     isPortraitFullscreen = isPortraitFullscreen
@@ -2028,7 +2124,7 @@ fun VideoPlayerSection(
                     },
                     update = { playerView ->
                         playerViewRef = playerView
-                        playerView.player = if (isPortraitFullscreen) null else playerState.player
+                        playerView.player = if (shouldBindInlinePlayerView) playerState.player else null
                         playerView.setKeepContentOnPlayerReset(
                             shouldKeepInlinePlayerContentOnReset(
                                 isPortraitFullscreen = isPortraitFullscreen
@@ -2243,7 +2339,8 @@ fun VideoPlayerSection(
         isInPipMode = isInPipMode,
         danmakuEnabled = danmakuEnabled,
         isPortraitFullscreen = isPortraitFullscreen,
-        pipNoDanmakuEnabled = pipNoDanmakuEnabled
+        pipNoDanmakuEnabled = pipNoDanmakuEnabled,
+        hostLifecycleStarted = hostLifecycleStarted
     )
     android.util.Log.d("VideoPlayerSection", "🔍 DanmakuView check: isInPipMode=$isInPipMode, danmakuEnabled=$danmakuEnabled, pipNoDanmakuEnabled=$pipNoDanmakuEnabled")
         if (shouldShowDanmakuLayer) {
@@ -2332,7 +2429,7 @@ fun VideoPlayerSection(
         }
         
         // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
-        val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsState()
+        val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsStateWithLifecycle()
         
         if (shouldShowDanmakuLayer && advancedDanmakuList.isNotEmpty()) {
              Box(
@@ -3044,9 +3141,9 @@ fun VideoPlayerSection(
                 // 🔒 [新增] 屏幕锁定
                 isScreenLocked = isScreenLocked,
                 onLockToggle = { isScreenLocked = !isScreenLocked },
-                //  [关键] 传入设置状态和真实分辨率字符串
+                //  [关键] 传入设置状态和调试信息
                 showStats = showStats,
-                realResolution = realResolution,
+                debugInfo = debugInfo,
                 //  [新增] 传入清晰度切换状态和会员状态
                 isQualitySwitching = uiState.isQualitySwitching,
                 isBuffering = isBuffering,  // 缓冲状态

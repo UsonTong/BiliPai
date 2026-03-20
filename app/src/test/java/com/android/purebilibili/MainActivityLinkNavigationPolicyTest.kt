@@ -27,6 +27,16 @@ class MainActivityLinkNavigationPolicyTest {
     }
 
     @Test
+    fun searchTarget_mapsToSearchRoute_andCarriesKeyword() {
+        val navigation = resolveMainActivityLinkNavigation(
+            BilibiliNavigationTarget.Search("黑神话")
+        )
+
+        assertEquals("search", navigation?.pendingNavigationRoute)
+        assertEquals("黑神话", navigation?.pendingSearchKeyword)
+    }
+
+    @Test
     fun bangumiSeasonTarget_mapsToBangumiDetailRoute() {
         val navigation = resolveMainActivityLinkNavigation(
             BilibiliNavigationTarget.BangumiSeason(39708L)

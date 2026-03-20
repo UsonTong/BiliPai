@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home
 
+import com.android.purebilibili.core.theme.UiPreset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -10,6 +11,7 @@ class HomePerformancePolicyTest {
     @Test
     fun keepsHomeVisualSettingsWhenDataSaverOff() {
         val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.IOS,
             headerBlurEnabled = true,
             bottomBarBlurEnabled = false,
             liquidGlassEnabled = true,
@@ -32,6 +34,7 @@ class HomePerformancePolicyTest {
     @Test
     fun dataSaverDisablesPreloadAhead() {
         val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.IOS,
             headerBlurEnabled = true,
             bottomBarBlurEnabled = true,
             liquidGlassEnabled = true,
@@ -49,6 +52,7 @@ class HomePerformancePolicyTest {
     @Test
     fun smartGuardFlag_noLongerAffectsHomePerformanceConfig() {
         val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.IOS,
             headerBlurEnabled = true,
             bottomBarBlurEnabled = true,
             liquidGlassEnabled = true,
@@ -67,6 +71,7 @@ class HomePerformancePolicyTest {
     @Test
     fun normalMode_capsPreloadAheadToConservativeBudget() {
         val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.IOS,
             headerBlurEnabled = true,
             bottomBarBlurEnabled = true,
             liquidGlassEnabled = true,
@@ -78,5 +83,22 @@ class HomePerformancePolicyTest {
         )
 
         assertEquals(3, config.preloadAheadCount)
+    }
+
+    @Test
+    fun md3Preset_forcesLiquidGlassOffEvenWhenStoredSettingIsOn() {
+        val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.MD3,
+            headerBlurEnabled = true,
+            bottomBarBlurEnabled = true,
+            liquidGlassEnabled = true,
+            cardAnimationEnabled = true,
+            cardTransitionEnabled = true,
+            isDataSaverActive = false,
+            smartVisualGuardEnabled = false,
+            normalPreloadAheadCount = 5
+        )
+
+        assertFalse(config.liquidGlassEnabled)
     }
 }

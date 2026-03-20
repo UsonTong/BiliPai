@@ -37,6 +37,28 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
+    fun danmakuLayers_hidden_whenHostLifecycleStopped() {
+        assertFalse(
+            shouldShowDanmakuLayers(
+                isInPipMode = false,
+                danmakuEnabled = true,
+                isPortraitFullscreen = false,
+                pipNoDanmakuEnabled = false,
+                hostLifecycleStarted = false
+            )
+        )
+        assertTrue(
+            shouldShowDanmakuLayers(
+                isInPipMode = false,
+                danmakuEnabled = true,
+                isPortraitFullscreen = false,
+                pipNoDanmakuEnabled = false,
+                hostLifecycleStarted = true
+            )
+        )
+    }
+
+    @Test
     fun livePlayerSharedElement_enabledOnlyWhenAllGuardsPass() {
         assertTrue(
             shouldEnableLivePlayerSharedElement(
@@ -108,6 +130,64 @@ class VideoPlayerSectionPolicyTest {
                 isInPipMode = false,
                 videoWidth = 1920,
                 videoHeight = 1080
+            )
+        )
+    }
+
+    @Test
+    fun inlinePlayerBinding_keepsSurfaceAttached_onlyWhenForegroundOrPip() {
+        assertTrue(
+            shouldBindInlinePlayerViewToPlayer(
+                isPortraitFullscreen = false,
+                hostLifecycleStarted = true,
+                isInPipMode = false
+            )
+        )
+        assertTrue(
+            shouldBindInlinePlayerViewToPlayer(
+                isPortraitFullscreen = false,
+                hostLifecycleStarted = false,
+                isInPipMode = true
+            )
+        )
+    }
+
+    @Test
+    fun inlinePlayerBinding_detachesSurface_whenBackgroundedOrPortraitFullscreenOwnsPlayback() {
+        assertFalse(
+            shouldBindInlinePlayerViewToPlayer(
+                isPortraitFullscreen = false,
+                hostLifecycleStarted = false,
+                isInPipMode = false
+            )
+        )
+        assertFalse(
+            shouldBindInlinePlayerViewToPlayer(
+                isPortraitFullscreen = true,
+                hostLifecycleStarted = true,
+                isInPipMode = false
+            )
+        )
+    }
+
+    @Test
+    fun danmakuReload_runsOnlyWhenForegroundHostCanActuallyLoad() {
+        assertTrue(
+            shouldLoadDanmakuForForegroundHost(
+                hostLifecycleStarted = true,
+                shouldLoadImmediately = true
+            )
+        )
+        assertFalse(
+            shouldLoadDanmakuForForegroundHost(
+                hostLifecycleStarted = false,
+                shouldLoadImmediately = true
+            )
+        )
+        assertFalse(
+            shouldLoadDanmakuForForegroundHost(
+                hostLifecycleStarted = true,
+                shouldLoadImmediately = false
             )
         )
     }

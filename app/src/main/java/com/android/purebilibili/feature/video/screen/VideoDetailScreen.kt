@@ -75,6 +75,8 @@ import androidx.core.view.WindowCompat
 import com.android.purebilibili.data.model.response.BgmInfo
 import androidx.core.view.WindowInsetsCompat
 import androidx.media3.common.Player
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 //  已改用 MaterialTheme.colorScheme.primary
@@ -447,12 +449,13 @@ fun VideoDetailScreen(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val configuration = LocalConfiguration.current
     val motionSpec = remember(transitionEnterDurationMillis) {
         resolveVideoDetailMotionSpec(transitionEnterDurationMillis)
     }
-    val uiState by viewModel.uiState.collectAsState()
-    val resumePlaybackSuggestion by viewModel.resumePlaybackSuggestion.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resumePlaybackSuggestion by viewModel.resumePlaybackSuggestion.collectAsStateWithLifecycle()
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var isNavigatingToVideo by remember { mutableStateOf(false) }
     var isNavigatingToAudioMode by remember { mutableStateOf(false) }
@@ -556,12 +559,13 @@ fun VideoDetailScreen(
     var currentBvid by rememberSaveable(bvid) { mutableStateOf(bvid) }
     
     //  监听评论状态
-    val commentState by commentViewModel.commentState.collectAsState()
-    val subReplyState by commentViewModel.subReplyState.collectAsState()
+    val commentState by commentViewModel.commentState.collectAsStateWithLifecycle()
+    val subReplyState by commentViewModel.subReplyState.collectAsStateWithLifecycle()
     val commentDefaultSortMode by com.android.purebilibili.core.store.SettingsManager
         .getCommentDefaultSortMode(context)
-        .collectAsState(
-            initial = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context)
+        .collectAsStateWithLifecycle(
+            initialValue = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context),
+            lifecycle = lifecycleOwner.lifecycle
         )
     val preferredCommentSortMode = remember(commentDefaultSortMode) {
         CommentSortMode.fromApiMode(commentDefaultSortMode)
@@ -569,12 +573,15 @@ fun VideoDetailScreen(
     val sortPreferenceScope = rememberCoroutineScope()
     val danmakuEnabledForDetail by com.android.purebilibili.core.store.SettingsManager
         .getDanmakuEnabled(context)
-        .collectAsState(initial = true)
-    val showFavoriteFolderDialog by viewModel.favoriteFolderDialogVisible.collectAsState()
-    val favoriteFolders by viewModel.favoriteFolders.collectAsState()
-    val isFavoriteFoldersLoading by viewModel.isFavoriteFoldersLoading.collectAsState()
-    val selectedFavoriteFolderIds by viewModel.favoriteSelectedFolderIds.collectAsState()
-    val isSavingFavoriteFolders by viewModel.isSavingFavoriteFolders.collectAsState()
+        .collectAsStateWithLifecycle(
+            initialValue = true,
+            lifecycle = lifecycleOwner.lifecycle
+        )
+    val showFavoriteFolderDialog by viewModel.favoriteFolderDialogVisible.collectAsStateWithLifecycle()
+    val favoriteFolders by viewModel.favoriteFolders.collectAsStateWithLifecycle()
+    val isFavoriteFoldersLoading by viewModel.isFavoriteFoldersLoading.collectAsStateWithLifecycle()
+    val selectedFavoriteFolderIds by viewModel.favoriteSelectedFolderIds.collectAsStateWithLifecycle()
+    val isSavingFavoriteFolders by viewModel.isSavingFavoriteFolders.collectAsStateWithLifecycle()
     
     // [Blur] Haze State
     val hazeState = rememberRecoverableHazeState()
@@ -588,13 +595,16 @@ fun VideoDetailScreen(
 
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    val interactiveChoicePanel by viewModel.interactiveChoicePanel.collectAsState()
+    val interactiveChoicePanel by viewModel.interactiveChoicePanel.collectAsStateWithLifecycle()
     
     // 📐 [大屏适配] 仅 Expanded 才启用平板分栏布局
     val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
     val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
         .getHorizontalAdaptationEnabled(context)
-        .collectAsState(initial = configuration.smallestScreenWidthDp >= 600)
+        .collectAsStateWithLifecycle(
+            initialValue = configuration.smallestScreenWidthDp >= 600,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val useTabletLayout = shouldUseTabletVideoLayout(
         isExpandedScreen = windowSizeClass.isExpandedScreen,
         smallestScreenWidthDp = configuration.smallestScreenWidthDp
@@ -609,7 +619,10 @@ fun VideoDetailScreen(
     // - 平板：仅用户主动切换全屏
     val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
         .getFullscreenMode(context)
-        .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
+        .collectAsStateWithLifecycle(
+            initialValue = com.android.purebilibili.core.store.FullscreenMode.AUTO,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val prefersManualFullscreenMode = remember(fullscreenMode) {
         fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.NONE ||
             fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.VERTICAL
@@ -629,16 +642,16 @@ fun VideoDetailScreen(
     }
     
     //  [新增] 监听定时关闭状态
-    val sleepTimerMinutes by viewModel.sleepTimerMinutes.collectAsState()
+    val sleepTimerMinutes by viewModel.sleepTimerMinutes.collectAsStateWithLifecycle()
     
     // 📖 [新增] 监听视频章节数据
     // 📖 [新增] 监听视频章节数据
-    val viewPoints by viewModel.viewPoints.collectAsState()
+    val viewPoints by viewModel.viewPoints.collectAsStateWithLifecycle()
     
     // [New] Codec & Audio Preferences
-    val codecPreference by viewModel.videoCodecPreference.collectAsState(initial = "hev1")
-    val secondCodecPreference by viewModel.videoSecondCodecPreference.collectAsState(initial = "avc1")
-    val audioQualityPreference by viewModel.audioQualityPreference.collectAsState(initial = -1)
+    val codecPreference by viewModel.videoCodecPreference.collectAsStateWithLifecycle()
+    val secondCodecPreference by viewModel.videoSecondCodecPreference.collectAsStateWithLifecycle()
+    val audioQualityPreference by viewModel.audioQualityPreference.collectAsStateWithLifecycle()
     
     //  [PiP修复] 记录视频播放器在屏幕上的位置，用于PiP窗口只显示视频区域
     var videoPlayerBounds by remember { mutableStateOf<android.graphics.Rect?>(null) }
@@ -646,7 +659,10 @@ fun VideoDetailScreen(
     // 📱 [优化] isPortraitFullscreen 和 isVerticalVideo 现在从 playerState 获取（见 playerState 定义后）
     
     // 🔁 [优化] 合并播放队列状态订阅，减少同帧多次重组
-    val playlistUiState by PlaylistManager.uiState.collectAsState(initial = PlaylistUiState())
+    val playlistUiState by PlaylistManager.uiState.collectAsStateWithLifecycle(
+        initialValue = PlaylistUiState(),
+        lifecycle = lifecycleOwner.lifecycle
+    )
     val currentPlayMode = playlistUiState.playMode
     val playlistItems = playlistUiState.playlist
     val playlistCurrentIndex = playlistUiState.currentIndex
@@ -790,7 +806,6 @@ fun VideoDetailScreen(
         }
     }
 
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, currentBvid) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
@@ -808,9 +823,15 @@ fun VideoDetailScreen(
     
     // 🔄 [新增] 自动横竖屏切换 - 跟随手机传感器方向
     val autoRotateEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getAutoRotateEnabled(context).collectAsState(initial = false)
+        .getAutoRotateEnabled(context).collectAsStateWithLifecycle(
+            initialValue = false,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val cardAnimationEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getCardAnimationEnabled(context).collectAsState(initial = true)
+        .getCardAnimationEnabled(context).collectAsStateWithLifecycle(
+            initialValue = true,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     
     DisposableEffect(activity, isScreenActive) {
         if (!isScreenActive || activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -1098,7 +1119,10 @@ fun VideoDetailScreen(
     }
     val subtitleAutoPreference by com.android.purebilibili.core.store.SettingsManager
         .getSubtitleAutoPreference(context)
-        .collectAsState(initial = SubtitleAutoPreference.OFF)
+        .collectAsStateWithLifecycle(
+            initialValue = SubtitleAutoPreference.OFF,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val subtitleAudioManager = remember {
         context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
     }
@@ -1212,7 +1236,7 @@ fun VideoDetailScreen(
     // VideoPlayerState 会检查 PiP/小窗模式来决定是否暂停
     
     // 📱 [优化] 竖屏视频检测已移至 VideoPlayerState 集中管理
-    val isVerticalVideo by playerState.isVerticalVideo.collectAsState()
+    val isVerticalVideo by playerState.isVerticalVideo.collectAsStateWithLifecycle()
     LaunchedEffect(
         autoRotateEnabled,
         fullscreenMode,

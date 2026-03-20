@@ -25,6 +25,8 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.Star
 import io.github.alexzhirkevich.cupertino.icons.outlined.Ellipsis
 import io.github.alexzhirkevich.cupertino.icons.outlined.Plus
 import io.github.alexzhirkevich.cupertino.icons.outlined.Checkmark
+import com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors
+import com.android.purebilibili.core.theme.resolveAdaptiveTertiaryAccentColors
 import com.android.purebilibili.core.theme.iOSYellow
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.BangumiDetail
@@ -311,22 +313,23 @@ fun EpisodeChip(
             
             // 角标
             if (episode.badge.isNotEmpty()) {
+                val badgeColors = if (episode.badge.contains("会员")) {
+                    resolveAdaptivePrimaryAccentColors(MaterialTheme.colorScheme)
+                } else {
+                    resolveAdaptiveTertiaryAccentColors(MaterialTheme.colorScheme)
+                }
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp),
-                    color = if (episode.badge.contains("会员")) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.tertiary
-                    },
+                    color = badgeColors.backgroundColor,
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
                         text = episode.badge,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                         fontSize = 9.sp,
-                        color = Color.White
+                        color = badgeColors.contentColor
                     )
                 }
             }

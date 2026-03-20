@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.currentStateAsState
 //  Cupertino Icons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -53,6 +54,14 @@ internal fun shouldShowInteractiveActionsInTopControlBar(
 internal fun shouldApplyStatusBarPaddingToTopControlBar(
     isFullscreen: Boolean
 ): Boolean = isFullscreen
+internal fun shouldPollTopControlBarClock(
+    showCurrentTime: Boolean,
+    hostLifecycleStarted: Boolean
+): Boolean = showCurrentTime && hostLifecycleStarted
+internal fun shouldPollTopControlBarBattery(
+    showBatteryLevel: Boolean,
+    hostLifecycleStarted: Boolean
+): Boolean = showBatteryLevel && hostLifecycleStarted
 
 internal enum class BatteryChargeTone {
     CRITICAL,
@@ -138,6 +147,9 @@ fun TopControlBar(
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     val layoutPolicy = remember(configuration.screenWidthDp) {
         resolveTopControlBarLayoutPolicy(
             widthDp = configuration.screenWidthDp
@@ -151,7 +163,11 @@ fun TopControlBar(
             showFullscreenActionItems = showInteractiveActions
         )
     }
-    val currentTimeText by produceState(initialValue = formatCurrentTime()) {
+    val currentTimeText by produceState(initialValue = formatCurrentTime(), showCurrentTime, hostLifecycleStarted) {
+        if (!shouldPollTopControlBarClock(showCurrentTime, hostLifecycleStarted)) {
+            value = formatCurrentTime()
+            return@produceState
+        }
         while (true) {
             value = formatCurrentTime()
             val now = System.currentTimeMillis()
@@ -159,8 +175,8 @@ fun TopControlBar(
             delay(nextMinuteDelay)
         }
     }
-    val batteryLevelPercent by produceState<Int?>(initialValue = null, showBatteryLevel) {
-        if (!showBatteryLevel) {
+    val batteryLevelPercent by produceState<Int?>(initialValue = null, showBatteryLevel, hostLifecycleStarted) {
+        if (!shouldPollTopControlBarBattery(showBatteryLevel, hostLifecycleStarted)) {
             value = null
             return@produceState
         }

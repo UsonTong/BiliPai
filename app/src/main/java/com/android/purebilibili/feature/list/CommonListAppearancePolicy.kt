@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.list
 
 import com.android.purebilibili.core.store.HomeSettings
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.store.resolveHomeHeaderBlurEnabled
 import com.android.purebilibili.core.theme.UiPreset
 
@@ -30,7 +31,10 @@ internal fun resolveCommonListVideoCardAppearance(
         uiPreset = uiPreset
     )
     return CommonListVideoCardAppearance(
-        glassEnabled = homeSettings.isLiquidGlassEnabled,
+        glassEnabled = resolveEffectiveLiquidGlassEnabled(
+            requestedEnabled = homeSettings.isLiquidGlassEnabled,
+            uiPreset = uiPreset
+        ),
         blurEnabled = headerBlurEnabled || homeSettings.isBottomBarBlurEnabled,
         showCoverGlassBadges = homeSettings.showHomeCoverGlassBadges,
         showInfoGlassBadges = homeSettings.showHomeInfoGlassBadges

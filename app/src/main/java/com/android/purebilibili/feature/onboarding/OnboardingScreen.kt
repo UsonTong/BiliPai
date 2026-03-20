@@ -146,6 +146,9 @@ fun OnboardingScreen(
                         exit = fadeOut() + scaleOut()
                     ) {
                         val isLastPage = pagerState.currentPage == lastPage
+                        val actionColors = com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors(
+                            MaterialTheme.colorScheme
+                        )
                         Button(
                             onClick = advanceOrFinish,
                             modifier = Modifier
@@ -153,8 +156,8 @@ fun OnboardingScreen(
                                 .testTag("onboarding_action_button"),
                             shape = RoundedCornerShape(28.dp), // Squircle-ish
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = Color.White
+                                containerColor = actionColors.backgroundColor,
+                                contentColor = actionColors.contentColor
                             ),
                             elevation = ButtonDefaults.buttonElevation(
                                 defaultElevation = 0.dp,

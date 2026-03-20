@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.video.player
 
+import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionParameters
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.R
 import kotlin.test.Test
@@ -186,6 +188,68 @@ class BackgroundPlaybackPolicyTest {
             shouldDisableVideoTrackOnEnterBackground(
                 shouldPauseBuffering = false,
                 shouldContinueBackgroundAudio = false
+            )
+        )
+    }
+
+    @Test
+    fun backgroundTrackSelectionDisablesVideoRendererWhenNeeded() {
+        val current = TrackSelectionParameters.Builder().build()
+
+        val result = resolveTrackSelectionParametersForBackground(
+            currentTrackSelectionParameters = current,
+            shouldDisableVideoTrack = true
+        )
+
+        assertTrue(result.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO))
+        assertEquals(0, result.maxVideoWidth)
+        assertEquals(0, result.maxVideoHeight)
+    }
+
+    @Test
+    fun backgroundTrackSelectionStaysUntouchedWhenVideoCanRemainEnabled() {
+        val current = TrackSelectionParameters.Builder().build()
+
+        val result = resolveTrackSelectionParametersForBackground(
+            currentTrackSelectionParameters = current,
+            shouldDisableVideoTrack = false
+        )
+
+        assertEquals(current, result)
+    }
+
+    @Test
+    fun backgroundEntryClearsVideoSurface_onlyForAudioOnlyBackgroundPlayback() {
+        assertTrue(
+            shouldClearVideoSurfaceOnEnterBackground(
+                shouldDisableVideoTrack = true,
+                shouldContinueBackgroundAudio = true
+            )
+        )
+        assertFalse(
+            shouldClearVideoSurfaceOnEnterBackground(
+                shouldDisableVideoTrack = true,
+                shouldContinueBackgroundAudio = false
+            )
+        )
+        assertFalse(
+            shouldClearVideoSurfaceOnEnterBackground(
+                shouldDisableVideoTrack = false,
+                shouldContinueBackgroundAudio = true
+            )
+        )
+    }
+
+    @Test
+    fun backgroundEntryTrimsDanmakuCaches_whenVideoPathIsDisabled() {
+        assertTrue(
+            shouldTrimDanmakuCachesOnEnterBackground(
+                shouldDisableVideoTrack = true
+            )
+        )
+        assertFalse(
+            shouldTrimDanmakuCachesOnEnterBackground(
+                shouldDisableVideoTrack = false
             )
         )
     }

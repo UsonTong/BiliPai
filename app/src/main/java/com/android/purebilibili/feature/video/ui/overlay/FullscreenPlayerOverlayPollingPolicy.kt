@@ -1,9 +1,10 @@
 package com.android.purebilibili.feature.video.ui.overlay
 
 internal fun shouldPollFullscreenPlayerProgress(
-    playerExists: Boolean
+    playerExists: Boolean,
+    hostLifecycleStarted: Boolean
 ): Boolean {
-    return playerExists
+    return playerExists && hostLifecycleStarted
 }
 
 internal fun resolveFullscreenPlayerPollingIntervalMs(

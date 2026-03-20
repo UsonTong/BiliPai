@@ -5,8 +5,32 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import com.android.purebilibili.core.store.BottomProgressBehavior
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 class VideoPlayerOverlayPolicyTest {
+
+    @Test
+    fun inlineOverlayProgressPolling_stopsWhenHostLifecycleStops() {
+        assertTrue(
+            shouldPollInlineVideoOverlayProgress(
+                playerExists = true,
+                hostLifecycleStarted = true
+            )
+        )
+        assertFalse(
+            shouldPollInlineVideoOverlayProgress(
+                playerExists = true,
+                hostLifecycleStarted = false
+            )
+        )
+        assertFalse(
+            shouldPollInlineVideoOverlayProgress(
+                playerExists = false,
+                hostLifecycleStarted = true
+            )
+        )
+    }
 
     @Test
     fun episodeEntryShownWhenRelatedVideosExist() {
@@ -169,6 +193,52 @@ class VideoPlayerOverlayPolicyTest {
                 isScrubbing = false
             )
         )
+    }
+
+    @Test
+    fun playbackDebugRows_includeAllReadableStatsAndSkipEmptyValues() {
+        val rows = resolvePlaybackDebugRows(
+            PlaybackDebugInfo(
+                resolution = "1920 x 1080",
+                videoBitrate = "8.4 Mbps",
+                audioBitrate = "192 kbps",
+                videoCodec = "HEVC",
+                audioCodec = "AAC LC",
+                frameRate = "60 fps",
+                videoDecoder = "c2.qti.hevc.decoder",
+                audioDecoder = ""
+            )
+        )
+
+        assertEquals(
+            listOf(
+                DebugStatRow("Resolution", "1920 x 1080"),
+                DebugStatRow("Video bitrate", "8.4 Mbps"),
+                DebugStatRow("Audio bitrate", "192 kbps"),
+                DebugStatRow("Video codec", "HEVC"),
+                DebugStatRow("Audio codec", "AAC LC"),
+                DebugStatRow("Frame rate", "60 fps"),
+                DebugStatRow("Video decoder", "c2.qti.hevc.decoder")
+            ),
+            rows
+        )
+    }
+
+    @Test
+    fun centerPlaybackButtonStyle_keepsReadableWhiteGlyphAcrossThemes() {
+        val darkStyle = resolveCenterPlaybackButtonStyle(isDarkTheme = true)
+        val lightStyle = resolveCenterPlaybackButtonStyle(isDarkTheme = false)
+
+        assertTrue(darkStyle.containerColor.alpha > lightStyle.containerColor.alpha)
+        assertTrue(darkStyle.innerColor != lightStyle.innerColor)
+        assertEquals(Color.White, darkStyle.iconTint)
+        assertEquals(Color.White, lightStyle.iconTint)
+    }
+
+    @Test
+    fun playbackGlyphOpticalOffset_onlyShiftsPlayIcon() {
+        assertEquals(0f, resolvePlaybackGlyphHorizontalBias(isPlaying = true))
+        assertTrue(resolvePlaybackGlyphHorizontalBias(isPlaying = false) > 0f)
     }
 
     @Test

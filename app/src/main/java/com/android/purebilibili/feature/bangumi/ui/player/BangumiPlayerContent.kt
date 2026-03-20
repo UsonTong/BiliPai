@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.BangumiDetail
 import com.android.purebilibili.data.model.response.BangumiEpisode
@@ -265,15 +266,17 @@ fun EpisodeChipSelectable(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val selectedColors = resolveAdaptivePrimaryAccentColors(MaterialTheme.colorScheme)
+
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+        color = if (isSelected) selectedColors.backgroundColor else MaterialTheme.colorScheme.surfaceVariant
     ) {
         Text(
             text = episode.title.ifEmpty { "第${episode.id}话" },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) selectedColors.contentColor else MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )

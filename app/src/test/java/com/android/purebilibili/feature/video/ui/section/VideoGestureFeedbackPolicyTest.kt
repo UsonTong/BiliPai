@@ -205,7 +205,8 @@ class VideoGestureFeedbackPolicyTest {
                 isInPipMode = true,
                 danmakuEnabled = true,
                 isPortraitFullscreen = false,
-                pipNoDanmakuEnabled = false
+                pipNoDanmakuEnabled = false,
+                hostLifecycleStarted = true
             )
         )
         assertEquals(
@@ -214,7 +215,8 @@ class VideoGestureFeedbackPolicyTest {
                 isInPipMode = true,
                 danmakuEnabled = true,
                 isPortraitFullscreen = false,
-                pipNoDanmakuEnabled = true
+                pipNoDanmakuEnabled = true,
+                hostLifecycleStarted = true
             )
         )
         assertEquals(
@@ -223,7 +225,8 @@ class VideoGestureFeedbackPolicyTest {
                 isInPipMode = false,
                 danmakuEnabled = false,
                 isPortraitFullscreen = false,
-                pipNoDanmakuEnabled = false
+                pipNoDanmakuEnabled = false,
+                hostLifecycleStarted = true
             )
         )
     }

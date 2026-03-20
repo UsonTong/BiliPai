@@ -665,7 +665,7 @@ fun BottomBarSettingsContent(
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = when (mode) {
-                                                HomeHeaderBlurMode.FOLLOW_PRESET -> "iOS 开 / MD3 关"
+                                                HomeHeaderBlurMode.FOLLOW_PRESET -> "iOS 开 / MD3 开"
                                                 HomeHeaderBlurMode.ALWAYS_ON -> "两套都开"
                                                 HomeHeaderBlurMode.ALWAYS_OFF -> "两套都关"
                                             },

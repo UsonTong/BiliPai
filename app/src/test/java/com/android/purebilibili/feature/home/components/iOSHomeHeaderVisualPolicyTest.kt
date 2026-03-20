@@ -38,6 +38,42 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `wide top chrome keeps structured liquid glass to match bottom bar renderer`() {
+        assertFalse(
+            resolveHomeTopWideChromePreferFlatGlass(
+                HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP
+            )
+        )
+        assertFalse(
+            resolveHomeTopWideChromePreferFlatGlass(
+                HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
+            )
+        )
+        assertTrue(
+            resolveHomeTopWideChromePreferFlatGlass(
+                HomeTopChromeRenderMode.BLUR
+            )
+        )
+    }
+
+    @Test
+    fun `unified top panel adds a readability scrim over liquid glass`() {
+        val liquidDark = resolveHomeTopUnifiedPanelReadabilityColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP
+        )
+        val blurLight = resolveHomeTopUnifiedPanelReadabilityColor(
+            isLightMode = true,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+
+        assertTrue(liquidDark.alpha > 0f)
+        assertTrue(blurLight.alpha > 0f)
+        assertTrue(liquidDark.red < 0.1f)
+        assertTrue(blurLight.red > 0.9f)
+    }
+
+    @Test
     fun `compact controls keep structured glass treatment`() {
         assertEquals(
             HomeTopChromeSurfaceTreatment.STRUCTURED_GLASS,
@@ -81,11 +117,11 @@ class iOSHomeHeaderVisualPolicyTest {
     @Test
     fun `home header trims top chrome heights for better content density`() {
         assertEquals(48.dp, resolveHomeTopSearchBarHeight())
-        assertEquals(56.dp, resolveHomeTopSearchBarHeight(UiPreset.MD3))
+        assertEquals(52.dp, resolveHomeTopSearchBarHeight(UiPreset.MD3))
         assertEquals(56.dp, resolveHomeTopTabRowHeight(isTabFloating = true))
-        assertEquals(52.dp, resolveHomeTopTabRowHeight(isTabFloating = true, uiPreset = UiPreset.MD3))
+        assertEquals(48.dp, resolveHomeTopTabRowHeight(isTabFloating = true, uiPreset = UiPreset.MD3))
         assertEquals(46.dp, resolveHomeTopTabRowHeight(isTabFloating = false))
-        assertEquals(48.dp, resolveHomeTopTabRowHeight(isTabFloating = false, uiPreset = UiPreset.MD3))
+        assertEquals(44.dp, resolveHomeTopTabRowHeight(isTabFloating = false, uiPreset = UiPreset.MD3))
     }
 
     @Test
@@ -106,24 +142,29 @@ class iOSHomeHeaderVisualPolicyTest {
     @Test
     fun `home header trims horizontal spacing without cramping controls`() {
         assertEquals(14.dp, resolveHomeTopSearchRowHorizontalPadding())
-        assertEquals(20.dp, resolveHomeTopSearchRowHorizontalPadding(UiPreset.MD3))
+        assertEquals(16.dp, resolveHomeTopSearchRowHorizontalPadding(UiPreset.MD3))
         assertEquals(34.dp, resolveHomeTopSearchPillHeight())
+        assertEquals(48.dp, resolveHomeTopSearchPillHeight(UiPreset.MD3))
         assertEquals(14.dp, resolveHomeTopTabHorizontalPadding(isTabFloating = true))
-        assertEquals(12.dp, resolveHomeTopTabHorizontalPadding(isTabFloating = true, uiPreset = UiPreset.MD3))
+        assertEquals(10.dp, resolveHomeTopTabHorizontalPadding(isTabFloating = true, uiPreset = UiPreset.MD3))
         assertEquals(6.dp, resolveHomeTopSearchToTabsSpacing())
-        assertEquals(10.dp, resolveHomeTopSearchToTabsSpacing(UiPreset.MD3))
+        assertEquals(6.dp, resolveHomeTopSearchToTabsSpacing(UiPreset.MD3))
     }
 
     @Test
-    fun `ios home header prefers a unified panel with embedded tabs`() {
+    fun `home header uses unified panel with embedded tabs for ios and md3`() {
         assertTrue(shouldUseUnifiedHomeTopPanel(UiPreset.IOS))
-        assertFalse(shouldUseUnifiedHomeTopPanel(UiPreset.MD3))
+        assertTrue(shouldUseUnifiedHomeTopPanel(UiPreset.MD3))
         assertFalse(shouldShowUnifiedHomeTopPanelDivider(UiPreset.IOS))
         assertTrue(shouldShowUnifiedHomeTopPanelDivider(UiPreset.MD3))
         assertEquals(0.dp, resolveHomeTopUnifiedPanelHorizontalPadding())
+        assertEquals(8.dp, resolveHomeTopUnifiedPanelHorizontalPadding(UiPreset.MD3))
         assertEquals(8.dp, resolveHomeTopUnifiedPanelInnerPadding())
+        assertEquals(10.dp, resolveHomeTopUnifiedPanelInnerPadding(UiPreset.MD3))
         assertEquals(28.dp, resolveHomeTopUnifiedPanelCornerRadius())
+        assertEquals(12.dp, resolveHomeTopUnifiedPanelCornerRadius(UiPreset.MD3))
         assertEquals(0.dp, resolveHomeTopEmbeddedTabHorizontalPadding())
+        assertEquals(4.dp, resolveHomeTopEmbeddedTabHorizontalPadding(UiPreset.MD3))
     }
 
     @Test
@@ -138,11 +179,11 @@ class iOSHomeHeaderVisualPolicyTest {
             )
         )
         assertEquals(
-            158.dp,
+            147.dp,
             resolveHomeTopReservedListPadding(
                 statusBarHeight = 44.dp,
-                searchBarHeight = 56.dp,
-                tabRowHeight = 48.dp,
+                searchBarHeight = 52.dp,
+                tabRowHeight = 44.dp,
                 uiPreset = UiPreset.MD3
             )
         )
@@ -152,7 +193,10 @@ class iOSHomeHeaderVisualPolicyTest {
     fun `home header uses symmetrical edge controls around search bar`() {
         assertEquals(40.dp, resolveHomeTopAvatarOuterSize())
         assertEquals(40.dp, resolveHomeTopSettingsButtonSize())
-        assertEquals(30.dp, resolveHomeTopAvatarInnerSize())
+        assertEquals(
+            resolveHomeTopSettingsButtonSize(),
+            resolveHomeTopAvatarInnerSize()
+        )
         assertEquals(20.dp, resolveHomeTopSettingsIconSize())
         assertEquals(6.dp, resolveHomeTopEdgeControlGap())
         assertEquals(8.dp, resolveHomeTopEdgeControlGap(UiPreset.MD3))
@@ -166,9 +210,9 @@ class iOSHomeHeaderVisualPolicyTest {
         assertTrue(searchShape is RoundedCornerShape)
         assertTrue(edgeShape is RoundedCornerShape)
         assertNotEquals(CircleShape, edgeShape as Shape)
-        assertEquals(44.dp, resolveHomeTopSearchPillHeight(UiPreset.MD3))
+        assertEquals(48.dp, resolveHomeTopSearchPillHeight(UiPreset.MD3))
         assertEquals(16.dp, resolveHomeTopSearchContentHorizontalPadding(UiPreset.MD3))
-        assertEquals(12.dp, resolveHomeTopSearchIconTextGap(UiPreset.MD3))
+        assertEquals(10.dp, resolveHomeTopSearchIconTextGap(UiPreset.MD3))
     }
 
     @Test
@@ -176,6 +220,7 @@ class iOSHomeHeaderVisualPolicyTest {
         val chromeColors = resolveHomeTopContainerColors(
             uiPreset = UiPreset.MD3,
             emphasized = false,
+            blurEnabled = false,
             fallbackColors = HomeGlassResolvedColors(
                 containerColor = Color.Red,
                 borderColor = Color.Blue,
@@ -188,6 +233,7 @@ class iOSHomeHeaderVisualPolicyTest {
         val searchColors = resolveHomeTopContainerColors(
             uiPreset = UiPreset.MD3,
             emphasized = true,
+            blurEnabled = false,
             fallbackColors = HomeGlassResolvedColors(
                 containerColor = Color.Red,
                 borderColor = Color.Blue,
@@ -202,6 +248,29 @@ class iOSHomeHeaderVisualPolicyTest {
         assertEquals(Color(0xFFE7E7E7), searchColors.containerColor)
         assertEquals(Color.Transparent, chromeColors.highlightColor)
         assertTrue(searchColors.borderColor.alpha >= chromeColors.borderColor.alpha)
+    }
+
+    @Test
+    fun `md3 blur container colors keep fallback blur alpha instead of becoming opaque`() {
+        val fallback = HomeGlassResolvedColors(
+            containerColor = Color(0xFFF3F3F3).copy(alpha = 0.62f),
+            borderColor = Color(0xFF777777).copy(alpha = 0.24f),
+            highlightColor = Color.Transparent
+        )
+
+        val chromeColors = resolveHomeTopContainerColors(
+            uiPreset = UiPreset.MD3,
+            emphasized = false,
+            blurEnabled = true,
+            fallbackColors = fallback,
+            surfaceContainerColor = Color(0xFFF3F3F3),
+            surfaceContainerHighColor = Color(0xFFE7E7E7),
+            outlineVariantColor = Color(0xFF777777)
+        )
+
+        assertEquals(fallback.containerColor.alpha, chromeColors.containerColor.alpha, 0.0001f)
+        assertEquals(Color(0xFFF3F3F3).red, chromeColors.containerColor.red, 0.0001f)
+        assertTrue(chromeColors.borderColor.alpha > 0f)
     }
 
     @Test
@@ -241,9 +310,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `md3 top chrome keeps blur local instead of using full width slab`() {
+    fun `md3 top chrome keeps status bar blur slab while local panel stays blurred`() {
         assertEquals(
-            HomeTopChromeRenderMode.PLAIN,
+            HomeTopChromeRenderMode.BLUR,
             resolveHomeTopContinuousSlabRenderMode(
                 renderMode = HomeTopChromeRenderMode.BLUR,
                 uiPreset = UiPreset.MD3
@@ -255,6 +324,52 @@ class iOSHomeHeaderVisualPolicyTest {
                 renderMode = HomeTopChromeRenderMode.BLUR,
                 uiPreset = UiPreset.MD3
             )
+        )
+    }
+
+    @Test
+    fun `md3 continuous top slab is limited to the status bar height`() {
+        assertEquals(
+            48.dp,
+            resolveHomeTopContinuousSlabHeight(
+                statusBarHeight = 24.dp,
+                searchBarHeight = 52.dp,
+                tabRowHeight = 44.dp,
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.MD3
+            )
+        )
+        assertEquals(
+            120.dp,
+            resolveHomeTopContinuousSlabHeight(
+                statusBarHeight = 24.dp,
+                searchBarHeight = 52.dp,
+                tabRowHeight = 44.dp,
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.IOS
+            )
+        )
+    }
+
+    @Test
+    fun `md3 continuous top slab uses a non transparent surface fill to avoid black seams`() {
+        assertTrue(
+            resolveHomeTopContinuousSlabSurfaceColor(
+                baseColor = Color.White.copy(alpha = 0.72f),
+                blurAlpha = 0.64f,
+                uiPreset = UiPreset.MD3,
+                renderMode = HomeTopChromeRenderMode.BLUR
+            ).alpha > 0.6f
+        )
+        assertEquals(
+            0f,
+            resolveHomeTopContinuousSlabSurfaceColor(
+                baseColor = Color.White.copy(alpha = 0.72f),
+                blurAlpha = 0.64f,
+                uiPreset = UiPreset.IOS,
+                renderMode = HomeTopChromeRenderMode.BLUR
+            ).alpha,
+            0.0001f
         )
     }
 
@@ -289,6 +404,18 @@ class iOSHomeHeaderVisualPolicyTest {
         )
         assertTrue(resolveHomeTopUnifiedSearchContainerColor(isLightMode = true).alpha < 0.4f)
         assertTrue(resolveHomeTopUnifiedSearchBorderColor(isLightMode = true).alpha < 0.25f)
+    }
+
+    @Test
+    fun `md3 unified home header also keeps search blur on the outer panel`() {
+        assertEquals(
+            HomeTopChromeRenderMode.PLAIN,
+            resolveHomeTopSearchChromeRenderMode(
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.MD3,
+                useUnifiedPanel = true
+            )
+        )
     }
 
     @Test
@@ -368,6 +495,7 @@ class iOSHomeHeaderVisualPolicyTest {
         val liquidAlpha = resolveHomeTopChromeReadabilityAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP)
         val blurAlpha = resolveHomeTopChromeReadabilityAlpha(HomeTopChromeRenderMode.BLUR)
 
+        assertTrue(liquidAlpha > 0.24f)
         assertTrue(liquidAlpha < blurAlpha)
     }
 
@@ -382,7 +510,7 @@ class iOSHomeHeaderVisualPolicyTest {
     @Test
     fun `top search content alpha is strengthened for readability`() {
         assertTrue(
-            resolveHomeTopSearchContentAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP) > 0.72f
+            resolveHomeTopSearchContentAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP) >= 0.88f
         )
         assertTrue(
             resolveHomeTopSearchContentAlpha(HomeTopChromeRenderMode.BLUR) >
@@ -393,7 +521,7 @@ class iOSHomeHeaderVisualPolicyTest {
     @Test
     fun `top action icon alpha is strengthened for readability`() {
         assertTrue(
-            resolveHomeTopActionIconAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP) > 0.7f
+            resolveHomeTopActionIconAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP) >= 0.86f
         )
     }
 

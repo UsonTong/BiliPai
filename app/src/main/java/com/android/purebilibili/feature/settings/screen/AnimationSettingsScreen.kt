@@ -13,18 +13,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.feature.home.components.LiquidGlassTuning
+import com.android.purebilibili.feature.home.components.resolveLiquidGlassTuning
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import com.android.purebilibili.core.ui.components.*
@@ -125,6 +132,35 @@ fun AnimationSettingsContent(
             predictiveBackAnimationEnabled = state.predictiveBackAnimationEnabled
         )
     }
+    var previewLiquidGlassMode by remember { mutableStateOf(state.liquidGlassMode) }
+    var previewLiquidGlassStrength by remember { mutableFloatStateOf(state.liquidGlassStrength) }
+    LaunchedEffect(state.liquidGlassMode) {
+        previewLiquidGlassMode = state.liquidGlassMode
+    }
+    LaunchedEffect(state.liquidGlassStrength) {
+        previewLiquidGlassStrength = state.liquidGlassStrength
+    }
+    val liquidGlassPreviewState = remember(previewLiquidGlassMode, previewLiquidGlassStrength) {
+        resolveLiquidGlassPreviewUiState(
+            mode = previewLiquidGlassMode,
+            strength = previewLiquidGlassStrength
+        )
+    }
+    val liquidGlassTuning = remember(previewLiquidGlassMode, previewLiquidGlassStrength) {
+        resolveLiquidGlassTuning(
+            mode = previewLiquidGlassMode,
+            strength = previewLiquidGlassStrength
+        )
+    }
+    val isLiquidGlassAvailable = remember(state.uiPreset) {
+        state.uiPreset != UiPreset.MD3
+    }
+    val effectiveLiquidGlassEnabled = remember(state.isLiquidGlassEnabled, state.uiPreset) {
+        resolveEffectiveLiquidGlassEnabled(
+            requestedEnabled = state.isLiquidGlassEnabled,
+            uiPreset = state.uiPreset
+        )
+    }
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -217,20 +253,29 @@ fun AnimationSettingsContent(
                              IOSSwitchItem(
                                 icon = CupertinoIcons.Default.Drop, 
                                 title = "液态玻璃", 
-                                subtitle = "底栏指示器的实时折射效果",
-                                checked = state.isLiquidGlassEnabled, 
-                                onCheckedChange = { viewModel.toggleLiquidGlass(it) },
+                                subtitle = if (isLiquidGlassAvailable) {
+                                    "底栏指示器的实时折射效果"
+                                } else {
+                                    "安卓原生风格下固定关闭，不参与渲染"
+                                },
+                                checked = effectiveLiquidGlassEnabled,
+                                onCheckedChange = {
+                                    if (isLiquidGlassAvailable) {
+                                        viewModel.toggleLiquidGlass(it)
+                                    }
+                                },
+                                enabled = isLiquidGlassAvailable,
                                 iconTint = iOSBlue
                             )
                             // Style Selector (Only visible when enabled)
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = state.isLiquidGlassEnabled,
+                                visible = isLiquidGlassAvailable && effectiveLiquidGlassEnabled,
                                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                                 exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                        "风格选择", 
+                                        "玻璃模式",
                                         style = MaterialTheme.typography.labelSmall, 
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -240,30 +285,79 @@ fun AnimationSettingsContent(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         // Classic
-                                        LiquidGlassStyleCard(
-                                            title = "Classic",
-                                            subtitle = "流体波纹",
-                                            isSelected = state.liquidGlassStyle == com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC,
-                                            onClick = { viewModel.setLiquidGlassStyle(com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC) },
+                                        LiquidGlassModeCard(
+                                            title = "通透玻璃",
+                                            subtitle = "更清晰",
+                                            isSelected = previewLiquidGlassMode == LiquidGlassMode.CLEAR,
+                                            onClick = {
+                                                previewLiquidGlassMode = LiquidGlassMode.CLEAR
+                                                viewModel.setLiquidGlassMode(LiquidGlassMode.CLEAR)
+                                            },
                                             modifier = Modifier.weight(1f)
                                         )
-                                        // SimpMusic
-                                        LiquidGlassStyleCard(
-                                            title = "SimpMusic",
-                                            subtitle = "自适应透镜",
-                                            isSelected = state.liquidGlassStyle == com.android.purebilibili.core.store.LiquidGlassStyle.SIMP_MUSIC,
-                                            onClick = { viewModel.setLiquidGlassStyle(com.android.purebilibili.core.store.LiquidGlassStyle.SIMP_MUSIC) },
+                                        LiquidGlassModeCard(
+                                            title = "平衡",
+                                            subtitle = "默认推荐",
+                                            isSelected = previewLiquidGlassMode == LiquidGlassMode.BALANCED,
+                                            onClick = {
+                                                previewLiquidGlassMode = LiquidGlassMode.BALANCED
+                                                viewModel.setLiquidGlassMode(LiquidGlassMode.BALANCED)
+                                            },
                                             modifier = Modifier.weight(1f)
                                         )
-                                        // iOS26
-                                        LiquidGlassStyleCard(
-                                            title = "iOS26",
-                                            subtitle = "层叠液态",
-                                            isSelected = state.liquidGlassStyle == com.android.purebilibili.core.store.LiquidGlassStyle.IOS26,
-                                            onClick = { viewModel.setLiquidGlassStyle(com.android.purebilibili.core.store.LiquidGlassStyle.IOS26) },
+                                        LiquidGlassModeCard(
+                                            title = "柔和磨砂",
+                                            subtitle = "弱化背景",
+                                            isSelected = previewLiquidGlassMode == LiquidGlassMode.FROSTED,
+                                            onClick = {
+                                                previewLiquidGlassMode = LiquidGlassMode.FROSTED
+                                                viewModel.setLiquidGlassMode(LiquidGlassMode.FROSTED)
+                                            },
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    LiquidGlassLivePreview(
+                                        previewState = liquidGlassPreviewState,
+                                        tuning = liquidGlassTuning
+                                    )
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    Text(
+                                        text = "效果强度",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = liquidGlassPreviewState.modeLabel,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = liquidGlassPreviewState.strengthLabel,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    Slider(
+                                        value = previewLiquidGlassStrength,
+                                        onValueChange = { previewLiquidGlassStrength = it },
+                                        valueRange = 0f..1f,
+                                        onValueChangeFinished = {
+                                            viewModel.setLiquidGlassStrength(previewLiquidGlassStrength)
+                                        }
+                                    )
+                                    Text(
+                                        text = liquidGlassPreviewState.subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                             IOSDivider()
@@ -360,7 +454,7 @@ fun AnimationSettingsContent(
 
 
 @Composable
-private fun LiquidGlassStyleCard(
+private fun LiquidGlassModeCard(
     title: String,
     subtitle: String,
     isSelected: Boolean,
@@ -390,6 +484,160 @@ private fun LiquidGlassStyleCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor.copy(alpha = 0.8f)
             )
+        }
+    }
+}
+
+@Composable
+private fun LiquidGlassLivePreview(
+    previewState: LiquidGlassPreviewUiState,
+    tuning: LiquidGlassTuning,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val surfaceBase = if (isDark) Color(0xFF1A1D24) else Color(0xFFF1F4FB)
+    val accent = if (tuning.useNeutralIndicatorTint) {
+        if (isDark) Color.White else Color(0xFFEEF2F8)
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(184.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = if (isDark) 0.12f else 0.08f),
+                            surfaceBase
+                        )
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "实时预览",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${previewState.modeLabel} · ${previewState.strengthLabel}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 42.dp)
+                    .fillMaxWidth(0.82f)
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(27.dp))
+                    .background(Color.White.copy(alpha = tuning.surfaceAlpha))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(accent.copy(alpha = tuning.indicatorTintAlpha))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "搜索视频、UP主",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Black.copy(alpha = 0.78f)
+                        )
+                        Text(
+                            text = previewState.subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Black.copy(alpha = 0.50f)
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(0.86f)
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.White.copy(alpha = tuning.surfaceAlpha + 0.04f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(4) { index ->
+                        val selected = index == 1
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(if (selected) 18.dp else 16.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (selected) {
+                                            Color.Black.copy(alpha = 0.72f)
+                                        } else {
+                                            Color.Black.copy(alpha = 0.28f)
+                                        }
+                                    )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Color.Black.copy(alpha = if (selected) 0.34f else 0.14f))
+                            )
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(x = (-46).dp)
+                        .width(74.dp)
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(17.dp))
+                        .background(accent.copy(alpha = tuning.indicatorTintAlpha))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
+                    )
+                }
+            }
         }
     }
 }

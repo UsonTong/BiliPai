@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -54,6 +55,22 @@ private fun createAmoledDarkColorScheme(primaryColor: Color) = darkColorScheme(
     onSurface = TextPrimaryDark,
     surfaceVariant = Color(0xFF050505),
     onSurfaceVariant = TextSecondaryDark,
+    surfaceContainer = Color(0xFF090909),
+    outline = Color(0xFF262626),
+    outlineVariant = Color(0xFF1A1A1A)
+)
+
+internal fun resolveEffectiveDynamicColorEnabled(
+    dynamicColorEnabled: Boolean,
+    amoledDarkTheme: Boolean
+): Boolean = dynamicColorEnabled
+
+internal fun applyAmoledSurfaceOverrides(
+    baseScheme: ColorScheme
+): ColorScheme = baseScheme.copy(
+    background = Black,
+    surface = Black,
+    surfaceVariant = Color(0xFF050505),
     surfaceContainer = Color(0xFF090909),
     outline = Color(0xFF262626),
     outlineVariant = Color(0xFF1A1A1A)
@@ -135,7 +152,10 @@ fun PureBiliBiliTheme(
     val customPrimaryColor = ThemeColors.getOrElse(themeColorIndex) { iOSSystemBlue }
     
     val renderingProfile = resolveUiRenderingProfile(uiPreset)
-    val isDynamicColorActive = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val isDynamicColorActive = resolveEffectiveDynamicColorEnabled(
+        dynamicColorEnabled = dynamicColor,
+        amoledDarkTheme = amoledDarkTheme
+    ) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val shapes = if (renderingProfile.useMaterialChrome) {
         Shapes()
     } else {
@@ -147,7 +167,12 @@ fun PureBiliBiliTheme(
         isDynamicColorActive -> {
             val context = LocalContext.current
             if (darkTheme) {
-                dynamicDarkColorScheme(context)
+                val dynamicDark = dynamicDarkColorScheme(context)
+                if (amoledDarkTheme) {
+                    applyAmoledSurfaceOverrides(dynamicDark)
+                } else {
+                    dynamicDark
+                }
             } else {
                 enforceDynamicLightTextContrast(dynamicLightColorScheme(context))
             }

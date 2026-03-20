@@ -172,7 +172,8 @@ internal fun shouldShowTopTabText(mode: Int): Boolean {
     return normalized == 0 || normalized == 2
 }
 
-internal fun resolveMd3TopTabLabelMode(@Suppress("UNUSED_PARAMETER") requestedLabelMode: Int): Int = 2
+internal fun resolveMd3TopTabLabelMode(requestedLabelMode: Int): Int =
+    normalizeTopTabLabelMode(requestedLabelMode)
 
 internal fun resolveTopTabCategoryIcon(
     category: String,
@@ -220,7 +221,13 @@ internal fun resolveMd3TopTabRowVariant(): Md3TopTabRowVariant =
     Md3TopTabRowVariant.UNDERLINE_FIXED
 
 internal fun resolveMd3TopTabActionButtonCorner(isFloatingStyle: Boolean) =
-    if (isFloatingStyle) 18.dp else 16.dp
+    if (isFloatingStyle) 16.dp else 12.dp
+
+internal fun resolveMd3TopTabActionButtonSize(isFloatingStyle: Boolean) =
+    if (isFloatingStyle) 44.dp else 36.dp
+
+internal fun resolveMd3TopTabActionIconSize(isFloatingStyle: Boolean) =
+    if (isFloatingStyle) 20.dp else 18.dp
 
 /**
  * Q弹点击效果
@@ -386,6 +393,7 @@ fun CategoryTabRow(
     labelMode: Int = 2,
     isLiquidGlassEnabled: Boolean = false,
     liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC,
+    liquidGlassTuning: LiquidGlassTuning? = null,
     backdrop: LayerBackdrop? = null,
     isFloatingStyle: Boolean = false,
     interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL,
@@ -400,6 +408,9 @@ fun CategoryTabRow(
         isLiquidGlassEnabled = isLiquidGlassEnabled,
         interactionBudget = interactionBudget
     )
+    val resolvedLiquidGlassTuning = remember(liquidGlassStyle, liquidGlassTuning) {
+        liquidGlassTuning ?: resolveLiquidGlassTuning(liquidGlassStyle)
+    }
 
     //  [交互优化] 触觉反馈
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
@@ -616,7 +627,6 @@ fun CategoryTabRow(
                     translationX = -scrollOffset
                 }) {
                     if (isFloatingStyle) {
-                        val isIos26Style = liquidGlassStyle == LiquidGlassStyle.IOS26
                         LiquidIndicator(
                             position = currentPosition,
                             itemWidth = with(localDensity) { actualTabWidthPx.toDp() },
@@ -634,19 +644,25 @@ fun CategoryTabRow(
                             indicatorMaxWidth = floatingLiquidMaxWidth,
                             maxWidthToItemRatio = floatingLiquidMaxWidthToItemRatio,
                             indicatorHeight = floatingLiquidHeight,
-                            lensIntensityBoost = if (isIos26Style) 0.98f else 1.22f,
-                            edgeWarpBoost = if (isIos26Style) 0.96f else 1.20f,
-                            chromaticBoost = if (isIos26Style) 0.32f else 0.62f,
+                            lensIntensityBoost = resolvedLiquidGlassTuning.indicatorLensBoost,
+                            edgeWarpBoost = resolvedLiquidGlassTuning.indicatorEdgeWarpBoost,
+                            chromaticBoost = resolvedLiquidGlassTuning.indicatorChromaticBoost,
                             liquidGlassStyle = liquidGlassStyle,
+                            liquidGlassTuning = resolvedLiquidGlassTuning,
                             backdrop = indicatorBackdrop,
-                            color = if (isIos26Style) {
-                                Color.White.copy(alpha = if (isSystemInDarkTheme()) 0.05f else 0.08f)
+                            color = if (resolvedLiquidGlassTuning.useNeutralIndicatorTint) {
+                                Color.White.copy(
+                                    alpha = if (isSystemInDarkTheme()) {
+                                        resolvedLiquidGlassTuning.indicatorTintAlpha * 0.68f
+                                    } else {
+                                        resolvedLiquidGlassTuning.indicatorTintAlpha * 0.82f
+                                    }
+                                )
                             } else {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = resolvedLiquidGlassTuning.indicatorTintAlpha)
                             }
                         )
                     } else {
-                        val isIos26Style = liquidGlassStyle == LiquidGlassStyle.IOS26
                         SimpleLiquidIndicator(
                             position = currentPosition,
                             itemWidthPx = actualTabWidthPx,
@@ -654,11 +670,18 @@ fun CategoryTabRow(
                             velocityPxPerSecond = indicatorVelocityPxPerSecond,
                             isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
                             liquidGlassStyle = liquidGlassStyle,
+                            liquidGlassTuning = resolvedLiquidGlassTuning,
                             backdrop = indicatorBackdrop,
-                            indicatorColor = if (isIos26Style) {
-                                Color.White.copy(alpha = if (isSystemInDarkTheme()) 0.05f else 0.08f)
+                            indicatorColor = if (resolvedLiquidGlassTuning.useNeutralIndicatorTint) {
+                                Color.White.copy(
+                                    alpha = if (isSystemInDarkTheme()) {
+                                        resolvedLiquidGlassTuning.indicatorTintAlpha * 0.68f
+                                    } else {
+                                        resolvedLiquidGlassTuning.indicatorTintAlpha * 0.82f
+                                    }
+                                )
                             } else {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = resolvedLiquidGlassTuning.indicatorTintAlpha)
                             },
                             indicatorHeight = topIndicatorHeight,
                             cornerRadius = topIndicatorCorner,
@@ -760,9 +783,9 @@ private fun Md3CategoryTabRow(
     val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
     val visualSpec = remember(isFloatingStyle) { resolveMd3TopTabVisualSpec(isFloatingStyle) }
     val tabRowHeight = visualSpec.rowHeight
-    val actionButtonSize = if (isFloatingStyle) 50.dp else 44.dp
+    val actionButtonSize = resolveMd3TopTabActionButtonSize(isFloatingStyle)
     val actionButtonCorner = resolveMd3TopTabActionButtonCorner(isFloatingStyle)
-    val actionIconSize = if (isFloatingStyle) 22.dp else 20.dp
+    val actionIconSize = resolveMd3TopTabActionIconSize(isFloatingStyle)
     val normalizedLabelMode = resolveMd3TopTabLabelMode(labelMode)
     val viewportAnchorIndex by remember(pagerState, selectedIndex) {
         derivedStateOf {
@@ -820,7 +843,7 @@ private fun Md3CategoryTabRow(
         ) {
             val slotCount = visibleIndices.size.coerceAtLeast(1)
             val slotWidth = maxWidth / slotCount
-            val indicatorWidth = (slotWidth * 0.48f).coerceAtLeast(28.dp)
+            val indicatorWidth = (slotWidth * 0.34f).coerceIn(24.dp, 32.dp)
             val animatedIndicatorOffset by animateDpAsState(
                 targetValue = slotWidth * currentVisiblePosition + ((slotWidth - indicatorWidth) / 2f),
                 label = "md3TopTabIndicatorOffset"

@@ -103,7 +103,7 @@ class AdaptiveListComponentPolicyTest {
     }
 
     @Test
-    fun `md3 preset should use light thumb instead of default dark thumb`() {
+    fun `md3 preset should defer switch colors to material defaults`() {
         val colorScheme = darkColorScheme()
 
         val spec = resolveAdaptiveSwitchVisualSpec(
@@ -111,9 +111,6 @@ class AdaptiveListComponentPolicyTest {
             colorScheme = colorScheme
         )
 
-        assertEquals(colorScheme.primary, spec.checkedTrackColor)
-        assertEquals(colorScheme.onPrimary, spec.checkedThumbColor)
-        assertEquals(colorScheme.surfaceVariant, spec.uncheckedTrackColor)
-        assertEquals(colorScheme.surface, spec.uncheckedThumbColor)
+        assertTrue(spec.usePlatformDefaults)
     }
 }

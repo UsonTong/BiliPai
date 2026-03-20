@@ -54,6 +54,8 @@ import com.android.purebilibili.feature.settings.GITHUB_URL
 import com.android.purebilibili.core.store.SettingsManager //  引入 SettingsManager
 import com.android.purebilibili.core.store.HomeTopTabSettings
 import com.android.purebilibili.core.store.AppNavigationSettings
+import com.android.purebilibili.core.store.resolveEffectiveHomeSettings
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.store.resolveHomeHeaderBlurEnabled
 //  从 components 包导入拆分后的组件
 import com.android.purebilibili.feature.home.components.BottomNavItem
@@ -484,6 +486,12 @@ fun HomeScreen(
     }
 
     // 解构设置值（避免每次访问都触发重组）
+    val effectiveHomeSettings = remember(homeSettings, uiPreset) {
+        resolveEffectiveHomeSettings(
+            homeSettings = homeSettings,
+            uiPreset = uiPreset
+        )
+    }
     val displayMode = homeSettings.displayMode
     val isBottomBarFloating = homeSettings.isBottomBarFloating
     val bottomBarLabelMode = homeSettings.bottomBarLabelMode
@@ -498,7 +506,12 @@ fun HomeScreen(
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled &&
         !predictiveStableBackRouteMotionEnabled // 预测返回稳定路由模式下禁用首页共享元素，避免叠层滞留
-    val baseIsLiquidGlassEnabled = homeSettings.isLiquidGlassEnabled      //  流体玻璃特效开关
+    val baseIsLiquidGlassEnabled = remember(homeSettings.isLiquidGlassEnabled, uiPreset) {
+        resolveEffectiveLiquidGlassEnabled(
+            requestedEnabled = homeSettings.isLiquidGlassEnabled,
+            uiPreset = uiPreset
+        )
+    }
     val baseIsDataSaverActive = remember(context) {
         com.android.purebilibili.core.store.SettingsManager.isDataSaverActive(context)
     }
@@ -511,6 +524,7 @@ fun HomeScreen(
         baseIsDataSaverActive
     ) {
         resolveHomePerformanceConfig(
+            uiPreset = uiPreset,
             headerBlurEnabled = baseIsHeaderBlurEnabled,
             bottomBarBlurEnabled = baseIsBottomBarBlurEnabled,
             liquidGlassEnabled = baseIsLiquidGlassEnabled,
@@ -1306,7 +1320,7 @@ fun HomeScreen(
             pullProgress = 0f, // [Fix] Outer header doesn't track inner pull state
             pagerState = pagerState,
             backdrop = homeBackdrop,
-            homeSettings = homeSettings,
+            homeSettings = effectiveHomeSettings,
             topTabsVisible = resolveHomeTopTabsVisible(
                 isDelayedForCardSettle = delayTopTabsUntilCardSettled,
                 isForwardNavigatingToDetail = hideTopTabsForForwardDetailNav,

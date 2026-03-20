@@ -39,3 +39,10 @@ internal fun resolveBottomBarSelectionAction(
         BottomBarSelectionAction.NAVIGATE
     }
 }
+
+internal fun shouldUseTopLevelNavigationFromProfile(targetRoute: String): Boolean {
+    return targetRoute == ScreenRoutes.Settings.route ||
+        targetRoute == ScreenRoutes.History.route ||
+        targetRoute == ScreenRoutes.Favorite.route ||
+        targetRoute == ScreenRoutes.WatchLater.route
+}
