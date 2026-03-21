@@ -45,25 +45,24 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 121
-        versionName = "7.0.1"
+        versionCode = 122
+        versionName = "7.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
 
-        // 👇👇👇 指定打包的 CPU 架构（64 位 + 32 位）👇👇👇
+        // 👇👇👇 指定打包的 CPU 架构（64 位 only）👇👇👇
         ndk {
-            // arm64-v8a: 现代 64 位真机
-            // armeabi-v7a: 兼容 32 位设备/盒子
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // arm64-v8a: modern 64-bit devices
+            abiFilters += listOf("arm64-v8a")
         }
 
         manifestPlaceholders["castServiceProcess"] = castServiceProcess
     }
     
-    // 🔥 ABI 分包 - 暂时禁用，生成包含多 ABI 的通用 APK
+    // 🔥 Keep a single APK artifact while packaging arm64-v8a only
     splits {
         abi {
             isEnable = false
@@ -161,7 +160,7 @@ android {
         val variant = this
         outputs.configureEach {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "BiliPai-${variant.name}-${variant.versionName}-universal.apk"
+            output.outputFileName = "BiliPai-${variant.name}-${variant.versionName}.apk"
         }
     }
 }

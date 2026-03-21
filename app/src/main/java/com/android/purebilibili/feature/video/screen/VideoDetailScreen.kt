@@ -107,19 +107,15 @@ import com.android.purebilibili.feature.video.viewmodel.VideoCommentViewModel
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.state.rememberVideoPlayerState
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
-import com.android.purebilibili.feature.video.ui.components.SubReplySheet
 import com.android.purebilibili.feature.video.ui.components.ReplyHeader
 import com.android.purebilibili.feature.video.ui.components.ReplyItemView
+import com.android.purebilibili.feature.video.ui.components.VideoCommentSheetHost
 
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode  //  新增
 import com.android.purebilibili.feature.video.ui.components.LikeBurstAnimation
 import com.android.purebilibili.feature.video.ui.components.TripleSuccessAnimation
 import com.android.purebilibili.feature.video.ui.components.VideoDetailSkeleton
 import com.android.purebilibili.feature.video.ui.components.VideoActionFeedbackHost
-import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog  //  评论图片预览
-import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
-import com.android.purebilibili.feature.video.ui.pager.resolveVideoSubReplySheetMaxHeightFraction
-import com.android.purebilibili.feature.video.ui.pager.resolveVideoSubReplySheetScrimAlpha
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import kotlin.math.roundToInt
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
@@ -2351,7 +2347,10 @@ fun VideoDetailScreen(
                                                         onRelatedVideoClick = navigateToRelatedVideo,
                                                         onSubReplyClick = { commentViewModel.openSubReply(it) },
                                                         onRootCommentClick = {
-                                                            viewModel.clearReplyingTo()
+                                                            viewModel.openRootCommentComposer()
+                                                        },
+                                                        onCommentReplyClick = { replyItem ->
+                                                            viewModel.setReplyingTo(replyItem)
                                                             viewModel.showCommentInputDialog()
                                                         },
                                                         onLoadMoreReplies = { commentViewModel.loadComments() },
@@ -2431,8 +2430,7 @@ fun VideoDetailScreen(
                                                             },
                                                             onCommentClick = {
                                                                 android.util.Log.d("VideoDetailScreen", "📝 Comment input clicked!")
-                                                                viewModel.clearReplyingTo()
-                                                                viewModel.showCommentInputDialog()
+                                                                viewModel.openRootCommentComposer()
                                                             },
                                                             hazeState = hazeState
                                                         )
@@ -2910,6 +2908,9 @@ fun VideoDetailScreen(
                 fallbackPlayerBottomPx = fallbackPlayerBottomPx
             )
         }
+        val screenHeightPx = with(LocalDensity.current) {
+            configuration.screenHeightDp.dp.roundToPx()
+        }
         val danmakuDialogTopReserveDp = with(LocalDensity.current) { danmakuDialogTopReservePx.toDp() }
         com.android.purebilibili.feature.video.ui.components.DanmakuSendDialog(
             visible = showDanmakuDialog,
@@ -3205,75 +3206,30 @@ fun VideoDetailScreen(
             )
         }
         
-        //  评论二级弹窗
-        // [#14修复] 添加图片预览状态
-        var subReplyShowImagePreview by remember { mutableStateOf(false) }
-        var subReplyPreviewImages by remember { mutableStateOf<List<String>>(emptyList()) }
-        var subReplyPreviewIndex by remember { mutableIntStateOf(0) }
-        var subReplySourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-        var subReplyPreviewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
-        
-        // [#14修复] 评论详情图片预览对话框
-        if (subReplyShowImagePreview && subReplyPreviewImages.isNotEmpty()) {
-            ImagePreviewDialog(
-                images = subReplyPreviewImages,
-                initialIndex = subReplyPreviewIndex,
-                sourceRect = subReplySourceRect,
-                textContent = subReplyPreviewTextContent,
-                onDismiss = {
-                    subReplyShowImagePreview = false
-                    subReplyPreviewTextContent = null
-                }
-            )
-        }
-        
-        if (subReplyState.visible) {
-            BackHandler {
+        val successState = uiState as? PlayerUiState.Success
+        VideoCommentSheetHost(
+            mainSheetVisible = false,
+            onDismiss = { commentViewModel.closeSubReply() },
+            commentViewModel = commentViewModel,
+            aid = successState?.info?.aid ?: 0L,
+            upMid = commentState.upMid,
+            expectedReplyCount = commentState.replyCount,
+            emoteMap = successState?.emoteMap ?: emptyMap(),
+            onRootCommentClick = { viewModel.openRootCommentComposer() },
+            onReplyClick = { replyItem ->
+                android.util.Log.d("VideoDetailScreen", "📝 Reply to: ${replyItem.member.uname}")
+                viewModel.setReplyingTo(replyItem)
+                viewModel.showCommentInputDialog()
+            },
+            onUserClick = onUpClick,
+            screenHeightPx = screenHeightPx,
+            topReservedPx = danmakuDialogTopReservePx,
+            onTimestampClick = { positionMs ->
+                playerState.player.seekTo(positionMs)
+                playPlayerFromUserAction(playerState.player)
                 commentViewModel.closeSubReply()
             }
-            val successState = uiState as? PlayerUiState.Success
-            SubReplySheet(
-                state = subReplyState,
-                showUpFlag = commentState.showUpFlag,
-                emoteMap = successState?.emoteMap ?: emptyMap(),
-                onDismiss = { commentViewModel.closeSubReply() },
-                onLoadMore = { commentViewModel.loadMoreSubReplies() },
-                maxHeightFraction = resolveVideoSubReplySheetMaxHeightFraction(),
-                scrimAlpha = resolveVideoSubReplySheetScrimAlpha(),
-                //  [新增] 时间戳点击跳转
-                onTimestampClick = { positionMs ->
-                    playerState.player.seekTo(positionMs)
-                    playPlayerFromUserAction(playerState.player)
-                    commentViewModel.closeSubReply()  // 关闭弹窗以便看视频
-                },
-                // [#14修复] 图片预览回调
-                onImagePreview = { images, index, rect, textContent ->
-                    subReplyPreviewImages = images
-                    subReplyPreviewIndex = index
-                    subReplySourceRect = rect
-                    subReplyPreviewTextContent = textContent
-                    subReplyShowImagePreview = true
-                },
-                //  [修复] 点击评论回复
-                onReplyClick = { replyItem ->
-                    android.util.Log.d("VideoDetailScreen", "📝 Reply to: ${replyItem.member.uname}")
-                    viewModel.setReplyingTo(replyItem)  // 设置回复目标
-                    viewModel.showCommentInputDialog()  // 显示评论输入对话框
-                },
-                // [新增] 删除评论（消散动画）
-                currentMid = commentState.currentMid,
-                onDissolveStart = { rpid ->
-                    commentViewModel.startSubDissolve(rpid)
-                },
-                onDeleteComment = { rpid ->
-                    commentViewModel.deleteSubComment(rpid)
-                },
-                onCommentLike = commentViewModel::likeComment,
-                likedComments = commentState.likedComments,
-                onUrlClick = openCommentUrl,
-                onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUpClick(it) } }
-            )
-        }
+        )
 
         // 📁 收藏夹选择弹窗
         if (showFavoriteFolderDialog) {

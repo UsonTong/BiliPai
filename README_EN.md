@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-03-21 · Synced to v7.0.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-03-21 · Synced to v7.0.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.0.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -405,12 +405,12 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v7.0.1 · 2026-03-21)
+### Latest (v7.0.2 · 2026-03-21)
 
-- 🧭 **Home top chrome was refined again**: search collapse distance, status-bar integration, unified top-panel behavior, and tap haptics for top tabs and bottom navigation now feel more deliberate.
-- 🎬 **Portrait fullscreen now supports viewport zooming**: pinch-to-zoom, pan, and a one-tap reset action were added, with conflicting seek/tap/long-press gestures suppressed while zoomed.
-- 📰 **The dynamic feed is denser on wide screens**: the feed width was tightened and wide video cards now switch to a left-cover, right-info layout for faster scanning.
-- 🔄 **Phone auto-rotate is less twitchy**: fullscreen orientation now stays portrait by default and only enters landscape on clearer sensor intent, reducing accidental rotation churn.
+- 🧵 **Thread-detail presentation is unified**: portrait pager comments and video-detail thread detail now share the same comment sheet host instead of diverging into separate implementations.
+- 📺 **Thread detail preserves player visibility more reliably**: opening a subreply thread now prefers switching content inside the current drawer instead of falling back to a separate blocking overlay.
+- 📦 **The APK is now 64-bit only**: release packaging keeps `arm64-v8a` and drops `armeabi-v7a`.
+- 🏷️ **Artifact names are cleaner**: APK outputs no longer carry the `universal` suffix.
 
 ---
 

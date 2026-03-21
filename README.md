@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-03-21 · 文档已同步至 v7.0.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-03-21 · 文档已同步至 v7.0.2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.0.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -560,12 +560,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.0.1 · 2026-03-21)
+### 最近更新 (v7.0.2 · 2026-03-21)
 
-- 🧭 **首页顶部继续收口**：搜索栏折叠距离、状态栏融合、顶部统一面板和底栏/标签触感反馈都做了细化，滚动和点击反馈更顺手。
-- 🎬 **竖屏全屏补齐画面缩放**：竖屏全屏现在支持双指缩放、拖动画面和一键还原，放大后也会自动避开误触进度和倍速手势。
-- 📰 **动态页宽屏更高效**：宽屏动态流改成更窄的内容宽度，视频动态卡片切到“左封面右信息”，扫标题和统计信息不再被大封面拖慢。
-- 🔄 **方向策略更稳**：手机端自动旋转进入横屏的阈值和保持逻辑继续收敛，减少来回抖动和误切方向。
+- 🧵 **楼中楼评论链路统一**：竖屏分页评论抽屉和视频详情页现在共用同一套评论宿主，楼中楼详情不再分叉到另一套旧弹层实现。
+- 📺 **评论详情更少遮挡视频**：打开楼中楼评论详情时会优先在当前评论抽屉内切换内容，视频上方保留区域更稳定。
+- 📦 **APK 只保留 64 位**：发布包现在仅打包 `arm64-v8a`，不再包含 `armeabi-v7a`。
+- 🏷️ **产物名更简洁**：APK 输出文件名去掉了 `universal` 后缀。
 
 ### 历史版本
 
