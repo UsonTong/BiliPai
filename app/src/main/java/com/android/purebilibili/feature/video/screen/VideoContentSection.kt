@@ -135,7 +135,6 @@ internal data class VideoContentTabBarDanmakuActionLayoutPolicy(
     val sendVerticalPaddingDp: Int,
     val sendTextSizeSp: Int,
     val sendLabel: String,
-    val sendBadgeSizeDp: Int,
     val settingsButtonSizeDp: Int,
     val settingsIconSizeDp: Int,
     val settingsLeadingPaddingDp: Int
@@ -153,7 +152,6 @@ internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): V
             sendVerticalPaddingDp = 7,
             sendTextSizeSp = 11,
             sendLabel = "发弹幕",
-            sendBadgeSizeDp = 20,
             settingsButtonSizeDp = 36,
             settingsIconSizeDp = 18,
             settingsLeadingPaddingDp = 4
@@ -169,7 +167,6 @@ internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): V
             sendVerticalPaddingDp = 8,
             sendTextSizeSp = 12,
             sendLabel = "点我发弹幕",
-            sendBadgeSizeDp = 22,
             settingsButtonSizeDp = 40,
             settingsIconSizeDp = 20,
             settingsLeadingPaddingDp = 6
@@ -213,6 +210,7 @@ fun VideoContentSection(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     onSubReplyClick: (ReplyItem) -> Unit,
     onRootCommentClick: () -> Unit = {},
+    onCommentReplyClick: (ReplyItem) -> Unit = {},
     onLoadMoreReplies: () -> Unit,
     onDownloadClick: () -> Unit = {},
     onWatchLaterClick: () -> Unit = {},
@@ -391,6 +389,7 @@ fun VideoContentSection(
                         onUpClick = onUpClick,
                         onSubReplyClick = onSubReplyClick,
                         onRootCommentClick = onRootCommentClick,
+                        onCommentReplyClick = onCommentReplyClick,
                         onLoadMoreReplies = onLoadMoreReplies,
                         onImagePreview = { images, index, rect, textContent ->
                             previewImages = images
@@ -596,6 +595,7 @@ private fun VideoCommentTab(
     onUpClick: (Long) -> Unit,
     onSubReplyClick: (ReplyItem) -> Unit,
     onRootCommentClick: () -> Unit,
+    onCommentReplyClick: (ReplyItem) -> Unit,
     onLoadMoreReplies: () -> Unit,
     onImagePreview: (List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit,
     onTimestampClick: ((Long) -> Unit)?,
@@ -689,6 +689,7 @@ private fun VideoCommentTab(
                             },
                             // [新增] 点赞事件
                             onLikeClick = { onCommentLike(reply.rpid) },
+                            onReplyClick = { onCommentReplyClick(reply) },
                             // [修复] 正确传递点赞状态 (API数据 或 本地乐观更新)
                             isLiked = reply.action == 1 || reply.rpid in likedComments,
                             // [新增] 仅当评论 mid 与当前登录用户 mid 一致时显示删除按钮
@@ -1062,7 +1063,6 @@ private fun VideoContentTabBar(
                 }
             }
             
-            // 发弹幕入口
             val danmakuToggleInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val danmakuActiveColor = MaterialTheme.colorScheme.primary
             val danmakuInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
@@ -1108,17 +1108,12 @@ private fun VideoContentTabBar(
                 enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
                 exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start)
             ) {
-                val sendBadgeContainerColor = MaterialTheme.colorScheme.primary
-                val sendBadgeContentColor = MaterialTheme.colorScheme.onPrimary
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .clickable {
-                            android.util.Log.d("VideoContentSection", "📤 点我发弹幕 clicked!")
-                            onDanmakuSendClick()
-                        }
+                        .clickable(onClick = onDanmakuSendClick)
                         .padding(
                             horizontal = danmakuActionLayoutPolicy.sendHorizontalPaddingDp.dp,
                             vertical = danmakuActionLayoutPolicy.sendVerticalPaddingDp.dp
@@ -1129,21 +1124,6 @@ private fun VideoContentTabBar(
                         fontSize = danmakuActionLayoutPolicy.sendTextSizeSp.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(danmakuActionLayoutPolicy.sendBadgeSizeDp.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(sendBadgeContainerColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "弹",
-                            fontSize = 10.sp,
-                            color = sendBadgeContentColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
 

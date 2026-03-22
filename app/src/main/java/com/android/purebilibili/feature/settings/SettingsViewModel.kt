@@ -4,6 +4,7 @@ package com.android.purebilibili.feature.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.purebilibili.core.store.APP_ICON_COMPAT_ALIAS_CLASS_NAME
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.allManagedAppIconLauncherAliases
@@ -515,7 +516,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             val targetAlias = resolveAppIconLauncherAlias(packageName, normalizedIconKey)
             val allUniqueAliases = allManagedAppIconLauncherAliases(packageName)
-            val compatAlias = "${packageName}.MainActivityAlias3D"
+            val compatAlias = APP_ICON_COMPAT_ALIAS_CLASS_NAME
             
             android.util.Log.d("SettingsViewModel", "Switching icon to: $iconKey -> $normalizedIconKey -> $targetAlias")
             

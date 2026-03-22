@@ -743,6 +743,7 @@ fun VideoPlayerSection(
     onToggleFullscreen: () -> Unit,
     onQualityChange: (Int, Long) -> Unit,
     onBack: () -> Unit,
+    onHomeClick: (() -> Unit)? = null,
     onDanmakuInputClick: () -> Unit = {},
     // 🔗 [新增] 分享功能
     bvid: String = "",
@@ -3137,6 +3138,10 @@ fun VideoPlayerSection(
                     onQualityChange(id, playerState.player.currentPosition)
                 },
                 onBack = onBack,
+                onHomeClick = resolveVideoPlayerOverlayHomeClick(
+                    onBack = onBack,
+                    onHomeClick = onHomeClick
+                ),
                 onToggleFullscreen = onToggleFullscreen,
                 
                 // 🔒 [新增] 屏幕锁定

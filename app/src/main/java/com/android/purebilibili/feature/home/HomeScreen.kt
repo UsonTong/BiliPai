@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.SystemClock
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -77,6 +78,8 @@ import com.android.purebilibili.feature.home.components.resolveHomeTopTabRowHeig
 import com.android.purebilibili.feature.home.policy.BottomBarVisibilityIntent
 import com.android.purebilibili.feature.home.policy.HomeBottomBarScrollState
 import com.android.purebilibili.feature.home.policy.reduceHomePreScroll
+import com.android.purebilibili.feature.home.policy.resolveHomeHeaderSettleTransition
+import com.android.purebilibili.feature.home.policy.shouldHandleHomeVerticalPreScroll
 import com.android.purebilibili.feature.home.policy.reduceHomeBottomBarListScroll
 import com.android.purebilibili.feature.home.policy.resolveHomeBottomBarBaseVisibility
 import com.android.purebilibili.feature.home.policy.resolveHomeHeaderOffsetForSettledPage
@@ -184,9 +187,43 @@ fun HomeScreen(
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
     // [Header] 首页重选/双击回顶时需要强制恢复顶部，避免自动收缩后残留空白区域
     var headerOffsetHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var headerSettleAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var delayTopTabsUntilCardSettled by remember { mutableStateOf(false) }
     var hideTopTabsForForwardDetailNav by remember { mutableStateOf(false) }
     var returnAnimationStartElapsedMs by remember { mutableLongStateOf(0L) }
+
+    fun setHeaderOffsetImmediate(value: Float) {
+        headerSettleAnimationJob?.cancel()
+        headerSettleAnimationJob = null
+        headerOffsetHeightPx = value
+    }
+
+    fun animateHeaderOffsetTo(targetValue: Float) {
+        val transition = resolveHomeHeaderSettleTransition(
+            currentHeaderOffsetPx = headerOffsetHeightPx,
+            targetHeaderOffsetPx = targetValue
+        )
+        if (!transition.shouldAnimate) {
+            setHeaderOffsetImmediate(transition.targetOffsetPx)
+            return
+        }
+        headerSettleAnimationJob?.cancel()
+        headerSettleAnimationJob = coroutineScope.launch {
+            animate(
+                initialValue = headerOffsetHeightPx,
+                targetValue = transition.targetOffsetPx,
+                animationSpec = tween(durationMillis = 180, easing = LinearOutSlowInEasing)
+            ) { value, _ ->
+                headerOffsetHeightPx = value
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (headerSettleAnimationJob === job) {
+                    headerSettleAnimationJob = null
+                }
+            }
+        }
+    }
 
     // [新增] 监听全局回顶事件
     val scrollChannel = LocalHomeScrollChannel.current
@@ -194,7 +231,7 @@ fun HomeScreen(
         scrollChannel?.receiveAsFlow()?.collect {
             launch {
                 // 双击首页回顶时强制展开顶部，避免收缩头部与回顶状态错位导致空白
-                headerOffsetHeightPx = 0f
+                setHeaderOffsetImmediate(0f)
                 val gridState = gridStates[state.currentCategory]
                 val isAtTop = gridState == null || (gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 50)
 
@@ -211,7 +248,7 @@ fun HomeScreen(
                     }
                     listState.animateScrollToItem(plan.animateTargetIndex)
                 }
-                headerOffsetHeightPx = 0f
+                setHeaderOffsetImmediate(0f)
             }
         }
     }
@@ -714,7 +751,7 @@ fun HomeScreen(
         when (item) {
             BottomNavItem.HOME -> {
                 coroutineScope.launch { 
-                    headerOffsetHeightPx = 0f
+                    setHeaderOffsetImmediate(0f)
                     val gridState = gridStates[state.currentCategory]
                     val isAtTop = gridState == null || (gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 50)
                     
@@ -728,7 +765,7 @@ fun HomeScreen(
                         }
                         listState.animateScrollToItem(0)
                     } 
-                    headerOffsetHeightPx = 0f
+                    setHeaderOffsetImmediate(0f)
                 }
             }
             BottomNavItem.DYNAMIC -> onDynamicClick()
@@ -901,7 +938,7 @@ fun HomeScreen(
                     maxHeaderCollapsePx = searchCollapseDistancePx
                 )
                 if (kotlin.math.abs(headerOffsetHeightPx - settledHeaderOffsetPx) > 0.5f) {
-                    headerOffsetHeightPx = settledHeaderOffsetPx
+                    animateHeaderOffsetTo(settledHeaderOffsetPx)
                 }
             }
     }
@@ -934,6 +971,11 @@ fun HomeScreen(
     ) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!shouldHandleHomeVerticalPreScroll(deltaX = available.x, deltaY = available.y)) {
+                    return Offset.Zero
+                }
+                headerSettleAnimationJob?.cancel()
+                headerSettleAnimationJob = null
                 val scrollUpdate = reduceHomePreScroll(
                     currentHeaderOffsetPx = headerOffsetHeightPx,
                     deltaY = available.y,
@@ -1008,12 +1050,12 @@ fun HomeScreen(
 
         when (decision) {
             TodayWatchStartupRevealDecision.REVEAL -> {
-                headerOffsetHeightPx = 0f
+                setHeaderOffsetImmediate(0f)
                 if (recommendGridState.firstVisibleItemIndex > 12) {
                     recommendGridState.scrollToItem(12)
                 }
                 recommendGridState.animateScrollToItem(0)
-                headerOffsetHeightPx = 0f
+                setHeaderOffsetImmediate(0f)
                 todayWatchStartupRevealHandled = true
             }
             TodayWatchStartupRevealDecision.SKIP -> {
@@ -1337,7 +1379,7 @@ fun HomeScreen(
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
                     gridStates[state.currentCategory]?.animateScrollToItem(0)
-                    headerOffsetHeightPx = 0f // [Refinement] Reset header on double tap
+                    setHeaderOffsetImmediate(0f) // [Refinement] Reset header on double tap
                 }
             },
             isRefreshing = isRefreshing,
@@ -1772,9 +1814,9 @@ fun HomeScreen(
                 firstItemModifier = Modifier,
                 onHomeDoubleTap = {
                     coroutineScope.launch {
-                        headerOffsetHeightPx = 0f
+                        setHeaderOffsetImmediate(0f)
                         gridStates[state.currentCategory]?.animateScrollToItem(0)
-                        headerOffsetHeightPx = 0f
+                        setHeaderOffsetImmediate(0f)
                     }
                 },
                 hazeState = if (isBottomBarBlurEnabled) hazeState else null,

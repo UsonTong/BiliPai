@@ -7,6 +7,39 @@ import kotlin.test.assertTrue
 class TabletVideoLayoutPolicyTest {
 
     @Test
+    fun secondaryPaneDefaultsToRelatedWhenCommentsEmptyAndRelatedExist() {
+        assertEquals(
+            1,
+            resolveTabletSecondaryDefaultTab(
+                replyCount = 0,
+                hasRelatedVideos = true
+            )
+        )
+    }
+
+    @Test
+    fun secondaryPaneDefaultsToCommentsWhenRepliesExist() {
+        assertEquals(
+            0,
+            resolveTabletSecondaryDefaultTab(
+                replyCount = 8,
+                hasRelatedVideos = true
+            )
+        )
+    }
+
+    @Test
+    fun secondaryPaneDefaultsToCommentsWhenNoRelatedVideos() {
+        assertEquals(
+            0,
+            resolveTabletSecondaryDefaultTab(
+                replyCount = 0,
+                hasRelatedVideos = false
+            )
+        )
+    }
+
+    @Test
     fun expandedTablet_prioritizesPrimaryPaneWidth() {
         val policy = resolveTabletVideoLayoutPolicy(widthDp = 1280)
 

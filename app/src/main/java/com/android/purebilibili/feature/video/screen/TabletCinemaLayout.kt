@@ -30,6 +30,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -148,6 +151,10 @@ fun TabletCinemaLayout(
             .getOrDefault(resolveInitialCurtainState(configuration.screenWidthDp))
     }
     var selectedTab by rememberSaveable(bvid) { mutableIntStateOf(0) }
+    val curtainPagerState = rememberPagerState(
+        initialPage = selectedTab,
+        pageCount = { 2 }
+    )
     val curtainWidth by animateDpAsState(
         targetValue = resolveCurtainWidthDp(curtainState, policy).dp,
         animationSpec = tween(durationMillis = 240),
@@ -161,6 +168,16 @@ fun TabletCinemaLayout(
             isRepliesLoading = commentState.isRepliesLoading,
             hasRelatedVideos = !success?.related.isNullOrEmpty()
         )
+    }
+    LaunchedEffect(selectedTab) {
+        if (curtainPagerState.currentPage != selectedTab) {
+            curtainPagerState.animateScrollToPage(selectedTab)
+        }
+    }
+    LaunchedEffect(curtainPagerState.currentPage) {
+        if (selectedTab != curtainPagerState.currentPage) {
+            selectedTab = curtainPagerState.currentPage
+        }
     }
 
     Box(
@@ -260,6 +277,7 @@ fun TabletCinemaLayout(
                 state = curtainState,
                 width = curtainWidth,
                 selectedTab = selectedTab,
+                pagerState = curtainPagerState,
                 onToggle = {
                     curtainStateName = when (curtainState) {
                         TabletSideCurtainState.OPEN -> TabletSideCurtainState.PEEK.name
@@ -617,6 +635,7 @@ private fun CinemaSideCurtain(
     state: TabletSideCurtainState,
     width: Dp,
     selectedTab: Int,
+    pagerState: PagerState,
     onToggle: () -> Unit,
     onTabSelected: (Int) -> Unit,
     success: PlayerUiState.Success?,
@@ -628,6 +647,7 @@ private fun CinemaSideCurtain(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     context: android.content.Context
 ) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     Row(
         modifier = Modifier.fillMaxHeight(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -691,12 +711,17 @@ private fun CinemaSideCurtain(
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
                         TabRow(
-                            selectedTabIndex = selectedTab,
+                            selectedTabIndex = pagerState.currentPage,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Tab(
-                                selected = selectedTab == 0,
-                                onClick = { onTabSelected(0) },
+                                selected = pagerState.currentPage == 0,
+                                onClick = {
+                                    onTabSelected(0)
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(0)
+                                    }
+                                },
                                 text = {
                                     Text(
                                         text = "评论 ${if (commentState.replyCount > 0) "(${commentState.replyCount})" else ""}"
@@ -704,34 +729,51 @@ private fun CinemaSideCurtain(
                                 }
                             )
                             Tab(
-                                selected = selectedTab == 1,
-                                onClick = { onTabSelected(1) },
+                                selected = pagerState.currentPage == 1,
+                                onClick = {
+                                    onTabSelected(1)
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(1)
+                                    }
+                                },
                                 text = { Text("相关推荐") }
                             )
                         }
 
-                        if (selectedTab == 0 && success != null) {
-                            CinemaCommentsPane(
-                                success = success,
-                                commentState = commentState,
-                                commentViewModel = commentViewModel,
-                                viewModel = viewModel,
-                                playerState = playerState,
-                                onUpClick = onUpClick,
-                                context = context
-                            )
-                        } else if (selectedTab == 1 && success != null) {
-                            CinemaRelatedPane(
-                                success = success,
-                                onRelatedVideoClick = onRelatedVideoClick,
-                                context = context
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CupertinoActivityIndicator()
+                        HorizontalPager(
+                            state = pagerState,
+                            userScrollEnabled = true,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            when {
+                                success == null -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CupertinoActivityIndicator()
+                                    }
+                                }
+
+                                page == 0 -> {
+                                    CinemaCommentsPane(
+                                        success = success,
+                                        commentState = commentState,
+                                        commentViewModel = commentViewModel,
+                                        viewModel = viewModel,
+                                        playerState = playerState,
+                                        onUpClick = onUpClick,
+                                        context = context
+                                    )
+                                }
+
+                                else -> {
+                                    CinemaRelatedPane(
+                                        success = success,
+                                        onRelatedVideoClick = onRelatedVideoClick,
+                                        context = context
+                                    )
+                                }
                             }
                         }
                     }
@@ -828,8 +870,7 @@ private fun CinemaCommentsPane(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     shape = RoundedCornerShape(14.dp),
                     onClick = {
-                        viewModel.clearReplyingTo()
-                        viewModel.showCommentInputDialog()
+                        viewModel.openRootCommentComposer()
                     }
                 ) {
                     Text(

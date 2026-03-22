@@ -42,6 +42,18 @@ object DownloadManager {
     private var downloadDir: File? = null
     private var tasksFile: File? = null
     private var appContext: Context? = null
+
+    private fun safeExternalFilesRoot(context: Context): File? {
+        return runCatching { context.getExternalFilesDir(null) }
+            .onFailure { error ->
+                com.android.purebilibili.core.util.Logger.w(
+                    "DownloadManager",
+                    "⚠️ External files dir unavailable, falling back to internal storage",
+                    error
+                )
+            }
+            .getOrNull()
+    }
     
     /**
      * 初始化（在 Application 中调用）
@@ -543,7 +555,8 @@ object DownloadManager {
     
     private fun getTaskDir(taskId: String): File {
         val task = _tasks.value[taskId]
-        val appScopedRoot = appContext?.getExternalFilesDir(null)?.absolutePath
+        val externalRoot = appContext?.let(::safeExternalFilesRoot)
+        val appScopedRoot = externalRoot?.absolutePath
         val legacyCustomPath = if (appScopedRoot != null) {
             sanitizeLegacyCustomPath(task?.customSaveDir, appScopedRoot)
         } else {
@@ -625,26 +638,32 @@ object DownloadManager {
      * 解析下载目录 (已提取为辅助方法)
      */
     private fun resolveDownloadDir(context: Context, customPath: String?): File {
-        val defaultDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
-        
-        if (customPath.isNullOrBlank()) return defaultDir
-        
         return try {
-            val sanitizedPath = sanitizeLegacyCustomPath(
-                customPath = customPath,
-                appScopedRoot = context.getExternalFilesDir(null)?.absolutePath.orEmpty()
-            ) ?: return defaultDir
-            val customFile = File(sanitizedPath)
-            if ((customFile.exists() || customFile.mkdirs()) && customFile.canWrite()) {
-                com.android.purebilibili.core.util.Logger.d("DownloadManager", "✅ Resolved custom dir: ${customFile.absolutePath}")
-                customFile
+            val resolvedDir = resolveManagedDownloadDirectory(
+                filesDir = context.filesDir,
+                externalFilesRoot = safeExternalFilesRoot(context),
+                customPath = customPath
+            )
+            if (customPath.isNullOrBlank()) {
+                com.android.purebilibili.core.util.Logger.d(
+                    "DownloadManager",
+                    "✅ Resolved managed dir: ${resolvedDir.absolutePath}"
+                )
+            } else if (resolvedDir.absolutePath == customPath) {
+                com.android.purebilibili.core.util.Logger.d(
+                    "DownloadManager",
+                    "✅ Resolved custom dir: ${resolvedDir.absolutePath}"
+                )
             } else {
-                com.android.purebilibili.core.util.Logger.w("DownloadManager", "⚠️ Custom path unavailable/writable: $customPath")
-                defaultDir
+                com.android.purebilibili.core.util.Logger.w(
+                    "DownloadManager",
+                    "⚠️ Custom path unavailable/writable, using fallback: $customPath -> ${resolvedDir.absolutePath}"
+                )
             }
+            resolvedDir
         } catch (e: Exception) {
             com.android.purebilibili.core.util.Logger.e("DownloadManager", "❌ Failed to resolve custom path: $customPath", e)
-            defaultDir
+            File(context.filesDir, "downloads").apply { mkdirs() }
         }
     }
     

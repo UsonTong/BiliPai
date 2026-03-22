@@ -72,9 +72,9 @@ internal fun resolveCommentInputDialogLayoutPolicy(
         )
     } else {
         CommentInputDialogLayoutPolicy(
-            inputBoxMinHeightDp = 100,
-            inputBoxMaxHeightDp = 180,
-            emojiPanelHeightDp = 280
+            inputBoxMinHeightDp = 84,
+            inputBoxMaxHeightDp = 136,
+            emojiPanelHeightDp = 220
         )
     }
 }

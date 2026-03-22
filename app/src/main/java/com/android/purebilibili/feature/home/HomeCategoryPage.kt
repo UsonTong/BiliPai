@@ -259,7 +259,10 @@ internal fun HomeCategoryPageContent(
                             cardId = video.bvid,
                             preset = DissolveAnimationPreset.TELEGRAM_FAST,
                             modifier = Modifier
-                                .jiggleOnDissolve(video.bvid)
+                                .jiggleOnDissolve(
+                                    cardId = video.bvid,
+                                    isCurrentCardDissolving = isDissolving
+                                )
                                 .then(if (index == 0) firstGridItemModifier else Modifier)
                         ) {
                             when (displayMode) {

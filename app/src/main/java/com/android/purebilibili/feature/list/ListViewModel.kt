@@ -72,8 +72,8 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
     private val _historyItemsMap = mutableMapOf<String, com.android.purebilibili.data.model.response.HistoryItem>()
     private val _historyItemsByRenderKey = mutableMapOf<String, com.android.purebilibili.data.model.response.HistoryItem>()
 
-    private val _dissolvingIds = MutableStateFlow<Set<String>>(emptySet())
-    val dissolvingIds = _dissolvingIds.asStateFlow()
+    private val _deleteSession = MutableStateFlow<HistoryDeleteSession?>(null)
+    internal val deleteSession = _deleteSession.asStateFlow()
     
     /**
      * 根据 bvid 获取历史记录项的导航信息
@@ -103,21 +103,31 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
     }
 
     fun startVideoDissolve(renderKey: String) {
-        val key = renderKey.trim()
-        if (key.isEmpty()) return
-        _dissolvingIds.value = _dissolvingIds.value + key
+        startDeleteSession(setOf(renderKey))
     }
 
     fun startBatchVideoDissolve(renderKeys: Set<String>) {
-        if (renderKeys.isEmpty()) return
-        _dissolvingIds.value = _dissolvingIds.value + renderKeys
+        startDeleteSession(renderKeys)
+    }
+
+    private fun startDeleteSession(renderKeys: Set<String>) {
+        val session = createHistoryDeleteSession(renderKeys) ?: return
+        _deleteSession.value = session
     }
 
     fun completeVideoDissolve(renderKey: String) {
         val key = renderKey.trim()
         if (key.isEmpty()) return
-        _dissolvingIds.value = _dissolvingIds.value - key
-        deleteHistoryItems(setOf(key))
+        val currentSession = _deleteSession.value ?: return
+        if (key !in currentSession.targetKeys) return
+
+        val nextSession = reduceHistoryDeleteSessionOnAnimationComplete(currentSession, key)
+        if (shouldFinalizeHistoryDeleteSession(nextSession)) {
+            deleteHistoryItems(nextSession.targetKeys)
+            _deleteSession.value = null
+        } else {
+            _deleteSession.value = nextSession
+        }
     }
 
     private fun enrichHistoryProgress(
@@ -153,7 +163,7 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
         cursorBusiness = ""
         _historyItemsMap.clear()
         _historyItemsByRenderKey.clear()
-        _dissolvingIds.value = emptySet()
+        _deleteSession.value = null
         
         val result = com.android.purebilibili.data.repository.HistoryRepository.getHistoryList(
             ps = 30,

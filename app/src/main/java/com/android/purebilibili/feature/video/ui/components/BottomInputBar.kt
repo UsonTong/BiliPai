@@ -73,7 +73,7 @@ fun BottomInputBar(
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
-                    text = "发个友善的评论...",
+                    text = "评论 UP 主和大家...",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )

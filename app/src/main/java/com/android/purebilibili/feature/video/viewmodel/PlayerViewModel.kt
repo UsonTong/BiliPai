@@ -2557,6 +2557,11 @@ class PlayerViewModel : ViewModel() {
         // 懒加载表情包
         loadEmotes()
     }
+
+    fun openRootCommentComposer() {
+        clearReplyingTo()
+        showCommentInputDialog()
+    }
     
     fun hideCommentInputDialog() {
         _showCommentDialog.value = false

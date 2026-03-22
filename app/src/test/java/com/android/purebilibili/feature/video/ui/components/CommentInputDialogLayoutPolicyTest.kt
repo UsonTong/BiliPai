@@ -12,9 +12,9 @@ class CommentInputDialogLayoutPolicyTest {
             isLandscape = false
         )
 
-        assertEquals(100, policy.inputBoxMinHeightDp)
-        assertEquals(180, policy.inputBoxMaxHeightDp)
-        assertEquals(280, policy.emojiPanelHeightDp)
+        assertEquals(84, policy.inputBoxMinHeightDp)
+        assertEquals(136, policy.inputBoxMaxHeightDp)
+        assertEquals(220, policy.emojiPanelHeightDp)
     }
 
     @Test

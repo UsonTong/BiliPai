@@ -354,6 +354,10 @@ internal fun resolveHomeTopContinuousSlabOverlap(uiPreset: UiPreset = UiPreset.I
     return if (uiPreset == UiPreset.MD3) 24.dp else 0.dp
 }
 
+internal fun resolveHomeTopContinuousSlabShape(uiPreset: UiPreset = UiPreset.IOS): Shape {
+    return RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+}
+
 internal fun resolveHomeTopReservedListPadding(
     statusBarHeight: Dp,
     searchBarHeight: Dp,
@@ -1153,7 +1157,7 @@ fun iOSHomeHeader(
                     .height(continuousSlabHeight)
                     .homeTopChromeSurface(
                         renderMode = effectiveContinuousSlabRenderMode,
-                        shape = androidx.compose.ui.graphics.RectangleShape,
+                        shape = resolveHomeTopContinuousSlabShape(uiPreset),
                         surfaceColor = resolveHomeTopContinuousSlabSurfaceColor(
                             baseColor = headerChromeColors.containerColor,
                             blurAlpha = backgroundAlpha,

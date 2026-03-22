@@ -577,6 +577,18 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `continuous top slab uses subtle bottom corners`() {
+        assertEquals(
+            RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+            resolveHomeTopContinuousSlabShape()
+        )
+        assertEquals(
+            RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+            resolveHomeTopContinuousSlabShape(UiPreset.MD3)
+        )
+    }
+
+    @Test
     fun `liquid glass readability layer stays lighter than blur`() {
         val liquidAlpha = resolveHomeTopChromeReadabilityAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP)
         val blurAlpha = resolveHomeTopChromeReadabilityAlpha(HomeTopChromeRenderMode.BLUR)

@@ -38,6 +38,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
 import kotlin.math.abs
 
 // 声明 DataStore 扩展属性
@@ -2456,7 +2457,10 @@ object SettingsManager {
      *  获取默认下载路径描述
      */
     fun getDefaultDownloadPath(context: Context): String {
-        return context.getExternalFilesDir(null)?.absolutePath + "/downloads"
+        val baseDir = runCatching { context.getExternalFilesDir(null) }
+            .getOrNull()
+            ?: context.filesDir
+        return File(baseDir, "downloads").absolutePath
     }
     
     // ========== 📉 省流量模式 ==========

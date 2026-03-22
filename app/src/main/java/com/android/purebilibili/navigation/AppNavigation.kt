@@ -191,15 +191,20 @@ fun AppNavigation(
 
     // 🔒 [防抖] 全局导航防抖机制 - 防止快速点击导致页面重复加载
     val lastNavigationTime = androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
-    val canNavigate: () -> Boolean = {
+    val canNavigate: (Boolean) -> Boolean = { bypassDebounce ->
         val currentTime = System.currentTimeMillis()
-        val canNav = currentTime - lastNavigationTime.longValue > 300 // 300ms 防抖
+        val canNav = canProceedWithNavigation(
+            currentTimeMillis = currentTime,
+            lastNavigationTimeMillis = lastNavigationTime.longValue,
+            debounceWindowMillis = 300L,
+            bypassDebounce = bypassDebounce
+        )
         if (canNav) lastNavigationTime.longValue = currentTime
         canNav
     }
     fun navigateToVideoRoute(route: String) {
         // 🔒 防抖检查
-        if (!canNavigate()) return
+        if (!canNavigate(false)) return
 
         //  [修复] 设置导航标志，抑制小窗显示
         CardPositionManager.recordVideoSourceRoute(
@@ -249,7 +254,7 @@ fun AppNavigation(
                     "AppNavigation",
                     "SUB_DBG home click resolved dynamic route: ${target.dynamicId}"
                 )
-                if (!canNavigate()) return
+                if (!canNavigate(false)) return
                 navController.navigate(ScreenRoutes.DynamicDetail.createRoute(target.dynamicId))
             }
             null -> Unit
@@ -258,7 +263,7 @@ fun AppNavigation(
 
     //  [修复] 通用单例跳转（防止重复打开相同页面）
     fun navigateTo(route: String) {
-        if (!canNavigate()) return
+        if (!canNavigate(shouldBypassNavigationDebounceForRoute(route))) return
 
         val currentRouteSnapshot = navController.currentBackStackEntry?.destination?.route
         val hasTargetInPreviousBackStack =
@@ -590,15 +595,15 @@ fun AppNavigation(
                     onHistoryClick = { navigateTo(ScreenRoutes.History.route) },
                     onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },  //  分区点击
                     onLiveClick = { roomId, title, uname ->
-                        if (canNavigate()) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
                     },
                     //  [修复] 番剧点击导航，接受类型参数
                     onBangumiClick = { initialType ->
-                        if (canNavigate()) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
                     },
                     //  分类点击：跳转到分类详情页面
                     onCategoryClick = { tid, name ->
-                        if (canNavigate()) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
                     },
                     //  [新增] 底栏扩展项目导航
                     onFavoriteClick = { navigateTo(ScreenRoutes.Favorite.route) },
@@ -890,13 +895,18 @@ fun AppNavigation(
                         //  [修复] 不再在这里调用 enterMiniMode，由 onDispose 统一处理
                         navController.popBackStack() 
                     },
+                    onHomeClick = {
+                        CardPositionManager.markReturning()
+                        miniPlayerManager?.markLeavingByNavigation(expectedBvid = bvid)
+                        navigateTo(ScreenRoutes.Home.route)
+                    },
                     //  [新增] 导航到音频模式
                     onNavigateToAudioMode = { 
                         isNavigatingToAudioMode = true
                         navController.navigate(ScreenRoutes.AudioMode.route)
                     },
                     onNavigateToSearch = {
-                        if (canNavigate()) navController.navigate(ScreenRoutes.Search.route)
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Search.route)
                     },
                     // [修复] 传递视频点击导航回调
                     onVideoClick = { vid, options ->
@@ -1286,12 +1296,12 @@ fun AppNavigation(
                     onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
                     onUpClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },  //  点击UP主跳转到空间
                     onBangumiClick = { seasonId ->
-                        if (canNavigate() && seasonId > 0) {
+                        if (canNavigate(false) && seasonId > 0) {
                             navController.navigate(ScreenRoutes.BangumiDetail.createRoute(seasonId))
                         }
                     },
                     onLiveClick = { roomId, title, uname ->
-                        if (canNavigate()) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
                     },
                     onAvatarClick = {
                         // 如果已登录 -> 去个人中心，未登录 -> 去登录页
