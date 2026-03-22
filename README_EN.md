@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-03-21 · Synced to v7.0.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-03-22 · Synced to v7.1.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.0.2-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.1.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -32,8 +32,14 @@
 | Category | Entry |
 | --- | --- |
 | Get Started | [Download Releases](https://github.com/jay3-yy/BiliPai/releases) · [Changelog](CHANGELOG.md) |
-| Docs | [Wiki Home](docs/wiki/README.md) · [AI / LLM Entry](llms.txt) · [AI Navigation Guide](docs/wiki/AI.md) |
+| Docs | [Wiki Home](docs/wiki/README.md) · [AI.txt](AI.txt) · [llm.txt](llm.txt) · [llms.txt](llms.txt) · [AI Navigation Guide](docs/wiki/AI.md) |
 | Developer Reference | [JSON Plugin Guide](docs/PLUGIN_DEVELOPMENT.md) · [Native Plugin Guide](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
+
+> [!CAUTION]
+> `README`, `AI.txt`, `llm.txt`, `llms.txt`, and the Wiki are maintained periodically, but fast-moving main-branch changes can still make parts of them stale. Treat them as reference only; verify current behavior with source, `CHANGELOG.md`, and real builds.
+
+> [!CAUTION]
+> The history list's "Delete All" action currently has a known issue. Avoid using it for now; prefer single-item deletion or careful batch cleanup.
 
 ## 📸 Preview
 
@@ -221,6 +227,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 |-----|-----|
 | **Bangumi Home** | Hot recommendations, schedule, categorical browsing |
 | **Episode Selection** | Official style bottom sheet for switching episodes/seasons |
+| **Landscape Top Bar Actions** | Like / coin / share are now available in landscape/fullscreen and stay closer to the regular video player behavior |
 | **Tracking** | Watch list management and progress synchronization |
 | **Danmaku** | Full danmaku support for anime |
 
@@ -356,7 +363,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 ## 📚 Wiki
 
-- AI / LLM Entry: [`llms.txt`](llms.txt)
+- AI / LLM Entry: [`AI.txt`](AI.txt) · [`llm.txt`](llm.txt) · [`llms.txt`](llms.txt)
 - AI Navigation Guide: [`docs/wiki/AI.md`](docs/wiki/AI.md)
 - Wiki Home: [`docs/wiki/README.md`](docs/wiki/README.md)
 - Feature Matrix: [`docs/wiki/FEATURE_MATRIX.md`](docs/wiki/FEATURE_MATRIX.md)
@@ -368,6 +375,9 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 ## 🗺️ Roadmap
 
+> [!TIP]
+> Roadmap last refreshed on 2026-03-22 (v7.1.0). For current behavior, prefer the latest release notes, `CHANGELOG.md`, and code.
+
 ### ✅ Completed
 
 - [x] Home Waterfall Feed
@@ -377,7 +387,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 - [x] Live Streaming
 - [x] Dynamic Feed (with fast-switch stability improvements)
 - [x] Offline Download + current-video batch caching
-- [x] Search + History (with bulk delete)
+- [x] Search + History (avoid "Delete All" for now)
 - [x] Material You + Dark Mode
 - [x] TV Login + first-play quality auth fixes for logged-in non-premium users
 - [x] Landscape player controls upgrade (subtitle panel + more panel + play-order quick switch)
@@ -405,14 +415,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v7.0.2 · 2026-03-21)
+### Latest (v7.1.0 · 2026-03-22)
 
-- 🧵 **Thread-detail presentation is unified**: portrait pager comments and video-detail thread detail now share the same comment sheet host instead of diverging into separate implementations.
-- 📺 **Thread detail preserves player visibility more reliably**: opening a subreply thread now prefers switching content inside the current drawer instead of falling back to a separate blocking overlay.
-- ⏱️ **Seek behavior is more consistent**: progress-bar scrubbing and chapter jumps now share the same user-seek path, which keeps playback state and displayed progress aligned more reliably.
-- 🗑️ **History deletion animation is cleaner**: when removing a history item, only neighboring cards keep the jiggle feedback while the dissolving card itself stays stable.
-- 📦 **The APK is now 64-bit only**: release packaging keeps `arm64-v8a` and drops `armeabi-v7a`.
-- 🏷️ **Artifact names are cleaner**: APK outputs no longer carry the `universal` suffix.
+- 📺 **Bangumi controls move closer to the regular video player**: the bangumi landscape/fullscreen experience now reuses more shared overlay behavior and feels more unified overall.
+- 👍 **Landscape top-bar actions are now fully wired up**: like, coin, and share work for bangumi instead of showing partially implemented buttons.
+- 🔗 **Bangumi sharing is more complete**: shares now use bangumi-specific links and automatically combine the series title with the current episode title.
+- 🔄 **State feedback is more accurate**: like state, coin state, coin balance queries, and coin-result feedback now stay aligned with the real bangumi status.
+- ⚠️ **History bulk delete remains a known issue**: until that fix lands, prefer deleting items one by one or in careful smaller batches.
 
 ---
 
