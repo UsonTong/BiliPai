@@ -133,6 +133,19 @@ class DynamicScreenStatePolicyTest {
     }
 
     @Test
+    fun `saved dynamic tab restores when index is valid`() {
+        assertEquals(1, resolveDynamicSelectedTab(savedTab = 1, tabCount = 2))
+    }
+
+    @Test
+    fun `saved dynamic tab falls back to all when index is invalid`() {
+        assertEquals(0, resolveDynamicSelectedTab(savedTab = null, tabCount = 2))
+        assertEquals(0, resolveDynamicSelectedTab(savedTab = -1, tabCount = 2))
+        assertEquals(0, resolveDynamicSelectedTab(savedTab = 2, tabCount = 2))
+        assertEquals(0, resolveDynamicSelectedTab(savedTab = 1, tabCount = 0))
+    }
+
+    @Test
     fun `incremental refresh prepends new items without dropping current list`() {
         val existing = listOf(buildDynamicItem("old_a"), buildDynamicItem("old_b"))
         val result = resolveDynamicFeedStateAfterSuccess(

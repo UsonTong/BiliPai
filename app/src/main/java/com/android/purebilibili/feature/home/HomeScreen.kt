@@ -1348,11 +1348,16 @@ fun HomeScreen(
             headerOffsetProvider = { headerOffsetHeightPx }, // [Optimization] Pass lambda to defer state read
             isHeaderCollapseEnabled = isHeaderCollapseEnabled,
             user = state.user,
-            onAvatarClick = { 
-                if (state.user.isLogin && isHomeDrawerEnabled) {
-                    coroutineScope.launch { drawerState.open() }
-                } else {
-                    onAvatarClick() 
+            onAvatarClick = {
+                when (
+                    resolveHomeAvatarAction(
+                        isLoggedIn = state.user.isLogin,
+                        isHomeDrawerEnabled = isHomeDrawerEnabled
+                    )
+                ) {
+                    HomeAvatarAction.OPEN_DRAWER -> coroutineScope.launch { drawerState.open() }
+                    HomeAvatarAction.OPEN_PROFILE -> onProfileClick()
+                    HomeAvatarAction.OPEN_LOGIN -> onAvatarClick()
                 }
             },
             onSettingsClick = onSettingsClick,

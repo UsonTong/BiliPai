@@ -73,4 +73,29 @@ class DownloadStoragePolicyTest {
             resolved.absolutePath
         )
     }
+
+    @Test
+    fun resolveDisplayedDownloadLocation_prefersUserSelectedExportDirectory() {
+        val displayed = resolveDisplayedDownloadLocation(
+            defaultManagedPath = "/storage/emulated/0/Android/data/com.android.purebilibili.debug/files/downloads",
+            customManagedPath = null,
+            exportTreeUri = "content://com.android.externalstorage.documents/tree/primary%3ADownload%2FBiliPai"
+        )
+
+        assertEquals("/storage/emulated/0/Download/BiliPai", displayed)
+    }
+
+    @Test
+    fun resolveDisplayedDownloadLocation_fallsBackToManagedDirectoryWhenExportDirectoryIsMissing() {
+        val displayed = resolveDisplayedDownloadLocation(
+            defaultManagedPath = "/storage/emulated/0/Android/data/com.android.purebilibili.debug/files/downloads",
+            customManagedPath = "/storage/emulated/0/Android/data/com.android.purebilibili.debug/files/custom-downloads",
+            exportTreeUri = null
+        )
+
+        assertEquals(
+            "/storage/emulated/0/Android/data/com.android.purebilibili.debug/files/custom-downloads",
+            displayed
+        )
+    }
 }
