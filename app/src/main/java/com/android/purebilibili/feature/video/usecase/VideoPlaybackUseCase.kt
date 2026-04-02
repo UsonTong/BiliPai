@@ -105,10 +105,20 @@ data class PlaybackSelectionResult(
 
 internal fun shouldPreparePlayerOnLoad(playWhenReady: Boolean): Boolean = true
 
+// TODO: Re-enable local adaptive DASH playback after the generated MPD seek path
+// is validated on real devices and covered by a playback-level regression test.
+private const val LOCAL_ADAPTIVE_DASH_PLAYBACK_ENABLED = false
+
 internal fun shouldUseAdaptiveDashPlayback(
     adaptiveDashSource: AdaptiveDashPlaybackSource?,
     audioUrl: String?
-): Boolean = adaptiveDashSource != null
+): Boolean {
+    // Local MPD playback regressed manual seeks on real devices in v7.3.2:
+    // the UI position updates, but decoded video jumps back to the opening frame.
+    // Keep building the adaptive source for future recovery work, but route
+    // playback through the previous legacy DASH path until seek stability is fixed.
+    return LOCAL_ADAPTIVE_DASH_PLAYBACK_ENABLED && adaptiveDashSource != null
+}
 
 internal fun resolveLocalDashManifestFileName(manifest: String): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(manifest.toByteArray())

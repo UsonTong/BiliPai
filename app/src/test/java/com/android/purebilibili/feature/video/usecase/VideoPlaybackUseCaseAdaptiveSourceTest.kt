@@ -10,6 +10,7 @@ import com.android.purebilibili.feature.video.playback.policy.PlaybackQualityMod
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class VideoPlaybackUseCaseAdaptiveSourceTest {
@@ -78,7 +79,7 @@ class VideoPlaybackUseCaseAdaptiveSourceTest {
     }
 
     @Test
-    fun `adaptive dash playback takes precedence when source exists`() {
+    fun `adaptive dash playback stays disabled while local manifest seek is unstable`() {
         val source = AdaptiveDashPlaybackSource(
             manifest = "<MPD />",
             videoTracks = emptyList(),
@@ -86,7 +87,7 @@ class VideoPlaybackUseCaseAdaptiveSourceTest {
             playbackQualityMode = PlaybackQualityMode.AUTO
         )
 
-        assertTrue(
+        assertFalse(
             shouldUseAdaptiveDashPlayback(
                 adaptiveDashSource = source,
                 audioUrl = "https://example.com/audio.m4s"
