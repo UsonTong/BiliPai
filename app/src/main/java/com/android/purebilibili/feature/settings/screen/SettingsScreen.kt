@@ -372,11 +372,9 @@ fun SettingsScreen(
         viewModel.refreshCacheSize()
         AnalyticsHelper.logScreenView("SettingsScreen")
         installedApkSha256 = calculateInstalledApkSha256(context)
-        if (!installedBuildProvenance.commitSha.equals("local", ignoreCase = true)) {
-            currentReleaseEvidence = AppUpdateChecker
-                .check(com.android.purebilibili.BuildConfig.VERSION_NAME)
-                .getOrNull()
-        }
+        currentReleaseEvidence = AppUpdateChecker
+            .check(com.android.purebilibili.BuildConfig.VERSION_NAME)
+            .getOrNull()
     }
 
     //  Transparent Navigation Bar

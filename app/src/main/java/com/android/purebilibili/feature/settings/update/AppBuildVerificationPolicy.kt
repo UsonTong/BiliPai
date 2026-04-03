@@ -107,6 +107,30 @@ internal fun resolveAppBuildVerificationState(
         )
     }
 
+    if (
+        remoteRelease != null &&
+        remoteRelease.releaseIsImmutable &&
+        remoteMatchesCurrentVersion &&
+        digestMatches
+    ) {
+        return AppBuildVerificationState(
+            status = AppBuildVerificationStatus.LIKELY_VERIFIED,
+            summary = if (hasAttestation) {
+                "当前安装包 SHA-256 已对上 GitHub Release，且 Release 已锁定并附带 provenance；但安装包内未写入完整构建来源，只能做发布侧校验。"
+            } else {
+                "当前安装包 SHA-256 已对上 GitHub Release，且 Release 已锁定；但安装包内未写入完整构建来源，只能做发布侧校验。"
+            },
+            sourceCommitSha = remoteCommit,
+            workflowRunId = remoteRunId,
+            workflowRunUrl = remoteRunUrl,
+            releaseTag = remoteTag,
+            localApkSha256 = localApkSha256,
+            remoteApkSha256 = remoteDigest,
+            releaseIsImmutable = true,
+            hasAttestation = hasAttestation
+        )
+    }
+
     if (hasEmbeddedProvenance) {
         val likelySummary = if (remoteRelease?.releaseIsImmutable == false) {
             if (hasAttestation) {
