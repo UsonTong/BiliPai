@@ -20,6 +20,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import okhttp3.CacheControl
 import okhttp3.Request
 import java.io.InputStream
@@ -1253,12 +1254,23 @@ object VideoRepository {
         
         //  使用缓存的 Keys
         val (imgKey, subKey) = getWbiKeys()
+        val isLoggedIn = resolveVideoPlaybackAuthState(
+            hasSessionCookie = !TokenManager.sessDataCache.isNullOrEmpty(),
+            hasAccessToken = !TokenManager.accessTokenCache.isNullOrEmpty()
+        )
+        val auto1080pEnabled = NetworkModule.appContext?.let { context ->
+            runCatching { SettingsManager.getAuto1080p(context).first() }.getOrDefault(true)
+        } ?: true
         
         val params = buildPlayUrlWbiBaseParams(
             bvid = bvid,
             cid = cid,
             qn = qn,
-            audioLang = audioLang
+            audioLang = audioLang,
+            tryLook = shouldRequestPlayUrlTryLook(
+                isLoggedIn = isLoggedIn,
+                auto1080pEnabled = auto1080pEnabled
+            )
         )
 
         val directedOverrides = buildDirectedTrafficWbiOverrides(

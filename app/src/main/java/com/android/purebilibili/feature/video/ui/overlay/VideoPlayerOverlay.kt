@@ -1404,6 +1404,8 @@ fun VideoPlayerOverlay(
                 qualityLabels = qualityLabels,
                 qualityIds = qualityIds,
                 switchableQualityIds = switchableQualityIds,
+                isLoggedIn = isLoggedIn,
+                isVip = isVip,
                 onQualitySelected = { index ->
                     val id = qualityIds.getOrNull(index) ?: 0
                     onQualityChange(id, 0L)  // 位置由上层处理

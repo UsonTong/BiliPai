@@ -19,6 +19,20 @@ data class AppBuildVerificationState(
     val hasAttestation: Boolean = false
 )
 
+enum class AppBuildInfoDialogAction {
+    VIEW_VERIFICATION,
+    VIEW_BUILD_SOURCE,
+    VIEW_BUILD_FINGERPRINT
+}
+
+data class AppBuildInfoDialogContent(
+    val title: String,
+    val value: String,
+    val body: String,
+    val actionLabel: String,
+    val action: AppBuildInfoDialogAction
+)
+
 internal fun resolveAppBuildVerificationState(
     currentVersion: String,
     localBuildCommitSha: String,
@@ -273,4 +287,54 @@ internal fun resolveBuildFingerprintSubtitle(
         }
         else -> "已读取到发布页 SHA-256，可继续结合构建来源核对。"
     }
+}
+
+internal fun resolveVerificationDialogContent(
+    label: String,
+    summary: String
+): AppBuildInfoDialogContent {
+    return AppBuildInfoDialogContent(
+        title = "源码一致性",
+        value = label,
+        body = summary,
+        actionLabel = "查看证明",
+        action = AppBuildInfoDialogAction.VIEW_VERIFICATION
+    )
+}
+
+internal fun resolveBuildSourceDialogContent(
+    value: String,
+    subtitle: String
+): AppBuildInfoDialogContent {
+    return AppBuildInfoDialogContent(
+        title = "构建来源",
+        value = value,
+        body = subtitle,
+        actionLabel = "查看来源",
+        action = AppBuildInfoDialogAction.VIEW_BUILD_SOURCE
+    )
+}
+
+internal fun resolveBuildFingerprintDialogContent(
+    value: String,
+    fullValue: String,
+    subtitle: String
+): AppBuildInfoDialogContent {
+    val resolvedFullValue = fullValue.ifBlank { value }
+    val body = buildString {
+        append("完整 SHA-256：")
+        append('\n')
+        append(resolvedFullValue)
+        if (subtitle.isNotBlank()) {
+            append("\n\n")
+            append(subtitle)
+        }
+    }
+    return AppBuildInfoDialogContent(
+        title = "SHA-256",
+        value = value,
+        body = body,
+        actionLabel = "查看证明",
+        action = AppBuildInfoDialogAction.VIEW_BUILD_FINGERPRINT
+    )
 }

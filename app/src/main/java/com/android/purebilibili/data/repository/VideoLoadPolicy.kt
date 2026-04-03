@@ -194,7 +194,7 @@ internal fun buildPlayUrlWbiBaseParams(
     cid: Long,
     qn: Int,
     audioLang: String? = null,
-    tryLook: Boolean = true
+    tryLook: Boolean = false
 ): MutableMap<String, String> {
     val params = linkedMapOf(
         "bvid" to bvid,
@@ -215,6 +215,13 @@ internal fun buildPlayUrlWbiBaseParams(
         params["cur_language"] = audioLang
     }
     return params
+}
+
+internal fun shouldRequestPlayUrlTryLook(
+    isLoggedIn: Boolean,
+    auto1080pEnabled: Boolean
+): Boolean {
+    return !isLoggedIn && auto1080pEnabled
 }
 
 internal fun buildLoggedInPlaybackFallbackOrder(): List<PlayUrlSource> {

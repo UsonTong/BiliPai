@@ -149,6 +149,20 @@ class VideoPlaybackUseCaseQualitySwitchTest {
     }
 
     @Test
+    fun `buildQualitySelectionState keeps premium labels visible but disables missing dash tiers`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.buildQualitySelectionState(
+            apiQualities = listOf(120, 116, 80, 64, 32),
+            dashVideoIds = listOf(80, 64, 32)
+        )
+
+        assertEquals(listOf(120, 116, 80, 64, 32), result.qualityIds)
+        assertEquals(listOf(80, 64, 32), result.switchableQualityIds)
+        assertEquals(listOf("4K", "1080P60", "1080P", "720P", "480P"), result.qualityLabels)
+    }
+
+    @Test
     fun `buildQualitySelectionState hides premium api only tiers during app cooldown`() {
         val useCase = VideoPlaybackUseCase()
 

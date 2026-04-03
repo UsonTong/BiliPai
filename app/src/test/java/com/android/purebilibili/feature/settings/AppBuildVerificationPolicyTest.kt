@@ -220,4 +220,45 @@ class AppBuildVerificationPolicyTest {
 
         assertEquals("与 GitHub Release SHA-256 一致，Release 已锁定，含 provenance。", subtitle)
     }
+
+    @Test
+    fun `resolveVerificationDialogContent keeps full verification summary`() {
+        val content = resolveVerificationDialogContent(
+            label = "未验证",
+            summary = "当前安装包缺少足够的发布侧证据，暂时无法核对源码与安装包是否一致。"
+        )
+
+        assertEquals("源码一致性", content.title)
+        assertEquals("未验证", content.value)
+        assertEquals("当前安装包缺少足够的发布侧证据，暂时无法核对源码与安装包是否一致。", content.body)
+        assertEquals("查看证明", content.actionLabel)
+    }
+
+    @Test
+    fun `resolveBuildSourceDialogContent keeps full build source subtitle`() {
+        val content = resolveBuildSourceDialogContent(
+            value = "GitHub Release",
+            subtitle = "workflow #123456 · tag v7.4.0"
+        )
+
+        assertEquals("构建来源", content.title)
+        assertEquals("GitHub Release", content.value)
+        assertEquals("workflow #123456 · tag v7.4.0", content.body)
+        assertEquals("查看来源", content.actionLabel)
+    }
+
+    @Test
+    fun `resolveBuildFingerprintDialogContent includes full sha256 and subtitle`() {
+        val content = resolveBuildFingerprintDialogContent(
+            value = "49a40f9149e3",
+            fullValue = "49a40f9149e31234567890abcdef1234567890abcdef1234567890abcdef1234",
+            subtitle = "与当前 Release SHA-256 一致，但该 Release 还可被修改。"
+        )
+
+        assertEquals("SHA-256", content.title)
+        assertEquals("49a40f9149e3", content.value)
+        assertTrue(content.body.contains("49a40f9149e31234567890abcdef1234567890abcdef1234567890abcdef1234"))
+        assertTrue(content.body.contains("与当前 Release SHA-256 一致，但该 Release 还可被修改。"))
+        assertEquals("查看证明", content.actionLabel)
+    }
 }

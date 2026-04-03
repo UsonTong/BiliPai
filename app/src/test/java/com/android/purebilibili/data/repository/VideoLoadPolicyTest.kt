@@ -244,7 +244,7 @@ class VideoLoadPolicyTest {
     }
 
     @Test
-    fun `buildPlayUrlWbiBaseParams matches PiliPlus parity defaults`() {
+    fun `buildPlayUrlWbiBaseParams omits try look by default for logged in parity`() {
         val params = buildPlayUrlWbiBaseParams(
             bvid = "BV1TEST12345",
             cid = 9527L,
@@ -261,11 +261,45 @@ class VideoLoadPolicyTest {
         assertEquals("pre-load", params["gaia_source"])
         assertEquals("true", params["isGaiaAvoided"])
         assertEquals("1315873", params["web_location"])
-        assertEquals("1", params["try_look"])
         assertEquals("ja", params["cur_language"])
+        assertFalse(params.containsKey("try_look"))
         assertFalse(params.containsKey("session"))
         assertFalse(params.containsKey("high_quality"))
         assertFalse(params.containsKey("platform"))
+    }
+
+    @Test
+    fun `buildPlayUrlWbiBaseParams includes try look only when explicitly requested`() {
+        val params = buildPlayUrlWbiBaseParams(
+            bvid = "BV1TEST12345",
+            cid = 9527L,
+            qn = 80,
+            tryLook = true
+        )
+
+        assertEquals("1", params["try_look"])
+    }
+
+    @Test
+    fun `shouldRequestPlayUrlTryLook only enables guest preview 1080 mode`() {
+        assertFalse(
+            shouldRequestPlayUrlTryLook(
+                isLoggedIn = true,
+                auto1080pEnabled = true
+            )
+        )
+        assertTrue(
+            shouldRequestPlayUrlTryLook(
+                isLoggedIn = false,
+                auto1080pEnabled = true
+            )
+        )
+        assertFalse(
+            shouldRequestPlayUrlTryLook(
+                isLoggedIn = false,
+                auto1080pEnabled = false
+            )
+        )
     }
 
     @Test

@@ -972,7 +972,6 @@ class VideoPlaybackUseCase(
     ): QualityMergeResult {
         val normalizedApi = apiQualities.distinct().sortedDescending()
         val normalizedDash = dashVideoIds.distinct().sortedDescending()
-        val switchableQualities = normalizedDash
 
         // Keep API-advertised login-tier qualities visible so users can re-fetch 1080P+ even when
         // the first DASH payload is temporarily capped at 720P.
@@ -990,6 +989,7 @@ class VideoPlaybackUseCase(
             }
             else -> normalizedDash
         }
+        val switchableQualities = normalizedDash
 
         return QualityMergeResult(
             switchableQualities = switchableQualities,

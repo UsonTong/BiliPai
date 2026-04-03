@@ -69,6 +69,8 @@ fun VideoSettingsPanel(
     qualityLabels: List<String> = emptyList(),
     qualityIds: List<Int> = emptyList(),
     switchableQualityIds: List<Int> = emptyList(),
+    isLoggedIn: Boolean = false,
+    isVip: Boolean = false,
     onQualitySelected: (Int) -> Unit = {},
     
     // 倍速
@@ -112,6 +114,14 @@ fun VideoSettingsPanel(
     // 关闭面板
     onDismiss: () -> Unit
 ) {
+    fun hasPermissionForQuality(qualityId: Int): Boolean {
+        return when {
+            qualityId >= 112 -> isVip
+            qualityId >= 80 -> isLoggedIn
+            else -> true
+        }
+    }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -364,24 +374,26 @@ fun VideoSettingsPanel(
                                 val isSelected = label == currentQualityLabel
                                 val qualityId = qualityIds.getOrNull(index) ?: 0
                                 val isSwitchable = qualityId in switchableQualityIds
+                                val hasPermission = hasPermissionForQuality(qualityId)
+                                val isEnabled = isSwitchable && hasPermission
                                 val containerColor = when {
                                     isSelected -> MaterialTheme.colorScheme.primary
-                                    isSwitchable -> MaterialTheme.colorScheme.surfaceVariant
+                                    isEnabled -> MaterialTheme.colorScheme.surfaceVariant
                                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                                 }
                                 val contentColor = when {
                                     isSelected -> MaterialTheme.colorScheme.onPrimary
-                                    isSwitchable -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                                 }
 
                                 Surface(
                                     onClick = {
-                                        if (!isSelected && isSwitchable) {
+                                        if (!isSelected && isEnabled) {
                                             onQualitySelected(index)
                                         }
                                     },
-                                    enabled = isSelected || isSwitchable,
+                                    enabled = isSelected || isEnabled,
                                     shape = RoundedCornerShape(16.dp),
                                     color = containerColor,
                                     modifier = Modifier.height(32.dp)
