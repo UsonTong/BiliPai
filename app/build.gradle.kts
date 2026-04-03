@@ -12,6 +12,13 @@ plugins {
     // id("com.google.firebase.crashlytics")
 }
 
+fun String.toBuildConfigStringLiteral(): String {
+    val escaped = this
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"$escaped\""
+}
+
 val debugVerboseLogsEnabled = providers.gradleProperty("bili.debug.verboseLogs")
     .map(String::toBoolean)
     .orElse(false)
@@ -27,6 +34,21 @@ val debugLeakCanaryEnabled = providers.gradleProperty("bili.debug.leakCanary")
 val debugUiToolingRuntimeEnabled = providers.gradleProperty("bili.debug.uiTooling")
     .map(String::toBoolean)
     .orElse(false)
+    .get()
+val buildCommitSha = providers.gradleProperty("bili.build.commitSha")
+    .orElse("local")
+    .get()
+val buildGitRef = providers.gradleProperty("bili.build.gitRef")
+    .orElse("")
+    .get()
+val buildWorkflowRunId = providers.gradleProperty("bili.build.workflowRunId")
+    .orElse("")
+    .get()
+val buildWorkflowRunUrl = providers.gradleProperty("bili.build.workflowRunUrl")
+    .orElse("")
+    .get()
+val buildReleaseTag = providers.gradleProperty("bili.build.releaseTag")
+    .orElse("")
     .get()
 
 android {
@@ -45,8 +67,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 135
-        versionName = "7.3.3"
+        versionCode = 136
+        versionName = "7.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -60,6 +82,11 @@ android {
         }
 
         manifestPlaceholders["castServiceProcess"] = castServiceProcess
+        buildConfigField("String", "BUILD_COMMIT_SHA", buildCommitSha.toBuildConfigStringLiteral())
+        buildConfigField("String", "BUILD_GIT_REF", buildGitRef.toBuildConfigStringLiteral())
+        buildConfigField("String", "BUILD_WORKFLOW_RUN_ID", buildWorkflowRunId.toBuildConfigStringLiteral())
+        buildConfigField("String", "BUILD_WORKFLOW_RUN_URL", buildWorkflowRunUrl.toBuildConfigStringLiteral())
+        buildConfigField("String", "BUILD_RELEASE_TAG", buildReleaseTag.toBuildConfigStringLiteral())
     }
     
     // 🔥 Keep a single APK artifact while packaging arm64-v8a only

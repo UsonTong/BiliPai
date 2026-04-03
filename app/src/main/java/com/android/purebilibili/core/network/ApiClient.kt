@@ -27,6 +27,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
+internal const val BANGUMI_PLAY_URL_PATH = "pgc/player/web/v2/playurl"
+
 /**
  * Bilibili 主 API 接口
  * 
@@ -1027,15 +1029,11 @@ interface BangumiApi {
         @Query("ep_id") epId: Long? = null
     ): ResponseBody
     
-    // 番剧播放地址 - 使用标准接口
-    @GET("pgc/player/web/playurl")
+    // 番剧播放地址 - PiliPlus parity path
+    @GET(BANGUMI_PLAY_URL_PATH)
     suspend fun getBangumiPlayUrl(
-        @Query("ep_id") epId: Long,
-        @Query("qn") qn: Int = 80,
-        @Query("fnval") fnval: Int = 4048,
-        @Query("fnver") fnver: Int = 0,
-        @Query("fourk") fourk: Int = 1
-    ): com.android.purebilibili.data.model.response.BangumiPlayUrlResponse
+        @QueryMap params: Map<String, String>
+    ): ResponseBody
     
     // 追番/追剧
     @retrofit2.http.FormUrlEncoded

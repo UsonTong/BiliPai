@@ -18,7 +18,7 @@ internal data class PlaybackSeekSessionState(
 internal data class PlaybackSeekSessionCommitResult(
     val state: PlaybackSeekSessionState,
     val committedPositionMs: Long,
-    val shouldResumePlayback: Boolean
+    val shouldResumePlayback: Boolean?
 )
 
 internal fun syncPlaybackSeekSession(
@@ -87,7 +87,7 @@ internal fun finishPlaybackSeekInteraction(
             pendingSeekPositionMs = committedPositionMs
         ),
         committedPositionMs = committedPositionMs,
-        shouldResumePlayback = state.shouldResumePlayback == true
+        shouldResumePlayback = state.shouldResumePlayback
     )
 }
 

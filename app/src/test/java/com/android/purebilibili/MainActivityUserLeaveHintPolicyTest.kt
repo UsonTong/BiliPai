@@ -49,4 +49,37 @@ class MainActivityUserLeaveHintPolicyTest {
             )
         )
     }
+
+    @Test
+    fun restoresPlaybackRouteResumeStateWhenVideoOrAudioRouteIsActive() {
+        assertTrue(
+            shouldRestorePlaybackRouteStateOnResume(
+                isPlaybackRouteActive = true
+            )
+        )
+        assertFalse(
+            shouldRestorePlaybackRouteStateOnResume(
+                isPlaybackRouteActive = false
+            )
+        )
+    }
+
+    @Test
+    fun restoresMutedPlayerVolumeOnlyWhenPlaybackPlayerWasInternallyMuted() {
+        assertTrue(
+            shouldRestoreMutedPlaybackPlayerVolumeOnResume(
+                playerVolume = 0f
+            )
+        )
+        assertTrue(
+            shouldRestoreMutedPlaybackPlayerVolumeOnResume(
+                playerVolume = -0.1f
+            )
+        )
+        assertFalse(
+            shouldRestoreMutedPlaybackPlayerVolumeOnResume(
+                playerVolume = 0.3f
+            )
+        )
+    }
 }

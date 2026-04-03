@@ -109,8 +109,26 @@ class PlaybackSeekControllerTest {
 
         val result = finishPlaybackSeekInteraction(draggingState)
 
-        assertTrue(result.shouldResumePlayback)
+        assertEquals(true, result.shouldResumePlayback)
         assertEquals(true, result.state.shouldResumePlayback)
+    }
+
+    @Test
+    fun finishSeek_keepsResumeIntentUnsetWhenInteractionStartedWithoutOne() {
+        val draggingState = updatePlaybackSeekInteraction(
+            state = startPlaybackSeekInteraction(
+                state = syncPlaybackSeekSession(
+                    state = PlaybackSeekSessionState(),
+                    playbackPositionMs = 8_000L
+                )
+            ),
+            positionMs = 30_000L
+        )
+
+        val result = finishPlaybackSeekInteraction(draggingState)
+
+        assertNull(result.shouldResumePlayback)
+        assertNull(result.state.shouldResumePlayback)
     }
 
     @Test

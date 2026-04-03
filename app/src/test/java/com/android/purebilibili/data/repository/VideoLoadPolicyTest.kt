@@ -176,13 +176,13 @@ class VideoLoadPolicyTest {
     }
 
     @Test
-    fun `shouldTryAppApiForTargetQuality enables app api for 1080P regardless of session cookie`() {
-        assertTrue(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = false))
-        assertTrue(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = true))
+    fun `shouldTryAppApiForTargetQuality stays disabled for PiliPlus parity playback strategy`() {
+        assertFalse(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = false))
+        assertFalse(shouldTryAppApiForTargetQuality(targetQn = 80, hasSessionCookie = true))
         assertFalse(shouldTryAppApiForTargetQuality(64))
-        assertTrue(shouldTryAppApiForTargetQuality(112))
-        assertTrue(shouldTryAppApiForTargetQuality(120))
-        assertTrue(
+        assertFalse(shouldTryAppApiForTargetQuality(112))
+        assertFalse(shouldTryAppApiForTargetQuality(120))
+        assertFalse(
             shouldTryAppApiForTargetQuality(
                 targetQn = 64,
                 hasSessionCookie = true,
@@ -240,6 +240,47 @@ class VideoLoadPolicyTest {
                 directedTrafficEnabled = false,
                 isOnMobileData = true
             ).isEmpty()
+        )
+    }
+
+    @Test
+    fun `buildPlayUrlWbiBaseParams matches PiliPlus parity defaults`() {
+        val params = buildPlayUrlWbiBaseParams(
+            bvid = "BV1TEST12345",
+            cid = 9527L,
+            qn = 80,
+            audioLang = "ja"
+        )
+
+        assertEquals("BV1TEST12345", params["bvid"])
+        assertEquals("9527", params["cid"])
+        assertEquals("80", params["qn"])
+        assertEquals("4048", params["fnval"])
+        assertEquals("1", params["fourk"])
+        assertEquals("1", params["voice_balance"])
+        assertEquals("pre-load", params["gaia_source"])
+        assertEquals("true", params["isGaiaAvoided"])
+        assertEquals("1315873", params["web_location"])
+        assertEquals("1", params["try_look"])
+        assertEquals("ja", params["cur_language"])
+        assertFalse(params.containsKey("session"))
+        assertFalse(params.containsKey("high_quality"))
+        assertFalse(params.containsKey("platform"))
+    }
+
+    @Test
+    fun `buildLoggedInPlaybackFallbackOrder keeps PiliPlus parity main path lean`() {
+        assertEquals(
+            listOf(PlayUrlSource.DASH),
+            buildLoggedInPlaybackFallbackOrder()
+        )
+    }
+
+    @Test
+    fun `buildGuestPlaybackFallbackOrder keeps PiliPlus parity on a single Web WBI path`() {
+        assertEquals(
+            listOf(PlayUrlSource.DASH),
+            buildGuestPlaybackFallbackOrder()
         )
     }
 

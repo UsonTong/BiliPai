@@ -68,6 +68,7 @@ fun VideoSettingsPanel(
     currentQualityLabel: String,
     qualityLabels: List<String> = emptyList(),
     qualityIds: List<Int> = emptyList(),
+    switchableQualityIds: List<Int> = emptyList(),
     onQualitySelected: (Int) -> Unit = {},
     
     // 倍速
@@ -361,17 +362,28 @@ fun VideoSettingsPanel(
                         ) {
                             qualityLabels.forEachIndexed { index, label ->
                                 val isSelected = label == currentQualityLabel
+                                val qualityId = qualityIds.getOrNull(index) ?: 0
+                                val isSwitchable = qualityId in switchableQualityIds
+                                val containerColor = when {
+                                    isSelected -> MaterialTheme.colorScheme.primary
+                                    isSwitchable -> MaterialTheme.colorScheme.surfaceVariant
+                                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                                }
+                                val contentColor = when {
+                                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                                    isSwitchable -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                }
+
                                 Surface(
-                                    onClick = { 
-                                        if (!isSelected) {
+                                    onClick = {
+                                        if (!isSelected && isSwitchable) {
                                             onQualitySelected(index)
                                         }
                                     },
+                                    enabled = isSelected || isSwitchable,
                                     shape = RoundedCornerShape(16.dp),
-                                    color = if (isSelected) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    color = containerColor,
                                     modifier = Modifier.height(32.dp)
                                 ) {
                                     Box(
@@ -381,10 +393,7 @@ fun VideoSettingsPanel(
                                         Text(
                                             text = label,
                                             fontSize = 13.sp,
-                                            color = if (isSelected) 
-                                                MaterialTheme.colorScheme.onPrimary 
-                                            else 
-                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = contentColor
                                         )
                                     }
                                 }

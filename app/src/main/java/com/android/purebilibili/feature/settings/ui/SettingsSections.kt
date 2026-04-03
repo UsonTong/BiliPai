@@ -667,6 +667,9 @@ fun AboutSection(
     onDisclaimerClick: () -> Unit,
     onLicenseClick: () -> Unit,
     onGithubClick: () -> Unit,
+    onVerificationClick: () -> Unit,
+    onBuildSourceClick: () -> Unit,
+    onBuildFingerprintClick: () -> Unit,
     onCheckUpdateClick: () -> Unit,
     onViewReleaseNotesClick: () -> Unit,
     autoCheckUpdateEnabled: Boolean,
@@ -676,6 +679,13 @@ fun AboutSection(
     onEasterEggChange: (Boolean) -> Unit,
     updateStatusText: String = "点击检查",
     isCheckingUpdate: Boolean = false,
+    verificationLabel: String = "未验证",
+    verificationSubtitle: String = "暂未获取到可核对的 release 证据",
+    buildSourceValue: String = "本地构建",
+    buildSourceSubtitle: String = "未绑定 GitHub Release",
+    buildFingerprintValue: String = "未读取",
+    buildFingerprintCopyValue: String = "未读取",
+    buildFingerprintSubtitle: String = "暂未读取到当前安装包 SHA-256",
     versionClickCount: Int = 0,
     versionClickThreshold: Int = EasterEggs.VERSION_EASTER_EGG_THRESHOLD
 ) {
@@ -691,6 +701,9 @@ fun AboutSection(
     val notificationIcon = rememberAppNotificationIcon()
     val infoIcon = rememberAppInfoIcon()
     val sparklesIcon = rememberAppSparklesIcon()
+    val verificationIcon = rememberAppWarningIcon()
+    val buildSourceIcon = rememberAppCollectionIcon()
+    val buildFingerprintIcon = rememberAppCollectionIcon()
 
     val safeThreshold = versionClickThreshold.coerceAtLeast(1)
     val normalizedClickCount = versionClickCount.coerceAtLeast(0)
@@ -744,6 +757,40 @@ fun AboutSection(
             value = "GitHub",
             onClick = onGithubClick,
             iconTint = openSourceHomeVisual.iconTint,
+            enableCopy = true
+        )
+        SettingsDivider(startIndent = 66.dp)
+        SettingClickableItem(
+            icon = verificationIcon,
+            title = "源码一致性",
+            subtitle = verificationSubtitle,
+            value = verificationLabel,
+            onClick = onVerificationClick,
+            iconTint = when (verificationLabel) {
+                "已验证" -> iOSGreen
+                "基本可验证" -> iOSBlue
+                else -> iOSOrange
+            }
+        )
+        SettingsDivider(startIndent = 66.dp)
+        SettingClickableItem(
+            icon = buildSourceIcon,
+            title = "构建来源",
+            subtitle = buildSourceSubtitle,
+            value = buildSourceValue,
+            onClick = onBuildSourceClick,
+            iconTint = iOSTeal,
+            enableCopy = true
+        )
+        SettingsDivider(startIndent = 66.dp)
+        SettingClickableItem(
+            icon = buildFingerprintIcon,
+            title = "SHA-256",
+            subtitle = buildFingerprintSubtitle,
+            value = buildFingerprintValue,
+            copyValue = buildFingerprintCopyValue,
+            onClick = onBuildFingerprintClick,
+            iconTint = iOSBlue,
             enableCopy = true
         )
         SettingsDivider(startIndent = 66.dp)

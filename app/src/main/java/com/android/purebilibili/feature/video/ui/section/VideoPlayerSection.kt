@@ -3762,6 +3762,7 @@ fun VideoPlayerSection(
                 currentQualityLabel = uiState.qualityLabels.getOrNull(uiState.qualityIds.indexOf(displayedQualityId)) ?: "自动",
                 qualityLabels = uiState.qualityLabels,
                 qualityIds = uiState.qualityIds,
+                switchableQualityIds = uiState.switchableQualityIds,
                 onQualitySelected = { index ->
                     val id = uiState.qualityIds.getOrNull(index) ?: 0
                     onQualityChange(id, playerState.player.currentPosition)

@@ -235,6 +235,7 @@ fun VideoPlayerOverlay(
     currentQualityLabel: String,
     qualityLabels: List<String>,
     qualityIds: List<Int> = emptyList(),
+    switchableQualityIds: List<Int> = emptyList(),
     isLoggedIn: Boolean = false,
     onQualitySelected: (Int) -> Unit,
 
@@ -1300,6 +1301,7 @@ fun VideoPlayerOverlay(
             QualitySelectionMenu(
                 qualities = qualityLabels,
                 qualityIds = qualityIds,
+                switchableQualityIds = switchableQualityIds,
                 currentQuality = currentQualityLabel,
                 isLoggedIn = isLoggedIn,
                 isVip = isVip,
@@ -1401,6 +1403,7 @@ fun VideoPlayerOverlay(
                 currentQualityLabel = currentQualityLabel,
                 qualityLabels = qualityLabels,
                 qualityIds = qualityIds,
+                switchableQualityIds = switchableQualityIds,
                 onQualitySelected = { index ->
                     val id = qualityIds.getOrNull(index) ?: 0
                     onQualityChange(id, 0L)  // 位置由上层处理

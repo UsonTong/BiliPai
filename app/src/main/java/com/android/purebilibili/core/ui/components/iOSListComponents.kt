@@ -334,6 +334,7 @@ fun IOSClickableItem(
     title: String,
     subtitle: String? = null,
     value: String? = null,
+    copyValue: String? = null,
     onClick: (() -> Unit)? = null,
     iconTint: Color = MaterialTheme.colorScheme.primary,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -451,7 +452,11 @@ fun IOSClickableItem(
                         color = valueColor,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = if (enableCopy) Modifier.copyOnLongPress(value, title) else Modifier
+                        modifier = if (enableCopy) {
+                            Modifier.copyOnLongPress(copyValue ?: value, title)
+                        } else {
+                            Modifier
+                        }
                     )
                 }
                 if (onClick != null && showChevron) {

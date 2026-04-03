@@ -116,7 +116,7 @@ class VideoPlaybackUseCaseQualitySwitchTest {
             dashVideoIds = listOf(80, 64)
         )
 
-        assertEquals(listOf(80, 64, 32, 16), result.mergedQualityIds)
+        assertEquals(listOf(80, 64), result.mergedQualityIds)
         assertTrue(result.apiOnlyHighQualities.isEmpty())
     }
 
@@ -130,6 +130,7 @@ class VideoPlaybackUseCaseQualitySwitchTest {
         )
 
         assertEquals(listOf(80, 64, 32, 16), result.qualityIds)
+        assertEquals(listOf(64, 32, 16), result.switchableQualityIds)
         assertEquals(listOf("1080P", "720P", "480P", "360P"), result.qualityLabels)
     }
 
@@ -142,8 +143,9 @@ class VideoPlaybackUseCaseQualitySwitchTest {
             dashVideoIds = listOf(120, 80, 64, 32)
         )
 
-        assertEquals(listOf(120, 116, 80, 64, 32, 16), result.qualityIds)
-        assertEquals(listOf("4K", "1080P60", "1080P", "720P", "480P", "360P"), result.qualityLabels)
+        assertEquals(listOf(120, 116, 80, 64, 32), result.qualityIds)
+        assertEquals(listOf(120, 80, 64, 32), result.switchableQualityIds)
+        assertEquals(listOf("4K", "1080P60", "1080P", "720P", "480P"), result.qualityLabels)
     }
 
     @Test
@@ -156,8 +158,23 @@ class VideoPlaybackUseCaseQualitySwitchTest {
             allowPremiumApiOnlyQualities = false
         )
 
-        assertEquals(listOf(80, 64, 32, 16), result.qualityIds)
-        assertEquals(listOf("1080P", "720P", "480P", "360P"), result.qualityLabels)
+        assertEquals(listOf(80, 64, 32), result.qualityIds)
+        assertEquals(listOf(80, 64, 32), result.switchableQualityIds)
+        assertEquals(listOf("1080P", "720P", "480P"), result.qualityLabels)
+    }
+
+    @Test
+    fun `buildQualitySelectionState does not invent low tiers missing from api list`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.buildQualitySelectionState(
+            apiQualities = listOf(80, 64),
+            dashVideoIds = listOf(80, 64)
+        )
+
+        assertEquals(listOf(80, 64), result.qualityIds)
+        assertEquals(listOf(80, 64), result.switchableQualityIds)
+        assertEquals(listOf("1080P", "720P"), result.qualityLabels)
     }
 
     @Test
@@ -258,6 +275,7 @@ class VideoPlaybackUseCaseQualitySwitchTest {
         assertEquals("https://example.com/audio-192.m4s", result?.audioUrl)
         assertEquals(80, result?.actualQuality)
         assertEquals(listOf(80, 64, 32, 16), result?.qualityIds)
+        assertEquals(listOf(80, 64), result?.switchableQualityIds)
         assertEquals(listOf("1080P", "720P", "480P", "360P"), result?.qualityLabels)
     }
 
@@ -286,6 +304,7 @@ class VideoPlaybackUseCaseQualitySwitchTest {
         assertEquals(null, result?.audioUrl)
         assertEquals(32, result?.actualQuality)
         assertEquals(listOf(32, 16), result?.qualityIds)
+        assertEquals(emptyList<Int>(), result?.switchableQualityIds)
         assertEquals(listOf("480P", "360P"), result?.qualityLabels)
     }
 }

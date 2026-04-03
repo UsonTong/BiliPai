@@ -149,6 +149,7 @@ sealed class PlayerUiState {
         val adaptiveDashSource: AdaptiveDashPlaybackSource? = null,
         val qualityLabels: List<String> = emptyList(),
         val qualityIds: List<Int> = emptyList(),
+        val switchableQualityIds: List<Int> = emptyList(),
         val startPosition: Long = 0L,
         val pendingPlaybackTransitionPositionMs: Long? = null,
         val cachedDashVideos: List<DashVideo> = emptyList(),
@@ -2040,12 +2041,23 @@ class PlayerViewModel : ViewModel() {
             }
             _uiState.value = PlayerUiState.Loading.Initial
             
-                val defaultQuality = appContext?.let {
-                    NetworkUtils.getPlayableDefaultQualityId(
-                        context = it,
-                        isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
-                            !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty(),
-                        isVip = com.android.purebilibili.core.store.TokenManager.isVipCache
+                val isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
+                    !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                val defaultQuality = appContext?.let { context ->
+                    val storedQuality = NetworkUtils.getDefaultQualityId(context)
+                    val autoHighestEnabled = com.android.purebilibili.core.store.SettingsManager
+                        .getAutoHighestQualitySync(context)
+                    val effectiveVip = VideoRepository.refreshVipStatusForPreferredQualityIfNeeded(
+                        isLoggedIn = isLoggedIn,
+                        cachedIsVip = com.android.purebilibili.core.store.TokenManager.isVipCache,
+                        storedQuality = storedQuality,
+                        autoHighestEnabled = autoHighestEnabled
+                    )
+                    com.android.purebilibili.core.util.resolvePlaybackDefaultQualityId(
+                        storedQuality = storedQuality,
+                        autoHighestEnabled = autoHighestEnabled,
+                        isLoggedIn = isLoggedIn,
+                        isVip = effectiveVip
                     )
                 } ?: 64
                 //  [新增] 获取音频/视频偏好
@@ -2208,6 +2220,7 @@ class PlayerViewModel : ViewModel() {
                             adaptiveDashSource = result.adaptiveDashSource,
                             qualityIds = result.qualityIds,
                             qualityLabels = result.qualityLabels,
+                            switchableQualityIds = result.switchableQualityIds,
                             cachedDashVideos = result.cachedDashVideos,
                             cachedDashAudios = result.cachedDashAudios,
                             emoteMap = result.emoteMap,
@@ -2454,12 +2467,25 @@ class PlayerViewModel : ViewModel() {
                     }
                     
                     // 获取默认画质
-                    val defaultQuality = appContext?.let {
-                        com.android.purebilibili.core.util.NetworkUtils.getPlayableDefaultQualityId(
-                            context = it,
-                            isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
-                                !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty(),
-                            isVip = com.android.purebilibili.core.store.TokenManager.isVipCache
+                    val isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
+                        !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                    val defaultQuality = appContext?.let { context ->
+                        val storedQuality = com.android.purebilibili.core.util.NetworkUtils
+                            .getDefaultQualityId(context)
+                        val autoHighestEnabled = com.android.purebilibili.core.store.SettingsManager
+                            .getAutoHighestQualitySync(context)
+                        val effectiveVip = com.android.purebilibili.data.repository.VideoRepository
+                            .refreshVipStatusForPreferredQualityIfNeeded(
+                                isLoggedIn = isLoggedIn,
+                                cachedIsVip = com.android.purebilibili.core.store.TokenManager.isVipCache,
+                                storedQuality = storedQuality,
+                                autoHighestEnabled = autoHighestEnabled
+                            )
+                        com.android.purebilibili.core.util.resolvePlaybackDefaultQualityId(
+                            storedQuality = storedQuality,
+                            autoHighestEnabled = autoHighestEnabled,
+                            isLoggedIn = isLoggedIn,
+                            isVip = effectiveVip
                         )
                     } ?: 64
                     
@@ -4932,6 +4958,7 @@ class PlayerViewModel : ViewModel() {
                         pendingPlaybackTransitionPositionMs = transitionPositionMs,
                         qualityIds = result.qualityIds.ifEmpty { current.qualityIds },
                         qualityLabels = result.qualityLabels.ifEmpty { current.qualityLabels },
+                        switchableQualityIds = result.switchableQualityIds.ifEmpty { current.switchableQualityIds },
                         //  [修复] 更新缓存的DASH流，否则后续画质切换可能失败
                         cachedDashVideos = result.cachedDashVideos.ifEmpty { current.cachedDashVideos },
                         cachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
@@ -5054,6 +5081,7 @@ class PlayerViewModel : ViewModel() {
                             adaptiveDashSource = selection.adaptiveDashSource,
                             qualityIds = selection.qualityIds,
                             qualityLabels = selection.qualityLabels,
+                            switchableQualityIds = selection.switchableQualityIds,
                             cachedDashVideos = selection.cachedDashVideos,
                             cachedDashAudios = selection.cachedDashAudios
                         )
@@ -5227,6 +5255,7 @@ class PlayerViewModel : ViewModel() {
                 videoDurationMs = playUrlData.timelength.coerceAtLeast(0L),
                 qualityIds = selection.qualityIds,
                 qualityLabels = selection.qualityLabels,
+                switchableQualityIds = selection.switchableQualityIds,
                 cachedDashVideos = selection.cachedDashVideos,
                 cachedDashAudios = selection.cachedDashAudios
             )

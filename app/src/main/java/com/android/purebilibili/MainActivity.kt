@@ -76,6 +76,8 @@ import com.android.purebilibili.feature.settings.downloadAppUpdateApk
 import com.android.purebilibili.feature.settings.failAppUpdateDownload
 import com.android.purebilibili.feature.settings.installDownloadedAppUpdate
 import com.android.purebilibili.feature.settings.resolveAppUpdateDialogTextColors
+import com.android.purebilibili.feature.settings.resolveBuildSourceSubtitle
+import com.android.purebilibili.feature.settings.resolveBuildSourceValue
 import com.android.purebilibili.feature.settings.resolveUpdateReleaseNotesText
 import com.android.purebilibili.feature.settings.selectPreferredAppUpdateAsset
 import com.android.purebilibili.feature.settings.shouldRunAppEntryAutoCheck
@@ -298,6 +300,14 @@ internal fun shouldForceStopPlaybackOnUserLeaveHint(
 ): Boolean {
     return isInVideoDetail && stopPlaybackOnExit && !shouldTriggerPip
 }
+
+internal fun shouldRestorePlaybackRouteStateOnResume(
+    isPlaybackRouteActive: Boolean
+): Boolean = isPlaybackRouteActive
+
+internal fun shouldRestoreMutedPlaybackPlayerVolumeOnResume(
+    playerVolume: Float
+): Boolean = playerVolume <= 0f
 
 internal fun isPlaybackRouteActive(
     isInVideoDetail: Boolean,
@@ -1273,6 +1283,22 @@ class MainActivity : AppCompatActivity() {
                         val preferredAsset = remember(info.assets) {
                             selectPreferredAppUpdateAsset(info.assets)
                         }
+                        val releaseCommit = remember(info.buildMetadata?.gitCommitSha) {
+                            resolveBuildSourceValue(info.buildMetadata?.gitCommitSha, fallback = "未知")
+                        }
+                        val releaseWorkflowSubtitle = remember(info.buildMetadata?.workflowRunId, info.buildMetadata?.releaseTag) {
+                            resolveBuildSourceSubtitle(
+                                workflowRunId = info.buildMetadata?.workflowRunId,
+                                releaseTag = info.buildMetadata?.releaseTag
+                            )
+                        }
+                        val releaseVerificationEvidence = remember(info.verificationMetadata?.attestationUrl) {
+                            if (info.verificationMetadata?.attestationUrl?.isNotBlank() == true) {
+                                "GitHub Attestation"
+                            } else {
+                                "未提供"
+                            }
+                        }
                         val isDialogDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                         val dialogTextColors = remember(isDialogDarkTheme) {
                             resolveAppUpdateDialogTextColors(
@@ -1303,6 +1329,27 @@ class MainActivity : AppCompatActivity() {
                                             color = dialogTextColors.currentVersionColor
                                         )
                                     }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Release 锁定：${if (info.releaseIsImmutable) "Immutable" else "可变"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dialogTextColors.currentVersionColor
+                                    )
+                                    Text(
+                                        text = "源码提交：$releaseCommit",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dialogTextColors.currentVersionColor
+                                    )
+                                    Text(
+                                        text = "构建来源：$releaseWorkflowSubtitle",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dialogTextColors.currentVersionColor
+                                    )
+                                    Text(
+                                        text = "Provenance：$releaseVerificationEvidence",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = dialogTextColors.currentVersionColor
+                                    )
                                     if (startupUpdateDownloadState.status != AppUpdateDownloadStatus.IDLE) {
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
@@ -1462,6 +1509,21 @@ class MainActivity : AppCompatActivity() {
         miniPlayerManager.clearUserLeaveHint()
         miniPlayerManager.clearPlaybackRoutePipState()
         miniPlayerManager.clearPlaybackNotificationIfIdleOnResume()
+        if (
+            shouldRestorePlaybackRouteStateOnResume(
+                isPlaybackRouteActive = isPlaybackRouteActive(
+                    isInVideoDetail = isInVideoDetail,
+                    isInAudioMode = isInAudioModeRoute
+                )
+            )
+        ) {
+            miniPlayerManager.resetNavigationFlag()
+            miniPlayerManager.player?.let { player ->
+                if (shouldRestoreMutedPlaybackPlayerVolumeOnResume(player.volume)) {
+                    player.volume = 1.0f
+                }
+            }
+        }
         if (!hasCompletedInitialResume) {
             hasCompletedInitialResume = true
         }

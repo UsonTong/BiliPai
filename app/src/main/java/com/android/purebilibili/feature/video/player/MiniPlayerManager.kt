@@ -45,6 +45,7 @@ import com.android.purebilibili.core.store.normalizeAppIconKey
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.MediaUtils
 import com.android.purebilibili.core.util.NetworkUtils
+import com.android.purebilibili.data.repository.VideoRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -1634,10 +1635,19 @@ class MiniPlayerManager private constructor(private val context: Context) :
             backgroundPlaybackUseCase.attachPlayer(currentPlayer)
             val isLoggedIn = !TokenManager.sessDataCache.isNullOrEmpty() ||
                 !TokenManager.accessTokenCache.isNullOrEmpty()
-            val defaultQuality = NetworkUtils.getPlayableDefaultQualityId(
-                context = context,
+            val storedQuality = NetworkUtils.getDefaultQualityId(context)
+            val autoHighestEnabled = SettingsManager.getAutoHighestQualitySync(context)
+            val effectiveVip = VideoRepository.refreshVipStatusForPreferredQualityIfNeeded(
                 isLoggedIn = isLoggedIn,
-                isVip = TokenManager.isVipCache
+                cachedIsVip = TokenManager.isVipCache,
+                storedQuality = storedQuality,
+                autoHighestEnabled = autoHighestEnabled
+            )
+            val defaultQuality = com.android.purebilibili.core.util.resolvePlaybackDefaultQualityId(
+                storedQuality = storedQuality,
+                autoHighestEnabled = autoHighestEnabled,
+                isLoggedIn = isLoggedIn,
+                isVip = effectiveVip
             )
             val audioQualityPreference = SettingsManager.getAudioQualitySync(context)
             val videoCodecPreference = SettingsManager.getVideoCodecSync(context)

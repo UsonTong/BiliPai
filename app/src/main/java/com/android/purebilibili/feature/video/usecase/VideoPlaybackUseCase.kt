@@ -50,6 +50,7 @@ sealed class VideoLoadResult {
         val quality: Int,
         val qualityIds: List<Int>,
         val qualityLabels: List<String>,
+        val switchableQualityIds: List<Int> = emptyList(),
         val cachedDashVideos: List<DashVideo>,
         val cachedDashAudios: List<DashAudio>,
         val emoteMap: Map<String, String>,
@@ -87,6 +88,7 @@ data class QualitySwitchResult(
     val adaptiveDashSource: AdaptiveDashPlaybackSource? = null,
     val cachedDashVideos: List<DashVideo>,
     val cachedDashAudios: List<DashAudio>,
+    val switchableQualityIds: List<Int> = emptyList(),
     val qualityIds: List<Int> = emptyList(),
     val qualityLabels: List<String> = emptyList()
 )
@@ -99,6 +101,7 @@ data class PlaybackSelectionResult(
     val adaptiveDashSource: AdaptiveDashPlaybackSource? = null,
     val cachedDashVideos: List<DashVideo>,
     val cachedDashAudios: List<DashAudio>,
+    val switchableQualityIds: List<Int>,
     val qualityIds: List<Int>,
     val qualityLabels: List<String>
 )
@@ -229,7 +232,6 @@ class VideoPlaybackUseCase(
 ) {
 
     companion object {
-        private val STANDARD_LOW_QUALITIES = listOf(32, 16)
         private const val API_ONLY_VISIBLE_QUALITY_FLOOR = 80
         private const val PREMIUM_API_ONLY_QUALITY_FLOOR = 112
     }
@@ -242,7 +244,8 @@ class VideoPlaybackUseCase(
 
     internal data class QualitySelectionState(
         val qualityIds: List<Int>,
-        val qualityLabels: List<String>
+        val qualityLabels: List<String>,
+        val switchableQualityIds: List<Int>
     )
     
     private var exoPlayer: ExoPlayer? = null
@@ -476,6 +479,7 @@ class VideoPlaybackUseCase(
                         quality = selection.actualQuality,
                         qualityIds = selection.qualityIds,
                         qualityLabels = selection.qualityLabels,
+                        switchableQualityIds = selection.switchableQualityIds,
                         cachedDashVideos = selection.cachedDashVideos,
                         cachedDashAudios = selection.cachedDashAudios,
                         emoteMap = emoteMap,
@@ -696,7 +700,8 @@ class VideoPlaybackUseCase(
                 wasFallback = false,
                 adaptiveDashSource = adaptiveDashSource,
                 cachedDashVideos = cachedVideos,
-                cachedDashAudios = cachedAudios
+                cachedDashAudios = cachedAudios,
+                switchableQualityIds = availableIds
             )
         }
         
@@ -777,6 +782,7 @@ class VideoPlaybackUseCase(
             adaptiveDashSource = selection.adaptiveDashSource,
             cachedDashVideos = selection.cachedDashVideos,
             cachedDashAudios = selection.cachedDashAudios,
+            switchableQualityIds = selection.switchableQualityIds,
             qualityIds = selection.qualityIds,
             qualityLabels = selection.qualityLabels
         )
@@ -848,6 +854,7 @@ class VideoPlaybackUseCase(
             adaptiveDashSource = adaptiveDashSource,
             cachedDashVideos = playUrlData.dash?.video ?: emptyList(),
             cachedDashAudios = playUrlData.dash?.audio ?: emptyList(),
+            switchableQualityIds = qualitySelectionState.switchableQualityIds,
             qualityIds = qualitySelectionState.qualityIds,
             qualityLabels = qualitySelectionState.qualityLabels
         )
@@ -965,7 +972,7 @@ class VideoPlaybackUseCase(
     ): QualityMergeResult {
         val normalizedApi = apiQualities.distinct().sortedDescending()
         val normalizedDash = dashVideoIds.distinct().sortedDescending()
-        val switchableQualities = if (normalizedDash.isNotEmpty()) normalizedDash else normalizedApi
+        val switchableQualities = normalizedDash
 
         // Keep API-advertised login-tier qualities visible so users can re-fetch 1080P+ even when
         // the first DASH payload is temporarily capped at 720P.
@@ -975,9 +982,14 @@ class VideoPlaybackUseCase(
                 (qualityId < PREMIUM_API_ONLY_QUALITY_FLOOR || allowPremiumApiOnlyQualities)
         }
 
-        val mergedQualityIds = (switchableQualities + apiOnlyHighQualities + STANDARD_LOW_QUALITIES)
-            .distinct()
-            .sortedDescending()
+        val mergedQualityIds = when {
+            normalizedApi.isNotEmpty() -> normalizedApi.filter { qualityId ->
+                qualityId in normalizedDash ||
+                    qualityId < PREMIUM_API_ONLY_QUALITY_FLOOR ||
+                    allowPremiumApiOnlyQualities
+            }
+            else -> normalizedDash
+        }
 
         return QualityMergeResult(
             switchableQualities = switchableQualities,
@@ -991,14 +1003,16 @@ class VideoPlaybackUseCase(
         dashVideoIds: List<Int>,
         allowPremiumApiOnlyQualities: Boolean = true
     ): QualitySelectionState {
-        val mergedQualityIds = mergeQualityOptions(
+        val qualityMergeResult = mergeQualityOptions(
             apiQualities = apiQualities,
             dashVideoIds = dashVideoIds,
             allowPremiumApiOnlyQualities = allowPremiumApiOnlyQualities
-        ).mergedQualityIds
+        )
+        val mergedQualityIds = qualityMergeResult.mergedQualityIds
         return QualitySelectionState(
             qualityIds = mergedQualityIds,
-            qualityLabels = mergedQualityIds.map(qualityManager::getQualityLabel)
+            qualityLabels = mergedQualityIds.map(qualityManager::getQualityLabel),
+            switchableQualityIds = qualityMergeResult.switchableQualities
         )
     }
 
