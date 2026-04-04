@@ -171,6 +171,10 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
+import com.android.purebilibili.feature.video.ui.components.DanmakuBlockActionTarget
+import com.android.purebilibili.feature.video.ui.components.resolveDanmakuBlockActionFeedbackMessage
+import com.android.purebilibili.feature.video.danmaku.appendDanmakuKeywordBlockRule
+import com.android.purebilibili.feature.video.danmaku.appendDanmakuUserHashBlockRule
 import com.android.purebilibili.feature.video.ui.components.InteractiveChoiceOverlay
 import com.android.purebilibili.feature.video.ui.feedback.VideoFeedbackAnchor
 import com.android.purebilibili.feature.video.ui.feedback.TripleCelebrationPlacement
@@ -691,6 +695,15 @@ fun VideoDetailScreen(
         useTabletLayout = useTabletLayout
     )
     val isFullscreenMode = if (isOrientationDrivenFullscreen) isLandscape else userRequestedFullscreen
+    val activeDanmakuScope = remember(isFullscreenMode) {
+        com.android.purebilibili.core.store.resolveDanmakuSettingsScope(isLandscape = isFullscreenMode)
+    }
+    val activeDanmakuBlockRulesRaw by com.android.purebilibili.core.store.SettingsManager
+        .getDanmakuBlockRulesRaw(context, activeDanmakuScope)
+        .collectAsStateWithLifecycle(
+            initialValue = "",
+            lifecycle = lifecycleOwner.lifecycle
+        )
 
     var isPipMode by remember { mutableStateOf(isInPipMode) }
     var previousPipMode by remember { mutableStateOf(isInPipMode) }
@@ -3056,6 +3069,16 @@ fun VideoDetailScreen(
             configuration.screenHeightDp.dp.roundToPx()
         }
         val danmakuDialogTopReserveDp = with(LocalDensity.current) { danmakuDialogTopReservePx.toDp() }
+        val danmakuSendPreferenceScope = rememberCoroutineScope()
+        val rememberedDanmakuSendColor by com.android.purebilibili.core.store.SettingsManager
+            .getDanmakuSendColor(context)
+            .collectAsState(initial = 16777215)
+        val rememberedDanmakuSendMode by com.android.purebilibili.core.store.SettingsManager
+            .getDanmakuSendMode(context)
+            .collectAsState(initial = 1)
+        val rememberedDanmakuSendFontSize by com.android.purebilibili.core.store.SettingsManager
+            .getDanmakuSendFontSize(context)
+            .collectAsState(initial = 25)
         com.android.purebilibili.feature.video.ui.components.DanmakuSendDialog(
             visible = showDanmakuDialog,
             onDismiss = { viewModel.hideDanmakuSendDialog() },
@@ -3064,6 +3087,16 @@ fun VideoDetailScreen(
                 viewModel.sendDanmaku(message, color, mode, fontSize)
             },
             isSending = isSendingDanmaku,
+            initialColor = rememberedDanmakuSendColor,
+            initialMode = rememberedDanmakuSendMode,
+            initialFontSize = rememberedDanmakuSendFontSize,
+            onSelectionChange = { color, mode, fontSize ->
+                danmakuSendPreferenceScope.launch {
+                    com.android.purebilibili.core.store.SettingsManager.setDanmakuSendColor(context, color)
+                    com.android.purebilibili.core.store.SettingsManager.setDanmakuSendMode(context, mode)
+                    com.android.purebilibili.core.store.SettingsManager.setDanmakuSendFontSize(context, fontSize)
+                }
+            },
             topReservedSpace = danmakuDialogTopReserveDp
         )
         
@@ -3530,17 +3563,61 @@ fun VideoDetailScreen(
                 voteLoading = danmakuMenuState.voteLoading,
                 canVote = danmakuMenuState.canVote,
                 canRecall = danmakuMenuState.isSelf,
+                canBlockKeyword = danmakuMenuState.text.isNotBlank(),
+                onBlockKeyword = {
+                    val updatedRules = appendDanmakuKeywordBlockRule(
+                        rawRules = activeDanmakuBlockRulesRaw,
+                        keyword = danmakuMenuState.text
+                    )
+                    val changed = updatedRules != activeDanmakuBlockRulesRaw
+                    sortPreferenceScope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuBlockRulesRaw(
+                            context,
+                            updatedRules,
+                            activeDanmakuScope
+                        )
+                    }
+                    viewModel.toast(
+                        resolveDanmakuBlockActionFeedbackMessage(
+                            target = DanmakuBlockActionTarget.KEYWORD,
+                            changed = changed
+                        )
+                    )
+                },
+                canBlockUser = danmakuMenuState.userHash.isNotBlank(),
                 onBlockUser = {
-                    viewModel.toast("暂不支持屏蔽用户")
+                    val userHash = danmakuMenuState.userHash
+                    if (userHash.isBlank()) {
+                        viewModel.toast("该弹幕缺少发送者标识")
+                    } else {
+                        val updatedRules = appendDanmakuUserHashBlockRule(
+                            rawRules = activeDanmakuBlockRulesRaw,
+                            userHash = userHash
+                        )
+                        val changed = updatedRules != activeDanmakuBlockRulesRaw
+                        sortPreferenceScope.launch {
+                            com.android.purebilibili.core.store.SettingsManager.setDanmakuBlockRulesRaw(
+                                context,
+                                updatedRules,
+                                activeDanmakuScope
+                            )
+                        }
+                        viewModel.toast(
+                            resolveDanmakuBlockActionFeedbackMessage(
+                                target = DanmakuBlockActionTarget.USER,
+                                changed = changed
+                            )
+                        )
+                    }
                 }
             )
         }
         
         // 🔗 绑定弹幕点击监听器
         LaunchedEffect(danmakuManager) {
-            danmakuManager.setOnDanmakuClickListener { text, dmid, uid, isSelf ->
+            danmakuManager.setOnDanmakuClickListener { text, dmid, userHash, isSelf ->
                 android.util.Log.d("VideoDetailScreen", "👆 Danmaku clicked: $text")
-                viewModel.showDanmakuMenu(dmid, text, uid, isSelf)
+                viewModel.showDanmakuMenu(dmid, text, userHash, isSelf)
             }
         }
     }

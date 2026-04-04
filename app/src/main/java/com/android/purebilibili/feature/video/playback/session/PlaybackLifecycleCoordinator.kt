@@ -22,7 +22,7 @@ internal fun resolveShouldContinuePlaybackDuringPause(
     wasPlaybackActive: Boolean
 ): Boolean {
     if (isMiniMode || isPip) return true
-    return isBackgroundAudio && wasPlaybackActive
+    return isBackgroundAudio
 }
 
 internal fun resolvePlaybackPauseDecision(

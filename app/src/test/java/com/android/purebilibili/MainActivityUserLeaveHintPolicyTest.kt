@@ -7,8 +7,8 @@ import kotlin.test.assertTrue
 class MainActivityUserLeaveHintPolicyTest {
 
     @Test
-    fun forceStopsWhenLeavingVideoDetailAndStopOnExitEnabled() {
-        assertTrue(
+    fun doesNotForceStopWhenUserLeavesAppFromVideoDetailEvenIfStopOnExitEnabled() {
+        assertFalse(
             shouldForceStopPlaybackOnUserLeaveHint(
                 isInVideoDetail = true,
                 stopPlaybackOnExit = true,

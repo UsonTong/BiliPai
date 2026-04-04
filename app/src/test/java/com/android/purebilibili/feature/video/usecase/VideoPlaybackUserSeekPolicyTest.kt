@@ -49,7 +49,7 @@ class VideoPlaybackUserSeekPolicyTest {
 
         seekPlayerFromUserAction(player, 12_345L)
 
-        verify(exactly = 1) { player.seekTo(12_345L) }
+        verify(exactly = 2) { player.seekTo(12_345L) }
         verify(exactly = 1) { player.play() }
     }
 
@@ -78,7 +78,7 @@ class VideoPlaybackUserSeekPolicyTest {
             shouldResumePlaybackOverride = true
         )
 
-        verify(exactly = 1) { player.seekTo(12_345L) }
+        verify(exactly = 2) { player.seekTo(12_345L) }
         verify(exactly = 1) { player.play() }
     }
 }

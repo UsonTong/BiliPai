@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
@@ -39,6 +40,8 @@ import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
 import kotlinx.coroutines.delay
 import android.os.Build
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
 
 /**
  *  动画与效果设置二级页面
@@ -68,19 +71,15 @@ fun AnimationSettingsScreen(
             blurLevel * 0.2f
         ).coerceIn(0f, 1f)
 
-    Scaffold(
+    MiuixScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(screenTitle, fontWeight = FontWeight.SemiBold) },
+            MiuixSmallTopAppBar(
+                title = screenTitle,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(rememberAppBackIcon(), contentDescription = backLabel)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -138,25 +137,8 @@ fun AnimationSettingsContent(
             predictiveBackAnimationEnabled = state.predictiveBackAnimationEnabled
         )
     }
-    var previewLiquidGlassProgress by remember { mutableFloatStateOf(state.liquidGlassProgress) }
-    LaunchedEffect(state.liquidGlassProgress) {
-        previewLiquidGlassProgress = state.liquidGlassProgress
-    }
-    val liquidGlassPreviewState = remember(previewLiquidGlassProgress) {
-        resolveLiquidGlassPreviewUiState(progress = previewLiquidGlassProgress)
-    }
-    val liquidGlassTuning = remember(previewLiquidGlassProgress) {
-        resolveLiquidGlassTuning(progress = previewLiquidGlassProgress)
-    }
-    val isLiquidGlassAvailable = remember(state.uiPreset) {
-        state.uiPreset != UiPreset.MD3
-    }
-    val effectiveLiquidGlassEnabled = remember(state.isLiquidGlassEnabled, state.uiPreset) {
-        resolveEffectiveLiquidGlassEnabled(
-            requestedEnabled = state.isLiquidGlassEnabled,
-            uiPreset = state.uiPreset
-        )
-    }
+    val isLiquidGlassAvailable = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)
+    val effectiveLiquidGlassEnabled = state.isLiquidGlassEnabled
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -250,92 +232,28 @@ fun AnimationSettingsContent(
             item {
                 Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = settingsEntranceMotionTier)) {
                     IOSGroup {
-                        // Android 13+ 显示液态玻璃
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (isLiquidGlassAvailable) {
                              IOSSwitchItem(
                                 icon = CupertinoIcons.Default.Drop, 
                                 title = "液态玻璃", 
-                                subtitle = if (isLiquidGlassAvailable) {
-                                    "底栏指示器的实时折射效果"
-                                } else {
-                                    "安卓原生风格下固定关闭，不参与渲染"
-                                },
+                                subtitle = "由 miuix 全局主题统一接管的共享材质高光效果",
                                 checked = effectiveLiquidGlassEnabled,
-                                onCheckedChange = {
-                                    if (isLiquidGlassAvailable) {
-                                        viewModel.toggleLiquidGlass(it)
-                                    }
-                                },
-                                enabled = isLiquidGlassAvailable,
+                                onCheckedChange = { viewModel.toggleLiquidGlass(it) },
                                 iconTint = iOSBlue
                             )
-                            // Style Selector (Only visible when enabled)
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = isLiquidGlassAvailable && effectiveLiquidGlassEnabled,
+                                visible = effectiveLiquidGlassEnabled,
                                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                                 exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                        "通透到磨砂",
-                                        style = MaterialTheme.typography.labelSmall, 
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    LiquidGlassLivePreview(
-                                        previewState = liquidGlassPreviewState,
-                                        tuning = liquidGlassTuning
-                                    )
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    Text(
-                                        text = "玻璃进度",
+                                        "当前使用固定材质策略",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = liquidGlassPreviewState.modeLabel,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = liquidGlassPreviewState.strengthLabel,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "通透",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "磨砂",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = previewLiquidGlassProgress,
-                                        onValueChange = { previewLiquidGlassProgress = it },
-                                        valueRange = 0f..1f,
-                                        onValueChangeFinished = {
-                                            viewModel.setLiquidGlassProgress(previewLiquidGlassProgress)
-                                        }
-                                    )
                                     Text(
-                                        text = liquidGlassPreviewState.subtitle,
+                                        text = "设置页不再开放通透强度和进度调参，首页与底栏统一使用共享材质配方。",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -432,158 +350,3 @@ fun AnimationSettingsContent(
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
-
-
-@Composable
-private fun LiquidGlassLivePreview(
-    previewState: LiquidGlassPreviewUiState,
-    tuning: LiquidGlassTuning,
-    modifier: Modifier = Modifier
-) {
-    val isDark = isSystemInDarkTheme()
-    val surfaceBase = if (isDark) Color(0xFF1A1D24) else Color(0xFFF1F4FB)
-    val accent = if (tuning.useNeutralIndicatorTint) {
-        if (isDark) Color.White else Color(0xFFEEF2F8)
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(184.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = if (isDark) 0.12f else 0.08f),
-                            surfaceBase
-                        )
-                    )
-                )
-                .padding(16.dp)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = "实时预览",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${previewState.modeLabel} · ${previewState.strengthLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 42.dp)
-                    .fillMaxWidth(0.82f)
-                    .height(54.dp)
-                    .clip(RoundedCornerShape(27.dp))
-                    .background(Color.White.copy(alpha = tuning.surfaceAlpha))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(accent.copy(alpha = tuning.indicatorTintAlpha))
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "搜索视频、UP主",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black.copy(alpha = 0.78f)
-                        )
-                        Text(
-                            text = previewState.subtitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Black.copy(alpha = 0.50f)
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(0.86f)
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color.White.copy(alpha = tuning.surfaceAlpha + 0.04f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(4) { index ->
-                        val selected = index == 1
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(if (selected) 18.dp else 16.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (selected) {
-                                            Color.Black.copy(alpha = 0.72f)
-                                        } else {
-                                            Color.Black.copy(alpha = 0.28f)
-                                        }
-                                    )
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(Color.Black.copy(alpha = if (selected) 0.34f else 0.14f))
-                            )
-                        }
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(x = (-46).dp)
-                        .width(74.dp)
-                        .height(34.dp)
-                        .clip(RoundedCornerShape(17.dp))
-                        .background(accent.copy(alpha = tuning.indicatorTintAlpha))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(Color.White.copy(alpha = tuning.whiteOverlayAlpha))
-                    )
-                }
-            }
-        }
-    }
-}

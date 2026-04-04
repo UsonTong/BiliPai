@@ -86,6 +86,24 @@ internal fun resolveDanmakuActionForPlaybackSpeedChange(
     return if (abs(previousSpeed - newSpeed) > 0.01f) DanmakuSyncAction.HardResync else DanmakuSyncAction.None
 }
 
+internal fun resolveDanmakuActionForForegroundRecovery(
+    playWhenReady: Boolean,
+    isPlayerPlaying: Boolean,
+    playbackState: Int,
+    danmakuEnabled: Boolean,
+    hasData: Boolean
+): DanmakuSyncAction {
+    if (!danmakuEnabled || !hasData) return DanmakuSyncAction.None
+    if (playbackState == androidx.media3.common.Player.STATE_ENDED) {
+        return DanmakuSyncAction.PauseOnly
+    }
+    return if (playWhenReady || isPlayerPlaying) {
+        DanmakuSyncAction.HardResync
+    } else {
+        DanmakuSyncAction.None
+    }
+}
+
 internal fun resolveDanmakuGuardAction(
     videoSpeed: Float,
     tickCount: Int,

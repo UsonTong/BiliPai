@@ -67,8 +67,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 136
-        versionName = "7.4.0"
+        versionCode = 137
+        versionName = "7.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -205,6 +205,8 @@ kotlin {
 // }
 
 dependencies {
+    val miuixVersion = "0.8.6"
+
     implementation(project(":settings-core"))
     implementation(project(":network-core"))
 
@@ -218,6 +220,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material3:material3-window-size-class:1.3.1") // [新增] 窗口大小类
+    implementation("top.yukonga.miuix.kmp:miuix-android:$miuixVersion")
     // 图标扩展库 (全屏、设置图标等)
     implementation("androidx.compose.material:material-icons-extended")
 

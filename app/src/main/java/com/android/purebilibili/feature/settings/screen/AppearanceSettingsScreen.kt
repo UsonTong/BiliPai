@@ -46,6 +46,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
 
 /**
  *  外观设置二级页面
@@ -99,23 +101,18 @@ fun AppearanceSettingsScreen(
         }
     }
     
-    Scaffold(
+    MiuixScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(screenTitle, fontWeight = FontWeight.SemiBold) },
+            MiuixSmallTopAppBar(
+                title = screenTitle,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(rememberAppBackIcon(), contentDescription = backLabel)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        //  [修复] 禁用 Scaffold 默认的 WindowInsets 消耗，避免底部填充
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
         AppearanceSettingsContent(

@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-03 · 文档已同步至 v7.4.0（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-04 · 文档已同步至 v7.4.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.4.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.4.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -527,7 +527,7 @@ app/src/main/java/com/android/purebilibili
 ## 🗺️ 路线图
 
 > [!TIP]
-> 路线图最后同步于 2026-04-03（v7.4.0）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
+> 路线图最后同步于 2026-04-04（v7.4.1）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
 
 ### ✅ 已完成功能
 
@@ -572,14 +572,14 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.4.0 · 2026-04-03)
+### 最近更新 (v7.4.1 · 2026-04-04)
 
-- 🛡️ **应用内更新新增发布来源校验信息**：更新对话框会展示源码提交、工作流来源、Release 是否 Immutable，以及 GitHub Attestation / provenance 证据，包来源更透明。
-- 🔄 **普通视频与番剧取流继续向 PiliPlus 对齐**：普通视频主路径继续收口到 Web/WBI，普通视频 fallback 改为单条主路径；番剧 `playurl` 与上下文字段也进一步贴近 PiliPlus。
-- 🎚️ **普通视频画质选择完全按接口列表 + 真实轨道工作**：不再凭空补低清项，灰显与可点状态也更接近 PiliPlus，减少“看得到但切不过去”的高画质误导。
-- ▶️ **Seek / 前后台恢复更稳**：拖动进度条、临时切后台再回来时会更稳定地保留用户原本的播放意图，减少停住后还要再双击或再拖一次的情况。
-- 🔊 **修复“离开播放页后停止”返回无声**：开启该设置后按 Home 返回应用时，现在会正确清理离开标记并恢复被内部逻辑静音的播放器音量。
-- 🧪 **补强发布与播放回归测试**：新增或补强更新来源校验、普通视频/番剧播放策略、画质切换、seek 会话、生命周期恢复和 MainActivity 音量恢复相关单元测试。
+- 🫧 **Android Native / Miuix 底栏与液态玻璃继续收口**：首页底栏壳层、指示器和设置页共享同一套材质策略，Android 13 现在也能正式启用安卓原生液态玻璃。
+- 🌫️ **指示器折射补齐模糊链路**：选中胶囊内部现在会先模糊再折射，和外层玻璃区域的质感保持一致，不再显得局部过清。
+- 📺 **直播多源切换更稳**：新版 `xlive` 成为主播放来源，遇到 CDN 异常、超时或特定 HTTP 错误时会更积极地切下一条源或重载当前画质。
+- 🔊 **后台播放策略放宽到真正跟随设置**：切后台瞬间的临时状态不再误触发暂停，按 Home 临时离开应用时也不会被错误当成“离开播放页后停止”。
+- 💬 **弹幕设置与同步能力增强**：新增更细的滚动/字重/行高/静态时长配置，屏蔽规则管理更清晰，并补上弹幕云同步状态模型。
+- 🧪 **补强底栏、直播、后台播放与弹幕回归测试**：新增或补强 Android Native/Miuix 底栏、直播多源策略、后台音频保活、弹幕过滤/同步等单元测试。
 
 ### 历史版本
 

@@ -220,6 +220,13 @@ internal fun shouldPauseBackgroundBuffering(
     )
 }
 
+internal fun shouldPauseBufferingOnEnterBackground(
+    shouldPauseBuffering: Boolean,
+    shouldContinueBackgroundAudio: Boolean
+): Boolean {
+    return shouldPauseBuffering && !shouldContinueBackgroundAudio
+}
+
 internal fun resolveNotificationIsPlaying(
     playerIsPlaying: Boolean?,
     cachedIsPlaying: Boolean
@@ -587,8 +594,12 @@ class MiniPlayerManager private constructor(private val context: Context) :
             playbackState = currentPlayer.playbackState
         )
         val shouldKeepBackgroundAudio = shouldContinueBackgroundAudio()
-        val shouldDisableVideoTrack = shouldDisableVideoTrackOnEnterBackground(
+        val shouldPauseOnBackground = shouldPauseBufferingOnEnterBackground(
             shouldPauseBuffering = shouldPauseBuffering,
+            shouldContinueBackgroundAudio = shouldKeepBackgroundAudio
+        )
+        val shouldDisableVideoTrack = shouldDisableVideoTrackOnEnterBackground(
+            shouldPauseBuffering = shouldPauseOnBackground,
             shouldContinueBackgroundAudio = shouldKeepBackgroundAudio
         )
         if (shouldDisableVideoTrack) {
@@ -610,7 +621,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
         if (shouldTrimDanmakuCachesOnEnterBackground(shouldDisableVideoTrack)) {
             DanmakuManager.trimCachesForBackgroundIfPresent()
         }
-        if (shouldPauseBuffering) {
+        if (shouldPauseOnBackground) {
             currentPlayer.pause()
             Logger.d(TAG, "🔋 后台模式：未播放，暂停缓冲并禁用视频轨道")
             return

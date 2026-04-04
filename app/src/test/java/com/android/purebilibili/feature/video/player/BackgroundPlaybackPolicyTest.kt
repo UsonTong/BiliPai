@@ -217,7 +217,7 @@ class BackgroundPlaybackPolicyTest {
     }
 
     @Test
-    fun pausePolicyKeepsBackgroundAudioOnlyWhenPlaybackWasActive() {
+    fun pausePolicyKeepsBackgroundAudioWhenSettingAllowsItEvenIfSnapshotLooksInactive() {
         assertTrue(
             shouldContinuePlaybackDuringPause(
                 isMiniMode = false,
@@ -226,7 +226,7 @@ class BackgroundPlaybackPolicyTest {
                 wasPlaybackActive = true
             )
         )
-        assertFalse(
+        assertTrue(
             shouldContinuePlaybackDuringPause(
                 isMiniMode = false,
                 isPip = false,
@@ -253,6 +253,22 @@ class BackgroundPlaybackPolicyTest {
         assertFalse(
             shouldDisableVideoTrackOnEnterBackground(
                 shouldPauseBuffering = false,
+                shouldContinueBackgroundAudio = false
+            )
+        )
+    }
+
+    @Test
+    fun backgroundEntry_doesNotPauseBufferingWhenBackgroundAudioShouldContinue() {
+        assertFalse(
+            shouldPauseBufferingOnEnterBackground(
+                shouldPauseBuffering = true,
+                shouldContinueBackgroundAudio = true
+            )
+        )
+        assertTrue(
+            shouldPauseBufferingOnEnterBackground(
+                shouldPauseBuffering = true,
                 shouldContinueBackgroundAudio = false
             )
         )

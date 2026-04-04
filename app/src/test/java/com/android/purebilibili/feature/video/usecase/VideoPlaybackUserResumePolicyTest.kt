@@ -9,7 +9,7 @@ import kotlin.test.Test
 class VideoPlaybackUserResumePolicyTest {
 
     @Test
-    fun `playPlayerFromUserAction resumes paused ready playback without forcing compatibility seek`() {
+    fun `playPlayerFromUserAction performs compatibility seek before resuming paused ready playback`() {
         val player = mockk<Player>(relaxed = true)
         every { player.playbackState } returns Player.STATE_READY
         every { player.mediaItemCount } returns 1
@@ -19,7 +19,7 @@ class VideoPlaybackUserResumePolicyTest {
 
         playPlayerFromUserAction(player)
 
-        verify(exactly = 0) { player.seekTo(any<Long>()) }
+        verify(exactly = 1) { player.seekTo(42_000L) }
         verify(exactly = 1) { player.play() }
     }
 

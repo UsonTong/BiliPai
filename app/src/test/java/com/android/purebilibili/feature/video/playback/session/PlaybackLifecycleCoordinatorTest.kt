@@ -36,6 +36,21 @@ class PlaybackLifecycleCoordinatorTest {
     }
 
     @Test
+    fun pauseDecision_keepsBackgroundAudioEvenWhenPlaybackSnapshotTemporarilyLooksInactive() {
+        val decision = resolvePlaybackPauseDecision(
+            isMiniMode = false,
+            isPip = false,
+            isBackgroundAudio = true,
+            wasPlaybackActive = false,
+            hasRecentUserLeaveHint = true
+        )
+
+        assertTrue(decision.shouldContinuePlayback)
+        assertFalse(decision.shouldPausePlayback)
+        assertTrue(decision.shouldMarkBackgroundAudioSession)
+    }
+
+    @Test
     fun pauseDecision_marksTransientResumeIntent_whenActivePlaybackWillBePaused() {
         val decision = resolvePlaybackPauseDecision(
             isMiniMode = false,

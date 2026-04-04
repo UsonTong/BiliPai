@@ -10,7 +10,12 @@ import com.android.purebilibili.feature.video.danmaku.checkFaceOcclusionModuleSt
 import com.android.purebilibili.feature.video.danmaku.createFaceOcclusionDetector
 import com.android.purebilibili.feature.video.danmaku.detectFaceOcclusionRegions
 import com.android.purebilibili.feature.video.danmaku.installFaceOcclusionModule
+import com.android.purebilibili.feature.video.danmaku.DanmakuCloudSyncUiState
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
+import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncStateAfterQueued
+import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncStateAfterResult
+import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncStateAfterStarted
+import com.android.purebilibili.feature.video.danmaku.shouldRunDanmakuManualCloudSync
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.ui.overlay.VideoPlayerOverlay
@@ -2118,8 +2123,16 @@ fun VideoPlayerSection(
         val danmakuEnabled = danmakuSettings.enabled
         val danmakuOpacity = danmakuSettings.opacity
         val danmakuFontScale = danmakuSettings.fontScale
+        val danmakuFontWeight = danmakuSettings.fontWeight
         val danmakuSpeed = danmakuSettings.speed
         val danmakuDisplayArea = danmakuSettings.displayArea
+        val danmakuStrokeWidth = danmakuSettings.strokeWidth
+        val danmakuLineHeight = danmakuSettings.lineHeight
+        val danmakuScrollDurationSeconds = danmakuSettings.scrollDurationSeconds
+        val danmakuStaticDurationSeconds = danmakuSettings.staticDurationSeconds
+        val danmakuScrollFixedVelocity = danmakuSettings.scrollFixedVelocity
+        val danmakuStaticToScroll = danmakuSettings.staticDanmakuToScroll
+        val danmakuMassiveMode = danmakuSettings.massiveMode
         val danmakuMergeDuplicates = danmakuSettings.mergeDuplicates
         val danmakuAllowScroll = danmakuSettings.allowScroll
         val danmakuAllowTop = danmakuSettings.allowTop
@@ -2149,6 +2162,41 @@ fun VideoPlayerSection(
         var pendingDanmakuCloudSync by remember {
             mutableStateOf<com.android.purebilibili.data.repository.DanmakuCloudSyncSettings?>(null)
         }
+        var danmakuCloudSyncUiState by remember {
+            mutableStateOf(DanmakuCloudSyncUiState())
+        }
+        var danmakuManualSyncRequestVersion by remember {
+            mutableStateOf<Long?>(null)
+        }
+        var lastHandledDanmakuManualSyncRequestVersion by remember {
+            mutableStateOf<Long?>(null)
+        }
+
+        fun buildDanmakuCloudSyncSettings(
+            enabled: Boolean = danmakuEnabled,
+            allowScroll: Boolean = danmakuAllowScroll,
+            allowTop: Boolean = danmakuAllowTop,
+            allowBottom: Boolean = danmakuAllowBottom,
+            allowColorful: Boolean = danmakuAllowColorful,
+            allowSpecial: Boolean = danmakuAllowSpecial,
+            opacity: Float = danmakuOpacity,
+            displayAreaRatio: Float = danmakuDisplayArea,
+            speed: Float = danmakuSpeed,
+            fontScale: Float = danmakuFontScale
+        ): com.android.purebilibili.data.repository.DanmakuCloudSyncSettings {
+            return com.android.purebilibili.data.repository.DanmakuCloudSyncSettings(
+                enabled = enabled,
+                allowScroll = allowScroll,
+                allowTop = allowTop,
+                allowBottom = allowBottom,
+                allowColorful = allowColorful,
+                allowSpecial = allowSpecial,
+                opacity = opacity,
+                displayAreaRatio = displayAreaRatio,
+                speed = speed,
+                fontScale = fontScale
+            )
+        }
 
         fun queueDanmakuCloudSync(
             enabled: Boolean = danmakuEnabled,
@@ -2162,7 +2210,7 @@ fun VideoPlayerSection(
             speed: Float = danmakuSpeed,
             fontScale: Float = danmakuFontScale
         ) {
-            pendingDanmakuCloudSync = com.android.purebilibili.data.repository.DanmakuCloudSyncSettings(
+            pendingDanmakuCloudSync = buildDanmakuCloudSyncSettings(
                 enabled = enabled,
                 allowScroll = allowScroll,
                 allowTop = allowTop,
@@ -2174,6 +2222,13 @@ fun VideoPlayerSection(
                 speed = speed,
                 fontScale = fontScale
             )
+            danmakuCloudSyncUiState = resolveDanmakuCloudSyncStateAfterQueued(danmakuCloudSyncUiState)
+        }
+
+        fun requestDanmakuCloudSyncNow() {
+            pendingDanmakuCloudSync = buildDanmakuCloudSyncSettings()
+            danmakuManualSyncRequestVersion = android.os.SystemClock.elapsedRealtime()
+            danmakuCloudSyncUiState = resolveDanmakuCloudSyncStateAfterQueued(danmakuCloudSyncUiState)
         }
         
         //  当视频/开关状态变化时更新弹幕加载策略
@@ -2277,6 +2332,11 @@ fun VideoPlayerSection(
                     "▶️ Foreground recovery kicked playback to rebuild render chain"
                 }
             }
+            danmakuManager.recoverAfterForeground(
+                positionMs = player.currentPosition.coerceAtLeast(0L),
+                playWhenReady = player.playWhenReady,
+                playbackState = player.playbackState
+            )
 
             delay(FOREGROUND_SURFACE_RECOVERY_TIMEOUT_MS)
             if (!shouldLogForegroundSurfaceRecoveryTimeout(
@@ -2328,8 +2388,16 @@ fun VideoPlayerSection(
         LaunchedEffect(
             danmakuOpacity,
             danmakuFontScale,
+            danmakuFontWeight,
             danmakuSpeed,
             danmakuDisplayArea,
+            danmakuStrokeWidth,
+            danmakuLineHeight,
+            danmakuScrollDurationSeconds,
+            danmakuStaticDurationSeconds,
+            danmakuScrollFixedVelocity,
+            danmakuStaticToScroll,
+            danmakuMassiveMode,
             danmakuMergeDuplicates,
             danmakuAllowScroll,
             danmakuAllowTop,
@@ -2342,8 +2410,16 @@ fun VideoPlayerSection(
             danmakuManager.updateSettings(
                 opacity = danmakuOpacity,
                 fontScale = danmakuFontScale,
+                fontWeight = danmakuFontWeight,
                 speed = danmakuSpeed,
+                scrollDurationSeconds = danmakuScrollDurationSeconds,
                 displayArea = danmakuDisplayArea,
+                strokeWidth = danmakuStrokeWidth,
+                lineHeight = danmakuLineHeight,
+                staticDurationSeconds = danmakuStaticDurationSeconds,
+                scrollFixedVelocity = danmakuScrollFixedVelocity,
+                staticDanmakuToScroll = danmakuStaticToScroll,
+                massiveMode = danmakuMassiveMode,
                 mergeDuplicates = danmakuMergeDuplicates,
                 allowScroll = danmakuAllowScroll,
                 allowTop = danmakuAllowTop,
@@ -2411,14 +2487,39 @@ fun VideoPlayerSection(
             }
         }
 
+        LaunchedEffect(canSyncDanmakuCloud) {
+            if (canSyncDanmakuCloud) return@LaunchedEffect
+            pendingDanmakuCloudSync = null
+            danmakuCloudSyncUiState = DanmakuCloudSyncUiState()
+        }
+
         // 账号云同步：用户修改弹幕设置后防抖上云，避免滑杆拖动时高频请求
-        LaunchedEffect(pendingDanmakuCloudSync, canSyncDanmakuCloud) {
+        LaunchedEffect(pendingDanmakuCloudSync, canSyncDanmakuCloud, danmakuManualSyncRequestVersion) {
             val settings = pendingDanmakuCloudSync ?: return@LaunchedEffect
             if (!canSyncDanmakuCloud) return@LaunchedEffect
 
-            kotlinx.coroutines.delay(700)
+            val manualSyncRequested = shouldRunDanmakuManualCloudSync(
+                manualRequestVersion = danmakuManualSyncRequestVersion,
+                lastHandledManualRequestVersion = lastHandledDanmakuManualSyncRequestVersion
+            )
+            if (!manualSyncRequested) {
+                kotlinx.coroutines.delay(700)
+            }
+            danmakuCloudSyncUiState = resolveDanmakuCloudSyncStateAfterStarted(danmakuCloudSyncUiState)
             val result = com.android.purebilibili.data.repository.DanmakuRepository
                 .syncDanmakuCloudConfig(settings)
+            val completedAtMillis = System.currentTimeMillis()
+            danmakuCloudSyncUiState = resolveDanmakuCloudSyncStateAfterResult(
+                previous = danmakuCloudSyncUiState,
+                result = result,
+                completedAtMillis = completedAtMillis
+            )
+            if (manualSyncRequested) {
+                lastHandledDanmakuManualSyncRequestVersion = danmakuManualSyncRequestVersion
+            }
+            if (pendingDanmakuCloudSync == settings) {
+                pendingDanmakuCloudSync = null
+            }
             if (result.isFailure) {
                 android.util.Log.w(
                     "VideoPlayerSection",
@@ -2491,6 +2592,11 @@ fun VideoPlayerSection(
                                 "▶️ ON_RESUME kicked playback after surface recovery"
                             }
                         }
+                        danmakuManager.recoverAfterForeground(
+                            positionMs = player.currentPosition.coerceAtLeast(0L),
+                            playWhenReady = player.playWhenReady,
+                            playbackState = player.playbackState
+                        )
                     }
                     androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
                         android.util.Log.d("VideoPlayerSection", " ON_DESTROY: Clearing danmaku references")
@@ -3752,7 +3858,9 @@ fun VideoPlayerSection(
                 requestedQuality = uiState.requestedQuality,
                 isQualitySwitching = uiState.isQualitySwitching
             )
-            VideoPlayerOverlay(
+            @Composable
+            fun RenderVideoPlayerOverlay() {
+                VideoPlayerOverlay(
                 player = playerState.player,
                 title = uiState.info.title,
                 // [修复] 竖屏全屏模式下隐藏底部 Overlay，避免进度状态冲突
@@ -3806,8 +3914,16 @@ fun VideoPlayerSection(
                 onDanmakuInputClick = onDanmakuInputClick,
                 danmakuOpacity = danmakuOpacity,
                 danmakuFontScale = danmakuFontScale,
+                danmakuFontWeight = danmakuFontWeight,
                 danmakuSpeed = danmakuSpeed,
                 danmakuDisplayArea = danmakuDisplayArea,
+                danmakuStrokeWidth = danmakuStrokeWidth,
+                danmakuLineHeight = danmakuLineHeight,
+                danmakuScrollDurationSeconds = danmakuScrollDurationSeconds,
+                danmakuStaticDurationSeconds = danmakuStaticDurationSeconds,
+                danmakuScrollFixedVelocity = danmakuScrollFixedVelocity,
+                danmakuStaticToScroll = danmakuStaticToScroll,
+                danmakuMassiveMode = danmakuMassiveMode,
                 danmakuMergeDuplicates = danmakuMergeDuplicates,
                 danmakuAllowScroll = danmakuAllowScroll,
                 danmakuAllowTop = danmakuAllowTop,
@@ -3817,6 +3933,8 @@ fun VideoPlayerSection(
                 danmakuBlockRulesRaw = danmakuBlockRulesRaw,
                 danmakuSmartOcclusion = danmakuSmartOcclusion,
                 danmakuFullscreenPanelWidthMode = danmakuFullscreenPanelWidthMode,
+                showDanmakuSyncSection = canSyncDanmakuCloud,
+                danmakuSyncUiState = danmakuCloudSyncUiState,
                 onDanmakuOpacityChange = { value ->
                     danmakuManager.opacity = value
                     scope.launch {
@@ -3839,6 +3957,16 @@ fun VideoPlayerSection(
                     }
                     queueDanmakuCloudSync(fontScale = value)
                 },
+                onDanmakuFontWeightChange = { value ->
+                    danmakuManager.fontWeight = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuFontWeight(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
                 onDanmakuSpeedChange = { value ->
                     danmakuManager.speedFactor = value
                     scope.launch {
@@ -3860,6 +3988,76 @@ fun VideoPlayerSection(
                         )
                     }
                     queueDanmakuCloudSync(displayAreaRatio = value)
+                },
+                onDanmakuStrokeWidthChange = { value ->
+                    danmakuManager.strokeWidth = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuStrokeWidth(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuLineHeightChange = { value ->
+                    danmakuManager.lineHeight = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuLineHeight(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuScrollDurationSecondsChange = { value ->
+                    danmakuManager.scrollDurationSeconds = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuScrollDurationSeconds(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuStaticDurationSecondsChange = { value ->
+                    danmakuManager.staticDurationSeconds = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuStaticDurationSeconds(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuScrollFixedVelocityChange = { value ->
+                    danmakuManager.scrollFixedVelocity = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuScrollFixedVelocity(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuStaticToScrollChange = { value ->
+                    danmakuManager.staticDanmakuToScroll = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuStaticToScroll(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
+                },
+                onDanmakuMassiveModeChange = { value ->
+                    danmakuManager.massiveMode = value
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager.setDanmakuMassiveMode(
+                            context,
+                            value,
+                            activeDanmakuScope
+                        )
+                    }
                 },
                 onDanmakuMergeDuplicatesChange = { value ->
                     scope.launch {
@@ -3933,6 +4131,9 @@ fun VideoPlayerSection(
                     scope.launch {
                         com.android.purebilibili.core.store.SettingsManager.setDanmakuFullscreenPanelWidthMode(context, value)
                     }
+                },
+                onDanmakuSyncNowClick = {
+                    requestDanmakuCloudSyncNow()
                 },
                 onDanmakuBlockRulesRawChange = { value ->
                     scope.launch {
@@ -4168,6 +4369,9 @@ fun VideoPlayerSection(
                 onPageSelect = onPageSelect,
                 drawerHazeState = overlayDrawerHazeState
             )
+            }
+
+            RenderVideoPlayerOverlay()
 
             SponsorSkipButton(
                 segment = sponsorSegment,

@@ -140,9 +140,20 @@ internal fun playPlayerFromUserAction(player: Player) {
     playPlayerForUserIntent(player, trackUserAction = true)
 }
 
+internal fun shouldRunCompatibilitySeekBeforeExplicitPlay(
+    playbackState: Int,
+    isPlaying: Boolean,
+    hasMediaItems: Boolean
+): Boolean {
+    return hasMediaItems &&
+        playbackState == Player.STATE_READY &&
+        !isPlaying
+}
+
 private fun playPlayerForUserIntent(
     player: Player,
-    trackUserAction: Boolean
+    trackUserAction: Boolean,
+    compatibilitySeekPositionMs: Long? = null
 ) {
     if (trackUserAction) {
         PlaybackUserActionTracker.recordAction(
@@ -156,8 +167,17 @@ private fun playPlayerForUserIntent(
             "state=${player.playbackState}, isPlaying=${player.isPlaying}, " +
             "playWhenReady=${player.playWhenReady}, mediaItemCount=${player.mediaItemCount}, pos=${player.currentPosition}"
     )
-    if (shouldPreparePlayerBeforeExplicitPlay(player.playbackState, player.mediaItemCount > 0)) {
+    val hasMediaItems = player.mediaItemCount > 0
+    if (shouldPreparePlayerBeforeExplicitPlay(player.playbackState, hasMediaItems)) {
         player.prepare()
+    }
+    if (shouldRunCompatibilitySeekBeforeExplicitPlay(
+            playbackState = player.playbackState,
+            isPlaying = player.isPlaying,
+            hasMediaItems = hasMediaItems
+        )
+    ) {
+        player.seekTo((compatibilitySeekPositionMs ?: player.currentPosition).coerceAtLeast(0L))
     }
     player.play()
     Logger.d(
@@ -191,7 +211,11 @@ internal fun seekPlayerFromUserAction(
     )
     player.seekTo(positionMs)
     if (shouldResume) {
-        playPlayerForUserIntent(player, trackUserAction = false)
+        playPlayerForUserIntent(
+            player = player,
+            trackUserAction = false,
+            compatibilitySeekPositionMs = positionMs
+        )
     }
 }
 

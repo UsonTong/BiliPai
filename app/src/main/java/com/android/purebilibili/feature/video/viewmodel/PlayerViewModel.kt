@@ -2961,7 +2961,7 @@ class PlayerViewModel : ViewModel() {
         val visible: Boolean = false,
         val text: String = "",
         val dmid: Long = 0,
-        val uid: Long = 0, // 发送者 UID (如果可用)
+        val userHash: String = "", // 发送者标识 (可能不是纯数字 UID)
         val isSelf: Boolean = false, // 是否是自己发送的
         val voteCount: Int = 0,
         val hasLiked: Boolean = false,
@@ -2972,13 +2972,13 @@ class PlayerViewModel : ViewModel() {
     private val _danmakuMenuState = MutableStateFlow(DanmakuMenuState())
     val danmakuMenuState = _danmakuMenuState.asStateFlow()
     
-    fun showDanmakuMenu(dmid: Long, text: String, uid: Long = 0, isSelf: Boolean = false) {
+    fun showDanmakuMenu(dmid: Long, text: String, userHash: String = "", isSelf: Boolean = false) {
         val supportsVote = dmid > 0L && currentCid > 0L
         _danmakuMenuState.value = DanmakuMenuState(
             visible = true,
             text = text,
             dmid = dmid,
-            uid = uid,
+            userHash = userHash,
             isSelf = isSelf,
             voteLoading = supportsVote,
             canVote = supportsVote

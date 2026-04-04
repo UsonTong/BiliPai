@@ -298,7 +298,10 @@ internal fun shouldForceStopPlaybackOnUserLeaveHint(
     stopPlaybackOnExit: Boolean,
     shouldTriggerPip: Boolean
 ): Boolean {
-    return isInVideoDetail && stopPlaybackOnExit && !shouldTriggerPip
+    // `onUserLeaveHint()` also fires when the user temporarily switches apps.
+    // "Stop playback when leaving the playback page" should only apply to
+    // explicit in-app navigation, which is handled by dedicated navigation hooks.
+    return false
 }
 
 internal fun shouldRestorePlaybackRouteStateOnResume(
@@ -981,6 +984,7 @@ class MainActivity : AppCompatActivity() {
             // 6. 传入参数
             PureBiliBiliTheme(
                 uiPreset = uiPreset,
+                themeMode = themeMode,
                 darkTheme = useDarkTheme,
                 dynamicColor = effectiveDynamicColor,
                 amoledDarkTheme = useAmoledDarkTheme,
@@ -1559,16 +1563,6 @@ class MainActivity : AppCompatActivity() {
         )
         miniPlayerManager.updatePlaybackRoutePipRequest(shouldTriggerPip)
 
-        val shouldForceStopPlayback = shouldForceStopPlaybackOnUserLeaveHint(
-            isInVideoDetail = isPlaybackRouteActive,
-            stopPlaybackOnExit = stopPlaybackOnExit,
-            shouldTriggerPip = shouldTriggerPip
-        )
-        if (shouldForceStopPlayback) {
-            Logger.d(TAG, "🛑 stopPlaybackOnExit=true, leaving by Home, force stop playback immediately")
-            miniPlayerManager.markLeavingByNavigation()
-        }
-        
         Logger.d(
             TAG,
             " miniPlayerMode=$currentMode, audioModeAutoPipEnabled=$audioModeAutoPipEnabled, shouldEnterPip=$shouldEnterPip, isPlaying=$isActuallyPlaying, shouldTriggerPip=$shouldTriggerPip, API=${Build.VERSION.SDK_INT}"

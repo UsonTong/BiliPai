@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-03 · Synced to v7.4.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-04-04 · Synced to v7.4.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.4.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.4.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -388,7 +388,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 ## 🗺️ Roadmap
 
 > [!TIP]
-> Roadmap last refreshed on 2026-04-03 (v7.4.0). For current behavior, prefer the latest release notes, `CHANGELOG.md`, and code.
+> Roadmap last refreshed on 2026-04-04 (v7.4.1). For current behavior, prefer the latest release notes, `CHANGELOG.md`, and code.
 
 ### ✅ Completed
 
@@ -430,14 +430,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v7.4.0 · 2026-04-03)
+### Latest (v7.4.1 · 2026-04-04)
 
-- 🛡️ **In-app updates now expose release provenance details**: the update dialog shows source commit, workflow origin, whether the release is immutable, and whether GitHub Attestation / provenance evidence is available.
-- 🔄 **UGC and bangumi playback paths are aligned even closer to PiliPlus**: ordinary video stays on the Web/WBI path with a single main fallback path, while bangumi `playurl` and its context parameters move closer to PiliPlus as well.
-- 🎚️ **Ordinary video quality selection now fully follows API list + real tracks**: the menu no longer invents missing low tiers, and disabled vs switchable qualities now behave much closer to PiliPlus.
-- ▶️ **Seek and foreground recovery are steadier**: scrubbing and brief background transitions keep the original playback intent more reliably, reducing cases where users must scrub again or double-tap to continue.
-- 🔊 **Fixed the “stop after leaving playback page” silent-return issue**: returning from Home now clears the stale leave flag and restores player volume when the stop-on-exit flow internally muted playback.
-- 🧪 **Release and playback regression coverage expanded**: added or strengthened tests for release-source verification, UGC/bangumi playback policy, quality switching, seek sessions, lifecycle resume, and MainActivity volume recovery.
+- 🫧 **Android Native / Miuix bottom bar and liquid-glass polish**: the home chrome, indicator, and settings now share one material strategy, and Android 13 devices are officially allowed to use the native liquid-glass path.
+- 🌫️ **Indicator refraction now includes blur like the rest of the glass**: the selected capsule no longer looks unnaturally clear compared with the outer shell.
+- 📺 **Live playback failover is more resilient**: `xlive` is now the primary source, and the player switches sources or reloads the current quality more aggressively on CDN failures, timeouts, and selected HTTP errors.
+- 🔊 **Background audio now follows playback settings more closely**: temporary state changes during app switching no longer pause playback too eagerly, and pressing Home is no longer misread as “leave playback page and stop”.
+- 💬 **Danmaku controls and sync state got a broader upgrade**: more tuning knobs, clearer block-rule management, and a dedicated cloud-sync status model were added.
+- 🧪 **Regression coverage expanded for chrome, live, background audio, and danmaku**: added or strengthened tests around native/Miuix bottom bars, live source policy, background playback, and danmaku filtering/sync behavior.
 
 ---
 
