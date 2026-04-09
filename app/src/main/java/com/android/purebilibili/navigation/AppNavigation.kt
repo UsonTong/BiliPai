@@ -107,7 +107,7 @@ import java.nio.charset.StandardCharsets
 // 定义路由参数结构
 object VideoRoute {
     const val base = "video"
-    const val route = "$base/{bvid}?cid={cid}&cover={cover}&startAudio={startAudio}&autoPortrait={autoPortrait}&resumePositionMs={resumePositionMs}"
+    const val route = "$base/{bvid}?cid={cid}&cover={cover}&startAudio={startAudio}&autoPortrait={autoPortrait}&resumePositionMs={resumePositionMs}&commentRootRpid={commentRootRpid}"
 
     internal fun resolveVideoRoutePath(
         bvid: String,
@@ -115,9 +115,10 @@ object VideoRoute {
         encodedCover: String,
         startAudio: Boolean,
         autoPortrait: Boolean,
-        resumePositionMs: Long = 0L
+        resumePositionMs: Long = 0L,
+        commentRootRpid: Long = 0L
     ): String {
-        return "$base/$bvid?cid=$cid&cover=$encodedCover&startAudio=$startAudio&autoPortrait=$autoPortrait&resumePositionMs=${resumePositionMs.coerceAtLeast(0L)}"
+        return "$base/$bvid?cid=$cid&cover=$encodedCover&startAudio=$startAudio&autoPortrait=$autoPortrait&resumePositionMs=${resumePositionMs.coerceAtLeast(0L)}&commentRootRpid=${commentRootRpid.coerceAtLeast(0L)}"
     }
 
     // 构建 helper
@@ -127,7 +128,8 @@ object VideoRoute {
         coverUrl: String,
         startAudio: Boolean = false,
         autoPortrait: Boolean = false,
-        resumePositionMs: Long = 0L
+        resumePositionMs: Long = 0L,
+        commentRootRpid: Long = 0L
     ): String {
         val encodedCover = Uri.encode(coverUrl)
         return resolveVideoRoutePath(
@@ -136,7 +138,8 @@ object VideoRoute {
             encodedCover = encodedCover,
             startAudio = startAudio,
             autoPortrait = autoPortrait,
-            resumePositionMs = resumePositionMs
+            resumePositionMs = resumePositionMs,
+            commentRootRpid = commentRootRpid
         )
     }
 }
@@ -149,7 +152,8 @@ internal fun resolveStandardVideoRoute(
     coverUrl: String,
     startAudio: Boolean = false,
     autoPortrait: Boolean = shouldAutoEnterPortraitForStandardVideoNavigation(),
-    resumePositionMs: Long = 0L
+    resumePositionMs: Long = 0L,
+    commentRootRpid: Long = 0L
 ): String {
     val encodedCover = URLEncoder.encode(coverUrl, StandardCharsets.UTF_8.toString())
     return VideoRoute.resolveVideoRoutePath(
@@ -158,7 +162,8 @@ internal fun resolveStandardVideoRoute(
         encodedCover = encodedCover,
         startAudio = startAudio,
         autoPortrait = autoPortrait,
-        resumePositionMs = resumePositionMs
+        resumePositionMs = resumePositionMs,
+        commentRootRpid = commentRootRpid
     )
 }
 
@@ -313,7 +318,20 @@ fun AppNavigation(
             is MessageLinkNavigationAction.Video -> {
                 navigateToVideo(action.videoId, 0L, "")
             }
+            is MessageLinkNavigationAction.VideoComment -> {
+                navigateToVideoRoute(
+                    VideoRoute.createRoute(
+                        bvid = action.videoId,
+                        cid = 0L,
+                        coverUrl = "",
+                        commentRootRpid = action.rootReplyId
+                    )
+                )
+            }
             is MessageLinkNavigationAction.Dynamic -> {
+                navController.navigate(ScreenRoutes.DynamicDetail.createRoute(action.dynamicId))
+            }
+            is MessageLinkNavigationAction.DynamicComment -> {
                 navController.navigate(ScreenRoutes.DynamicDetail.createRoute(action.dynamicId))
             }
             is MessageLinkNavigationAction.Space -> {
@@ -365,6 +383,22 @@ fun AppNavigation(
             // 避免在重新选择同一项目时出现同一目标的多个副本
             launchSingleTop = true
             // 重新选择以前选择的项目时恢复状态
+            restoreState = true
+        }
+    }
+
+    fun forceNavigateToHome() {
+        lastNavigationTime.longValue = System.currentTimeMillis()
+
+        if (navController.popBackStack(ScreenRoutes.Home.route, inclusive = false)) {
+            return
+        }
+
+        navController.navigate(ScreenRoutes.Home.route) {
+            popUpTo(navController.graph.startDestinationId) {
+                saveState = true
+            }
+            launchSingleTop = true
             restoreState = true
         }
     }
@@ -706,7 +740,8 @@ fun AppNavigation(
                 navArgument("startAudio") { type = NavType.BoolType; defaultValue = false },
                 navArgument("autoPortrait") { type = NavType.BoolType; defaultValue = false },
                 navArgument("fullscreen") { type = NavType.BoolType; defaultValue = false },
-                navArgument("resumePositionMs") { type = NavType.LongType; defaultValue = 0L }
+                navArgument("resumePositionMs") { type = NavType.LongType; defaultValue = 0L },
+                navArgument("commentRootRpid") { type = NavType.LongType; defaultValue = 0L }
             ),
             //  进入动画：当卡片过渡开启时用淡入（配合共享元素），关闭时用滑入
             //  进入动画：基于位置的扩散展开 (Scale + Fade)
@@ -892,6 +927,7 @@ fun AppNavigation(
             val autoPortraitFromRoute = backStackEntry.arguments?.getBoolean("autoPortrait") ?: false
             val startFullscreen = backStackEntry.arguments?.getBoolean("fullscreen") ?: false
             val resumePositionMsFromRoute = backStackEntry.arguments?.getLong("resumePositionMs") ?: 0L
+            val commentRootRpidFromRoute = backStackEntry.arguments?.getLong("commentRootRpid") ?: 0L
             
             //  使用顶层定义的 cardTransitionEnabled（已在 line 68 定义）
 
@@ -963,6 +999,7 @@ fun AppNavigation(
                     startAudioFromRoute = startAudio,
                     autoEnterPortraitFromRoute = autoPortraitFromRoute,
                     resumePositionMsFromRoute = resumePositionMsFromRoute,
+                    openCommentRootRpidFromRoute = commentRootRpidFromRoute,
                     transitionEnabled = shouldUseClassicBackRouteMotion(backRouteMotionMode),  // 预测返回优先稳定路由动画
                     predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
                     transitionEnterDurationMillis = navMotionSpec.slowFadeDurationMillis,
@@ -978,7 +1015,7 @@ fun AppNavigation(
                     onHomeClick = {
                         CardPositionManager.markReturning()
                         miniPlayerManager?.markLeavingByNavigation(expectedBvid = bvid)
-                        navigateTo(ScreenRoutes.Home.route)
+                        forceNavigateToHome()
                     },
                     //  [新增] 导航到音频模式
                     onNavigateToAudioMode = { 
@@ -1091,6 +1128,7 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onGoToLogin = { navController.navigate(ScreenRoutes.Login.route) },
                 onLogoutSuccess = { homeViewModel.refresh() },
+                onAccountSwitchSuccess = { homeViewModel.refresh() },
                 onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
                 onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
@@ -2096,7 +2134,8 @@ fun AppNavigation(
             popExitTransition = { slideExitRight(navMotionSpec) }
         ) {
             com.android.purebilibili.feature.message.feed.SystemNoticeScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenLink = ::openMessageLink
             )
         }
         

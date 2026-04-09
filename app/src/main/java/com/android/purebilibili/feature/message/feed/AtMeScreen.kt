@@ -246,7 +246,7 @@ private fun AtMeCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = formatMessageFeedTime(item.atTime),
+                        text = formatMessageFeedTime(item.atTime.toInt()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

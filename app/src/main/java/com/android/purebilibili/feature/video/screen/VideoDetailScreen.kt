@@ -487,6 +487,7 @@ fun VideoDetailScreen(
     startAudioFromRoute: Boolean = false,
     autoEnterPortraitFromRoute: Boolean = false,
     resumePositionMsFromRoute: Long = 0L,
+    openCommentRootRpidFromRoute: Long = 0L,
     transitionEnabled: Boolean = false,
     predictiveBackAnimationEnabled: Boolean = true,
     transitionEnterDurationMillis: Int = 320,
@@ -519,8 +520,7 @@ fun VideoDetailScreen(
     var isNavigatingToMiniMode by remember { mutableStateOf(false) }
     var hasAutoEnteredAudioMode by rememberSaveable { mutableStateOf(false) }
     var hasAutoEnteredPortraitFromRoute by rememberSaveable(bvid) { mutableStateOf(false) }
-    val backNavigationScope = rememberCoroutineScope()
-
+    var hasHandledCommentRootFromRoute by rememberSaveable(bvid, openCommentRootRpidFromRoute) { mutableStateOf(false) }
     val navigateToRelatedVideo = remember(onVideoClick, miniPlayerManager, uiState) {
         { targetBvid: String, options: android.os.Bundle? ->
             isNavigatingToVideo = true
@@ -618,6 +618,25 @@ fun VideoDetailScreen(
     //  监听评论状态
     val commentState by commentViewModel.commentState.collectAsStateWithLifecycle()
     val subReplyState by commentViewModel.subReplyState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(
+        openCommentRootRpidFromRoute,
+        commentState.replies,
+        commentState.isRepliesLoading,
+        subReplyState.visible
+    ) {
+        if (openCommentRootRpidFromRoute <= 0L || hasHandledCommentRootFromRoute || subReplyState.visible) {
+            return@LaunchedEffect
+        }
+
+        val rootReply = commentState.replies.firstOrNull { it.rpid == openCommentRootRpidFromRoute }
+        if (rootReply != null) {
+            commentViewModel.openSubReply(rootReply)
+            hasHandledCommentRootFromRoute = true
+        } else if (!commentState.isRepliesLoading && commentState.isRepliesEnd) {
+            hasHandledCommentRootFromRoute = true
+        }
+    }
     val commentDefaultSortMode by com.android.purebilibili.core.store.SettingsManager
         .getCommentDefaultSortMode(context)
         .collectAsStateWithLifecycle(
@@ -799,7 +818,7 @@ fun VideoDetailScreen(
     }
 
     //  用于跟踪组件是否正在退出，防止 SideEffect 覆盖恢复操作
-    var isScreenActive by remember { mutableStateOf(true) }
+    var isScreenActive by rememberSaveable(currentBvid) { mutableStateOf(true) }
     
     //  [关键] 保存进入前的状态栏配置（在 DisposableEffect 外部定义以便复用）
     val activity = remember { context.findActivity() }
@@ -844,7 +863,11 @@ fun VideoDetailScreen(
     }
     
     //  [修复] 包装的 onBack，在导航之前立即恢复状态栏并通知小窗管理器
-    var isActuallyLeaving by remember { mutableStateOf(false) }
+    val latestOnBack by rememberUpdatedState(onBack)
+    val latestOnHomeClick by rememberUpdatedState(onHomeClick)
+    val topBarActionHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    var pendingTopBarActionRunnable by remember { mutableStateOf<Runnable?>(null) }
+    var isActuallyLeaving by rememberSaveable(currentBvid) { mutableStateOf(false) }
     var forceCoverOnlyOnReturn by remember { mutableStateOf(false) }
     val rootAnimatedVisibilityScope = LocalAnimatedVisibilityScope.current
     val isExitTransitionInProgress =
@@ -859,12 +882,10 @@ fun VideoDetailScreen(
     )
 
     val handleTopBarAction = remember(
-        onBack,
-        onHomeClick,
         miniPlayerManager,
         currentBvid,
         coverTakeoverBeforeBackDelayMillis,
-        backNavigationScope
+        topBarActionHandler
     ) {
         action@{ action: VideoDetailTopBarAction ->
             if (isActuallyLeaving) return@action
@@ -877,15 +898,19 @@ fun VideoDetailScreen(
             miniPlayerManager?.markLeavingByNavigation(expectedBvid = currentBvid)
 
             restoreStatusBar() // 立即恢复状态栏（动画开始前）
-            backNavigationScope.launch {
-                // 给封面一个帧预算优先接管，避免视频帧 -> 封面的闪变
-                if (coverTakeoverBeforeBackDelayMillis > 0L) {
-                    kotlinx.coroutines.delay(coverTakeoverBeforeBackDelayMillis)
-                }
+            pendingTopBarActionRunnable?.let(topBarActionHandler::removeCallbacks)
+            val navigationRunnable = Runnable {
+                pendingTopBarActionRunnable = null
                 when (action) {
-                    VideoDetailTopBarAction.BACK -> onBack()
-                    VideoDetailTopBarAction.HOME -> onHomeClick()
+                    VideoDetailTopBarAction.BACK -> latestOnBack()
+                    VideoDetailTopBarAction.HOME -> latestOnHomeClick()
                 }
+            }
+            pendingTopBarActionRunnable = navigationRunnable
+            if (coverTakeoverBeforeBackDelayMillis > 0L) {
+                topBarActionHandler.postDelayed(navigationRunnable, coverTakeoverBeforeBackDelayMillis)
+            } else {
+                navigationRunnable.run()
             }
         }
     }
@@ -909,6 +934,9 @@ fun VideoDetailScreen(
     }
 
     LaunchedEffect(currentBvid) {
+        pendingTopBarActionRunnable?.let(topBarActionHandler::removeCallbacks)
+        pendingTopBarActionRunnable = null
+        isScreenActive = true
         forceCoverOnlyOnReturn = false
         if (shouldClearStaleReturningStateOnVideoDetailEnter(CardPositionManager.isReturningFromDetail)) {
             CardPositionManager.clearReturning()
@@ -918,6 +946,9 @@ fun VideoDetailScreen(
     DisposableEffect(lifecycleOwner, currentBvid) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                pendingTopBarActionRunnable?.let(topBarActionHandler::removeCallbacks)
+                pendingTopBarActionRunnable = null
+                isScreenActive = true
                 forceCoverOnlyOnReturn = false
                 if (shouldClearStaleReturningStateOnVideoDetailEnter(CardPositionManager.isReturningFromDetail)) {
                     CardPositionManager.clearReturning()
@@ -1000,6 +1031,8 @@ fun VideoDetailScreen(
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
         onDispose {
+            pendingTopBarActionRunnable?.let(topBarActionHandler::removeCallbacks)
+            pendingTopBarActionRunnable = null
             //  [关键] 标记页面正在退出，防止 SideEffect 覆盖
             isScreenActive = false
             
@@ -3207,7 +3240,7 @@ fun VideoDetailScreen(
                             .fillMaxWidth()
                             .clickable {
                                 // 检查任务状态
-                                val existingTask = com.android.purebilibili.feature.download.DownloadManager.getTask(successForDownload.info.bvid, successForDownload.info.cid)
+                                val existingTask = com.android.purebilibili.feature.download.DownloadManager.getVideoTask(successForDownload.info.bvid, successForDownload.info.cid)
                                 if (existingTask != null && !existingTask.isFailed) {
                                     if (existingTask.isComplete) viewModel.toast("视频已缓存")
                                     else viewModel.toast("正在下载中...")

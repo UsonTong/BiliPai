@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-06 · Synced to v7.5.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-04-09 · Synced to v7.5.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.5.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.5.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -388,7 +388,7 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 ## 🗺️ Roadmap
 
 > [!TIP]
-> Roadmap last refreshed on 2026-04-06 (v7.5.0). For current behavior, prefer the latest release notes, `CHANGELOG.md`, and code.
+> Roadmap last refreshed on 2026-04-09 (v7.5.1). For current behavior, prefer the latest release notes, `CHANGELOG.md`, and code.
 
 ### ✅ Completed
 
@@ -430,13 +430,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v7.5.0 · 2026-04-06)
+### Latest (v7.5.1 · 2026-04-09)
 
-- 🪐 **Space now boots from a steadier aggregated first screen**: the profile page prefers aggregated data and refreshes the header, stats, tabs, and contribution area with flatter theme-colored sections.
-- 🎬 **The first visit no longer flashes a false “No videos” state**: if the contribution list is still hydrating, the page stays in loading instead of falling into an empty state before refresh.
-- 🧩 **Secondary space data now loads in the background**: collections, series, favorites, and some stats no longer hard-block the first paint, so partial failures are less likely to break the whole page.
-- ⬆️ **Dynamic feed now has a back-to-top button**: once you scroll far enough, a floating shortcut appears so you can jump back to the top quickly.
-- 📐 **Author rows are better aligned on home cards**: followed and unfollowed cards now reserve the same trailing width so double-column layouts look more even.
+- 🎨 **Theme and shell behavior were tightened up again**: dynamic color, static MD3 palettes, AMOLED surfaces, preset descriptions, and the MD3 bottom bar default now align more cleanly.
+- 🔎 **New searches now jump back to the top**: changing the query or search type no longer reuses the previous result scroll offset.
+- 🎬 **Three playback stability issues were fixed**: playlist episode switching no longer leaves false `NO_RESPONSE` diagnostics, portrait recommendation paging avoids `SnapshotStateList` concurrent modification crashes, and foreground resume is less likely to stall in `BUFFERING`.
+- 💬 **Danmaku settings and portrait detail flows were refined**: the panel adapts better across fullscreen, inline, and tablet layouts, and portrait/shared-player handoff is smoother.
+- 💾 **Offline playback and cleanup behavior were tightened**: cache routing, cleanup coverage, fullscreen defaults for landscape offline videos, and post-ended seek recovery all behave more predictably.
 
 ---
 

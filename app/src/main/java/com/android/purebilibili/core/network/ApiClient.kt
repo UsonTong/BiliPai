@@ -29,6 +29,86 @@ import javax.net.ssl.X509TrustManager
 
 internal const val BANGUMI_PLAY_URL_PATH = "pgc/player/web/v2/playurl"
 
+private class AppSessionCookieJar : okhttp3.CookieJar {
+    private val cookieLock = Any()
+    private val cookieStore = mutableMapOf<String, MutableList<okhttp3.Cookie>>()
+
+    override fun saveFromResponse(url: okhttp3.HttpUrl, cookies: List<okhttp3.Cookie>) {
+        val host = url.host
+        synchronized(cookieLock) {
+            val existingCookies = cookieStore.getOrPut(host) { mutableListOf() }
+            cookies.forEach { newCookie ->
+                existingCookies.removeAll { it.name == newCookie.name }
+                existingCookies.add(newCookie)
+                com.android.purebilibili.core.util.Logger.d("CookieJar", " Saved cookie: ${newCookie.name} for $host")
+            }
+        }
+    }
+
+    override fun loadForRequest(url: okhttp3.HttpUrl): List<okhttp3.Cookie> {
+        val cookies = mutableListOf<okhttp3.Cookie>()
+
+        synchronized(cookieLock) {
+            cookieStore[url.host]?.let { cookies.addAll(it) }
+        }
+
+        var buvid3 = TokenManager.buvid3Cache
+        if (buvid3.isNullOrEmpty()) {
+            buvid3 = UUID.randomUUID().toString() + "infoc"
+            TokenManager.buvid3Cache = buvid3
+        }
+        if (cookies.none { it.name == "buvid3" }) {
+            cookies.add(
+                okhttp3.Cookie.Builder()
+                    .domain(url.host)
+                    .name("buvid3")
+                    .value(buvid3)
+                    .build()
+            )
+        }
+
+        val biliBiliDomain = if (url.host.endsWith("bilibili.com")) "bilibili.com" else url.host
+        val sessData = TokenManager.sessDataCache
+        if (!sessData.isNullOrEmpty()) {
+            cookies.removeAll { it.name == "SESSDATA" }
+            cookies.add(
+                okhttp3.Cookie.Builder()
+                    .domain(biliBiliDomain)
+                    .name("SESSDATA")
+                    .value(sessData)
+                    .build()
+            )
+        }
+
+        val biliJct = TokenManager.csrfCache
+        if (!biliJct.isNullOrEmpty()) {
+            cookies.removeAll { it.name == "bili_jct" }
+            cookies.add(
+                okhttp3.Cookie.Builder()
+                    .domain(biliBiliDomain)
+                    .name("bili_jct")
+                    .value(biliJct)
+                    .build()
+            )
+        }
+
+        if (url.encodedPath.contains("playurl") || url.encodedPath.contains("pgc/view")) {
+            com.android.purebilibili.core.util.Logger.d(
+                "CookieJar",
+                " ${url.encodedPath} request: domain=$biliBiliDomain, hasSess=${!sessData.isNullOrEmpty()}, hasCsrf=${!biliJct.isNullOrEmpty()}"
+            )
+        }
+
+        return cookies
+    }
+
+    fun clear() {
+        synchronized(cookieLock) {
+            cookieStore.clear()
+        }
+    }
+}
+
 /**
  * Bilibili 主 API 接口
  * 
@@ -1347,9 +1427,14 @@ interface MessageApi {
 
 object NetworkModule {
     internal var appContext: Context? = null
+    private val appSessionCookieJar = AppSessionCookieJar()
 
     fun init(context: Context) {
         appContext = context.applicationContext
+    }
+
+    fun clearRuntimeCookies() {
+        appSessionCookieJar.clear()
     }
 
     private val json = Json {
@@ -1408,8 +1493,6 @@ object NetworkModule {
                 .hostnameVerifier { _, _ -> true }
         }
         
-        val cookieLock = Any()
-        
         builder
             //  [Fix] 自定义 DNS 实现，绕过 OkHttp 可能被混淆内部类的问题，并添加日志
             .dns(object : okhttp3.Dns {
@@ -1435,79 +1518,7 @@ object NetworkModule {
                 }
             }})
             //  [关键] 添加 CookieJar 自动管理 Cookie（参考 PiliPala）
-            .cookieJar(object : okhttp3.CookieJar {
-                private val cookieStore = mutableMapOf<String, MutableList<okhttp3.Cookie>>()
-                
-                override fun saveFromResponse(url: okhttp3.HttpUrl, cookies: List<okhttp3.Cookie>) {
-                    val host = url.host
-                    synchronized(cookieLock) {
-                        val existingCookies = cookieStore.getOrPut(host) { mutableListOf() }
-                        cookies.forEach { newCookie ->
-                            // 移除同名旧 cookie，添加新 cookie
-                            existingCookies.removeAll { it.name == newCookie.name }
-                            existingCookies.add(newCookie)
-                            com.android.purebilibili.core.util.Logger.d("CookieJar", " Saved cookie: ${newCookie.name} for $host")
-                        }
-                    }
-                }
-                
-                override fun loadForRequest(url: okhttp3.HttpUrl): List<okhttp3.Cookie> {
-                    val cookies = mutableListOf<okhttp3.Cookie>()
-                    
-                    // 加载存储的 cookies
-                    synchronized(cookieLock) {
-                        cookieStore[url.host]?.let { cookies.addAll(it) }
-                    }
-                    
-                    //  确保 buvid3 存在
-                    var buvid3 = TokenManager.buvid3Cache
-                    if (buvid3.isNullOrEmpty()) {
-                        buvid3 = UUID.randomUUID().toString() + "infoc"
-                        TokenManager.buvid3Cache = buvid3
-                    }
-                    if (cookies.none { it.name == "buvid3" }) {
-                        cookies.add(okhttp3.Cookie.Builder()
-                            .domain(url.host)
-                            .name("buvid3")
-                            .value(buvid3)
-                            .build())
-                    }
-                    
-                    //  [修复] 使用 bilibili.com 域名，确保 Cookie 在所有子域名生效
-                    // OkHttp 会自动处理子域名匹配（不需要前导点）
-                    val biliBiliDomain = if (url.host.endsWith("bilibili.com")) "bilibili.com" else url.host
-                    
-                    //  如果有 SESSDATA，添加它
-                    val sessData = TokenManager.sessDataCache
-                    if (!sessData.isNullOrEmpty() && cookies.none { it.name == "SESSDATA" }) {
-                        cookies.add(okhttp3.Cookie.Builder()
-                            .domain(biliBiliDomain)
-                            .name("SESSDATA")
-                            .value(sessData)
-                            .build())
-                    }
-                    
-                    //  [新增] 添加 bili_jct (CSRF Token) - VIP 画质验证可能需要
-                    val biliJct = TokenManager.csrfCache
-                    if (!biliJct.isNullOrEmpty() && cookies.none { it.name == "bili_jct" }) {
-                        cookies.add(okhttp3.Cookie.Builder()
-                            .domain(biliBiliDomain)
-                            .name("bili_jct")
-                            .value(biliJct)
-                            .build())
-                    }
-                    
-                    //  [调试] 输出 Cookie 信息以便排查 VIP 画质问题
-                    if (url.encodedPath.contains("playurl") || url.encodedPath.contains("pgc/view")) {
-                        com.android.purebilibili.core.util.Logger.d(
-                            "CookieJar",
-                            " ${url.encodedPath} request: domain=$biliBiliDomain, hasSess=${!sessData.isNullOrEmpty()}, hasCsrf=${!biliJct.isNullOrEmpty()}"
-                        )
-                    }
-                    
-                    return cookies
-                }
-            })
+            .cookieJar(appSessionCookieJar)
             .addInterceptor { chain ->
                 val original = chain.request()
                 val url = original.url

@@ -1,13 +1,16 @@
 package com.android.purebilibili.feature.profile
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -84,6 +87,7 @@ import com.android.purebilibili.core.ui.components.IOSDivider
 import com.android.purebilibili.core.ui.components.IOSSwitchItem
 import com.android.purebilibili.core.ui.components.IOSSectionTitle
 import com.android.purebilibili.core.ui.components.IOSGridItem
+import com.android.purebilibili.core.store.StoredAccountSession
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
@@ -144,6 +148,7 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onGoToLogin: () -> Unit,
     onLogoutSuccess: () -> Unit,
+    onAccountSwitchSuccess: () -> Unit = {},
     onSettingsClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onFavoriteClick: () -> Unit,
@@ -155,8 +160,11 @@ fun ProfileScreen(
     // [注意] 移除了 globalHazeState - 双 hazeSource 模式与 Haze 库冲突
 ) {
     val state by viewModel.uiState.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+    val activeAccountMid by viewModel.activeAccountMid.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
+    var showAccountSwitchDialog by remember { mutableStateOf(false) }
     val windowSizeClass = LocalWindowSizeClass.current
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val isLoggedOut = state is ProfileUiState.LoggedOut
@@ -208,8 +216,45 @@ fun ProfileScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
+        viewModel.refreshSavedAccounts()
         //  [埋点] 页面浏览追踪
         com.android.purebilibili.core.util.AnalyticsHelper.logScreenView("ProfileScreen")
+    }
+
+    if (showAccountSwitchDialog) {
+        AccountSwitchDialog(
+            accounts = accounts,
+            activeAccountMid = activeAccountMid,
+            onDismiss = { showAccountSwitchDialog = false },
+            onAddAccount = {
+                showAccountSwitchDialog = false
+                onGoToLogin()
+            },
+            onSwitch = { mid ->
+                showAccountSwitchDialog = false
+                viewModel.switchAccount(
+                    mid = mid,
+                    onSuccess = {
+                        onAccountSwitchSuccess()
+                        Toast.makeText(context, "已切换账号", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            },
+            onRemove = { mid ->
+                viewModel.removeStoredAccount(
+                    mid = mid,
+                    onSuccess = {
+                        Toast.makeText(context, "已移除账号", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        )
     }
 
     //  未登录状态使用沉浸式全屏布局，已登录使用正常 Scaffold
@@ -246,6 +291,7 @@ fun ProfileScreen(
                 MobileProfileContent(
                     user = guestUser,
                     onLogout = onGoToLogin, // "退出登录" 变为 "登录"
+                    onAccountManageClick = { showAccountSwitchDialog = true },
                     onHistoryClick = onGoToLogin, // 游客点击功能需登录
                     onFavoriteClick = onGoToLogin,
                     onFollowingClick = { onGoToLogin() },
@@ -389,6 +435,7 @@ fun ProfileScreen(
                                 viewModel.logout()
                                 onLogoutSuccess()
                             },
+                            onAccountManageClick = { showAccountSwitchDialog = true },
                             onHistoryClick = onHistoryClick,
                             onFavoriteClick = onFavoriteClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
@@ -406,6 +453,7 @@ fun ProfileScreen(
                                 viewModel.logout()
                                 onLogoutSuccess()
                             },
+                            onAccountManageClick = { showAccountSwitchDialog = true },
                             onHistoryClick = onHistoryClick,
                             onFavoriteClick = onFavoriteClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
@@ -648,6 +696,7 @@ private fun BoxScope.ProfileBackground(
 fun TabletProfileContent(
     user: UserState,
     onLogout: () -> Unit,
+    onAccountManageClick: () -> Unit = {},
     onHistoryClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onFollowingClick: () -> Unit,
@@ -723,12 +772,24 @@ fun TabletProfileContent(
                         onFavoriteClick = onFavoriteClick, 
                         onDownloadClick = onDownloadClick, 
                         onWatchLaterClick = onWatchLaterClick,
+                        onAccountManageClick = onAccountManageClick,
                         isTablet = true, // Force tablet mode
                         containerColor = Color.Transparent, // Grid items handle bg
                         contentColor = contentColor
                     )
                     
                     Spacer(modifier = Modifier.weight(1f))
+
+                    OutlinedButton(
+                        onClick = onAccountManageClick,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth(0.5f)
+                    ) {
+                        Text("切换账号")
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
                     
                     Button(
                         onClick = onLogout,
@@ -756,6 +817,7 @@ fun MobileProfileContent(
     viewModel: ProfileViewModel = viewModel(),
     user: UserState,
     onLogout: () -> Unit,
+    onAccountManageClick: () -> Unit = {},
     onHistoryClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onFollowingClick: () -> Unit,
@@ -971,6 +1033,7 @@ fun MobileProfileContent(
                     onDownloadClick = onDownloadClick, 
                     onWatchLaterClick = onWatchLaterClick,
                     onInboxClick = onInboxClick,  //  [新增]
+                    onAccountManageClick = onAccountManageClick,
                     onLogout = onLogout,
                     containerColor = if (isImmersive) glassContainerColor else MaterialTheme.colorScheme.surface,
                     contentColor = if (isImmersive) glassContentColor else MaterialTheme.colorScheme.onSurface,
@@ -1506,6 +1569,7 @@ fun ServicesSection(
     onDownloadClick: () -> Unit = {},
     onWatchLaterClick: () -> Unit = {},
     onInboxClick: () -> Unit = {},  //  [新增] 私信入口
+    onAccountManageClick: () -> Unit = {},
     onLogout: () -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -1517,6 +1581,7 @@ fun ServicesSection(
     val historyIcon = rememberAppHistoryIcon()
     val bookmarkIcon = rememberAppBookmarkIcon()
     val inboxIcon = rememberAppInboxIcon()
+    val accountIcon = rememberAppProfileAddIcon()
     if (isTablet) {
         // [New] Grid Layout for Tablet
         val items = listOf(
@@ -1524,7 +1589,8 @@ fun ServicesSection(
             Triple("历史记录", historyIcon, onHistoryClick),
             Triple("我的收藏", bookmarkIcon, onFavoriteClick),
             Triple("稍后再看", bookmarkIcon, onWatchLaterClick),
-            Triple("消息中心", inboxIcon, onInboxClick)
+            Triple("消息中心", inboxIcon, onInboxClick),
+            Triple("账号切换", accountIcon, onAccountManageClick)
         )
         
         // Simple Grid implementation since LazyVerticalGrid might be overkill inside a Column if not scrolling?
@@ -1617,6 +1683,13 @@ fun ServicesSection(
                 iconTint = com.android.purebilibili.core.theme.iOSPink,  //  粉色图标
                 textColor = contentColor
             )
+            IOSClickableItem(
+                icon = accountIcon,
+                title = "账号切换",
+                onClick = onAccountManageClick,
+                iconTint = iOSOrange,
+                textColor = contentColor
+            )
             
             // [Merged] 退出登录 / 立即登录
             IOSClickableItem(
@@ -1629,6 +1702,108 @@ fun ServicesSection(
         }
     }
     }
+}
+
+@Composable
+private fun AccountSwitchDialog(
+    accounts: List<StoredAccountSession>,
+    activeAccountMid: Long?,
+    onDismiss: () -> Unit,
+    onAddAccount: () -> Unit,
+    onSwitch: (Long) -> Unit,
+    onRemove: (Long) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("账号切换", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (accounts.isEmpty()) {
+                    Text(
+                        text = "暂无已保存账号，先添加一个账号后即可快速切换。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    accounts.forEach { account ->
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = account.mid != activeAccountMid) {
+                                        onSwitch(account.mid)
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = account.face,
+                                    contentDescription = account.name,
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = account.name.ifBlank { "UID ${account.mid}" },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = buildString {
+                                            append("UID ${account.mid}")
+                                            if (account.vipLabel.isNotBlank()) {
+                                                append(" · ${account.vipLabel}")
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                if (account.mid == activeAccountMid) {
+                                    Text(
+                                        text = "当前",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                } else {
+                                    TextButton(onClick = { onSwitch(account.mid) }) {
+                                        Text("切换")
+                                    }
+                                    TextButton(onClick = { onRemove(account.mid) }) {
+                                        Text("移除", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onAddAccount) {
+                Text("添加账号")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }
 
 /**

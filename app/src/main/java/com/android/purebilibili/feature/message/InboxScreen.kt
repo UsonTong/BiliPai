@@ -17,8 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,7 +27,8 @@ import coil.compose.AsyncImage
 import com.android.purebilibili.core.ui.ComfortablePullToRefreshBox
 import com.android.purebilibili.data.model.response.SessionItem
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,14 @@ fun InboxScreen(
     viewModel: InboxViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+    var lastAutoLoadEndTs by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(uiState.sessions.firstOrNull()?.talker_id, uiState.isRefreshing, uiState.isLoading) {
+        if (uiState.isRefreshing || uiState.isLoading) {
+            lastAutoLoadEndTs = 0L
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,7 +55,7 @@ fun InboxScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                title = { 
+                title = {
                     Column {
                         Text("消息")
                         uiState.unreadData?.let { unread ->
@@ -115,7 +123,18 @@ fun InboxScreen(
                                 items = uiState.sessions,
                                 key = { "${it.talker_id}_${it.session_type}" }
                             ) { session ->
-                                // 优先使用缓存的用户信息
+                                if (
+                                    uiState.hasMore &&
+                                    uiState.endTs > 0L &&
+                                    uiState.endTs != lastAutoLoadEndTs &&
+                                    session == uiState.sessions.lastOrNull() &&
+                                    !uiState.isLoadingMore
+                                ) {
+                                    LaunchedEffect(session.talker_id, session.session_type, uiState.endTs) {
+                                        lastAutoLoadEndTs = uiState.endTs
+                                        viewModel.loadMoreSessions()
+                                    }
+                                }
                                 val userInfo = uiState.userInfoMap[session.talker_id]
                                 SessionListItem(
                                     session = session,
@@ -131,8 +150,7 @@ fun InboxScreen(
                                     onToggleTop = { viewModel.toggleTop(session) }
                                 )
                             }
-                            
-                            // 加载更多按钮
+
                             if (uiState.hasMore) {
                                 item {
                                     Box(
@@ -297,13 +315,13 @@ private fun MessageUnreadBadge(
 @Composable
 fun SessionListItem(
     session: SessionItem,
-    userInfo: UserBasicInfo? = null,  //  [新增] 从缓存获取的用户信息
+    userInfo: UserBasicInfo? = null,
     onClick: () -> Unit,
     onRemove: () -> Unit,
     onToggleTop: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    
+
     val displayName = InboxUserInfoResolver.resolveDisplayName(
         cached = userInfo,
         session = session
@@ -312,7 +330,7 @@ fun SessionListItem(
         cached = userInfo,
         session = session
     )
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -327,7 +345,6 @@ fun SessionListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 头像
         Box {
             AsyncImage(
                 model = displayAvatar,
@@ -338,8 +355,7 @@ fun SessionListItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
-            
-            // 未读角标 - 优化样式
+
             if (session.unread_count > 0) {
                 val badgeText = when {
                     session.unread_count > 99 -> "99+"
@@ -353,13 +369,10 @@ fun SessionListItem(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.width(12.dp))
-        
-        // 用户名和消息预览
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+
+        Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = displayName,
@@ -369,8 +382,7 @@ fun SessionListItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                
-                // 置顶标记
+
                 if (session.top_ts > 0) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -386,10 +398,9 @@ fun SessionListItem(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
-            // 消息预览
+
             Text(
                 text = MessagePreviewParser.parseSessionPreview(
                     content = session.last_msg?.content,
@@ -401,19 +412,16 @@ fun SessionListItem(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
-        // 时间和菜单
-        Column(
-            horizontalAlignment = Alignment.End
-        ) {
+
+        Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = formatTime(session.last_msg?.timestamp ?: 0),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Box {
                 IconButton(
                     onClick = { showMenu = true },
@@ -426,7 +434,7 @@ fun SessionListItem(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
+
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
@@ -451,16 +459,13 @@ fun SessionListItem(
     }
 }
 
-/**
- * 格式化时间
- */
 private fun formatTime(timestamp: Long): String {
     if (timestamp == 0L) return ""
-    
+
     val now = System.currentTimeMillis()
     val msgTime = timestamp * 1000
     val diff = now - msgTime
-    
+
     return when {
         diff < 60_000 -> "刚刚"
         diff < 3600_000 -> "${diff / 60_000}分钟前"

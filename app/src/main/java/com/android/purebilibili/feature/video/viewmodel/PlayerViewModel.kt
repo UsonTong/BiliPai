@@ -4631,10 +4631,16 @@ class PlayerViewModel : ViewModel() {
     ): com.android.purebilibili.feature.download.DownloadTask? {
         val qualityDesc = resolveDownloadQualityDescription(current, qualityId)
         val isCurrentTarget = targetBvid == currentBvid && targetCid == currentCid
+        val candidate = com.android.purebilibili.feature.download.resolveBatchDownloadCandidate(
+            info = current.info,
+            targetBvid = targetBvid,
+            targetCid = targetCid
+        )
+        val effectiveLabel = candidate?.label?.takeIf { it.isNotBlank() } ?: targetLabel
         val resolvedTitle = resolveBatchDownloadTaskTitle(
             rootTitle = current.info.title,
             candidateTitle = targetTitle,
-            candidateLabel = targetLabel
+            candidateLabel = effectiveLabel
         )
 
         val currentDashVideo = current.cachedDashVideos.find { it.id == qualityId }
@@ -4673,16 +4679,20 @@ class PlayerViewModel : ViewModel() {
             bvid = targetBvid,
             cid = targetCid,
             title = resolvedTitle,
-            episodeLabel = targetLabel.takeIf { it.isNotBlank() && it != resolvedTitle },
+            episodeLabel = effectiveLabel.takeIf { it.isNotBlank() && it != resolvedTitle },
+            groupKey = candidate?.groupKey,
+            groupTitle = candidate?.groupTitle,
+            episodeSortIndex = candidate?.episodeSortIndex ?: 0,
+            episodeCount = candidate?.episodeCount ?: 1,
             cover = targetCover.ifBlank { current.info.pic },
             ownerName = current.info.owner.name,
             ownerFace = current.info.owner.face,
-            duration = 0,
+            duration = candidate?.durationSeconds ?: 0,
             quality = qualityId,
             qualityDesc = qualityDesc,
             videoUrl = resolvedUrls.first,
             audioUrl = resolvedUrls.second,
-            isVerticalVideo = current.info.dimension?.isVertical == true
+            isVerticalVideo = candidate?.isVerticalVideo ?: (current.info.dimension?.isVertical == true)
         )
     }
     
@@ -4733,7 +4743,7 @@ class PlayerViewModel : ViewModel() {
             var failedCount = 0
 
             candidates.filter { it.selected }.forEach { candidate ->
-                val existingTask = com.android.purebilibili.feature.download.DownloadManager.getTask(
+                val existingTask = com.android.purebilibili.feature.download.DownloadManager.getVideoTask(
                     candidate.bvid,
                     candidate.cid
                 )

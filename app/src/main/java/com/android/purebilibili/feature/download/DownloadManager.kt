@@ -212,8 +212,15 @@ object DownloadManager {
     /**
      * 获取任务状态
      */
-    fun getTask(bvid: String, cid: Long): DownloadTask? {
-        return _tasks.value.values.find { it.bvid == bvid && it.cid == cid }
+    fun getVideoTask(bvid: String, cid: Long): DownloadTask? {
+        return _tasks.value.values
+            .filter { !it.isAudioOnly && it.bvid == bvid && it.cid == cid }
+            .sortedWith(
+                compareByDescending<DownloadTask> { it.isComplete }
+                    .thenByDescending { it.isDownloading }
+                    .thenByDescending { it.createdAt }
+            )
+            .firstOrNull()
     }
     
     /**
