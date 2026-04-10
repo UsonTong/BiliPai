@@ -2,6 +2,7 @@
 package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.core.network.WbiKeyManager
 import com.android.purebilibili.core.network.WbiUtils
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.data.model.response.*
@@ -51,6 +52,15 @@ internal fun buildBangumiPlayUrlParams(
         params["bvid"] = bvid
     }
     return params
+}
+
+internal fun signBangumiPlayUrlParams(
+    params: Map<String, String>,
+    wbiKeys: Pair<String, String>?
+): Map<String, String> {
+    val (imgKey, subKey) = wbiKeys ?: return params
+    if (imgKey.isBlank() || subKey.isBlank()) return params
+    return WbiUtils.sign(params, imgKey, subKey)
 }
 
 internal fun decodeBangumiPlayUrlPayload(
@@ -241,15 +251,26 @@ object BangumiRepository {
     ): Result<BangumiVideoInfo> = withContext(Dispatchers.IO) {
         try {
             android.util.Log.d("BangumiRepo", "📡 getBangumiPlayUrl: epId=$epId, cid=$cid, seasonId=$seasonId, qn=$qn")
+            val baseParams = buildBangumiPlayUrlParams(
+                epId = epId,
+                cid = cid,
+                qn = qn,
+                bvid = bvid,
+                seasonId = seasonId
+            )
+            val wbiKeys = WbiKeyManager.getWbiKeys().getOrNull()
+                ?: WbiKeyManager.refreshKeys().getOrNull()
+            val signedParams = signBangumiPlayUrlParams(
+                params = baseParams,
+                wbiKeys = wbiKeys
+            )
+            android.util.Log.d(
+                "BangumiRepo",
+                "📡 getBangumiPlayUrl request params: wbiSigned=${signedParams.containsKey("w_rid")}, keys=${signedParams.keys.sorted()}"
+            )
             val response = decodeBangumiPlayUrlPayload(
                 rawJson = api.getBangumiPlayUrl(
-                    buildBangumiPlayUrlParams(
-                        epId = epId,
-                        cid = cid,
-                        qn = qn,
-                        bvid = bvid,
-                        seasonId = seasonId
-                    )
+                    signedParams
                 ).string()
             )
             android.util.Log.d(

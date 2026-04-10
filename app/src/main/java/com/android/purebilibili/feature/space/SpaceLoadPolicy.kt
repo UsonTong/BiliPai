@@ -193,6 +193,7 @@ internal fun buildInitialSpaceSuccessState(
     val shouldShowInitialVideoLoading = shouldHydrateSpaceContributionVideos(
         totalVideos = seed.totalVideos,
         seededVideoCount = seed.videos.size,
+        pageSize = 30,
         selectedSubTab = selectedSubTab,
         selectedTid = 0,
         currentOrder = VideoSortOrder.PUBDATE,
@@ -246,6 +247,7 @@ internal fun resolveSpaceAggregateDefaultSelection(defaultTab: String): Pair<Spa
 internal fun shouldHydrateSpaceContributionVideos(
     totalVideos: Int,
     seededVideoCount: Int,
+    pageSize: Int,
     selectedSubTab: SpaceSubTab,
     selectedTid: Int,
     currentOrder: VideoSortOrder,
@@ -253,11 +255,51 @@ internal fun shouldHydrateSpaceContributionVideos(
 ): Boolean {
     if (selectedSubTab != SpaceSubTab.VIDEO) return false
     if (totalVideos <= 0) return false
-    if (seededVideoCount > 0) return false
+    val expectedVisibleCount = minOf(totalVideos, pageSize.coerceAtLeast(1))
+    if (seededVideoCount >= expectedVisibleCount) return false
     if (selectedTid != 0) return false
     if (currentOrder != VideoSortOrder.PUBDATE) return false
     if (currentKeyword.isNotBlank()) return false
     return true
+}
+
+internal fun shouldApplySpaceVideoResult(
+    requestMid: Long,
+    activeMid: Long,
+    requestGeneration: Long,
+    activeGeneration: Long,
+    requestTid: Int,
+    activeTid: Int,
+    requestOrder: VideoSortOrder,
+    activeOrder: VideoSortOrder,
+    requestKeyword: String,
+    activeKeyword: String
+): Boolean {
+    return requestMid > 0L &&
+        requestMid == activeMid &&
+        requestGeneration == activeGeneration &&
+        requestTid == activeTid &&
+        requestOrder == activeOrder &&
+        requestKeyword == activeKeyword
+}
+
+internal fun mergeSpaceVideoPages(
+    existing: List<SpaceVideoItem>,
+    incoming: List<SpaceVideoItem>
+): List<SpaceVideoItem> {
+    val seen = LinkedHashSet<String>()
+    val merged = ArrayList<SpaceVideoItem>(existing.size + incoming.size)
+    fun addAll(source: List<SpaceVideoItem>) {
+        for (item in source) {
+            val key = item.bvid.ifBlank { item.aid.toString() }
+            if (seen.add(key)) {
+                merged += item
+            }
+        }
+    }
+    addAll(existing)
+    addAll(incoming)
+    return merged
 }
 
 private fun mapSpaceAggregateVideoItem(item: SpaceAggregateArchiveItem): SpaceVideoItem {

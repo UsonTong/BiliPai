@@ -206,6 +206,18 @@ class SpaceLoadPolicyTest {
             shouldHydrateSpaceContributionVideos(
                 totalVideos = 133,
                 seededVideoCount = 0,
+                pageSize = 30,
+                selectedSubTab = SpaceSubTab.VIDEO,
+                selectedTid = 0,
+                currentOrder = VideoSortOrder.PUBDATE,
+                currentKeyword = ""
+            )
+        )
+        assertTrue(
+            shouldHydrateSpaceContributionVideos(
+                totalVideos = 133,
+                seededVideoCount = 20,
+                pageSize = 30,
                 selectedSubTab = SpaceSubTab.VIDEO,
                 selectedTid = 0,
                 currentOrder = VideoSortOrder.PUBDATE,
@@ -215,7 +227,8 @@ class SpaceLoadPolicyTest {
         assertFalse(
             shouldHydrateSpaceContributionVideos(
                 totalVideos = 133,
-                seededVideoCount = 20,
+                seededVideoCount = 30,
+                pageSize = 30,
                 selectedSubTab = SpaceSubTab.VIDEO,
                 selectedTid = 0,
                 currentOrder = VideoSortOrder.PUBDATE,
@@ -226,6 +239,7 @@ class SpaceLoadPolicyTest {
             shouldHydrateSpaceContributionVideos(
                 totalVideos = 133,
                 seededVideoCount = 0,
+                pageSize = 30,
                 selectedSubTab = SpaceSubTab.AUDIO,
                 selectedTid = 0,
                 currentOrder = VideoSortOrder.PUBDATE,
@@ -236,6 +250,7 @@ class SpaceLoadPolicyTest {
             shouldHydrateSpaceContributionVideos(
                 totalVideos = 0,
                 seededVideoCount = 0,
+                pageSize = 30,
                 selectedSubTab = SpaceSubTab.VIDEO,
                 selectedTid = 0,
                 currentOrder = VideoSortOrder.PUBDATE,
@@ -267,5 +282,68 @@ class SpaceLoadPolicyTest {
         assertTrue(state.isLoadingMore)
         assertEquals(133, state.totalVideos)
         assertTrue(state.videos.isEmpty())
+    }
+
+    @Test
+    fun `shouldApplySpaceVideoResult requires matching list generation and filters`() {
+        assertTrue(
+            shouldApplySpaceVideoResult(
+                requestMid = 42L,
+                activeMid = 42L,
+                requestGeneration = 3L,
+                activeGeneration = 3L,
+                requestTid = 0,
+                activeTid = 0,
+                requestOrder = VideoSortOrder.PUBDATE,
+                activeOrder = VideoSortOrder.PUBDATE,
+                requestKeyword = "test",
+                activeKeyword = "test"
+            )
+        )
+        assertFalse(
+            shouldApplySpaceVideoResult(
+                requestMid = 42L,
+                activeMid = 42L,
+                requestGeneration = 3L,
+                activeGeneration = 4L,
+                requestTid = 0,
+                activeTid = 0,
+                requestOrder = VideoSortOrder.PUBDATE,
+                activeOrder = VideoSortOrder.PUBDATE,
+                requestKeyword = "test",
+                activeKeyword = "test"
+            )
+        )
+        assertFalse(
+            shouldApplySpaceVideoResult(
+                requestMid = 42L,
+                activeMid = 42L,
+                requestGeneration = 3L,
+                activeGeneration = 3L,
+                requestTid = 1,
+                activeTid = 0,
+                requestOrder = VideoSortOrder.PUBDATE,
+                activeOrder = VideoSortOrder.PUBDATE,
+                requestKeyword = "test",
+                activeKeyword = "test"
+            )
+        )
+    }
+
+    @Test
+    fun `mergeSpaceVideoPages preserves order and removes duplicates`() {
+        val merged = mergeSpaceVideoPages(
+            existing = listOf(
+                SpaceVideoItem(aid = 1L, bvid = "BV1"),
+                SpaceVideoItem(aid = 2L, bvid = "BV2")
+            ),
+            incoming = listOf(
+                SpaceVideoItem(aid = 2L, bvid = "BV2"),
+                SpaceVideoItem(aid = 3L, bvid = "BV3"),
+                SpaceVideoItem(aid = 1L, bvid = "BV1")
+            )
+        )
+
+        assertEquals(listOf("BV1", "BV2", "BV3"), merged.map { it.bvid })
     }
 }

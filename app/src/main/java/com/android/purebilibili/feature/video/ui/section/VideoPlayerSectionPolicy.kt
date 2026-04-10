@@ -159,6 +159,24 @@ internal fun shouldLockLongPressSpeedBySwipe(
         totalDragDistanceY <= -thresholdPx
 }
 
+internal fun shouldConsumeExclusiveLongPressSpeedDrag(
+    isLongPressing: Boolean,
+    longPressSpeedLocked: Boolean
+): Boolean {
+    return isLongPressing && !longPressSpeedLocked
+}
+
+internal fun shouldReapplyLockedLongPressSpeed(
+    longPressSpeedLocked: Boolean,
+    isLongPressing: Boolean,
+    observedPlaybackSpeed: Float,
+    lockedLongPressSpeed: Float
+): Boolean {
+    return longPressSpeedLocked &&
+        !isLongPressing &&
+        abs(observedPlaybackSpeed - lockedLongPressSpeed) > 0.001f
+}
+
 internal fun shouldRestorePlaybackParametersAfterLongPressRelease(
     wasLongPressing: Boolean,
     longPressSpeedLocked: Boolean,

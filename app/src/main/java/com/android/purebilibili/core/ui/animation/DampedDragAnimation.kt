@@ -11,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.util.fastCoerceIn
+import com.android.purebilibili.core.ui.motion.interactiveSnapSpring
+import com.android.purebilibili.core.ui.motion.pressFeedbackSpring
+import com.android.purebilibili.core.ui.motion.selectionSpring
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -76,7 +79,7 @@ class DampedDragAnimationState(
             isDragging = true
             // 按压缩放 — 参考 LiquidBottomTabs press()
             scope.launch {
-                pressProgressAnimation.animateTo(1f, spring(1f, 1000f, 0.001f))
+                pressProgressAnimation.animateTo(1f, pressFeedbackSpring())
             }
         }
         
@@ -151,21 +154,18 @@ class DampedDragAnimationState(
         scope.launch {
             animatable.animateTo(
                 targetValue = targetIndex.toFloat(),
-                animationSpec = spring(
-                    dampingRatio = 0.7f,
-                    stiffness = 500f
-                ),
+                animationSpec = selectionSpring(),
                 initialVelocity = velocityItems
             )
             onIndexChanged(targetIndex)
         }
         // 释放按压缩放 — 参考 LiquidBottomTabs release()
         scope.launch {
-            pressProgressAnimation.animateTo(0f, spring(1f, 1000f, 0.001f))
+            pressProgressAnimation.animateTo(0f, pressFeedbackSpring())
         }
         // 偏移量归零 — 弹性回弹
         scope.launch {
-            offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
+            offsetAnimation.animateTo(0f, interactiveSnapSpring())
         }
     }
     
@@ -184,10 +184,7 @@ class DampedDragAnimationState(
         scope.launch {
             animatable.animateTo(
                 targetValue = index.toFloat(),
-                animationSpec = spring(
-                    dampingRatio = 0.7f, 
-                    stiffness = 500f
-                )
+                animationSpec = selectionSpring()
             )
         }
     }

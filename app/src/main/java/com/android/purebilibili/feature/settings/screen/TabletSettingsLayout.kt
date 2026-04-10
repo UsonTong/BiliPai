@@ -85,7 +85,7 @@ fun TabletSettingsLayout(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     searchResults: List<SettingsSearchResult>,
-    onSearchResultClick: (SettingsSearchTarget) -> Unit,
+    onSearchResultClick: (SettingsSearchResult) -> Unit,
     
     // Logic Callbacks
     onPrivacyModeChange: (Boolean) -> Unit,

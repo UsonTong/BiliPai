@@ -22,6 +22,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
+internal fun resolveBangumiPlaybackAuthState(
+    hasSessionCookie: Boolean,
+    hasAccessToken: Boolean,
+    cachedIsVip: Boolean,
+    seasonUserVip: Boolean
+): Pair<Boolean, Boolean> {
+    val isLoggedIn = hasSessionCookie || hasAccessToken
+    val isVip = isLoggedIn && (cachedIsVip || seasonUserVip)
+    return isLoggedIn to isVip
+}
+
 /**
  * 番剧播放器 UI 状态
  */
@@ -37,6 +48,8 @@ sealed class BangumiPlayerState {
         val quality: Int,
         val acceptQuality: List<Int>,
         val acceptDescription: List<String>,
+        val isLoggedIn: Boolean = false,
+        val isVip: Boolean = false,
         val isLiked: Boolean = false,
         val coinCount: Int = 0
     ) : BangumiPlayerState()
@@ -317,6 +330,12 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     followStatus = if (isFollowed) 1 else 0
                 )
             )
+            val (isLoggedIn, isVip) = resolveBangumiPlaybackAuthState(
+                hasSessionCookie = !TokenManager.sessDataCache.isNullOrEmpty(),
+                hasAccessToken = !TokenManager.accessTokenCache.isNullOrEmpty(),
+                cachedIsVip = TokenManager.isVipCache,
+                seasonUserVip = detail.userStatus?.vip == 1
+            )
 
             _uiState.value = BangumiPlayerState.Success(
                 seasonDetail = correctedDetail,
@@ -326,7 +345,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 audioUrl = audioUrl,
                 quality = playData.quality,
                 acceptQuality = playData.acceptQuality ?: emptyList(),
-                acceptDescription = playData.acceptDescription ?: emptyList()
+                acceptDescription = playData.acceptDescription ?: emptyList(),
+                isLoggedIn = isLoggedIn,
+                isVip = isVip
             )
 
             refreshEpisodeInteractionState(

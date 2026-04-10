@@ -3,6 +3,7 @@ package com.android.purebilibili.navigation
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -79,6 +80,9 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.android.purebilibili.core.ui.LocalSetBottomBarVisible
 import com.android.purebilibili.core.ui.LocalBottomBarVisible
+import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
+import com.android.purebilibili.core.ui.motion.emphasizedExitTween
+import com.android.purebilibili.core.ui.motion.softLandingSpring
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
 // import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass (Removed)
@@ -475,6 +479,16 @@ fun AppNavigation(
         val linkedSettingsBackMotion = remember(backRouteMotionMode) {
             shouldUseLinkedSettingsBackMotion(backRouteMotionMode)
         }
+        val hasPreviousBackStackEntry = navController.previousBackStackEntry != null
+        val shouldInterceptSystemBack = remember(
+            predictiveBackAnimationEnabled,
+            hasPreviousBackStackEntry
+        ) {
+            shouldInterceptSystemBackForClassicMotion(
+                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
+                hasPreviousBackStackEntry = hasPreviousBackStackEntry
+            )
+        }
         val isSettingsScreen = currentRoute == ScreenRoutes.Settings.route
         val shouldHideBottomBarOnTablet = isTabletLayout && isSettingsScreen
 
@@ -542,7 +556,10 @@ fun AppNavigation(
             LocalDynamicScrollChannel provides dynamicScrollChannel,
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
         ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+            BackHandler(enabled = shouldInterceptSystemBack) {
+                navController.navigateUp()
+            }
+            Box(modifier = Modifier.fillMaxSize()) {
             // ===== 内容层 (hazeSource) =====
             // 这个 Box 包裹所有 NavHost 内容，作为底栏模糊的源
             // [LayerBackdrop] Apply layerBackdrop to capture content for bottom bar refraction
@@ -2216,15 +2233,13 @@ fun AppNavigation(
                     AnimatedVisibility(
                         visible = finalBottomBarVisible,
                         enter = slideInVertically(
-                            // [UX优化] 物理弹簧进场 (Spring Entrance)
-                            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                            animationSpec = softLandingSpring(),
                             initialOffsetY = { it }
-                        ) + fadeIn(animationSpec = tween(navMotionSpec.slowFadeDurationMillis)),
+                        ) + fadeIn(animationSpec = emphasizedEnterTween(navMotionSpec.slowFadeDurationMillis)),
                         exit = slideOutVertically(
-                            // [UX优化] 物理弹簧出场 (Spring Exit)
-                            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                            animationSpec = emphasizedExitTween(navMotionSpec.fastFadeDurationMillis),
                             targetOffsetY = { it }
-                        ) + fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis))
+                        ) + fadeOut(animationSpec = emphasizedExitTween(navMotionSpec.fastFadeDurationMillis))
                     ) {
                         if (isBottomBarFloating) {
                             // 悬浮式底栏

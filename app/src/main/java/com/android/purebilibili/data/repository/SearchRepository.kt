@@ -71,12 +71,15 @@ object SearchRepository {
                 )
                 return@withContext searchVideoFallback(keyword = keyword, page = page)
             }
-            
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: videoList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
             
             com.android.purebilibili.core.util.Logger.d(
@@ -126,11 +129,15 @@ object SearchRepository {
                 ?.map { it.cleanupFields() }
                 ?: emptyList()
 
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: upList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
             
             com.android.purebilibili.core.util.Logger.d(
@@ -211,11 +218,15 @@ object SearchRepository {
                 )
             } ?: emptyList()
             
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: bangumiList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
             
             com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Bangumi search result: ${bangumiList.size} items, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
@@ -252,11 +263,15 @@ object SearchRepository {
                 )
             } ?: emptyList()
 
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: resultList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
 
             com.android.purebilibili.core.util.Logger.d(
@@ -294,11 +309,15 @@ object SearchRepository {
             
             val liveList = response.data?.result?.map { it.cleanupFields() } ?: emptyList()
             
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: liveList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
             
             com.android.purebilibili.core.util.Logger.d("SearchRepo", "🔍 Live search result: ${liveList.size} rooms, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
@@ -332,11 +351,15 @@ object SearchRepository {
                 ?.map { it.cleanupFields() }
                 ?: emptyList()
 
+            val resolvedPage = resolveSearchLoadedPage(
+                requestedPage = page,
+                responsePage = response.data?.page ?: page
+            )
             val pageInfo = SearchPageInfo(
-                currentPage = response.data?.page ?: page,
+                currentPage = resolvedPage,
                 totalPages = response.data?.numPages ?: 1,
                 totalResults = response.data?.numResults ?: articleList.size,
-                hasMore = (response.data?.page ?: page) < (response.data?.numPages ?: 1)
+                hasMore = resolvedPage < (response.data?.numPages ?: 1)
             )
 
             Result.success(Pair(articleList, pageInfo))

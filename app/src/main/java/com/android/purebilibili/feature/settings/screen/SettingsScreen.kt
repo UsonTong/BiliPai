@@ -792,15 +792,16 @@ fun SettingsScreen(
     val settingsSearchResults = remember(settingsSearchQuery) {
         resolveSettingsSearchResults(
             query = settingsSearchQuery,
-            maxResults = 12
+            maxResults = 20
         )
     }
     BackHandler(enabled = shouldConsumeSettingsBack(showBlockedList)) {
         showBlockedList = false
     }
-    val onSettingsSearchResultClick: (SettingsSearchTarget) -> Unit = { target ->
+    val onSettingsSearchResultClick: (SettingsSearchResult) -> Unit = { result ->
         settingsSearchQuery = ""
-        when (target) {
+        SettingsSearchFocusController.submit(result.target, result.focusId)
+        when (result.target) {
             SettingsSearchTarget.APPEARANCE -> onAppearanceClick()
             SettingsSearchTarget.PLAYBACK -> onPlaybackClick()
             SettingsSearchTarget.BOTTOM_BAR -> onNavigateToBottomBarSettings()
@@ -1094,7 +1095,7 @@ private fun MobileSettingsLayout(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     searchResults: List<SettingsSearchResult>,
-    onSearchResultClick: (SettingsSearchTarget) -> Unit,
+    onSearchResultClick: (SettingsSearchResult) -> Unit,
     
     // Logic Callbacks
     onPrivacyModeChange: (Boolean) -> Unit,

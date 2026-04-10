@@ -227,9 +227,18 @@ fun PortraitVideoPager(
         .getPlaybackCompletionBehavior(context)
         .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
     val isExternalPlaylist by PlaylistManager.isExternalPlaylist.collectAsState()
+    val recommendationShuffleSeed = remember(initialInfo.bvid, initialInfo.aid) {
+        resolvePortraitRecommendationShuffleSeed(
+            initialBvid = initialInfo.bvid,
+            initialAid = initialInfo.aid
+        )
+    }
 
-    val baseRecommendations = remember(recommendations) {
-        recommendations.distinctBy { it.bvid }
+    val baseRecommendations = remember(recommendations, recommendationShuffleSeed) {
+        shufflePortraitRecommendations(
+            seed = recommendationShuffleSeed,
+            recommendations = recommendations
+        )
     }
     val initialPageIndex = remember(initialBvid, initialInfo.bvid, baseRecommendations) {
         resolvePortraitInitialPageIndex(
@@ -566,11 +575,18 @@ fun PortraitVideoPager(
                             val existingBvids = withContext(Dispatchers.Main.immediate) {
                                 snapshotPortraitPageBvids(pageItems)
                             }
+                            val shuffledFetchedRecommendations = shufflePortraitRecommendations(
+                                seed = resolvePortraitRecommendationAppendSeed(
+                                    baseSeed = recommendationShuffleSeed,
+                                    currentBvid = bvid
+                                ),
+                                recommendations = com.android.purebilibili.data.repository.VideoRepository
+                                    .getRelatedVideos(bvid)
+                            )
                             val appendItems = mergePortraitRecommendationAppendItems(
                                 currentBvid = bvid,
                                 existingBvids = existingBvids,
-                                fetchedRecommendations = com.android.purebilibili.data.repository.VideoRepository
-                                    .getRelatedVideos(bvid)
+                                fetchedRecommendations = shuffledFetchedRecommendations
                             )
                             if (appendItems.isNotEmpty()) {
                                 withContext(Dispatchers.Main.immediate) {

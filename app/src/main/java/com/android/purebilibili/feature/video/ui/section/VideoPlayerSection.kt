@@ -548,12 +548,17 @@ fun VideoPlayerSection(
     }
 
     LaunchedEffect(observedPlaybackSpeed, longPressSpeedLocked, lockedLongPressSpeed, isLongPressing) {
-        if (
-            longPressSpeedLocked &&
-            !isLongPressing &&
-            abs(observedPlaybackSpeed - lockedLongPressSpeed) > 0.001f
+        if (shouldReapplyLockedLongPressSpeed(
+                longPressSpeedLocked = longPressSpeedLocked,
+                isLongPressing = isLongPressing,
+                observedPlaybackSpeed = observedPlaybackSpeed,
+                lockedLongPressSpeed = lockedLongPressSpeed
+            )
         ) {
-            longPressSpeedLocked = false
+            playerState.player.playbackParameters = PlaybackParameters(
+                lockedLongPressSpeed,
+                1.0f
+            )
         }
     }
 
@@ -1042,7 +1047,11 @@ fun VideoPlayerSection(
                         },
                         //  [修复点] 使用 dragAmount 而不是 change.positionChange()
                         onDrag = { change, dragAmount ->
-                            if (isLongPressing) {
+                            if (shouldConsumeExclusiveLongPressSpeedDrag(
+                                    isLongPressing = isLongPressing,
+                                    longPressSpeedLocked = longPressSpeedLocked
+                                )
+                            ) {
                                 if (
                                     !shouldEnableLongPressSpeedGesture(
                                         isScreenLocked = isScreenLocked,

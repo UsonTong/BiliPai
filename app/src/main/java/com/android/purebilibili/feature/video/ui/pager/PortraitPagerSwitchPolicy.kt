@@ -4,6 +4,7 @@ import androidx.compose.ui.layout.ContentScale
 import com.android.purebilibili.data.model.response.Page
 import com.android.purebilibili.data.model.response.RelatedVideo
 import com.android.purebilibili.data.model.response.ViewInfo
+import kotlin.random.Random
 
 private const val PORTRAIT_RECOMMENDATION_PREFETCH_THRESHOLD = 1
 
@@ -132,6 +133,34 @@ internal fun mergePortraitRecommendationAppendItems(
         }
         .distinctBy { it.bvid }
         .toList()
+}
+
+internal fun resolvePortraitRecommendationShuffleSeed(
+    initialBvid: String,
+    initialAid: Long
+): Int {
+    var seed = 17
+    seed = 31 * seed + initialBvid.hashCode()
+    seed = 31 * seed + initialAid.hashCode()
+    return seed
+}
+
+internal fun resolvePortraitRecommendationAppendSeed(
+    baseSeed: Int,
+    currentBvid: String
+): Int {
+    return 31 * baseSeed + currentBvid.hashCode()
+}
+
+internal fun shufflePortraitRecommendations(
+    seed: Int,
+    recommendations: List<RelatedVideo>
+): List<RelatedVideo> {
+    val unique = recommendations
+        .filter { it.bvid.isNotBlank() }
+        .distinctBy { it.bvid }
+    if (unique.size <= 1) return unique
+    return unique.shuffled(Random(seed))
 }
 
 internal fun snapshotPortraitPageBvids(

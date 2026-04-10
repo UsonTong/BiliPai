@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-09 · 文档已同步至 v7.5.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-10 · 文档已同步至 v7.5.3（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.5.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.5.3-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -527,7 +527,7 @@ app/src/main/java/com/android/purebilibili
 ## 🗺️ 路线图
 
 > [!TIP]
-> 路线图最后同步于 2026-04-09（v7.5.1）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
+> 路线图最后同步于 2026-04-10（v7.5.3）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
 
 ### ✅ 已完成功能
 
@@ -572,13 +572,11 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.5.1 · 2026-04-09)
+### 最近更新 (v7.5.3 · 2026-04-10)
 
-- 🎨 **主题、外观与底栏策略继续收口**：动态色、静态 MD3 配色、AMOLED surface 和 `iOS / Android Native` 预设说明进一步统一，MD3 底栏默认也更贴近原生 docked 样式。
-- 🔎 **搜索页新搜索会自动回到顶部**：输入新关键词或切换搜索类型后，结果列表不再沿用上次滚动偏移量。
-- 🎬 **播放器稳定性修复三连**：修复合集切集时偶发 `NO_RESPONSE`、竖屏推荐流 `SnapshotStateList` 并发崩溃，以及前后台切换后卡在 `BUFFERING` 不恢复的问题。
-- 💬 **弹幕设置面板与竖屏详情继续升级**：弹幕面板改进了全屏 / 非全屏 / 平板下的呈现方式，竖屏详情和共享播放器切换也更顺。
-- 💾 **下载与离线播放细节补强**：离线路由、清理逻辑、横屏起播全屏和播完后 seek 恢复策略一起做了收口。
+- 🔎 **搜索与空间加载更稳**：搜索结果补上请求代际校验、分页兜底和去重合并，UP 空间投稿列表在首屏预览不足时也会继续补齐正式列表。
+- ⚙️ **设置搜索更可用**：常用设置项现在支持更细粒度的功能关键词检索，并能直接定位到外观、播放和底栏设置中的对应分组。
+- 📱 **竖屏推荐流更分散**：连续上滑时的推荐候选改为会话内稳定打散，减少总是连续刷到同类视频的情况。
 
 ### 历史版本
 

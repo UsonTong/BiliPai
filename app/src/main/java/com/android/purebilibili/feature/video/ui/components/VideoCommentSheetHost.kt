@@ -3,11 +3,6 @@ package com.android.purebilibili.feature.video.ui.components
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,6 +41,12 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.ui.bottomSheetContentEnterTransition
+import com.android.purebilibili.core.ui.bottomSheetContentExitTransition
+import com.android.purebilibili.core.ui.bottomSheetScrimEnterTransition
+import com.android.purebilibili.core.ui.bottomSheetScrimExitTransition
+import com.android.purebilibili.core.ui.resolveAdaptiveBottomSheetMotionSpec
 import com.android.purebilibili.core.util.BilibiliUrlParser
 import com.android.purebilibili.data.model.CommentFraudStatus
 import com.android.purebilibili.data.model.response.ReplyItem
@@ -146,6 +147,8 @@ fun VideoCommentSheetHost(
         topReservedPx = topReservedPx
     )
     val scrimAlpha = resolveVideoCommentSheetHostScrimAlpha(mainSheetVisible = mainSheetVisible)
+    val uiPreset = LocalUiPreset.current
+    val motionSpec = remember(uiPreset) { resolveAdaptiveBottomSheetMotionSpec(uiPreset) }
     val appearance = rememberVideoCommentAppearance()
 
     var fallbackPreviewVisible by remember { mutableStateOf(false) }
@@ -252,8 +255,8 @@ fun VideoCommentSheetHost(
 
     AnimatedVisibility(
         visible = hostVisible,
-        enter = fadeIn(tween(300)),
-        exit = fadeOut(tween(300))
+        enter = bottomSheetScrimEnterTransition(motionSpec),
+        exit = bottomSheetScrimExitTransition(motionSpec)
     ) {
         Box(
             modifier = Modifier
@@ -267,14 +270,8 @@ fun VideoCommentSheetHost(
         ) {
             AnimatedVisibility(
                 visible = hostVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(300)
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(300)
-                ),
+                enter = bottomSheetContentEnterTransition(motionSpec),
+                exit = bottomSheetContentExitTransition(motionSpec),
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 Surface(

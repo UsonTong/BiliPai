@@ -122,6 +122,8 @@ class SpaceViewModel(
     private var activeSpaceLoadJob: Job? = null
     private var activeSpaceSupplementalJob: Job? = null
     private var activeSpaceSearchJob: Job? = null
+    private var activeVideoListJob: Job? = null
+    private var activeVideoListGeneration: Long = 0
     private val collectionPreviewLimit = 3
     private var currentKeyword: String = ""
     
@@ -139,7 +141,9 @@ class SpaceViewModel(
         currentOrder = VideoSortOrder.PUBDATE
         currentKeyword = ""
         activeSpaceSearchJob?.cancel()
+        activeVideoListJob?.cancel()
         activeSpaceLoadGeneration += 1
+        activeVideoListGeneration += 1
         val requestGeneration = activeSpaceLoadGeneration
         activeSpaceLoadJob?.cancel()
         activeSpaceSupplementalJob?.cancel()
@@ -318,6 +322,7 @@ class SpaceViewModel(
         if (!shouldHydrateSpaceContributionVideos(
                 totalVideos = current.totalVideos,
                 seededVideoCount = current.videos.size,
+                pageSize = pageSize,
                 selectedSubTab = current.selectedSubTab,
                 selectedTid = current.selectedTid,
                 currentOrder = current.sortOrder,
@@ -326,20 +331,27 @@ class SpaceViewModel(
         ) {
             return
         }
+        val requestVideoGeneration = beginVideoListRequest()
+        val requestTid = currentTid
+        val requestOrder = currentOrder
+        val requestKeyword = currentKeyword
 
         _uiState.value = current.copy(isLoadingMore = true)
 
-        viewModelScope.launch {
+        activeVideoListJob = viewModelScope.launch {
             try {
                 val result = fetchInitialSpaceVideos(
                     mid = mid,
                     imgKey = cachedImgKey,
                     subKey = cachedSubKey,
-                    tid = currentTid,
-                    order = currentOrder,
-                    keyword = currentKeyword
+                    tid = requestTid,
+                    order = requestOrder,
+                    keyword = requestKeyword
                 )
                 if (!shouldApplySpaceLoadResult(mid, currentMid, requestGeneration, activeSpaceLoadGeneration)) {
+                    return@launch
+                }
+                if (!shouldApplySpaceVideoResult(mid, currentMid, requestVideoGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
                     return@launch
                 }
                 val latest = _uiState.value as? SpaceUiState.Success ?: return@launch
@@ -352,7 +364,7 @@ class SpaceViewModel(
                     videos = result.data.list.vlist,
                     totalVideos = result.data.page.count,
                     hasMoreVideos = resolveNextSpaceVideoPage(
-                        order = currentOrder,
+                        order = requestOrder,
                         currentPage = currentPage,
                         totalCount = result.data.page.count,
                         pageSize = pageSize
@@ -362,6 +374,9 @@ class SpaceViewModel(
                 )
             } catch (e: Exception) {
                 android.util.Log.e("SpaceVM", "hydrateInitialContributionVideos error: ${e.message}", e)
+                if (!shouldApplySpaceVideoResult(mid, currentMid, requestVideoGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val latest = _uiState.value as? SpaceUiState.Success ?: return@launch
                 _uiState.value = latest.copy(isLoadingMore = false)
             }
@@ -441,6 +456,12 @@ class SpaceViewModel(
         }
     }
     
+    private fun beginVideoListRequest(): Long {
+        activeVideoListJob?.cancel()
+        activeVideoListGeneration += 1
+        return activeVideoListGeneration
+    }
+
     fun loadMoreVideos() {
         val current = _uiState.value as? SpaceUiState.Success ?: return
         if (current.isLoadingMore || !current.hasMoreVideos) return
@@ -452,13 +473,19 @@ class SpaceViewModel(
             pageSize = pageSize
         ) ?: return
         android.util.Log.d("SpaceVM", " loadMoreVideos: page=$nextPage, tid=$currentTid, order=$currentOrder")
+        val requestGeneration = beginVideoListRequest()
+        val requestTid = currentTid
+        val requestOrder = currentOrder
+        val requestKeyword = currentKeyword
         
-        viewModelScope.launch {
+        activeVideoListJob = viewModelScope.launch {
             _uiState.value = current.copy(isLoadingMore = true)
             
             try {
                 if (!ensureWbiKeysLoaded()) {
-                    _uiState.value = current.copy(isLoadingMore = false)
+                    if (shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                        _uiState.value = current.copy(isLoadingMore = false)
+                    }
                     return@launch
                 }
                 val result = fetchSpaceVideos(
@@ -466,15 +493,18 @@ class SpaceViewModel(
                     nextPage,
                     cachedImgKey,
                     cachedSubKey,
-                    currentTid,
-                    currentOrder,
-                    currentKeyword
+                    requestTid,
+                    requestOrder,
+                    requestKeyword
                 )
                 
                 if (result != null) {
+                    if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                        return@launch
+                    }
                     currentPage = nextPage
-                    val normalizedVideos = normalizeSpaceVideoPage(currentOrder, result.list.vlist)
-                    val newVideos = current.videos + normalizedVideos
+                    val normalizedVideos = normalizeSpaceVideoPage(requestOrder, result.list.vlist)
+                    val newVideos = mergeSpaceVideoPages(current.videos, normalizedVideos)
                     android.util.Log.d("SpaceVM", " loadMoreVideos success: +${result.list.vlist.size} videos, total=${newVideos.size}")
                     _uiState.value = current.copy(
                         videos = newVideos,
@@ -488,11 +518,15 @@ class SpaceViewModel(
                     )
                 } else {
                     android.util.Log.e("SpaceVM", " loadMoreVideos failed: result is null")
-                    _uiState.value = current.copy(isLoadingMore = false)
+                    if (shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                        _uiState.value = current.copy(isLoadingMore = false)
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SpaceVM", " loadMoreVideos error: ${e.message}", e)
-                _uiState.value = current.copy(isLoadingMore = false)
+                if (shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    _uiState.value = current.copy(isLoadingMore = false)
+                }
             }
         }
     }
@@ -706,8 +740,11 @@ class SpaceViewModel(
         android.util.Log.d("SpaceVM", " selectSortOrder: order=${order.apiValue}, currentTid=$currentTid")
         
         currentOrder = order
+        val requestGeneration = beginVideoListRequest()
+        val requestTid = currentTid
+        val requestKeyword = currentKeyword
         
-        viewModelScope.launch {
+        activeVideoListJob = viewModelScope.launch {
             _uiState.value = current.copy(
                 sortOrder = order,
                 videos = emptyList(),
@@ -716,6 +753,9 @@ class SpaceViewModel(
             
             try {
                 if (!ensureWbiKeysLoaded()) {
+                    if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, order, currentOrder, requestKeyword, currentKeyword)) {
+                        return@launch
+                    }
                     val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                     _uiState.value = currentState.copy(isLoadingMore = false)
                     return@launch
@@ -724,10 +764,13 @@ class SpaceViewModel(
                     mid = currentMid,
                     imgKey = cachedImgKey,
                     subKey = cachedSubKey,
-                    tid = currentTid,
+                    tid = requestTid,
                     order = order,
-                    keyword = currentKeyword
+                    keyword = requestKeyword
                 )
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, order, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 
                 if (result != null) {
@@ -747,6 +790,9 @@ class SpaceViewModel(
                     _uiState.value = currentState.copy(isLoadingMore = false)
                 }
             } catch (e: Exception) {
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, order, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 _uiState.value = currentState.copy(isLoadingMore = false)
             }
@@ -760,8 +806,11 @@ class SpaceViewModel(
         android.util.Log.d("SpaceVM", " selectCategory: tid=$tid, currentOrder=$currentOrder")
         
         currentTid = tid
+        val requestGeneration = beginVideoListRequest()
+        val requestOrder = currentOrder
+        val requestKeyword = currentKeyword
         
-        viewModelScope.launch {
+        activeVideoListJob = viewModelScope.launch {
             _uiState.value = current.copy(
                 selectedTid = tid,
                 videos = emptyList(),
@@ -770,6 +819,9 @@ class SpaceViewModel(
             
             try {
                 if (!ensureWbiKeysLoaded()) {
+                    if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, tid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                        return@launch
+                    }
                     val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                     _uiState.value = currentState.copy(isLoadingMore = false)
                     return@launch
@@ -779,9 +831,12 @@ class SpaceViewModel(
                     imgKey = cachedImgKey,
                     subKey = cachedSubKey,
                     tid = tid,
-                    order = currentOrder,
-                    keyword = currentKeyword
+                    order = requestOrder,
+                    keyword = requestKeyword
                 )
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, tid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 
                 if (result != null) {
@@ -804,6 +859,9 @@ class SpaceViewModel(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SpaceVM", " selectCategory error: ${e.message}", e)
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, tid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 _uiState.value = currentState.copy(isLoadingMore = false)
             }
@@ -1413,8 +1471,12 @@ class SpaceViewModel(
 
     private fun refreshVideoSearchResults() {
         val current = _uiState.value as? SpaceUiState.Success ?: return
+        val requestGeneration = beginVideoListRequest()
+        val requestTid = currentTid
+        val requestOrder = currentOrder
+        val requestKeyword = currentKeyword
 
-        viewModelScope.launch {
+        activeVideoListJob = viewModelScope.launch {
             val loadingState = (_uiState.value as? SpaceUiState.Success ?: current).copy(
                 videos = emptyList(),
                 isLoadingMore = true,
@@ -1424,6 +1486,9 @@ class SpaceViewModel(
 
             try {
                 if (!ensureWbiKeysLoaded()) {
+                    if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                        return@launch
+                    }
                     val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                     _uiState.value = currentState.copy(
                         isLoadingMore = false,
@@ -1435,10 +1500,13 @@ class SpaceViewModel(
                     mid = currentMid,
                     imgKey = cachedImgKey,
                     subKey = cachedSubKey,
-                    tid = currentTid,
-                    order = currentOrder,
-                    keyword = currentKeyword
+                    tid = requestTid,
+                    order = requestOrder,
+                    keyword = requestKeyword
                 )
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 if (result != null) {
                     currentPage = result.resolvedPage
@@ -1446,7 +1514,7 @@ class SpaceViewModel(
                         videos = result.data.list.vlist,
                         totalVideos = result.data.page.count,
                         hasMoreVideos = resolveNextSpaceVideoPage(
-                            order = currentOrder,
+                            order = requestOrder,
                             currentPage = currentPage,
                             totalCount = result.data.page.count,
                             pageSize = pageSize
@@ -1460,6 +1528,9 @@ class SpaceViewModel(
                     )
                 }
             } catch (e: Exception) {
+                if (!shouldApplySpaceVideoResult(currentMid, currentMid, requestGeneration, activeVideoListGeneration, requestTid, currentTid, requestOrder, currentOrder, requestKeyword, currentKeyword)) {
+                    return@launch
+                }
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
                 _uiState.value = currentState.copy(isLoadingMore = false)
             }

@@ -16,7 +16,6 @@ import androidx.compose.animation.togetherWith
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -69,6 +68,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
 import com.android.purebilibili.core.database.entity.SearchHistory
 import com.android.purebilibili.core.ui.LoadingAnimation
+import com.android.purebilibili.core.ui.motion.continuityTween
+import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
+import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppChevronDownIcon
@@ -897,8 +899,6 @@ fun SearchScreen(
                     widthDp = configuration.screenWidthDp
                 )
 
-                val enterEasing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-                val exitEasing = CubicBezierEasing(0.32f, 0f, 0.67f, 0f)
                 val enterOffsetPx = with(density) { searchHomeMotionSpec.enterOffsetDp.dp.roundToPx() }
                 val exitOffsetPx = with(density) { searchHomeMotionSpec.exitOffsetDp.dp.roundToPx() }
 
@@ -916,26 +916,22 @@ fun SearchScreen(
                             exitOffsetPx
                         }
                         val targetEnter = fadeIn(
-                            animationSpec = tween(
-                                durationMillis = searchHomeMotionSpec.fadeInDurationMillis,
-                                easing = enterEasing
+                            animationSpec = emphasizedEnterTween(
+                                searchHomeMotionSpec.fadeInDurationMillis
                             )
                         ) + slideInVertically(
-                            animationSpec = tween(
-                                durationMillis = searchHomeMotionSpec.sizeTransformDurationMillis,
-                                easing = enterEasing
+                            animationSpec = emphasizedEnterTween(
+                                searchHomeMotionSpec.sizeTransformDurationMillis
                             ),
                             initialOffsetY = { resolvedEnterOffset }
                         )
                         val initialExit = fadeOut(
-                            animationSpec = tween(
-                                durationMillis = searchHomeMotionSpec.fadeOutDurationMillis,
-                                easing = exitEasing
+                            animationSpec = emphasizedExitTween(
+                                searchHomeMotionSpec.fadeOutDurationMillis
                             )
                         ) + slideOutVertically(
-                            animationSpec = tween(
-                                durationMillis = searchHomeMotionSpec.fadeOutDurationMillis,
-                                easing = exitEasing
+                            animationSpec = emphasizedExitTween(
+                                searchHomeMotionSpec.fadeOutDurationMillis
                             ),
                             targetOffsetY = { resolvedExitOffset }
                         )
@@ -945,9 +941,8 @@ fun SearchScreen(
                             sizeTransform = SizeTransform(
                                 clip = false,
                                 sizeAnimationSpec = { _, _ ->
-                                    tween(
-                                        durationMillis = searchHomeMotionSpec.sizeTransformDurationMillis,
-                                        easing = enterEasing
+                                    continuityTween(
+                                        searchHomeMotionSpec.sizeTransformDurationMillis
                                     )
                                 }
                             )

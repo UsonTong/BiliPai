@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress // [New]
 import androidx.compose.ui.input.pointer.pointerInput // [New]
@@ -217,6 +218,8 @@ fun BottomBarSettingsContent(
     val uiPreset = LocalUiPreset.current
     val windowSizeClass = LocalWindowSizeClass.current
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val focusRequest by SettingsSearchFocusController.request.collectAsState()
     var isVisible by remember { mutableStateOf(false) }
     val deviceUiProfile = remember(windowSizeClass.widthSizeClass) {
         resolveDeviceUiProfile(
@@ -225,6 +228,13 @@ fun BottomBarSettingsContent(
     }
     val effectiveMotionTier = remember(deviceUiProfile.motionTier) {
         resolveSettingsEntranceMotionTier(deviceUiProfile.motionTier)
+    }
+    LaunchedEffect(focusRequest?.token) {
+        val request = focusRequest ?: return@LaunchedEffect
+        if (request.target != SettingsSearchTarget.BOTTOM_BAR) return@LaunchedEffect
+        val index = resolveBottomBarSettingsScrollIndex(request.focusId) ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
+        SettingsSearchFocusController.clear(request.token)
     }
     val allBottomBarTabs = remember(uiPreset) { resolveAllBottomBarTabs(uiPreset) }
     val allTopTabs = remember(uiPreset) { resolveAllTopTabs(uiPreset) }
@@ -322,6 +332,7 @@ fun BottomBarSettingsContent(
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize(),
         contentPadding = PaddingValues(16.dp),

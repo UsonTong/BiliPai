@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -173,6 +174,8 @@ fun AppearanceSettingsContent(
     context: android.content.Context,
     onAppLanguageChange: (AppLanguage) -> Unit
 ) {
+    val listState = rememberLazyListState()
+    val focusRequest by SettingsSearchFocusController.request.collectAsState()
     // Animation Trigger
     var isVisible by remember { mutableStateOf(false) }
     val displayModeTint = rememberAdaptiveSemanticIconTint(iOSBlue)
@@ -183,6 +186,13 @@ fun AppearanceSettingsContent(
     val configuration = LocalConfiguration.current
     val displayMetricsSnapshot = LocalDisplayMetricsSnapshot.current
     val isTablet = configuration.screenWidthDp >= 600 // Material Design 3 中型屏幕断点
+    LaunchedEffect(focusRequest?.token, isTablet) {
+        val request = focusRequest ?: return@LaunchedEffect
+        if (request.target != SettingsSearchTarget.APPEARANCE) return@LaunchedEffect
+        val index = resolveAppearanceSettingsScrollIndex(request.focusId, isTablet) ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
+        SettingsSearchFocusController.clear(request.token)
+    }
     val windowSizeClass = LocalWindowSizeClass.current
     val deviceUiProfile = remember(windowSizeClass.widthSizeClass) {
         resolveDeviceUiProfile(
@@ -300,6 +310,7 @@ fun AppearanceSettingsContent(
     val showThemeColorPicker = !state.dynamicColor
 
     LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize(),
         // [Fix] 为可展开配置项增加安全底部留白，避免“小屏+展开”时显示不全

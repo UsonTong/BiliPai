@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -95,6 +96,8 @@ fun PlaybackSettingsContent(
     state: SettingsUiState,
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
+    val focusRequest by SettingsSearchFocusController.request.collectAsState()
     val context = LocalContext.current
     val warningTint = rememberAdaptiveSemanticIconTint(iOSOrange)
     val windowSizeClass = LocalWindowSizeClass.current
@@ -108,6 +111,13 @@ fun PlaybackSettingsContent(
     }
     val effectiveMotionTier = remember(deviceUiProfile.motionTier) {
         resolveSettingsEntranceMotionTier(deviceUiProfile.motionTier)
+    }
+    LaunchedEffect(focusRequest?.token) {
+        val request = focusRequest ?: return@LaunchedEffect
+        if (request.target != SettingsSearchTarget.PLAYBACK) return@LaunchedEffect
+        val index = resolvePlaybackSettingsScrollIndex(request.focusId) ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
+        SettingsSearchFocusController.clear(request.token)
     }
 
     LaunchedEffect(Unit) {
@@ -212,6 +222,7 @@ fun PlaybackSettingsContent(
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = WindowInsets.navigationBars.asPaddingValues()
     ) {

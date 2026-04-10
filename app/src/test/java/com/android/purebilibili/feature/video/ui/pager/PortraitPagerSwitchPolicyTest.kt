@@ -369,6 +369,45 @@ class PortraitPagerSwitchPolicyTest {
     }
 
     @Test
+    fun shufflePortraitRecommendations_isStableForSameSeed() {
+        val source = listOf(
+            related("BV_A"),
+            related("BV_B"),
+            related("BV_C"),
+            related("BV_D")
+        )
+
+        val first = shufflePortraitRecommendations(seed = 42, recommendations = source)
+        val second = shufflePortraitRecommendations(seed = 42, recommendations = source)
+
+        assertEquals(first.map { it.bvid }, second.map { it.bvid })
+        assertEquals(source.map { it.bvid }.sorted(), first.map { it.bvid }.sorted())
+    }
+
+    @Test
+    fun shufflePortraitRecommendations_deduplicatesBlankAndRepeatedBvids() {
+        val shuffled = shufflePortraitRecommendations(
+            seed = 7,
+            recommendations = listOf(
+                related("BV_A"),
+                related(""),
+                related("BV_A"),
+                related("BV_B")
+            )
+        )
+
+        assertEquals(listOf("BV_A", "BV_B").sorted(), shuffled.map { it.bvid }.sorted())
+    }
+
+    @Test
+    fun resolvePortraitRecommendationAppendSeed_changesWithCurrentBvid() {
+        val seedA = resolvePortraitRecommendationAppendSeed(baseSeed = 10, currentBvid = "BV_A")
+        val seedB = resolvePortraitRecommendationAppendSeed(baseSeed = 10, currentBvid = "BV_B")
+
+        assertFalse(seedA == seedB)
+    }
+
+    @Test
     fun toViewInfoForPortraitDetail_mapsCoreFieldsFromRelatedVideo() {
         val related = RelatedVideo(
             aid = 1001L,

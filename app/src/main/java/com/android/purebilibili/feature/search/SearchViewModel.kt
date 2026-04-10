@@ -16,9 +16,11 @@ import com.android.purebilibili.data.repository.SearchRepository
 import com.android.purebilibili.data.repository.SearchOrder
 import com.android.purebilibili.data.repository.SearchDuration
 import com.android.purebilibili.data.repository.SearchLiveOrder
+import com.android.purebilibili.data.repository.mergeSearchPageResults
 import com.android.purebilibili.data.repository.SearchOrderSort
 import com.android.purebilibili.data.repository.SearchUpOrder
 import com.android.purebilibili.data.repository.SearchUserType
+import com.android.purebilibili.data.repository.shouldApplySearchResult
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +80,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     
     //  防抖任务
     private var suggestJob: Job? = null
+    private var activeSearchJob: Job? = null
+    private var activeLoadMoreJob: Job? = null
+    private var activeSearchSessionId: Long = 0L
 
     private val blockedUpRepository = com.android.purebilibili.data.repository.BlockedUpRepository(application)
     private var blockedMids: Set<Long> = emptySet()
@@ -215,56 +220,54 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun search(keyword: String) {
-        if (keyword.isBlank()) return
+        val normalizedKeyword = keyword.trim()
+        if (normalizedKeyword.isBlank()) return
 
-        //  检查搜索彩蛋关键词
         val context = getApplication<android.app.Application>()
         val easterEggEnabled = com.android.purebilibili.core.store.SettingsManager.isEasterEggEnabledSync(context)
         val easterEggMessage = if (easterEggEnabled) {
-            com.android.purebilibili.core.util.EasterEggs.checkSearchEasterEgg(keyword)
+            com.android.purebilibili.core.util.EasterEggs.checkSearchEasterEgg(normalizedKeyword)
         } else null
+        val searchType = _uiState.value.searchType
+        val searchSessionId = activeSearchSessionId + 1L
+        activeSearchSessionId = searchSessionId
+        activeSearchJob?.cancel()
+        activeLoadMoreJob?.cancel()
 
-        //  清空建议列表，设置彩蛋消息，重置分页状态
-        _uiState.update { 
+        _uiState.update {
             it.copy(
-                query = keyword, 
-                isSearching = true, 
-                showResults = true, 
-                searchSessionId = it.searchSessionId + 1,
-                suggestions = emptyList(), 
+                query = normalizedKeyword,
+                isSearching = true,
+                showResults = true,
+                searchSessionId = searchSessionId,
+                suggestions = emptyList(),
                 error = null,
                 easterEggMessage = easterEggMessage,
-                currentPage = 1,  // [新增] 重置分页
+                currentPage = 1,
                 hasMoreResults = false,
                 isLoadingMore = false,
                 emptyStateReason = SearchEmptyStateReason.NONE
-            ) 
+            )
         }
-        saveHistory(keyword)
-        
-        //  记录搜索事件
-        com.android.purebilibili.core.util.AnalyticsHelper.logSearch(keyword)
+        saveHistory(normalizedKeyword)
+        com.android.purebilibili.core.util.AnalyticsHelper.logSearch(normalizedKeyword)
 
-        viewModelScope.launch {
-            val searchType = _uiState.value.searchType
-            
+        activeSearchJob = viewModelScope.launch {
             when (searchType) {
                 SearchType.VIDEO -> {
                     val order = _uiState.value.searchOrder
                     val duration = _uiState.value.searchDuration
                     val videoTid = _uiState.value.videoTid
-                    val result = SearchRepository.search(keyword, order, duration, tids = videoTid, page = 1)
+                    val result = SearchRepository.search(normalizedKeyword, order, duration, tids = videoTid, page = 1)
                     result.onSuccess { (videos, pageInfo) ->
-                        //  [修复] 应用插件过滤（UP主拉黑、关键词屏蔽等）
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
                         val nativeFiltered = videos.filter { it.owner.mid !in blockedMids }
-                        val builtinFiltered = com.android.purebilibili.core.plugin.PluginManager
-                            .filterFeedItems(nativeFiltered)
-                        val filteredVideos = com.android.purebilibili.core.plugin.json.JsonPluginManager
-                            .filterVideos(builtinFiltered)
-                        _uiState.update { 
+                        val builtinFiltered = com.android.purebilibili.core.plugin.PluginManager.filterFeedItems(nativeFiltered)
+                        val filteredVideos = com.android.purebilibili.core.plugin.json.JsonPluginManager.filterVideos(builtinFiltered)
+                        _uiState.update {
                             it.copy(
-                                isSearching = false, 
-                                searchResults = filteredVideos, 
+                                isSearching = false,
+                                searchResults = filteredVideos,
                                 upResults = emptyList(),
                                 bangumiResults = emptyList(),
                                 liveResults = emptyList(),
@@ -276,9 +279,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                     rawResultCount = videos.size,
                                     visibleResultCount = filteredVideos.size
                                 )
-                            ) 
+                            )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -290,18 +294,19 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 SearchType.UP -> {
                     val result = SearchRepository.searchUp(
-                        keyword = keyword,
+                        keyword = normalizedKeyword,
                         page = 1,
                         order = _uiState.value.upOrder,
                         orderSort = _uiState.value.upOrderSort,
                         userType = _uiState.value.upUserType
                     )
                     result.onSuccess { (ups, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
                         val filteredUps = ups.filter { it.mid !in blockedMids }
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
-                                isSearching = false, 
-                                upResults = filteredUps, 
+                                isSearching = false,
+                                upResults = filteredUps,
                                 searchResults = emptyList(),
                                 bangumiResults = emptyList(),
                                 liveResults = emptyList(),
@@ -313,9 +318,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                     rawResultCount = ups.size,
                                     visibleResultCount = filteredUps.size
                                 )
-                            ) 
+                            )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -326,11 +332,12 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 SearchType.BANGUMI -> {
-                    val result = SearchRepository.searchBangumi(keyword, page = 1)
+                    val result = SearchRepository.searchBangumi(normalizedKeyword, page = 1)
                     result.onSuccess { (bangumis, pageInfo) ->
-                        _uiState.update { 
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
+                        _uiState.update {
                             it.copy(
-                                isSearching = false, 
+                                isSearching = false,
                                 bangumiResults = bangumis,
                                 searchResults = emptyList(),
                                 upResults = emptyList(),
@@ -343,9 +350,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                     rawResultCount = bangumis.size,
                                     visibleResultCount = bangumis.size
                                 )
-                            ) 
+                            )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -356,8 +364,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 SearchType.MEDIA_FT -> {
-                    val result = SearchRepository.searchMediaFt(keyword, page = 1)
+                    val result = SearchRepository.searchMediaFt(normalizedKeyword, page = 1)
                     result.onSuccess { (items, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -376,6 +385,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -387,15 +397,16 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 SearchType.LIVE -> {
                     val result = SearchRepository.searchLive(
-                        keyword = keyword,
+                        keyword = normalizedKeyword,
                         page = 1,
                         order = _uiState.value.liveOrder
                     )
                     result.onSuccess { (liveRooms, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
                         val filteredLive = liveRooms.filter { it.uid !in blockedMids }
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
-                                isSearching = false, 
+                                isSearching = false,
                                 liveResults = filteredLive,
                                 searchResults = emptyList(),
                                 upResults = emptyList(),
@@ -408,9 +419,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                     rawResultCount = liveRooms.size,
                                     visibleResultCount = filteredLive.size
                                 )
-                            ) 
+                            )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -421,8 +433,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 SearchType.ARTICLE -> {
-                    val result = SearchRepository.searchArticle(keyword = keyword, page = 1)
+                    val result = SearchRepository.searchArticle(keyword = normalizedKeyword, page = 1)
                     result.onSuccess { (articles, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onSuccess
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -441,6 +454,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, normalizedKeyword, _uiState.value.query, searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update {
                             it.copy(
                                 isSearching = false,
@@ -463,10 +477,11 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         }
         
         _uiState.update { it.copy(isLoadingMore = true) }
-        
+        val searchSessionId = activeSearchSessionId
         val nextPage = state.currentPage + 1
         
-        viewModelScope.launch {
+        activeLoadMoreJob?.cancel()
+        activeLoadMoreJob = viewModelScope.launch {
             when (state.searchType) {
                 SearchType.VIDEO -> {
                     val result = SearchRepository.search(
@@ -477,6 +492,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         page = nextPage
                     )
                     result.onSuccess { (videos, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         val nativeFiltered = videos.filter { it.owner.mid !in blockedMids }
                         val builtinFiltered = com.android.purebilibili.core.plugin.PluginManager
                             .filterFeedItems(nativeFiltered)
@@ -486,13 +502,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                searchResults = (it.searchResults + filteredVideos).distinctBy { video -> video.bvid },
+                                searchResults = mergeSearchPageResults(it.searchResults, filteredVideos) { video -> video.bvid },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }
@@ -505,49 +522,55 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         userType = state.upUserType
                     )
                     result.onSuccess { (ups, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         val filteredUps = ups.filter { it.mid !in blockedMids }
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                upResults = (it.upResults + filteredUps).distinctBy { up -> up.mid },
+                                upResults = mergeSearchPageResults(it.upResults, filteredUps) { up -> up.mid },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }
                 SearchType.BANGUMI -> {
                     val result = SearchRepository.searchBangumi(state.query, page = nextPage)
                     result.onSuccess { (bangumis, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                bangumiResults = (it.bangumiResults + bangumis).distinctBy { item -> item.seasonId },
+                                bangumiResults = mergeSearchPageResults(it.bangumiResults, bangumis) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }
                 SearchType.MEDIA_FT -> {
                     val result = SearchRepository.searchMediaFt(state.query, page = nextPage)
                     result.onSuccess { (items, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                bangumiResults = (it.bangumiResults + items).distinctBy { item -> item.seasonId },
+                                bangumiResults = mergeSearchPageResults(it.bangumiResults, items) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }
@@ -558,17 +581,19 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         order = state.liveOrder
                     )
                     result.onSuccess { (liveRooms, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         val filteredLive = liveRooms.filter { it.uid !in blockedMids }
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                liveResults = (it.liveResults + filteredLive).distinctBy { room -> room.roomid },
+                                liveResults = mergeSearchPageResults(it.liveResults, filteredLive) { room -> room.roomid },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }
@@ -578,16 +603,18 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         page = nextPage
                     )
                     result.onSuccess { (articles, pageInfo) ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onSuccess
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                articleResults = (it.articleResults + articles).distinctBy { article -> article.id },
+                                articleResults = mergeSearchPageResults(it.articleResults, articles) { article -> article.id },
                                 currentPage = pageInfo.currentPage,
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
                         }
                     }.onFailure { e ->
+                        if (!shouldApplySearchResult(searchSessionId, activeSearchSessionId, state.query, _uiState.value.query, state.searchType, _uiState.value.searchType)) return@onFailure
                         _uiState.update { it.copy(isLoadingMore = false, error = "加载更多失败: ${e.message}") }
                     }
                 }

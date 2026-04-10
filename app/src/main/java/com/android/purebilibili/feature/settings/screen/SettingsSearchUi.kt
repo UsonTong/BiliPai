@@ -33,7 +33,7 @@ internal fun SettingsSearchBarSection(
 @Composable
 internal fun SettingsSearchResultsSection(
     results: List<SettingsSearchResult>,
-    onResultClick: (SettingsSearchTarget) -> Unit
+    onResultClick: (SettingsSearchResult) -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
     SettingsCategoryHeader(stringResource(R.string.settings_search_results_title))
@@ -56,7 +56,7 @@ internal fun SettingsSearchResultsSection(
                     title = result.title,
                     subtitle = result.subtitle,
                     value = result.section,
-                    onClick = { onResultClick(result.target) },
+                    onClick = { onResultClick(result) },
                     iconTint = visual.iconTint
                 )
                 if (index != results.lastIndex) {

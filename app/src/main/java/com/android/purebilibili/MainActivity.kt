@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.layout.ContentScale
@@ -51,6 +50,7 @@ import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.theme.PureBiliBiliTheme
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.SharedTransitionProvider
 import com.android.purebilibili.core.ui.wallpaper.SplashWallpaperLayout
 import com.android.purebilibili.core.ui.wallpaper.resolveSplashWallpaperLayout
@@ -1202,7 +1202,7 @@ class MainActivity : AppCompatActivity() {
                         targetValue = if (showSplash) 1f else 0f,
                         animationSpec = tween(
                             durationMillis = customSplashFadeDurationMs(),
-                            easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
+                            easing = AppMotionEasing.EmphasizedEnter
                         ),
                         label = "customSplashOverlayAlpha"
                     )

@@ -53,6 +53,12 @@ import kotlinx.coroutines.launch
 import com.airbnb.lottie.compose.*
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.ui.LottieUrls
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.ui.bottomSheetContentEnterTransition
+import com.android.purebilibili.core.ui.bottomSheetContentExitTransition
+import com.android.purebilibili.core.ui.bottomSheetScrimEnterTransition
+import com.android.purebilibili.core.ui.bottomSheetScrimExitTransition
+import com.android.purebilibili.core.ui.resolveAdaptiveBottomSheetMotionSpec
 
 /**
  *  iOS 风格新手引导底部弹窗
@@ -73,6 +79,8 @@ fun OnboardingBottomSheet(
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
+    val uiPreset = LocalUiPreset.current
+    val motionSpec = remember(uiPreset) { resolveAdaptiveBottomSheetMotionSpec(uiPreset) }
     
     // 3 页引导
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -83,8 +91,8 @@ fun OnboardingBottomSheet(
     //  控制进出场动画
     androidx.compose.animation.AnimatedVisibility(
         visible = visible,
-        enter = androidx.compose.animation.fadeIn(),
-        exit = androidx.compose.animation.fadeOut()
+        enter = bottomSheetScrimEnterTransition(motionSpec),
+        exit = bottomSheetScrimExitTransition(motionSpec)
     ) {
         //  1. 半透明遮罩层 (点击关闭)
         Box(
@@ -101,14 +109,8 @@ fun OnboardingBottomSheet(
 
     androidx.compose.animation.AnimatedVisibility(
         visible = visible,
-        enter = androidx.compose.animation.slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f)
-        ),
-        exit = androidx.compose.animation.slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f)
-        )
+        enter = bottomSheetContentEnterTransition(motionSpec),
+        exit = bottomSheetContentExitTransition(motionSpec)
     ) {
         //  2. 内容层 (点击透传)
         Box(
