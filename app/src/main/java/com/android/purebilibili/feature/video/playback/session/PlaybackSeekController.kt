@@ -5,6 +5,7 @@ import com.android.purebilibili.feature.video.playback.policy.shouldHoldPlayback
 import com.android.purebilibili.feature.video.usecase.shouldResumePlaybackAfterUserSeek
 
 private const val DEFAULT_PLAYBACK_SEEK_PENDING_TOLERANCE_MS = 500L
+internal const val SEEK_PLAYBACK_RECOVERY_DELAY_MS = 450L
 
 internal data class PlaybackSeekSessionState(
     val playbackPositionMs: Long = 0L,
@@ -123,4 +124,35 @@ internal fun shouldUsePlaybackSeekSessionPosition(
             transitionPositionMs = state.pendingSeekPositionMs,
             toleranceMs = toleranceMs
         )
+}
+
+internal fun shouldAttemptPlaybackRecoveryAfterSeek(
+    state: PlaybackSeekSessionState,
+    playWhenReady: Boolean,
+    isPlaying: Boolean,
+    playbackState: Int
+): Boolean {
+    return state.pendingSeekPositionMs != null &&
+        !isPlaying &&
+        (
+            playWhenReady ||
+                playbackState == Player.STATE_BUFFERING ||
+                playbackState == Player.STATE_READY ||
+                playbackState == Player.STATE_IDLE
+            )
+}
+
+internal fun shouldShowPlaybackRecoveryUiAfterSeek(
+    state: PlaybackSeekSessionState,
+    playWhenReady: Boolean,
+    isPlaying: Boolean,
+    playbackState: Int
+): Boolean {
+    return state.pendingSeekPositionMs != null &&
+        !isPlaying &&
+        (
+            playWhenReady ||
+                playbackState == Player.STATE_BUFFERING ||
+                playbackState == Player.STATE_READY
+            )
 }

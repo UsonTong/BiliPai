@@ -64,4 +64,21 @@ class VideoProgressBarPolicyTest {
         )
     }
 
+    @Test
+    fun progressFraction_clampsOutsideBounds() {
+        assertEquals(0f, resolveProgressFraction(positionMs = -1L, durationMs = 60_000L))
+        assertEquals(1f, resolveProgressFraction(positionMs = 80_000L, durationMs = 60_000L))
+    }
+
+    @Test
+    fun seekPositionFromTouch_mapsTrackSpaceIntoDuration() {
+        assertEquals(
+            45_000L,
+            resolveSeekPositionFromTouch(
+                touchX = 150f,
+                containerWidthPx = 200f,
+                durationMs = 60_000L
+            )
+        )
+    }
 }

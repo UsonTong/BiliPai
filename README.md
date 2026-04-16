@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-15 · 文档已同步至 v7.8.2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-16 · 文档已同步至 v7.8.3（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.8.2-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.8.3-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -527,7 +527,7 @@ app/src/main/java/com/android/purebilibili
 ## 🗺️ 路线图
 
 > [!TIP]
-> 路线图最后同步于 2026-04-15（v7.8.2）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
+> 路线图最后同步于 2026-04-16（v7.8.3）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
 
 ### ✅ 已完成功能
 
@@ -572,12 +572,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.8.2 · 2026-04-15)
+### 最近更新 (v7.8.3 · 2026-04-16)
 
-- 🎬 **播放器热路径收敛**：进度条拖动、点击跳转和切清晰度链路进一步简化，减少高频操作后的暂停误触发。
-- 🧭 **单一 seek 会话**：进度条拖动统一走一套 seek session，移除旧 UI-only seek 状态和未使用的旧横屏控制栏。
-- 🎚️ **切清晰度更稳**：清晰度切换改由播放器层读取当前位置，UI 不再传递播放进度。
-- ▶️ **播放意图保持**：seek 与切源后显式保持播放意图，降低拖放进度条、点击跳转和切分辨率后的异常暂停风险。
+- 🎬 **播放器对齐 PiliPlus**：进度条、拖动预览和 seek 预览链路重写，横竖屏统一到同一套 seek / preview 计算。
+- 🖼️ **预览图更稳**：`videoshot` 支持秒级时间轴换算、缺失索引回退估算和稳定雪碧图裁剪，减少错帧与预览错位。
+- ▶️ **seek 后恢复播放**：快进、快退、双击跳转和拖动进度条后增加显式恢复播放兜底，并补上“正在恢复播放”状态提示。
+- 🔎 **搜索首开更快**：搜索页首开改为轻量启动，热搜/推荐延后加载，自动聚焦和重 blur 动效也延后触发。
 
 ### 历史版本
 

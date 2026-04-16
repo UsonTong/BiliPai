@@ -164,9 +164,10 @@ internal fun shouldPollInlineVideoOverlayProgress(
 internal fun resolveOverlayPlaybackButtonPlayingState(
     isPlaying: Boolean,
     playWhenReady: Boolean,
-    playbackState: Int
+    playbackState: Int,
+    hasPendingSeekResume: Boolean = false
 ): Boolean {
-    return isPlaying || (playWhenReady && playbackState == Player.STATE_BUFFERING)
+    return isPlaying || (playWhenReady && (playbackState == Player.STATE_BUFFERING || hasPendingSeekResume))
 }
 
 internal fun shouldShowCenterPlayButton(
@@ -289,6 +290,7 @@ fun VideoPlayerOverlay(
     debugInfo: PlaybackDebugInfo = PlaybackDebugInfo(),
     diagnosticEvents: List<String> = emptyList(),
     pendingUserAction: PendingPlaybackUserAction? = null,
+    hasPendingSeekResume: Boolean = false,
     playerDiagnosticLoggingEnabled: Boolean = true,
     realResolution: String = "",
     isQualitySwitching: Boolean = false,
@@ -458,7 +460,8 @@ fun VideoPlayerOverlay(
             resolveOverlayPlaybackButtonPlayingState(
                 isPlaying = player.isPlaying,
                 playWhenReady = player.playWhenReady,
-                playbackState = player.playbackState
+                playbackState = player.playbackState,
+                hasPendingSeekResume = hasPendingSeekResume
             )
         )
     }
@@ -736,9 +739,10 @@ fun VideoPlayerOverlay(
 
     val progressState by produceState(
         initialValue = PlayerProgress(),
-        key1 = player,
-        key2 = isVisible,
-        key3 = hostLifecycleStarted
+        player,
+        isVisible,
+        hostLifecycleStarted,
+        hasPendingSeekResume
     ) {
         if (!shouldPollInlineVideoOverlayProgress(
                 playerExists = true,
@@ -757,7 +761,8 @@ fun VideoPlayerOverlay(
             isPlaying = resolveOverlayPlaybackButtonPlayingState(
                 isPlaying = player.isPlaying,
                 playWhenReady = player.playWhenReady,
-                playbackState = player.playbackState
+                playbackState = player.playbackState,
+                hasPendingSeekResume = hasPendingSeekResume
             )
             return@produceState
         }
@@ -776,7 +781,8 @@ fun VideoPlayerOverlay(
             isPlaying = resolveOverlayPlaybackButtonPlayingState(
                 isPlaying = player.isPlaying,
                 playWhenReady = player.playWhenReady,
-                playbackState = player.playbackState
+                playbackState = player.playbackState,
+                hasPendingSeekResume = hasPendingSeekResume
             )
             val delayMs = if (isVisible && player.isPlaying) 200L else 500L
             delay(delayMs)
@@ -796,12 +802,19 @@ fun VideoPlayerOverlay(
         isQualitySwitching,
         suppressCenterPlayButtonForSeekTransition,
         isPlaybackTransitionPending,
+        hasPendingSeekResume,
+        player.playWhenReady,
+        player.isPlaying,
         debugInfo.bandwidthEstimate
     ) {
         resolveCenterLoadingUiState(
             isBuffering = isBuffering,
             isQualitySwitching = isQualitySwitching,
-            isSeekTransitionPending = suppressCenterPlayButtonForSeekTransition || isPlaybackTransitionPending,
+            isSeekTransitionPending = suppressCenterPlayButtonForSeekTransition ||
+                isPlaybackTransitionPending ||
+                hasPendingSeekResume,
+            playWhenReady = player.playWhenReady,
+            isPlaying = player.isPlaying,
             bandwidthEstimate = debugInfo.bandwidthEstimate
         )
     }
@@ -1296,7 +1309,9 @@ fun VideoPlayerOverlay(
                 isFullscreen = isFullscreen,
                 isBuffering = isBuffering,
                 isScrubbing = isSeekScrubbing,
-                isSeekTransitionPending = suppressCenterPlayButtonForSeekTransition || isPlaybackTransitionPending
+                isSeekTransitionPending = suppressCenterPlayButtonForSeekTransition ||
+                    isPlaybackTransitionPending ||
+                    hasPendingSeekResume
             ),
             modifier = Modifier.align(Alignment.Center),
             enter = scaleIn(tween(250)) + fadeIn(tween(200)),

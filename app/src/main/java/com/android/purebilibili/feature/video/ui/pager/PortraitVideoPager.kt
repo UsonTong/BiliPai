@@ -82,6 +82,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
+import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -109,6 +110,9 @@ import com.android.purebilibili.feature.video.danmaku.createFaceOcclusionDetecto
 import com.android.purebilibili.feature.video.danmaku.detectFaceOcclusionRegions
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.session.PlaybackSeekSessionState
+import com.android.purebilibili.feature.video.playback.session.SEEK_PLAYBACK_RECOVERY_DELAY_MS
+import com.android.purebilibili.feature.video.playback.session.shouldAttemptPlaybackRecoveryAfterSeek
+import com.android.purebilibili.feature.video.playback.session.shouldShowPlaybackRecoveryUiAfterSeek
 import com.android.purebilibili.feature.video.playback.session.cancelPlaybackSeekInteraction
 import com.android.purebilibili.feature.video.playback.session.finishPlaybackSeekInteraction
 import com.android.purebilibili.feature.video.playback.session.shouldUsePlaybackSeekSessionPosition
@@ -1099,6 +1103,42 @@ private fun VideoPageItem(
             }
         }
     }
+
+    LaunchedEffect(
+        seekSession.pendingSeekPositionMs,
+        exoPlayer.playWhenReady,
+        exoPlayer.isPlaying,
+        exoPlayer.playbackState,
+        isCurrentPage
+    ) {
+        if (!isCurrentPage) return@LaunchedEffect
+        if (!shouldAttemptPlaybackRecoveryAfterSeek(
+                state = seekSession,
+                playWhenReady = exoPlayer.playWhenReady,
+                isPlaying = exoPlayer.isPlaying,
+                playbackState = exoPlayer.playbackState
+            )
+        ) {
+            return@LaunchedEffect
+        }
+
+        delay(SEEK_PLAYBACK_RECOVERY_DELAY_MS)
+        if (!shouldAttemptPlaybackRecoveryAfterSeek(
+                state = seekSession,
+                playWhenReady = exoPlayer.playWhenReady,
+                isPlaying = exoPlayer.isPlaying,
+                playbackState = exoPlayer.playbackState
+            )
+        ) {
+            return@LaunchedEffect
+        }
+
+        if (exoPlayer.playbackState == Player.STATE_IDLE && exoPlayer.mediaItemCount > 0) {
+            exoPlayer.prepare()
+        }
+        exoPlayer.playWhenReady = true
+        exoPlayer.play()
+    }
     
     // 手势调整进度状态
     var isSeekGesture by remember { mutableStateOf(false) }
@@ -1269,7 +1309,7 @@ private fun VideoPageItem(
                             return@detectTapGestures
                         }
                         if (isCurrentPage) {
-                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                            togglePlayerPlaybackFromUserAction(exoPlayer)
                         }
                     },
                     onLongPress = {
@@ -1731,7 +1771,16 @@ private fun VideoPageItem(
             title = title,
             authorName = authorName,
             authorFace = authorFace,
-            isPlaying = if (isCurrentPage) isPlaying else false,
+            isPlaying = if (isCurrentPage) {
+                isPlaying || shouldShowPlaybackRecoveryUiAfterSeek(
+                    state = seekSession,
+                    playWhenReady = exoPlayer.playWhenReady,
+                    isPlaying = exoPlayer.isPlaying,
+                    playbackState = exoPlayer.playbackState
+                )
+            } else {
+                false
+            },
             progress = progressState,
             
             statView = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.view else stat.view,
@@ -1818,6 +1867,13 @@ private fun VideoPageItem(
             currentRatio = VideoAspectRatio.FIT,
             danmakuEnabled = danmakuEnabled,
             isStatusBarHidden = true,
+            videoshotData = currentSuccess?.videoshotData,
+            isPlaybackRecovering = isCurrentPage && shouldShowPlaybackRecoveryUiAfterSeek(
+                state = seekSession,
+                playWhenReady = exoPlayer.playWhenReady,
+                isPlaying = exoPlayer.isPlaying,
+                playbackState = exoPlayer.playbackState
+            ),
             
             onBack = {
                 onExitSnapshot(bvid, exoPlayer.currentPosition, snapshotCid)
@@ -1829,7 +1885,7 @@ private fun VideoPageItem(
             },
             onPlayPause = {
                 if (isCurrentPage) {
-                    if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                    togglePlayerPlaybackFromUserAction(exoPlayer)
                 }
             },
             onSeek = {

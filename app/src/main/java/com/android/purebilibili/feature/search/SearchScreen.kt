@@ -259,6 +259,7 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val configuration = LocalConfiguration.current
     val windowSizeClass = LocalWindowSizeClass.current
+    var startupSettled by remember { mutableStateOf(false) }
     val searchLayoutPolicy = remember(configuration.screenWidthDp) {
         resolveSearchLayoutPolicy(
             widthDp = configuration.screenWidthDp
@@ -354,11 +355,18 @@ fun SearchScreen(
             )
         }
     }
+    val effectiveSearchMotionBudget = remember(startupSettled, searchMotionBudget) {
+        resolveEffectiveSearchMotionBudget(
+            startupSettled = startupSettled,
+            baseBudget = searchMotionBudget
+        )
+    }
     val searchHazeEnabled = shouldEnableSearchHazeSource(
-        isSearching = state.isSearching
+        isSearching = state.isSearching,
+        startupSettled = startupSettled
     )
     val effectiveCardTransitionEnabled =
-        cardTransitionEnabled && searchMotionBudget == SearchMotionBudget.FULL
+        cardTransitionEnabled && effectiveSearchMotionBudget == SearchMotionBudget.FULL
     val forceLowBudgetSearchHeaderBlur = remember(state.isSearching, isSearchResultsScrolling) {
         shouldForceLowBudgetSearchHeaderBlur(
             isSearching = state.isSearching,
@@ -373,9 +381,9 @@ fun SearchScreen(
             )
         }
     }
-    val searchHomeMotionSpec = remember(searchMotionBudget) {
+    val searchHomeMotionSpec = remember(effectiveSearchMotionBudget) {
         resolveSearchHomeContentMotionSpec(
-            reducedMotion = searchMotionBudget == SearchMotionBudget.REDUCED
+            reducedMotion = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED
         )
     }
     val emptyStateCopy = remember(state.emptyStateReason, state.searchType) {
@@ -392,6 +400,22 @@ fun SearchScreen(
     //  [埋点] 页面浏览追踪
     LaunchedEffect(Unit) {
         com.android.purebilibili.core.util.AnalyticsHelper.logScreenView("SearchScreen")
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(140)
+        startupSettled = true
+    }
+
+    LaunchedEffect(startupSettled, state.showResults, state.query) {
+        if (shouldBootstrapSearchLandingData(
+                startupSettled = startupSettled,
+                showResults = state.showResults,
+                query = state.query
+            )
+        ) {
+            viewModel.ensureLandingBootstrap()
+        }
     }
 
     LaunchedEffect(initialKeyword) {
@@ -1017,7 +1041,11 @@ fun SearchScreen(
                 focusRequester = searchFocusRequester,  //  传递 focusRequester
                 placeholder = state.defaultSearchHint.ifBlank { "搜索视频、UP主..." },
                 suggestedKeyword = state.defaultSearchHint,
-                reducedMotionBudget = searchMotionBudget == SearchMotionBudget.REDUCED,
+                autoFocusEnabled = shouldAutoFocusSearchField(
+                    startupSettled = startupSettled,
+                    query = state.query
+                ),
+                reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .then(
@@ -1065,6 +1093,7 @@ fun SearchTopBar(
     placeholder: String = "搜索视频、UP主...",
     suggestedKeyword: String = "",
     focusRequester: androidx.compose.ui.focus.FocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
+    autoFocusEnabled: Boolean = true,
     reducedMotionBudget: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -1081,9 +1110,9 @@ fun SearchTopBar(
     var isFocused by remember { mutableStateOf(false) }
     
     //  自动聚焦并弹出键盘
-    LaunchedEffect(Unit) {
-        if (query.isEmpty()) {
-            kotlinx.coroutines.delay(100)  // 等待页面加载完成
+    LaunchedEffect(autoFocusEnabled, query) {
+        if (autoFocusEnabled && query.isEmpty()) {
+            kotlinx.coroutines.delay(60)
             focusRequester.requestFocus()
         }
     }

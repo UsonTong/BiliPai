@@ -150,4 +150,60 @@ class PlaybackSeekControllerTest {
         assertTrue(state.isSliderMoving)
         assertEquals(true, state.shouldResumePlayback)
     }
+
+    @Test
+    fun pendingSeekRecovery_staysActiveWhilePlayerHasNotResumed() {
+        val state = PlaybackSeekSessionState(
+            playbackPositionMs = 10_000L,
+            sliderPositionMs = 24_000L,
+            isSliderMoving = false,
+            pendingSeekPositionMs = 24_000L,
+            shouldResumePlayback = true
+        )
+
+        assertTrue(
+            shouldAttemptPlaybackRecoveryAfterSeek(
+                state = state,
+                playWhenReady = true,
+                isPlaying = false,
+                playbackState = Player.STATE_READY
+            )
+        )
+        assertTrue(
+            shouldShowPlaybackRecoveryUiAfterSeek(
+                state = state,
+                playWhenReady = true,
+                isPlaying = false,
+                playbackState = Player.STATE_READY
+            )
+        )
+    }
+
+    @Test
+    fun pendingSeekRecovery_clearsOncePlaybackActuallyRuns() {
+        val state = PlaybackSeekSessionState(
+            playbackPositionMs = 10_000L,
+            sliderPositionMs = 24_000L,
+            isSliderMoving = false,
+            pendingSeekPositionMs = 24_000L,
+            shouldResumePlayback = true
+        )
+
+        assertFalse(
+            shouldAttemptPlaybackRecoveryAfterSeek(
+                state = state,
+                playWhenReady = true,
+                isPlaying = true,
+                playbackState = Player.STATE_READY
+            )
+        )
+        assertFalse(
+            shouldShowPlaybackRecoveryUiAfterSeek(
+                state = state,
+                playWhenReady = true,
+                isPlaying = true,
+                playbackState = Player.STATE_READY
+            )
+        )
+    }
 }

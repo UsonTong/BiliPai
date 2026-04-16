@@ -84,28 +84,36 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private var activeSearchJob: Job? = null
     private var activeLoadMoreJob: Job? = null
     private var activeSearchSessionId: Long = 0L
+    private var blockedUpObserverStarted = false
+    private var landingBootstrapStarted = false
 
     private val blockedUpRepository = com.android.purebilibili.data.repository.BlockedUpRepository(application)
     private var blockedMids: Set<Long> = emptySet()
 
     init {
+        loadHistory()
+    }
+
+    private fun ensureBlockedUpObserver() {
+        if (blockedUpObserverStarted) return
+        blockedUpObserverStarted = true
         viewModelScope.launch {
             blockedUpRepository.getAllBlockedUps().collect { list ->
                 blockedMids = list.map { it.mid }.toSet()
-                // Re-filter results
                 val currentState = _uiState.value
                 val newVideos = currentState.searchResults.filter { it.owner.mid !in blockedMids }
                 val newUps = currentState.upResults.filter { it.mid !in blockedMids }
                 val newLives = currentState.liveResults.filter { it.uid !in blockedMids }
-                
-                if (newVideos.size != currentState.searchResults.size || 
+
+                if (newVideos.size != currentState.searchResults.size ||
                     newUps.size != currentState.upResults.size ||
-                    newLives.size != currentState.liveResults.size) {
-                    _uiState.update { 
+                    newLives.size != currentState.liveResults.size
+                ) {
+                    _uiState.update {
                         it.copy(
-                                searchResults = newVideos,
-                                upResults = newUps,
-                                liveResults = newLives,
+                            searchResults = newVideos,
+                            upResults = newUps,
+                            liveResults = newLives,
                             emptyStateReason = when (it.searchType) {
                                 SearchType.VIDEO -> resolveSearchEmptyStateReason(
                                     rawResultCount = it.searchResults.size,
@@ -121,15 +129,21 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 )
                                 else -> it.emptyStateReason
                             }
-                        ) 
+                        )
                     }
                 }
             }
         }
-        loadDefaultSearchHint()
-        loadHistory()
-        refreshHotSearch()
-        refreshDiscover()
+    }
+
+    fun ensureLandingBootstrap() {
+        if (landingBootstrapStarted) return
+        landingBootstrapStarted = true
+        viewModelScope.launch {
+            launch { loadDefaultSearchHintInternal() }
+            launch { refreshHotSearchInternal() }
+            launch { refreshDiscoverInternal() }
+        }
     }
 
     fun onQueryChange(newQuery: String) {
@@ -249,6 +263,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     fun search(keyword: String) {
         val normalizedKeyword = keyword.trim()
         if (normalizedKeyword.isBlank()) return
+        ensureBlockedUpObserver()
 
         val context = getApplication<android.app.Application>()
         val easterEggEnabled = com.android.purebilibili.core.store.SettingsManager.isEasterEggEnabledSync(context)
@@ -498,6 +513,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     //  [新增] 加载更多搜索结果
     fun loadMoreResults() {
         val state = _uiState.value
+        ensureBlockedUpObserver()
         
         if (!state.hasMoreResults || state.isLoadingMore || state.isSearching || state.query.isBlank()) {
             return
@@ -649,36 +665,21 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun loadDefaultSearchHint() {
-        viewModelScope.launch {
-            SearchRepository.getDefaultSearchHint()
-                .onSuccess { hint ->
-                    if (hint.isNotBlank()) {
-                        _uiState.update { it.copy(defaultSearchHint = hint) }
-                    }
+    private suspend fun loadDefaultSearchHintInternal() {
+        SearchRepository.getDefaultSearchHint()
+            .onSuccess { hint ->
+                if (hint.isNotBlank()) {
+                    _uiState.update { it.copy(defaultSearchHint = hint) }
                 }
-        }
+            }
     }
 
     fun refreshHotSearch() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshingHotList = true) }
-            val result = SearchRepository.getTrendingKeywords(limit = 10)
-            result.onSuccess { bundle ->
-                _uiState.update {
-                    it.copy(
-                        hotList = bundle.allItems
-                            .map { item -> item.toSearchKeywordUiModel() }
-                            .take(10),
-                        isRefreshingHotList = false
-                    )
-                }
-            }.onFailure {
-                _uiState.update { state ->
-                    state.copy(isRefreshingHotList = false)
-                }
-            }
+        if (!landingBootstrapStarted) {
+            ensureLandingBootstrap()
+            return
         }
+        viewModelScope.launch { refreshHotSearchInternal() }
     }
 
     private fun loadHistory() {
@@ -690,24 +691,49 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refreshDiscover() {
-        viewModelScope.launch {
-            val historyKeywords = _uiState.value.historyList.map { it.keyword }
-            _uiState.update { it.copy(isRefreshingDiscoverList = true) }
-            val result = SearchRepository.getSearchRecommend(historyKeywords)
+        if (!landingBootstrapStarted) {
+            ensureLandingBootstrap()
+            return
+        }
+        viewModelScope.launch { refreshDiscoverInternal() }
+    }
 
-            result.onSuccess { list ->
-                _uiState.update {
-                    it.copy(
-                        discoverList = list
-                            .map { item -> item.toSearchKeywordUiModel() }
-                            .take(10),
-                        isRefreshingDiscoverList = false
-                    )
-                }
-            }.onFailure {
-                _uiState.update { state ->
-                    state.copy(isRefreshingDiscoverList = false)
-                }
+    private suspend fun refreshHotSearchInternal() {
+        _uiState.update { it.copy(isRefreshingHotList = true) }
+        val result = SearchRepository.getTrendingKeywords(limit = 10)
+        result.onSuccess { bundle ->
+            _uiState.update {
+                it.copy(
+                    hotList = bundle.allItems
+                        .map { item -> item.toSearchKeywordUiModel() }
+                        .take(10),
+                    isRefreshingHotList = false
+                )
+            }
+        }.onFailure {
+            _uiState.update { state ->
+                state.copy(isRefreshingHotList = false)
+            }
+        }
+    }
+
+    private suspend fun refreshDiscoverInternal() {
+        val historyKeywords = _uiState.value.historyList.map { it.keyword }
+        _uiState.update { it.copy(isRefreshingDiscoverList = true) }
+        val result = SearchRepository.getSearchRecommend(historyKeywords)
+
+        result.onSuccess { list ->
+            _uiState.update {
+                it.copy(
+                    discoverList = list
+                        .map { item -> item.toSearchKeywordUiModel() }
+                        .take(10),
+                    isRefreshingDiscoverList = false
+                )
+            }
+        }.onFailure {
+            _uiState.update { state ->
+                state.copy(isRefreshingDiscoverList = false)
             }
         }
     }

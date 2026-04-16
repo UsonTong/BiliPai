@@ -142,6 +142,8 @@ import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
 import com.android.purebilibili.feature.video.util.captureAndSaveVideoScreenshot
 import com.android.purebilibili.feature.video.playback.session.PlaybackSeekSessionState
+import com.android.purebilibili.feature.video.playback.session.SEEK_PLAYBACK_RECOVERY_DELAY_MS
+import com.android.purebilibili.feature.video.playback.session.shouldAttemptPlaybackRecoveryAfterSeek
 import com.android.purebilibili.feature.video.playback.session.cancelPlaybackSeekInteraction
 import com.android.purebilibili.feature.video.playback.session.finishPlaybackSeekInteraction
 import com.android.purebilibili.feature.video.playback.session.shouldUsePlaybackSeekSessionPosition
@@ -694,6 +696,45 @@ fun VideoPlayerSection(
                 playbackPositionMs = playerState.player.currentPosition.coerceAtLeast(0L)
             )
             delay(200)
+        }
+    }
+
+    LaunchedEffect(
+        sharedSeekSession.pendingSeekPositionMs,
+        playerState.player.playWhenReady,
+        playerState.player.isPlaying,
+        playerState.player.playbackState
+    ) {
+        if (!shouldAttemptPlaybackRecoveryAfterSeek(
+                state = sharedSeekSession,
+                playWhenReady = playerState.player.playWhenReady,
+                isPlaying = playerState.player.isPlaying,
+                playbackState = playerState.player.playbackState
+            )
+        ) {
+            return@LaunchedEffect
+        }
+
+        delay(SEEK_PLAYBACK_RECOVERY_DELAY_MS)
+        val player = playerState.player
+        if (!shouldAttemptPlaybackRecoveryAfterSeek(
+                state = sharedSeekSession,
+                playWhenReady = player.playWhenReady,
+                isPlaying = player.isPlaying,
+                playbackState = player.playbackState
+            )
+        ) {
+            return@LaunchedEffect
+        }
+
+        if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) {
+            player.prepare()
+        }
+        player.playWhenReady = true
+        player.play()
+        Logger.d("VideoPlayerSection") {
+            "▶️ Seek recovery kicked playback: state=${player.playbackState}, " +
+                "playWhenReady=${player.playWhenReady}, playing=${player.isPlaying}, pos=${player.currentPosition}"
         }
     }
 
@@ -2727,38 +2768,18 @@ fun VideoPlayerSection(
                         targetPositionMs = seekTargetTime,
                         currentPositionMs = startPosition,
                         durationMs = playerState.player.duration,
-                        offsetX = 80f,  // 居中偏移（气泡宽度的一半）
-                        containerWidth = 160f  // 与气泡宽度匹配
+                        offsetX = 0f,
+                        containerWidth = 0f,
+                        placement = com.android.purebilibili.feature.video.ui.components.SeekPreviewBubblePlacement.Centered
                     )
                 } else {
-                    // 无缩略图：使用原有样式
-                    Box(
-                        modifier = Modifier
-                            .size(uiLayoutPolicy.gestureOverlaySizeDp.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            val durationSeconds = (playerState.player.duration / 1000).coerceAtLeast(1)
-                            val targetSeconds = (seekTargetTime / 1000).toInt()
-
-                            Text(
-                                text = "${FormatUtils.formatDuration(targetSeconds)} / ${FormatUtils.formatDuration(durationSeconds.toInt())}",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            val deltaSeconds = (seekTargetTime - startPosition) / 1000
-                            val sign = if (deltaSeconds > 0) "+" else ""
-                            if (deltaSeconds != 0L) {
-                                Text(
-                                    text = "($sign${deltaSeconds}s)",
-                                    color = if (deltaSeconds > 0) com.android.purebilibili.core.theme.iOSGreen else com.android.purebilibili.core.theme.iOSRed,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
+                    com.android.purebilibili.feature.video.ui.components.SeekPreviewBubbleSimple(
+                        targetPositionMs = seekTargetTime,
+                        currentPositionMs = startPosition,
+                        offsetX = 0f,
+                        containerWidth = 0f,
+                        placement = com.android.purebilibili.feature.video.ui.components.SeekPreviewBubblePlacement.Centered
+                    )
                 }
             }
         }
@@ -3190,6 +3211,7 @@ fun VideoPlayerSection(
                 debugInfo = debugInfo,
                 diagnosticEvents = diagnosticEvents,
                 pendingUserAction = pendingUserAction,
+                hasPendingSeekResume = sharedSeekSession.pendingSeekPositionMs != null,
                 playerDiagnosticLoggingEnabled = playerDiagnosticLoggingEnabled,
                 //  [新增] 传入清晰度切换状态和会员状态
                 isQualitySwitching = uiState.isQualitySwitching,
