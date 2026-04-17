@@ -463,6 +463,10 @@ class DanmakuManager private constructor(
                 it.userHash = this.userHash
                 it.weight = this.weight
                 it.pool = this.pool
+                it.likeCount = this.likeCount
+                it.isVipGradualColor = this.isVipGradualColor
+                it.duplicateCount = this.duplicateCount
+                it.isSelf = this.isSelf
             }
         } else {
             TextData()
@@ -589,7 +593,8 @@ class DanmakuManager private constructor(
             val typeVisible = shouldDisplayStandardDanmaku(
                 danmakuType = danmakuType,
                 color = color,
-                settings = settings
+                settings = settings,
+                isVipGradualColor = weighted?.isVipGradualColor == true
             )
             if (!typeVisible) {
                 filteredStandardCount++
@@ -1764,7 +1769,8 @@ class DanmakuManager private constructor(
                         val dmid = weighted?.danmakuId ?: 0L
                         val userHash = resolveDanmakuClickUserHash(weighted?.userHash.orEmpty())
                         val currentMid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
-                        val isSelf = resolveDanmakuClickIsSelf(userHash = userHash, currentMid = currentMid)
+                        val isSelf = weighted?.isSelf == true ||
+                            resolveDanmakuClickIsSelf(userHash = userHash, currentMid = currentMid)
                         callback(text, dmid, userHash, isSelf)
                     }
                 }

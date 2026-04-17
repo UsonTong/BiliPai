@@ -109,6 +109,9 @@ fun DownloadListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(taskList, key = { it.id }) { task ->
+                    val playableOffline = remember(task.filePath, task.status) {
+                        isDownloadTaskPlayableOffline(task)
+                    }
                     DownloadTaskItem(
                         task = task,
                         onClick = { 
@@ -126,7 +129,8 @@ fun DownloadListScreen(
                         },
                         onDelete = {
                             DownloadManager.removeTask(task.id)
-                        }
+                        },
+                        offlinePlayable = playableOffline
                     )
                 }
                 
@@ -164,7 +168,8 @@ private fun DownloadTaskItem(
     task: DownloadTask,
     onClick: () -> Unit,
     onPauseResume: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    offlinePlayable: Boolean
 ) {
     Card(
         modifier = Modifier
@@ -315,6 +320,19 @@ private fun DownloadTaskItem(
                         else -> MaterialTheme.colorScheme.primary
                     }
                 )
+
+                if (task.isComplete && !offlinePlayable) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (!task.exportedFileUri.isNullOrBlank()) {
+                            "已导出到自定义目录，当前列表不直接离线播放"
+                        } else {
+                            "本地缓存文件不可用"
+                        },
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             
             // 操作按钮

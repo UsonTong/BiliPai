@@ -3225,9 +3225,9 @@ fun VideoDetailScreen(
         com.android.purebilibili.feature.video.ui.components.DanmakuSendDialog(
             visible = showDanmakuDialog,
             onDismiss = { viewModel.hideDanmakuSendDialog() },
-            onSend = { message, color, mode, fontSize ->
+            onSend = { message, color, mode, fontSize, encourage ->
                 android.util.Log.d("VideoDetailScreen", "📤 Sending danmaku: $message")
-                viewModel.sendDanmaku(message, color, mode, fontSize)
+                viewModel.sendDanmaku(message, color, mode, fontSize, encourage)
             },
             isSending = isSendingDanmaku,
             initialColor = rememberedDanmakuSendColor,

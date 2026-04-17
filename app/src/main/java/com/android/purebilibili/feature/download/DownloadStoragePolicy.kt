@@ -64,9 +64,11 @@ fun resolveDisplayedDownloadLocation(
     customManagedPath: String?,
     exportTreeUri: String?
 ): String {
-    val exportDisplayPath = exportTreeUri
-        ?.takeIf { it.isNotBlank() }
-        ?.let(::resolveExportTreeDisplayPath)
+    val exportDisplayPath = runCatching {
+        exportTreeUri
+            ?.takeIf { it.isNotBlank() }
+            ?.let(::resolveExportTreeDisplayPath)
+    }.getOrNull()
 
     return exportDisplayPath
         ?: customManagedPath?.takeIf { it.isNotBlank() }

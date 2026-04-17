@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-16 · 文档已同步至 v7.8.3（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-17 · 文档已同步至 v7.9.0（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.8.3-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.9.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -527,7 +527,7 @@ app/src/main/java/com/android/purebilibili
 ## 🗺️ 路线图
 
 > [!TIP]
-> 路线图最后同步于 2026-04-16（v7.8.3）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
+> 路线图最后同步于 2026-04-17（v7.9.0）。功能以最新 Release、`CHANGELOG.md` 与主分支代码为准。
 
 ### ✅ 已完成功能
 
@@ -572,12 +572,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.8.3 · 2026-04-16)
+### 最近更新 (v7.9.0 · 2026-04-17)
 
-- 🎬 **播放器对齐 PiliPlus**：进度条、拖动预览和 seek 预览链路重写，横竖屏统一到同一套 seek / preview 计算。
-- 🖼️ **预览图更稳**：`videoshot` 支持秒级时间轴换算、缺失索引回退估算和稳定雪碧图裁剪，减少错帧与预览错位。
-- ▶️ **seek 后恢复播放**：快进、快退、双击跳转和拖动进度条后增加显式恢复播放兜底，并补上“正在恢复播放”状态提示。
-- 🔎 **搜索首开更快**：搜索页首开改为轻量启动，热搜/推荐延后加载，自动聚焦和重 blur 动效也延后触发。
+- 🫧 **空间页继续打磨**：顶部布局、头像区和关注按钮位置继续修正，毛玻璃与滚动内容保持稳定联动。
+- 💬 **普通视频弹幕增强**：补齐会员渐变彩色、自发弹幕与重复计数字段传递，发送面板新增关注弹幕开关。
+- 📦 **离线缓存更稳**：自定义下载目录场景下补强离线缓存列表的可播放判断和路径容错，降低进入列表时的异常退出风险。
+- 🧹 **重复弹幕显示收敛**：重复弹幕保留普通合并样式，不再额外生成居中的黄色特效弹幕。
 
 ### 历史版本
 
