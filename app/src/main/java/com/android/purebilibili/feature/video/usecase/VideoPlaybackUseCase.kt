@@ -358,35 +358,6 @@ class VideoPlaybackUseCase(
                     bvid = bvid,
                     cid = cid
                 )
-                val detailDeferred = async {
-                    if (bootstrapMode == PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL) {
-                        VideoRepository.getVideoInfoOnly(
-                            bvid = bvid,
-                            aid = aid,
-                            requestedCid = cid
-                        )
-                    } else {
-                        VideoRepository.getVideoDetails(
-                            bvid = bvid,
-                            aid = aid,
-                            requestedCid = cid,
-                            targetQuality = defaultQuality,
-                            audioLang = audioLang
-                        ).map { it.first }
-                    }
-                }
-                val playUrlDeferred = async {
-                    if (bootstrapMode == PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL) {
-                        VideoRepository.getInitialPlayUrlData(
-                            bvid = bvid,
-                            cid = cid,
-                            targetQuality = defaultQuality,
-                            audioLang = audioLang
-                        )
-                    } else {
-                        null
-                    }
-                }
                 val relatedDeferred = async { 
                     if (bvid.isNotEmpty()) VideoRepository.getRelatedVideos(bvid) else emptyList() 
                 }
@@ -396,22 +367,48 @@ class VideoPlaybackUseCase(
                     emptyMap()
                 }
 
-                val mergedDetailResult = if (bootstrapMode == PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL) {
-                    detailDeferred.await().fold(
-                        onSuccess = { info ->
-                            val playData = playUrlDeferred.await()
-                                ?: return@fold Result.failure<Pair<ViewInfo, PlayUrlData>>(
-                                    Exception("无法获取播放地址")
-                                )
-                            Result.success(info to playData)
-                        },
-                        onFailure = { error ->
-                            Result.failure(error)
+                val mergedDetailResult = when (bootstrapMode) {
+                    PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL -> {
+                        val infoDeferred = async {
+                            VideoRepository.getVideoInfoOnly(
+                                bvid = bvid,
+                                aid = aid,
+                                requestedCid = cid
+                            )
                         }
-                    )
-                } else {
-                    @Suppress("UNCHECKED_CAST")
-                    detailDeferred.await() as Result<Pair<ViewInfo, PlayUrlData>>
+                        val playUrlDeferred = async {
+                            VideoRepository.getInitialPlayUrlData(
+                                bvid = bvid,
+                                cid = cid,
+                                targetQuality = defaultQuality,
+                                audioLang = audioLang
+                            )
+                        }
+
+                        infoDeferred.await().fold(
+                            onSuccess = { info ->
+                                val playData = playUrlDeferred.await()
+                                if (playData == null) {
+                                    Result.failure(Exception("无法获取播放地址"))
+                                } else {
+                                    Result.success(info to playData)
+                                }
+                            },
+                            onFailure = { error ->
+                                Result.failure(error)
+                            }
+                        )
+                    }
+
+                    PlaybackBootstrapMode.DETAIL_ONLY -> {
+                        VideoRepository.getVideoDetails(
+                            bvid = bvid,
+                            aid = aid,
+                            requestedCid = cid,
+                            targetQuality = defaultQuality,
+                            audioLang = audioLang
+                        )
+                    }
                 }
 
                 Triple(mergedDetailResult, relatedDeferred.await(), emoteMap)
