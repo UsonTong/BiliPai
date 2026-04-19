@@ -261,6 +261,13 @@ internal fun resolveFavoriteFolderDialogTargetAid(
     return requestedAid?.takeIf { it > 0L } ?: currentAid?.takeIf { it > 0L }
 }
 
+internal fun resolveCommentSendTargetAid(
+    requestedAid: Long?,
+    currentAid: Long?
+): Long? {
+    return requestedAid?.takeIf { it > 0L } ?: currentAid?.takeIf { it > 0L }
+}
+
 internal fun shouldSyncFavoriteFolderUiState(
     targetAid: Long?,
     currentAid: Long?
@@ -3166,12 +3173,17 @@ class PlayerViewModel : ViewModel() {
     fun sendComment(
         inputMessage: String? = null,
         imageUris: List<Uri> = emptyList(),
-        syncToDynamic: Boolean = false
+        syncToDynamic: Boolean = false,
+        targetAid: Long? = null
     ) {
         if (inputMessage != null) {
             _commentInput.value = inputMessage
         }
-        val current = _uiState.value as? PlayerUiState.Success ?: return
+        val current = _uiState.value as? PlayerUiState.Success
+        val sendAid = resolveCommentSendTargetAid(
+            requestedAid = targetAid,
+            currentAid = current?.info?.aid
+        ) ?: return
         val message = _commentInput.value.trim()
         
         if (message.isEmpty()) {
@@ -3191,7 +3203,7 @@ class PlayerViewModel : ViewModel() {
             val pictures = picturesResult.getOrElse { uploadError ->
                 Logger.e(
                     "PlayerVM",
-                    "Comment image upload failed: aid=${current.info.aid}, imageCount=${imageUris.size}, message=${uploadError.message}",
+                    "Comment image upload failed: aid=$sendAid, imageCount=${imageUris.size}, message=${uploadError.message}",
                     uploadError
                 )
                 toast(uploadError.message ?: "图片上传失败")
@@ -3201,7 +3213,7 @@ class PlayerViewModel : ViewModel() {
             
             com.android.purebilibili.data.repository.CommentRepository
                 .addComment(
-                    aid = current.info.aid,
+                    aid = sendAid,
                     message = message,
                     root = root,
                     parent = parent,
@@ -3219,7 +3231,7 @@ class PlayerViewModel : ViewModel() {
                 .onFailure { error ->
                     Logger.e(
                         "PlayerVM",
-                        "Comment send failed: aid=${current.info.aid}, root=$root, parent=$parent, pictureCount=${pictures.size}, message=${error.message}",
+                        "Comment send failed: aid=$sendAid, root=$root, parent=$parent, pictureCount=${pictures.size}, message=${error.message}",
                         error
                     )
                     toast(error.message ?: "发送失败")

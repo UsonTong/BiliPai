@@ -222,6 +222,51 @@ class DynamicScreenStatePolicyTest {
     }
 
     @Test
+    fun `dynamic horizontal swipe switches to adjacent tab`() {
+        assertEquals(
+            1,
+            resolveDynamicSwipeTargetTab(
+                currentTab = 0,
+                tabCount = 5,
+                dragDistancePx = -120f
+            )
+        )
+        assertEquals(
+            2,
+            resolveDynamicSwipeTargetTab(
+                currentTab = 3,
+                tabCount = 5,
+                dragDistancePx = 120f
+            )
+        )
+    }
+
+    @Test
+    fun `dynamic horizontal swipe ignores weak drag and clamps edges`() {
+        assertNull(
+            resolveDynamicSwipeTargetTab(
+                currentTab = 2,
+                tabCount = 5,
+                dragDistancePx = -40f
+            )
+        )
+        assertNull(
+            resolveDynamicSwipeTargetTab(
+                currentTab = 0,
+                tabCount = 5,
+                dragDistancePx = 120f
+            )
+        )
+        assertNull(
+            resolveDynamicSwipeTargetTab(
+                currentTab = 4,
+                tabCount = 5,
+                dragDistancePx = -120f
+            )
+        )
+    }
+
+    @Test
     fun `dynamic request type aligns with pili plus tab mapping`() {
         assertEquals("all", resolveDynamicFeedRequestType(selectedTab = 0))
         assertEquals("video", resolveDynamicFeedRequestType(selectedTab = 1))

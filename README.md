@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-17 · 文档已同步至 v7.9.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-19 · 文档已同步至 v7.9.6（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.9.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.9.6-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,12 +572,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.9.1 · 2026-04-17)
+### 最近更新 (v7.9.6 · 2026-04-19)
 
-- 🎞️ 修复平板横屏进入竖屏沉浸播放时画面比例偶发异常、留黑边的问题。
-- ⏱️ 修复进度条反复拖动时预览图偶发卡住的问题。
-- 🌙 调整视频页常亮策略，未开始播放、暂停和播放结束后允许自动息屏。
-- ✨ 补齐 UP 主空间合集/系列视频共享元素过渡，并完善部分深浅色主题适配。
+- 🏠 修复 MD3 / Miuix 首页顶部推荐标签折叠后残留半透明面板的问题。
+- 👆 动态页支持左右滑动切换「全部 / 投稿 / 番剧 / 专栏 / UP」。
+- 🎬 底栏短视频入口复用竖屏播放器，支持评论、详情、推荐切换、手势和弹幕。
+- ✈️ 空降助手同类型只保留一个最佳片段，避免同类片段连续多次跳过。
 
 ### 历史版本
 

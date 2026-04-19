@@ -55,6 +55,18 @@ internal fun resolveDynamicSelectedTab(
     return savedTab?.takeIf { it in 0 until tabCount } ?: 0
 }
 
+internal fun resolveDynamicSwipeTargetTab(
+    currentTab: Int,
+    tabCount: Int,
+    dragDistancePx: Float,
+    thresholdPx: Float = 96f
+): Int? {
+    if (tabCount <= 0 || currentTab !in 0 until tabCount) return null
+    if (kotlin.math.abs(dragDistancePx) < thresholdPx) return null
+    val target = if (dragDistancePx < 0f) currentTab + 1 else currentTab - 1
+    return target.takeIf { it in 0 until tabCount && it != currentTab }
+}
+
 internal fun resolveDynamicFeedRequestType(selectedTab: Int): String {
     return when (selectedTab) {
         1 -> "video"

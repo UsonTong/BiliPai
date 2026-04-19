@@ -724,6 +724,46 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `md3 collapsed top slab keeps only status bar height when tabs are hidden`() {
+        assertEquals(
+            24.dp,
+            resolveHomeTopContinuousSlabHeight(
+                statusBarHeight = 24.dp,
+                searchBarHeight = 0.dp,
+                tabRowHeight = 0.dp,
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.MD3,
+                hasVisibleTopContent = false
+            )
+        )
+    }
+
+    @Test
+    fun `unified top panel chrome is skipped when search and tabs are fully collapsed`() {
+        assertFalse(
+            shouldRenderHomeTopUnifiedPanelChrome(
+                searchHeightDp = 0f,
+                tabHeightDp = 0f,
+                integratedCollapsedTopBar = false
+            )
+        )
+        assertTrue(
+            shouldRenderHomeTopUnifiedPanelChrome(
+                searchHeightDp = 8f,
+                tabHeightDp = 0f,
+                integratedCollapsedTopBar = false
+            )
+        )
+        assertTrue(
+            shouldRenderHomeTopUnifiedPanelChrome(
+                searchHeightDp = 0f,
+                tabHeightDp = 0f,
+                integratedCollapsedTopBar = true
+            )
+        )
+    }
+
+    @Test
     fun `md3 continuous top slab uses a non transparent surface fill to avoid black seams`() {
         assertTrue(
             resolveHomeTopContinuousSlabSurfaceColor(

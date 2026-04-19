@@ -1523,7 +1523,9 @@ fun AppNavigation(
         ) {
             com.android.purebilibili.feature.story.StoryScreen(
                 onBack = { navController.popBackStack() },
-                onVideoClick = { bvid, aid, title -> navigateToVideo(bvid, 0L, "") }
+                onVideoClick = { bvid, cid, _ -> navigateToVideo(bvid, cid, "") },
+                onUserClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },
+                onSearchClick = { navigateTo(ScreenRoutes.Search.route) }
             )
         }
 

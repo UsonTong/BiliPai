@@ -126,8 +126,10 @@ import com.android.purebilibili.feature.video.ui.overlay.PlayerProgress
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
 import com.android.purebilibili.feature.video.player.resolveHandleAudioFocusByPolicy
+import com.android.purebilibili.feature.video.ui.section.FOREGROUND_SURFACE_RECOVERY_DELAY_MS
 import com.android.purebilibili.feature.video.ui.section.resolveLongPressPlaybackParameters
 import com.android.purebilibili.feature.video.ui.section.rebindPlayerSurfaceIfNeeded
+import com.android.purebilibili.feature.video.ui.section.shouldKickPlaybackAfterSurfaceRecovery
 import com.android.purebilibili.feature.video.viewmodel.PlaybackEndAction
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.viewmodel.PlayerViewModel
@@ -956,6 +958,7 @@ private fun VideoPageItem(
     onRequestVideoChange: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var faceVisualMasks by remember { mutableStateOf(emptyList<FaceOcclusionVisualMask>()) }
@@ -1059,6 +1062,65 @@ private fun VideoPageItem(
 
         // Force the shared player to hand over its surface to the portrait pager view.
         rebindPlayerSurfaceIfNeeded(playerView = view, player = exoPlayer)
+    }
+
+    DisposableEffect(
+        lifecycleOwner,
+        exoPlayer,
+        playerViewRef,
+        isCurrentPage,
+        isPlayerReadyForThisVideo
+    ) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event != androidx.lifecycle.Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            val view = playerViewRef
+            if (
+                !shouldRecoverPortraitPagerSurfaceOnResume(
+                    isCurrentPage = isCurrentPage,
+                    isPlayerReadyForThisVideo = isPlayerReadyForThisVideo,
+                    hasPlayerView = view != null
+                )
+            ) {
+                return@LifecycleEventObserver
+            }
+
+            view?.let { playerView ->
+                rebindPlayerSurfaceIfNeeded(playerView = playerView, player = exoPlayer)
+            }
+            scope.launch {
+                delay(FOREGROUND_SURFACE_RECOVERY_DELAY_MS)
+                val retryView = playerViewRef ?: return@launch
+                if (
+                    !shouldRecoverPortraitPagerSurfaceOnResume(
+                        isCurrentPage = isCurrentPage,
+                        isPlayerReadyForThisVideo = isPlayerReadyForThisVideo,
+                        hasPlayerView = true
+                    )
+                ) {
+                    return@launch
+                }
+
+                rebindPlayerSurfaceIfNeeded(playerView = retryView, player = exoPlayer)
+                if (
+                    shouldKickPlaybackAfterSurfaceRecovery(
+                        playWhenReady = exoPlayer.playWhenReady,
+                        isPlaying = exoPlayer.isPlaying,
+                        playbackState = exoPlayer.playbackState
+                    )
+                ) {
+                    exoPlayer.play()
+                }
+                danmakuManager.recoverAfterForeground(
+                    positionMs = exoPlayer.currentPosition.coerceAtLeast(0L),
+                    playWhenReady = exoPlayer.playWhenReady,
+                    playbackState = exoPlayer.playbackState
+                )
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val title = if (item is ViewInfo) item.title else (item as RelatedVideo).title
@@ -2032,7 +2094,12 @@ private fun VideoPageItem(
                 emotePackages = emotePackages,
                 currentVideoPositionMsProvider = { exoPlayer.currentPosition.coerceAtLeast(0L) },
                 onSend = { message, imageUris, syncToDynamic ->
-                    viewModel.sendComment(message, imageUris, syncToDynamic)
+                    viewModel.sendComment(
+                        inputMessage = message,
+                        imageUris = imageUris,
+                        syncToDynamic = syncToDynamic,
+                        targetAid = aid
+                    )
                     viewModel.hideCommentInputDialog()
                 }
             )
@@ -2093,13 +2160,13 @@ internal fun resolvePortraitVideoInteractionUiState(
     sharedState: PlayerUiState.Success?,
     localOverride: PortraitVideoInteractionOverride? = null
 ): PortraitVideoInteractionUiState {
-    val shouldUseSharedState = sharedState?.info?.bvid == targetBvid
-    return if (shouldUseSharedState && sharedState != null) {
+    val currentSharedState = sharedState?.takeIf { it.info.bvid == targetBvid }
+    return if (currentSharedState != null) {
         PortraitVideoInteractionUiState(
-            isLiked = sharedState.isLiked,
-            isFavorited = sharedState.isFavorited,
-            likeCount = sharedState.info.stat.like,
-            favoriteCount = sharedState.info.stat.favorite
+            isLiked = currentSharedState.isLiked,
+            isFavorited = currentSharedState.isFavorited,
+            likeCount = currentSharedState.info.stat.like,
+            favoriteCount = currentSharedState.info.stat.favorite
         )
     } else {
         PortraitVideoInteractionUiState(
