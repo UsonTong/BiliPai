@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-19 · 文档已同步至 v7.9.6（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-22 · 文档已同步至 v7.9.7（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.9.6-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.9.7-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,12 +572,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v7.9.6 · 2026-04-19)
+### 最近更新 (v7.9.7 · 2026-04-22)
 
-- 🏠 修复 MD3 / Miuix 首页顶部推荐标签折叠后残留半透明面板的问题。
-- 👆 动态页支持左右滑动切换「全部 / 投稿 / 番剧 / 专栏 / UP」。
-- 🎬 底栏短视频入口复用竖屏播放器，支持评论、详情、推荐切换、手势和弹幕。
-- ✈️ 空降助手同类型只保留一个最佳片段，避免同类片段连续多次跳过。
+- 👀 普通视频详情页支持展示同时观看人数，并可在外观设置关闭。
+- 🔎 搜索发现优先结合最近搜索和关注 UP 主，再补充官方推荐与热搜。
+- 🏠 首页推荐视频可隐藏封面时长徽标，减少封面信息占用。
+- 📺 补充直播 UI 对齐方案文档，方便后续合并和验证。
 
 ### 历史版本
 

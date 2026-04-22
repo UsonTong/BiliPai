@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-19 · Synced to v7.9.6 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-04-22 · Synced to v7.9.7 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-7.9.6-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-7.9.7-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -430,12 +430,12 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v7.9.6 · 2026-04-19)
+### Latest (v7.9.7 · 2026-04-22)
 
-- 🏠 Fixed the leftover translucent panel when MD3 / Miuix home top tabs collapse.
-- 👆 Added swipe switching for Dynamic tabs.
-- 🎬 Reused the portrait player for the bottom-bar short-video entry, including comments, details, recommendations, gestures, and danmaku.
-- ✈️ SponsorBlock now keeps one best segment per skip type to avoid repeated same-type skips.
+- 👀 Video detail pages can show the current viewer count, with an Appearance toggle.
+- 🔎 Search discovery now prioritizes recent-search suggestions and followed creators before generic trends.
+- 🏠 Home recommendations can hide cover duration badges to reduce visual clutter.
+- 📺 Added the live UI alignment design notes for later merge and verification work.
 
 ---
 
