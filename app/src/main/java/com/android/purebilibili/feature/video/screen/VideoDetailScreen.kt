@@ -4253,9 +4253,10 @@ internal fun shouldShowDetachedVideoCommentThreadHost(
 }
 
 internal fun resolveVideoDetailCommentThreadHostMainSheetVisible(
-    useEmbeddedPresentation: Boolean
+    useEmbeddedPresentation: Boolean,
+    subReplyVisible: Boolean
 ): Boolean {
-    return useEmbeddedPresentation
+    return useEmbeddedPresentation && subReplyVisible
 }
 
 internal fun shouldApplyPhoneAutoRotatePolicy(
@@ -4535,10 +4536,13 @@ private fun DetachedVideoCommentThreadHost(
 ) {
     if (!visible) return
 
+    val subReplyState by commentViewModel.subReplyState.collectAsStateWithLifecycle()
+
     VideoCommentSheetHost(
         mainSheetVisible = resolveVideoDetailCommentThreadHostMainSheetVisible(
             useEmbeddedPresentation = com.android.purebilibili.feature.video.ui.pager
-                .shouldUseEmbeddedVideoSubReplyPresentation()
+                .shouldUseEmbeddedVideoSubReplyPresentation(),
+            subReplyVisible = subReplyState.visible
         ),
         onDismiss = { commentViewModel.closeSubReply() },
         commentViewModel = commentViewModel,
