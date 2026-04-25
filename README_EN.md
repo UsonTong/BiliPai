@@ -432,7 +432,7 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Latest (v8.0.0 Alpha4 · 2026-04-25)
 
-- ✨ Bottom bar now uses SukiSU-style glass with long-press/tap chromatic scale feedback.
+- ✨ Bottom bar now uses the refreshed floating glass style with long-press/tap chromatic scale feedback.
 - 🔎 Top bar corner radius, spacing, and centered category action alignment were refined.
 - 🎬 Long-press speed lock zones are lighter, and manual speed changes now clear locked speed correctly.
 - 🛠️ Removed older Android-incompatible API calls and added focused UI/compatibility policy tests.
