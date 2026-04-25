@@ -150,12 +150,10 @@ fun DynamicTopBarWithTabs(
 
 @Composable
 private fun rememberDynamicTabSelectedColor(): Color {
-    return if (isDynamicTopBarDarkSurface(MaterialTheme.colorScheme.surface)) {
-        Color(0xFFE7CF97)
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
+    return resolveDynamicTabSelectedColor(MaterialTheme.colorScheme.primary)
 }
+
+internal fun resolveDynamicTabSelectedColor(primaryColor: Color): Color = primaryColor
 
 @Composable
 private fun rememberDynamicTabUnselectedColor(): Color {

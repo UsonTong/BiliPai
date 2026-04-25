@@ -1,6 +1,7 @@
 // 文件路径: feature/home/components/TopBar.kt
 package com.android.purebilibili.feature.home.components
 
+import android.os.Build
 import android.os.SystemClock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuOpen
@@ -46,11 +47,13 @@ import androidx.compose.foundation.ExperimentalFoundationApi // [Added]
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -71,20 +75,37 @@ import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.feature.home.HomeCategory
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
 import com.android.purebilibili.core.store.LiquidGlassStyle
+import com.android.purebilibili.core.ui.adaptive.MotionTier
+import com.android.purebilibili.core.ui.blur.BlurSurfaceType
+import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
+import com.android.purebilibili.core.ui.blur.shouldAllowDirectHazeLiquidGlassFallback
+import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
+import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import kotlinx.coroutines.flow.map
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
+import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
+import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import androidx.compose.foundation.combinedClickable // [Added]
 import top.yukonga.miuix.kmp.basic.TabRowDefaults as MiuixTabRowDefaults
 import top.yukonga.miuix.kmp.basic.TabRowWithContour as MiuixTabRowWithContour
@@ -101,6 +122,29 @@ internal fun resolveTopTabRowHorizontalPaddingDp(
 ): Float {
     if (edgeToEdge) return 0f
     return if (isFloatingStyle) 0f else 4f
+}
+
+internal fun shouldUseTopTabDockSurface(isFloatingStyle: Boolean): Boolean = isFloatingStyle
+
+internal fun shouldDrawTopTabInnerDockSurface(
+    isFloatingStyle: Boolean,
+    hasOuterChromeSurface: Boolean
+): Boolean = shouldUseTopTabDockSurface(isFloatingStyle) && !hasOuterChromeSurface
+
+internal fun resolveTopTabDockHorizontalPaddingDp(
+    isFloatingStyle: Boolean,
+    edgeToEdge: Boolean = false
+): Float {
+    if (!shouldUseTopTabDockSurface(isFloatingStyle) || edgeToEdge) return 0f
+    return 10f
+}
+
+internal fun resolveTopTabDockVerticalPaddingDp(isFloatingStyle: Boolean): Float {
+    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 4f else 0f
+}
+
+internal fun resolveTopTabDockCornerRadiusDp(isFloatingStyle: Boolean): Float {
+    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 30f else 0f
 }
 
 internal fun resolveTopTabVisibleSlots(
@@ -487,6 +531,142 @@ internal fun resolveTopTabUnselectedColor(isLightMode: Boolean): Color {
     }
 }
 
+internal fun Modifier.homeTopBottomBarMatchedSurface(
+    renderMode: HomeTopChromeRenderMode,
+    shape: Shape,
+    hazeState: HazeState?,
+    backdrop: LayerBackdrop?,
+    liquidGlassStyle: LiquidGlassStyle,
+    liquidGlassTuning: LiquidGlassTuning?,
+    motionTier: MotionTier,
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean
+): Modifier = composed {
+    val tuning = remember(liquidGlassStyle, liquidGlassTuning) {
+        liquidGlassTuning ?: resolveLiquidGlassTuning(liquidGlassStyle)
+    }
+    val isGlassEnabled = renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP ||
+        renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
+    val isBlurEnabled = renderMode != HomeTopChromeRenderMode.PLAIN
+    val isDarkTheme = isSystemInDarkTheme()
+    val blurIntensity = currentUnifiedBlurIntensity()
+    val containerColor = if (isGlassEnabled) {
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f)
+    } else {
+        resolveBottomBarSurfaceColor(
+            surfaceColor = MaterialTheme.colorScheme.surfaceContainer,
+            blurEnabled = isBlurEnabled,
+            blurIntensity = blurIntensity
+        )
+    }
+    val useHazeBlur = shouldUseAndroidNativeFloatingHazeBlur(
+        blurEnabled = isBlurEnabled,
+        glassEnabled = isGlassEnabled,
+        hasHazeState = hazeState != null
+    )
+    this
+        .then(
+            if (useHazeBlur && hazeState != null) {
+                Modifier.unifiedBlur(
+                    hazeState = hazeState,
+                    shape = shape,
+                    surfaceType = BlurSurfaceType.BOTTOM_BAR,
+                    motionTier = motionTier,
+                    isScrolling = false,
+                    isTransitionRunning = isTransitionRunning,
+                    forceLowBudget = forceLowBlurBudget
+                )
+            } else {
+                Modifier
+            }
+        )
+        .run {
+            if (backdrop != null && !useHazeBlur) {
+                drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { shape },
+                    effects = {
+                        if (isGlassEnabled || (isBlurEnabled && !useHazeBlur)) {
+                            vibrancy()
+                            blur(8.dp.toPx())
+                            if (isGlassEnabled) {
+                                lens(24.dp.toPx(), 24.dp.toPx())
+                            }
+                        }
+                    },
+                    highlight = {
+                        Highlight.Default.copy(alpha = if (isGlassEnabled) 1f else 0f)
+                    },
+                    shadow = {
+                        Shadow.Default.copy(
+                            color = Color.Black.copy(alpha = if (isDarkTheme) 0.2f else 0.1f)
+                        )
+                    },
+                    onDrawSurface = {
+                        drawRect(containerColor)
+                    }
+                )
+            } else {
+                background(containerColor, shape)
+            }
+        }
+}
+
+@Composable
+private fun TopTabDockSurface(
+    enabled: Boolean,
+    materialMode: TopTabMaterialMode,
+    shape: Shape,
+    hazeState: HazeState?,
+    backdrop: LayerBackdrop?,
+    liquidGlassStyle: LiquidGlassStyle,
+    liquidGlassTuning: LiquidGlassTuning?,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    if (!enabled) {
+        Box(modifier = modifier, content = content)
+        return
+    }
+
+    val effectiveMaterialMode = when {
+        materialMode == TopTabMaterialMode.LIQUID_GLASS -> TopTabMaterialMode.LIQUID_GLASS
+        hazeState != null -> TopTabMaterialMode.BLUR
+        else -> TopTabMaterialMode.PLAIN
+    }
+    val dockRenderMode = remember(effectiveMaterialMode, backdrop, hazeState) {
+        resolveHomeTopChromeRenderMode(
+            materialMode = effectiveMaterialMode,
+            isGlassSupported = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT),
+            hasBackdrop = backdrop != null,
+            hasHazeState = hazeState != null,
+            allowHazeLiquidGlassFallback = shouldAllowDirectHazeLiquidGlassFallback(Build.VERSION.SDK_INT)
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .clip(shape)
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .homeTopBottomBarMatchedSurface(
+                    renderMode = dockRenderMode,
+                    shape = shape,
+                    hazeState = hazeState,
+                    backdrop = backdrop,
+                    liquidGlassStyle = liquidGlassStyle,
+                    liquidGlassTuning = liquidGlassTuning,
+                    motionTier = MotionTier.Normal,
+                    isTransitionRunning = false,
+                    forceLowBlurBudget = false
+                )
+        )
+        Box(modifier = Modifier.fillMaxSize(), content = content)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryTabRow(
@@ -501,9 +681,11 @@ fun CategoryTabRow(
     isLiquidGlassEnabled: Boolean = false,
     liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC,
     liquidGlassTuning: LiquidGlassTuning? = null,
+    hazeState: HazeState? = null,
     backdrop: LayerBackdrop? = null,
     isFloatingStyle: Boolean = false,
     edgeToEdge: Boolean = false,
+    hasOuterChromeSurface: Boolean = false,
     interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL,
     isViewportSyncEnabled: Boolean = true
 ) {
@@ -550,10 +732,27 @@ fun CategoryTabRow(
             onLiveClick = onLiveClick,
             pagerState = pagerState,
             labelMode = labelMode,
-            isFloatingStyle = isFloatingStyle
+            isFloatingStyle = isFloatingStyle,
+            isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
+            liquidGlassStyle = liquidGlassStyle,
+            liquidGlassTuning = resolvedLiquidGlassTuning,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            hasOuterChromeSurface = hasOuterChromeSurface
         )
         return
     }
+
+    val dockEnabled = shouldDrawTopTabInnerDockSurface(
+        isFloatingStyle = isFloatingStyle,
+        hasOuterChromeSurface = hasOuterChromeSurface
+    )
+    val dockMaterialMode = when {
+        effectiveLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
+        hazeState != null -> TopTabMaterialMode.BLUR
+        else -> TopTabMaterialMode.PLAIN
+    }
+    val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
 
     BoxWithConstraints(
         modifier = Modifier
@@ -564,6 +763,13 @@ fun CategoryTabRow(
                     isFloatingStyle = isFloatingStyle,
                     edgeToEdge = edgeToEdge
                 ).dp
+            )
+            .padding(
+                horizontal = resolveTopTabDockHorizontalPaddingDp(
+                    isFloatingStyle = isFloatingStyle,
+                    edgeToEdge = edgeToEdge
+                ).dp,
+                vertical = resolveTopTabDockVerticalPaddingDp(isFloatingStyle).dp
             )
     ) {
         val longestLabelLength = categories.maxOfOrNull { it.length } ?: 0
@@ -578,11 +784,22 @@ fun CategoryTabRow(
         ).dp
         val tabViewportWidth = actionSlotWidth * visibleCategorySlots
 
-        Row(
+        TopTabDockSurface(
+            enabled = dockEnabled,
+            materialMode = dockMaterialMode,
+            shape = dockShape,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            liquidGlassStyle = liquidGlassStyle,
+            liquidGlassTuning = resolvedLiquidGlassTuning,
             modifier = Modifier
-                .fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             // [Refactor] 使用 BoxWithConstraints 动态计算宽度
             BoxWithConstraints(
                 modifier = Modifier
@@ -730,16 +947,35 @@ fun CategoryTabRow(
 
             Box(modifier = Modifier.fillMaxSize()) {
                 val tabContentBackdrop = rememberLayerBackdrop()
-                val shouldRefract = shouldTopTabIndicatorUseRefraction(
+                val topIndicatorVisualPolicy = resolveTopTabIndicatorVisualPolicy(
                     position = currentPosition,
                     interacting = isInteracting,
-                    velocityPxPerSecond = indicatorVelocityPxPerSecond
+                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
+                    useNeutralIndicatorTint = resolvedLiquidGlassTuning.useNeutralIndicatorTint
                 )
-                val indicatorBackdrop = if (shouldRefract) {
-                    if (effectiveLiquidGlassEnabled) tabContentBackdrop else backdrop
+                val shouldRefract = topIndicatorVisualPolicy.shouldRefract
+                val topIndicatorBackdropPolicy = resolveTopTabIndicatorBackdropPolicy(
+                    effectiveLiquidGlassEnabled = effectiveLiquidGlassEnabled,
+                    hasBackdrop = backdrop != null,
+                    indicatorVisualPolicy = topIndicatorVisualPolicy
+                )
+                val combinedIndicatorBackdrop = if (topIndicatorBackdropPolicy.useCombinedBackdrop && backdrop != null) {
+                    rememberCombinedBackdrop(backdrop, tabContentBackdrop)
                 } else {
                     null
                 }
+                val indicatorBackdrop = when {
+                    combinedIndicatorBackdrop != null -> combinedIndicatorBackdrop
+                    topIndicatorBackdropPolicy.useIndicatorBackdrop && effectiveLiquidGlassEnabled -> tabContentBackdrop
+                    topIndicatorBackdropPolicy.useIndicatorBackdrop -> backdrop
+                    else -> null
+                }
+                val topTabRefractionProfile = resolveTopTabRefractionMotionProfile(
+                    position = currentPosition,
+                    shouldRefract = shouldRefract,
+                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
+                    liquidGlassEnabled = effectiveLiquidGlassEnabled
+                )
 
                 // 1. [Layer] Background Liquid Indicator
                 // [修复] 使用 layoutInfo 动态计算滚动偏移
@@ -756,12 +992,38 @@ fun CategoryTabRow(
                 Box(modifier = Modifier.graphicsLayer {
                     translationX = -scrollOffset
                 }) {
+                    val isDarkTheme = isSystemInDarkTheme()
+                    val topIndicatorTintAlpha = resolveIosFloatingBottomIndicatorTintAlpha(
+                        visualPolicy = topIndicatorVisualPolicy,
+                        isDarkTheme = isDarkTheme,
+                        liquidGlassProgress = resolvedLiquidGlassTuning.progress,
+                        configuredAlpha = resolvedLiquidGlassTuning.indicatorTintAlpha
+                    )
+                    val topIndicatorColor = if (uiPreset == UiPreset.IOS) {
+                        resolveIosFloatingBottomIndicatorColor(
+                            themeColor = MaterialTheme.colorScheme.primary,
+                            isDarkTheme = isDarkTheme,
+                            visualPolicy = topIndicatorVisualPolicy,
+                            liquidGlassTuning = resolvedLiquidGlassTuning
+                        ).copy(alpha = topIndicatorTintAlpha)
+                    } else if (topIndicatorVisualPolicy.useNeutralTint) {
+                        Color.White.copy(
+                            alpha = if (isDarkTheme) {
+                                topIndicatorTintAlpha * 0.68f
+                            } else {
+                                topIndicatorTintAlpha * 0.82f
+                            }
+                        )
+                    } else {
+                        MaterialTheme.colorScheme.primary.copy(alpha = topIndicatorTintAlpha)
+                    }
+
                     if (isFloatingStyle) {
                         LiquidIndicator(
                             position = currentPosition,
                             itemWidth = with(localDensity) { actualTabWidthPx.toDp() },
                             itemCount = categories.size,
-                            isDragging = isInteracting,
+                            isDragging = topIndicatorVisualPolicy.isInMotion,
                             velocity = indicatorVelocityPxPerSecond,
                             startPadding = floatingAdjustedInsetDp,
                             modifier = Modifier.fillMaxSize(),
@@ -776,55 +1038,27 @@ fun CategoryTabRow(
                             indicatorHeight = floatingLiquidHeight,
                             lensIntensityBoost = resolvedLiquidGlassTuning.indicatorLensBoost,
                             edgeWarpBoost = resolvedLiquidGlassTuning.indicatorEdgeWarpBoost,
-                            chromaticBoost = resolvedLiquidGlassTuning.indicatorChromaticBoost,
+                            chromaticBoost = resolvedLiquidGlassTuning.indicatorChromaticBoost *
+                                topTabRefractionProfile.chromaticBoostScale,
+                            lensAmountScale = topTabRefractionProfile.lensAmountScale,
+                            lensHeightScale = topTabRefractionProfile.lensHeightScale,
+                            forceChromaticAberration = topTabRefractionProfile.forceChromaticAberration,
                             liquidGlassStyle = liquidGlassStyle,
                             liquidGlassTuning = resolvedLiquidGlassTuning,
                             backdrop = indicatorBackdrop,
-                            color = if (resolvedLiquidGlassTuning.useNeutralIndicatorTint) {
-                                if (uiPreset == UiPreset.IOS) {
-                                    resolveIos26BottomIndicatorGrayColor(isDarkTheme = isSystemInDarkTheme()).copy(
-                                        alpha = resolvedLiquidGlassTuning.indicatorTintAlpha
-                                    )
-                                } else {
-                                    Color.White.copy(
-                                        alpha = if (isSystemInDarkTheme()) {
-                                            resolvedLiquidGlassTuning.indicatorTintAlpha * 0.68f
-                                        } else {
-                                            resolvedLiquidGlassTuning.indicatorTintAlpha * 0.82f
-                                        }
-                                    )
-                                }
-                            } else {
-                                MaterialTheme.colorScheme.primary.copy(alpha = resolvedLiquidGlassTuning.indicatorTintAlpha)
-                            }
+                            color = topIndicatorColor
                         )
                     } else {
                         SimpleLiquidIndicator(
                             position = currentPosition,
                             itemWidthPx = actualTabWidthPx,
-                            isDragging = isInteracting,
+                            isDragging = topIndicatorVisualPolicy.isInMotion,
                             velocityPxPerSecond = indicatorVelocityPxPerSecond,
                             isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
                             liquidGlassStyle = liquidGlassStyle,
                             liquidGlassTuning = resolvedLiquidGlassTuning,
                             backdrop = indicatorBackdrop,
-                            indicatorColor = if (resolvedLiquidGlassTuning.useNeutralIndicatorTint) {
-                                if (uiPreset == UiPreset.IOS) {
-                                    resolveIos26BottomIndicatorGrayColor(isDarkTheme = isSystemInDarkTheme()).copy(
-                                        alpha = resolvedLiquidGlassTuning.indicatorTintAlpha
-                                    )
-                                } else {
-                                    Color.White.copy(
-                                        alpha = if (isSystemInDarkTheme()) {
-                                            resolvedLiquidGlassTuning.indicatorTintAlpha * 0.68f
-                                        } else {
-                                            resolvedLiquidGlassTuning.indicatorTintAlpha * 0.82f
-                                        }
-                                    )
-                                }
-                            } else {
-                                MaterialTheme.colorScheme.primary.copy(alpha = resolvedLiquidGlassTuning.indicatorTintAlpha)
-                            },
+                            indicatorColor = topIndicatorColor,
                             indicatorHeight = topIndicatorHeight,
                             cornerRadius = topIndicatorCorner,
                             widthRatio = topIndicatorWidthRatio,
@@ -835,10 +1069,53 @@ fun CategoryTabRow(
                     }
                 }
 
+                if (topIndicatorBackdropPolicy.useIndicatorBackdrop && effectiveLiquidGlassEnabled) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clearAndSetSemantics {}
+                            .alpha(0f)
+                            .layerBackdrop(tabContentBackdrop)
+                            .graphicsLayer { translationX = -scrollOffset }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(
+                                    start = if (isFloatingStyle) floatingAdjustedInsetDp else 0.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            categories.forEachIndexed { index, category ->
+                                val categoryKey = categoryKeys.getOrNull(index) ?: category
+                                Box(
+                                    modifier = Modifier.width(tabWidth),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CategoryTabItem(
+                                        category = category,
+                                        categoryKey = categoryKey,
+                                        index = index,
+                                        selectedIndex = selectedIndex,
+                                        currentPosition = currentPosition,
+                                        primaryColor = primaryColor,
+                                        unselectedColor = unselectedColor,
+                                        labelMode = labelMode,
+                                        isInMotion = topIndicatorVisualPolicy.isInMotion,
+                                        selectionEmphasis = topTabRefractionProfile.exportSelectionEmphasis,
+                                        isInteractive = false,
+                                        onClick = {},
+                                        onDoubleTap = {}
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // 2. [Layer] Content Tabs
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     LazyRow(
                         state = tabListState,
@@ -864,6 +1141,8 @@ fun CategoryTabRow(
                                     primaryColor = primaryColor,
                                     unselectedColor = unselectedColor,
                                     labelMode = labelMode,
+                                    isInMotion = topIndicatorVisualPolicy.isInMotion,
+                                    selectionEmphasis = topTabRefractionProfile.visibleSelectionEmphasis,
                                     onClick = {
                                         performHomeTopBarTap(haptic = haptic, onClick = {
                                             // [修复] 直播由分类语义驱动，而不是固定索引，支持自定义排序
@@ -915,6 +1194,7 @@ fun CategoryTabRow(
             }
         }
     }
+    }
 }
 }
 
@@ -928,7 +1208,13 @@ private fun Md3CategoryTabRow(
     onLiveClick: () -> Unit,
     pagerState: androidx.compose.foundation.pager.PagerState?,
     labelMode: Int,
-    isFloatingStyle: Boolean
+    isFloatingStyle: Boolean,
+    isLiquidGlassEnabled: Boolean,
+    liquidGlassStyle: LiquidGlassStyle,
+    liquidGlassTuning: LiquidGlassTuning?,
+    hazeState: HazeState?,
+    backdrop: LayerBackdrop?,
+    hasOuterChromeSurface: Boolean
 ) {
     val uiPreset = LocalUiPreset.current
     val androidNativeVariant = LocalAndroidNativeVariant.current
@@ -964,6 +1250,16 @@ private fun Md3CategoryTabRow(
     val actionButtonCorner = resolveMd3TopTabActionButtonCorner(isFloatingStyle, androidNativeVariant)
     val actionIconSize = resolveMd3TopTabActionIconSize(isFloatingStyle, androidNativeVariant)
     val actionContentBottomPadding = resolveMd3TopTabActionContentBottomPadding()
+    val dockEnabled = shouldDrawTopTabInnerDockSurface(
+        isFloatingStyle = isFloatingStyle,
+        hasOuterChromeSurface = hasOuterChromeSurface
+    )
+    val dockMaterialMode = when {
+        isLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
+        hazeState != null -> TopTabMaterialMode.BLUR
+        else -> TopTabMaterialMode.PLAIN
+    }
+    val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
     val viewportAnchorIndex by remember(pagerState, selectedIndex) {
         derivedStateOf {
             resolveTopTabViewportAnchorIndex(
@@ -1006,13 +1302,30 @@ private fun Md3CategoryTabRow(
         }
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(tabRowHeight)
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 4.dp)
+            .padding(
+                horizontal = resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = isFloatingStyle).dp,
+                vertical = resolveTopTabDockVerticalPaddingDp(isFloatingStyle).dp
+            )
     ) {
+        TopTabDockSurface(
+            enabled = dockEnabled,
+            materialMode = dockMaterialMode,
+            shape = dockShape,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            liquidGlassStyle = liquidGlassStyle,
+            liquidGlassTuning = liquidGlassTuning,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
@@ -1165,6 +1478,8 @@ private fun Md3CategoryTabRow(
 
         Spacer(modifier = Modifier.width(8.dp))
     }
+        }
+    }
 }
 
 @Composable
@@ -1312,6 +1627,114 @@ internal fun shouldTopTabIndicatorUseRefraction(
     return abs(velocityPxPerSecond) > velocityEpsilon
 }
 
+internal fun resolveTopTabIndicatorVisualPolicy(
+    position: Float,
+    interacting: Boolean,
+    velocityPxPerSecond: Float,
+    useNeutralIndicatorTint: Boolean
+): BottomBarIndicatorVisualPolicy {
+    val shouldRefract = shouldTopTabIndicatorUseRefraction(
+        position = position,
+        interacting = interacting,
+        velocityPxPerSecond = velocityPxPerSecond
+    )
+    return BottomBarIndicatorVisualPolicy(
+        isInMotion = shouldRefract,
+        shouldRefract = shouldRefract,
+        useNeutralTint = shouldRefract && useNeutralIndicatorTint
+    )
+}
+
+internal data class TopTabIndicatorBackdropPolicy(
+    val useIndicatorBackdrop: Boolean,
+    val useCombinedBackdrop: Boolean
+)
+
+internal fun resolveTopTabIndicatorBackdropPolicy(
+    effectiveLiquidGlassEnabled: Boolean,
+    hasBackdrop: Boolean,
+    indicatorVisualPolicy: BottomBarIndicatorVisualPolicy
+): TopTabIndicatorBackdropPolicy {
+    val useContentBackdrop = indicatorVisualPolicy.shouldRefract && effectiveLiquidGlassEnabled
+    val useBackdrop = indicatorVisualPolicy.shouldRefract && hasBackdrop
+    val useCombinedBackdrop = useContentBackdrop && useBackdrop
+    return TopTabIndicatorBackdropPolicy(
+        useIndicatorBackdrop = useContentBackdrop || useBackdrop,
+        useCombinedBackdrop = useCombinedBackdrop
+    )
+}
+
+internal data class TopTabRefractionMotionProfile(
+    val lensAmountScale: Float,
+    val lensHeightScale: Float,
+    val chromaticBoostScale: Float,
+    val forceChromaticAberration: Boolean,
+    val visibleSelectionEmphasis: Float,
+    val exportSelectionEmphasis: Float
+)
+
+internal fun resolveTopTabRefractionMotionProfile(
+    position: Float,
+    shouldRefract: Boolean,
+    velocityPxPerSecond: Float,
+    liquidGlassEnabled: Boolean
+): TopTabRefractionMotionProfile {
+    if (!shouldRefract || !liquidGlassEnabled) {
+        return TopTabRefractionMotionProfile(
+            lensAmountScale = 1f,
+            lensHeightScale = 1f,
+            chromaticBoostScale = 1f,
+            forceChromaticAberration = false,
+            visibleSelectionEmphasis = 1f,
+            exportSelectionEmphasis = 1f
+        )
+    }
+    val bottomMotionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.IOS_FLOATING)
+    val bottomProfile = resolveBottomBarRefractionMotionProfile(
+        position = position,
+        velocity = velocityPxPerSecond,
+        isDragging = true,
+        motionSpec = bottomMotionSpec
+    )
+    return TopTabRefractionMotionProfile(
+        lensAmountScale = bottomProfile.indicatorLensAmountScale,
+        lensHeightScale = bottomProfile.indicatorLensHeightScale,
+        chromaticBoostScale = bottomProfile.chromaticBoostScale,
+        forceChromaticAberration = bottomProfile.forceChromaticAberration,
+        visibleSelectionEmphasis = bottomProfile.visibleSelectionEmphasis,
+        exportSelectionEmphasis = bottomProfile.exportSelectionEmphasis
+    )
+}
+
+internal fun resolveTopTabRefractionMotionProfile(
+    shouldRefract: Boolean,
+    velocityPxPerSecond: Float,
+    liquidGlassEnabled: Boolean
+): TopTabRefractionMotionProfile {
+    return resolveTopTabRefractionMotionProfile(
+        position = 0f,
+        shouldRefract = shouldRefract,
+        velocityPxPerSecond = velocityPxPerSecond,
+        liquidGlassEnabled = liquidGlassEnabled
+    )
+}
+
+internal fun resolveTopTabItemMotionVisual(
+    itemIndex: Int,
+    indicatorPosition: Float,
+    currentSelectedIndex: Int,
+    isInMotion: Boolean,
+    selectionEmphasis: Float
+): BottomBarItemMotionVisual {
+    return resolveBottomBarItemMotionVisual(
+        itemIndex = itemIndex,
+        indicatorPosition = indicatorPosition,
+        currentSelectedIndex = currentSelectedIndex,
+        motionProgress = if (isInMotion) 1f else 0f,
+        selectionEmphasis = selectionEmphasis
+    )
+}
+
 internal fun resolveTopTabHorizontalDeltaPx(
     positionDeltaPages: Float,
     tabWidthPx: Float,
@@ -1344,15 +1767,29 @@ fun CategoryTabItem(
     primaryColor: Color,
     unselectedColor: Color,
     labelMode: Int,
+    isInMotion: Boolean = false,
+    selectionEmphasis: Float = 1f,
+    isInteractive: Boolean = true,
     onClick: () -> Unit,
     onDoubleTap: () -> Unit = {}
 ) {
      val uiPreset = LocalUiPreset.current
-     // [Optimized] Calculate fraction from the position
-     val selectionFraction = remember(currentPosition, index) {
-         val distance = kotlin.math.abs(currentPosition - index)
-         (1f - distance).coerceIn(0f, 1f)
+     val motionVisual = remember(
+         index,
+         currentPosition,
+         selectedIndex,
+         isInMotion,
+         selectionEmphasis
+     ) {
+         resolveTopTabItemMotionVisual(
+             itemIndex = index,
+             indicatorPosition = currentPosition,
+             currentSelectedIndex = selectedIndex,
+             isInMotion = isInMotion,
+             selectionEmphasis = selectionEmphasis
+         )
      }
+     val selectionFraction = motionVisual.themeWeight
 
      // 单层文本渲染，避免双层交叉透明带来的发虚/重影。
      val contentColor = androidx.compose.ui.graphics.lerp(
@@ -1386,11 +1823,17 @@ fun CategoryTabItem(
      Box(
          modifier = Modifier
              .clip(RoundedCornerShape(16.dp)) 
-             .combinedClickable(
-                 interactionSource = remember { MutableInteractionSource() },
-                 indication = null,
-                 onClick = { onClick() },
-                 onDoubleClick = onDoubleTap
+             .then(
+                 if (isInteractive) {
+                     Modifier.combinedClickable(
+                         interactionSource = remember { MutableInteractionSource() },
+                         indication = null,
+                         onClick = { onClick() },
+                         onDoubleClick = onDoubleTap
+                     )
+                 } else {
+                     Modifier
+                 }
              )
              .padding(horizontal = 8.dp, vertical = 4.dp)
              .heightIn(min = contentMinHeight),

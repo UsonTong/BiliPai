@@ -77,8 +77,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 166
-        versionName = "8.0.0 Alpha4"
+        versionCode = 167
+        versionName = "8.0.0-Alpha5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -279,6 +279,7 @@ dependencies {
     
     // --- 3.1 Palette (颜色提取 - 动态取色) ---
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation("com.materialkolor:material-kolor:4.1.1")
     
     // --- 3.2 Lottie (动画效果) ---
     implementation("com.airbnb.android:lottie-compose:6.7.1")
@@ -346,10 +347,6 @@ dependencies {
     
     // --- 8.1 WorkManager (后台下载任务) ---
     implementation("androidx.work:work-runtime-ktx:2.11.2")
-    // [新增] ML Kit 人脸检测（远程模型，减少 APK 体积）
-    // 使用 Play Services 动态下发模型，不把人脸模型打进 APK。
-    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
-    
     // --- 8.2 DLNA & Local Proxy (投屏) ---
     // DLNA Casting (Cling)
     implementation("org.fourthline.cling:cling-core:2.1.2")

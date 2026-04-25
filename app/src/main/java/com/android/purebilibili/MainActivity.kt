@@ -923,6 +923,12 @@ class MainActivity : AppCompatActivity() {
 
             //  2. [新增] 获取动态取色设置 (默认为 true)
             val dynamicColor by SettingsManager.getDynamicColor(context).collectAsState(initial = true)
+            val colorStyle by SettingsManager.getThemeColorStyle(context).collectAsState(
+                initial = com.materialkolor.PaletteStyle.TonalSpot
+            )
+            val colorSpec by SettingsManager.getThemeColorSpec(context).collectAsState(
+                initial = com.materialkolor.dynamiccolor.ColorSpec.SpecVersion.SPEC_2021
+            )
             
             //  3. [新增] 获取主题色索引
             val themeColorIndex by SettingsManager.getThemeColorIndex(context).collectAsState(initial = 0)
@@ -1006,6 +1012,8 @@ class MainActivity : AppCompatActivity() {
                 dynamicColor = effectiveDynamicColor,
                 amoledDarkTheme = useAmoledDarkTheme,
                 themeColorIndex = themeColorIndex, //  传入主题色索引
+                colorStyle = colorStyle,
+                colorSpec = colorSpec,
                 fontSizePreset = appFontSizePreset,
 
             ) {

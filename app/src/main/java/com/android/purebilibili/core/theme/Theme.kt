@@ -22,6 +22,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.android.purebilibili.feature.settings.AppThemeMode
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.rememberDynamicColorScheme
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
@@ -79,19 +82,25 @@ internal fun resolveMiuixColorSchemeMode(
     themeMode: AppThemeMode,
     dynamicColorEnabled: Boolean
 ): ColorSchemeMode {
+    // Material Kolor resolves both wallpaper and static seed palettes before the
+    // Miuix bridge, so keep Miuix on explicit colors instead of its own Monet mode.
     return when (themeMode) {
-        AppThemeMode.FOLLOW_SYSTEM -> {
-            if (dynamicColorEnabled) ColorSchemeMode.MonetSystem else ColorSchemeMode.System
-        }
-
-        AppThemeMode.LIGHT -> {
-            if (dynamicColorEnabled) ColorSchemeMode.MonetLight else ColorSchemeMode.Light
-        }
-
-        AppThemeMode.DARK -> {
-            if (dynamicColorEnabled) ColorSchemeMode.MonetDark else ColorSchemeMode.Dark
-        }
+        AppThemeMode.FOLLOW_SYSTEM -> ColorSchemeMode.System
+        AppThemeMode.LIGHT -> ColorSchemeMode.Light
+        AppThemeMode.DARK -> ColorSchemeMode.Dark
     }
+}
+
+internal fun resolvePaletteStylePreference(rawValue: String?): PaletteStyle {
+    return runCatching {
+        rawValue?.let(PaletteStyle::valueOf)
+    }.getOrNull() ?: PaletteStyle.TonalSpot
+}
+
+internal fun resolveColorSpecPreference(rawValue: String?): ColorSpec.SpecVersion {
+    return runCatching {
+        rawValue?.let(ColorSpec.SpecVersion::valueOf)
+    }.getOrNull() ?: ColorSpec.SpecVersion.SPEC_2021
 }
 
 internal data class MiuixMaterialBridge(
@@ -568,6 +577,46 @@ private fun createMd3LightColorScheme(primaryColor: Color) = createStaticMd3Colo
 )
 
 @Composable
+private fun rememberKernelSuStyleColorScheme(
+    seedColor: Color,
+    darkTheme: Boolean,
+    amoledDarkTheme: Boolean,
+    paletteStyle: PaletteStyle,
+    colorSpec: ColorSpec.SpecVersion,
+    dynamicBaseScheme: ColorScheme? = null
+): ColorScheme {
+    val scheme = if (dynamicBaseScheme != null) {
+        rememberDynamicColorScheme(
+            seedColor = Color.Unspecified,
+            isDark = darkTheme,
+            isAmoled = amoledDarkTheme,
+            style = paletteStyle,
+            specVersion = colorSpec,
+            primary = dynamicBaseScheme.primary,
+            secondary = dynamicBaseScheme.secondary,
+            tertiary = dynamicBaseScheme.tertiary,
+            neutral = dynamicBaseScheme.surface,
+            neutralVariant = dynamicBaseScheme.surfaceVariant,
+            error = dynamicBaseScheme.error
+        )
+    } else {
+        rememberDynamicColorScheme(
+            seedColor = seedColor,
+            isDark = darkTheme,
+            isAmoled = amoledDarkTheme,
+            style = paletteStyle,
+            specVersion = colorSpec
+        )
+    }
+
+    return if (!darkTheme) {
+        enforceDynamicLightTextContrast(scheme)
+    } else {
+        scheme
+    }
+}
+
+@Composable
 fun PureBiliBiliTheme(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
@@ -576,6 +625,8 @@ fun PureBiliBiliTheme(
     dynamicColor: Boolean = false,
     amoledDarkTheme: Boolean = false,
     themeColorIndex: Int = 0, //  默认 0 = iOS 蓝色
+    colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
     fontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     content: @Composable () -> Unit
 ) {
@@ -587,7 +638,6 @@ fun PureBiliBiliTheme(
     //  获取自定义主题色 (默认 iOS 蓝)
     val customPrimaryColor = ThemeColors.getOrElse(themeColorIndex) { iOSSystemBlue }
 
-    val renderingProfile = resolveUiRenderingProfile(uiPreset)
     val isDynamicColorActive = resolveEffectiveDynamicColorEnabled(
         dynamicColorEnabled = dynamicColor,
         amoledDarkTheme = amoledDarkTheme,
@@ -601,20 +651,24 @@ fun PureBiliBiliTheme(
     val miuixTextStyles = remember(fontSizePreset) {
         defaultTextStyles().scaled(fontSizePreset.multiplier)
     }
-    val lightMaterialScheme = enforceDynamicLightTextContrast(
-        if (renderingProfile.useMaterialChrome) {
-            createMd3LightColorScheme(customPrimaryColor)
-        } else {
-            createLightColorScheme(customPrimaryColor)
-        }
+    val dynamicLightBaseScheme = if (isDynamicColorActive) dynamicLightColorScheme(context) else null
+    val dynamicDarkBaseScheme = if (isDynamicColorActive) dynamicDarkColorScheme(context) else null
+    val lightMaterialScheme = rememberKernelSuStyleColorScheme(
+        seedColor = customPrimaryColor,
+        darkTheme = false,
+        amoledDarkTheme = false,
+        paletteStyle = colorStyle,
+        colorSpec = colorSpec,
+        dynamicBaseScheme = dynamicLightBaseScheme
     )
-    val darkMaterialScheme = if (amoledDarkTheme) {
-        createAmoledDarkColorScheme(customPrimaryColor)
-    } else if (renderingProfile.useMaterialChrome) {
-        createMd3DarkColorScheme(customPrimaryColor)
-    } else {
-        createDarkColorScheme(customPrimaryColor)
-    }
+    val darkMaterialScheme = rememberKernelSuStyleColorScheme(
+        seedColor = customPrimaryColor,
+        darkTheme = true,
+        amoledDarkTheme = amoledDarkTheme,
+        paletteStyle = colorStyle,
+        colorSpec = colorSpec,
+        dynamicBaseScheme = dynamicDarkBaseScheme
+    )
 
     val staticMaterialScheme = if (darkTheme) darkMaterialScheme else lightMaterialScheme
     val miuixLightColors = remember(lightMaterialScheme) {
@@ -646,16 +700,7 @@ fun PureBiliBiliTheme(
             isDark = darkTheme
         )
     }
-    val materialColorScheme = if (isDynamicColorActive) {
-        if (darkTheme) {
-            val dynamicDark = dynamicDarkColorScheme(context)
-            if (amoledDarkTheme) applyAmoledSurfaceOverrides(dynamicDark) else dynamicDark
-        } else {
-            enforceDynamicLightTextContrast(dynamicLightColorScheme(context))
-        }
-    } else {
-        staticMaterialScheme
-    }
+    val materialColorScheme = staticMaterialScheme
 
     //  [新增] 动态设置状态栏图标颜色
     val view = LocalView.current

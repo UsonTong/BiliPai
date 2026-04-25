@@ -107,6 +107,24 @@ class VideoLoadRequestPolicyTest {
     }
 
     @Test
+    fun `related playurl preloading is disabled to avoid speculative video traffic`() {
+        assertEquals(
+            0,
+            resolveRelatedPlayUrlPreloadCount(
+                relatedCount = 12,
+                isWifi = true
+            )
+        )
+        assertEquals(
+            0,
+            resolveRelatedPlayUrlPreloadCount(
+                relatedCount = 12,
+                isWifi = false
+            )
+        )
+    }
+
+    @Test
     fun `source replacement keeps playback intent when player was still running`() {
         assertTrue(
             resolvePlaybackIntentForSourceReplacement(

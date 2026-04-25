@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.settings
 
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
+
 internal fun resolveThemeModeSegmentOptions(
     followSystemLabel: String = AppThemeMode.FOLLOW_SYSTEM.label,
     lightLabel: String = AppThemeMode.LIGHT.label,
@@ -10,6 +13,23 @@ internal fun resolveThemeModeSegmentOptions(
         PlaybackSegmentOption(AppThemeMode.LIGHT, lightLabel),
         PlaybackSegmentOption(AppThemeMode.DARK, darkLabel)
     )
+}
+
+internal fun resolveColorStyleOptions(): List<PlaybackSegmentOption<PaletteStyle>> {
+    return (listOf(PaletteStyle.TonalSpot) + PaletteStyle.entries.filterNot { it == PaletteStyle.TonalSpot })
+        .map { style ->
+            PlaybackSegmentOption(style, style.name)
+        }
+}
+
+internal fun resolveColorSpecOptions(): List<PlaybackSegmentOption<ColorSpec.SpecVersion>> {
+    return listOf(
+        ColorSpec.SpecVersion.SPEC_2021,
+        ColorSpec.SpecVersion.SPEC_2025,
+        ColorSpec.SpecVersion.Default
+    ).map { spec ->
+        PlaybackSegmentOption(spec, spec.name)
+    }
 }
 
 internal fun resolveDarkThemeStyleSegmentOptions(

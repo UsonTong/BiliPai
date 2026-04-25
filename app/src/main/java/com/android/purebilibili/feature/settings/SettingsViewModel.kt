@@ -19,6 +19,8 @@ import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.util.CacheClearTarget
 import com.android.purebilibili.core.util.CacheUtils
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +38,8 @@ data class SettingsUiState(
     val darkThemeStyle: DarkThemeStyle = DarkThemeStyle.DEFAULT,
     val appLanguage: AppLanguage = AppLanguage.FOLLOW_SYSTEM,
     val dynamicColor: Boolean = true,
+    val colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     val appUiScalePreset: AppUiScalePreset = AppUiScalePreset.STANDARD,
     val appDpiOverridePercent: Int = 0,
@@ -91,6 +95,8 @@ private data class CoreSettings(
     val darkThemeStyle: DarkThemeStyle,
     val appLanguage: AppLanguage,
     val dynamicColor: Boolean,
+    val colorStyle: PaletteStyle,
+    val colorSpec: ColorSpec.SpecVersion,
     val bgPlay: Boolean
 )
 
@@ -144,6 +150,8 @@ private data class BaseSettings(
     val darkThemeStyle: DarkThemeStyle,
     val appLanguage: AppLanguage,
     val dynamicColor: Boolean,
+    val colorStyle: PaletteStyle,
+    val colorSpec: ColorSpec.SpecVersion,
     val appFontSizePreset: AppFontSizePreset,
     val appUiScalePreset: AppUiScalePreset,
     val appDpiOverridePercent: Int,
@@ -203,6 +211,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getDarkThemeStyle(context).asAnyFlow(),
         SettingsManager.getAppLanguage(context).asAnyFlow(),
         SettingsManager.getDynamicColor(context).asAnyFlow(),
+        SettingsManager.getThemeColorStyle(context).asAnyFlow(),
+        SettingsManager.getThemeColorSpec(context).asAnyFlow(),
         SettingsManager.getBgPlay(context).asAnyFlow()
     ) { values ->
         CoreSettings(
@@ -213,7 +223,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             darkThemeStyle = values[4] as DarkThemeStyle,
             appLanguage = values[5] as AppLanguage,
             dynamicColor = values[6] as Boolean,
-            bgPlay = values[7] as Boolean
+            colorStyle = values[7] as PaletteStyle,
+            colorSpec = values[8] as ColorSpec.SpecVersion,
+            bgPlay = values[9] as Boolean
         )
     }
     
@@ -398,6 +410,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             darkThemeStyle = core.darkThemeStyle,
             appLanguage = core.appLanguage,
             dynamicColor = core.dynamicColor,
+            colorStyle = core.colorStyle,
+            colorSpec = core.colorSpec,
             appFontSizePreset = extra.appFontSizePreset,
             appUiScalePreset = extra.appUiScalePreset,
             appDpiOverridePercent = extra.appDpiOverridePercent,
@@ -448,6 +462,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             darkThemeStyle = settings.darkThemeStyle,
             appLanguage = settings.appLanguage,
             dynamicColor = settings.dynamicColor,
+            colorStyle = settings.colorStyle,
+            colorSpec = settings.colorSpec,
             appFontSizePreset = settings.appFontSizePreset,
             appUiScalePreset = settings.appUiScalePreset,
             appDpiOverridePercent = settings.appDpiOverridePercent,
@@ -548,6 +564,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     fun toggleDynamicColor(value: Boolean) { viewModelScope.launch { SettingsManager.setDynamicColor(context, value) } }
+    fun setThemeColorStyle(style: PaletteStyle) {
+        viewModelScope.launch { SettingsManager.setThemeColorStyle(context, style) }
+    }
+    fun setThemeColorSpec(spec: ColorSpec.SpecVersion) {
+        viewModelScope.launch { SettingsManager.setThemeColorSpec(context, spec) }
+    }
     fun setAppFontSizePreset(preset: AppFontSizePreset) {
         viewModelScope.launch { SettingsManager.setAppFontSizePreset(context, preset) }
     }

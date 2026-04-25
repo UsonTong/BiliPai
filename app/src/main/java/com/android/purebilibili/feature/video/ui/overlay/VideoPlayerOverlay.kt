@@ -101,7 +101,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.compose.currentStateAsState
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionModuleState
 import com.android.purebilibili.feature.video.playback.session.PendingPlaybackUserAction
 import dev.chrisbanes.haze.HazeState
 
@@ -362,9 +361,6 @@ fun VideoPlayerOverlay(
     onDanmakuSyncNowClick: () -> Unit = {},
     subtitleControlState: SubtitleControlUiState = SubtitleControlUiState(),
     subtitleControlCallbacks: SubtitleControlCallbacks = SubtitleControlCallbacks(),
-    smartOcclusionModuleState: FaceOcclusionModuleState = FaceOcclusionModuleState.Checking,
-    smartOcclusionDownloadProgress: Int? = null,
-    onDanmakuSmartOcclusionDownloadClick: () -> Unit = {},
     //  [实验性功能] 双击点赞
     doubleTapLikeEnabled: Boolean = true,
     onDoubleTapLike: () -> Unit = {},
@@ -1547,8 +1543,6 @@ fun VideoPlayerOverlay(
                 fullscreenWidthMode = danmakuFullscreenPanelWidthMode,
                 showSyncSection = showDanmakuSyncSection,
                 syncUiState = danmakuSyncUiState,
-                smartOcclusionModuleState = smartOcclusionModuleState,
-                smartOcclusionDownloadProgress = smartOcclusionDownloadProgress,
                 onOpacityChange = onDanmakuOpacityChange,
                 onFontScaleChange = onDanmakuFontScaleChange,
                 onFontWeightChange = onDanmakuFontWeightChange,
@@ -1571,7 +1565,6 @@ fun VideoPlayerOverlay(
                 onSmartOcclusionChange = onDanmakuSmartOcclusionChange,
                 onFullscreenWidthModeChange = onDanmakuFullscreenPanelWidthModeChange,
                 onSyncNowClick = onDanmakuSyncNowClick,
-                onSmartOcclusionDownloadClick = onDanmakuSmartOcclusionDownloadClick,
                 onDismiss = { showDanmakuSettings = false }
             )
         }

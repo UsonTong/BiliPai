@@ -299,6 +299,15 @@ internal fun resolvePlaybackQualityModeForQualitySelection(qualityId: Int): Play
     return PlaybackQualityMode.fromQualityId(qualityId)
 }
 
+internal fun resolveRelatedPlayUrlPreloadCount(
+    relatedCount: Int,
+    isWifi: Boolean
+): Int {
+    if (relatedCount <= 0 || !isWifi) return 0
+    // Avoid speculative playurl/detail requests for videos the user has not opened.
+    return 0
+}
+
 internal fun resolvePlaybackIntentForSourceReplacement(
     playWhenReady: Boolean,
     isPlaying: Boolean
@@ -2450,8 +2459,13 @@ class PlayerViewModel : ViewModel() {
             Logger.d("PlayerVM", "🎵 播放列表已重置: 1 + ${relatedItems.size} 项")
         }
         
-        // 首播优先：仅在 Wi-Fi 下预加载 1 条，避免与当前视频抢带宽。
-        preloadRelatedPlayUrls(related.take(1))
+        val preloadCount = resolveRelatedPlayUrlPreloadCount(
+            relatedCount = related.size,
+            isWifi = appContext?.let { NetworkUtils.isWifi(it) } ?: false
+        )
+        if (preloadCount > 0) {
+            preloadRelatedPlayUrls(related.take(preloadCount))
+        }
     }
     
     /**

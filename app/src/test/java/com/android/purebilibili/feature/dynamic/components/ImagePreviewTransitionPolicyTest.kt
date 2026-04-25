@@ -47,7 +47,7 @@ class ImagePreviewTransitionPolicyTest {
     fun imagePreviewDismissMotion_returnsOvershootThenSettleTargets() {
         val motion = imagePreviewDismissMotion()
 
-        assertEquals(-0.06f, motion.overshootTarget)
+        assertEquals(0f, motion.overshootTarget)
         assertEquals(0f, motion.settleTarget)
     }
 
@@ -249,6 +249,30 @@ class ImagePreviewTransitionPolicyTest {
         )
 
         assertEquals(previewSurface, startRect)
+    }
+
+    @Test
+    fun resolveImagePreviewDismissStartRect_prefersDisplayedImageForSmoothDefaultDismiss() {
+        val previewSurface = Rect(
+            left = 0f,
+            top = 0f,
+            right = 1080f,
+            bottom = 2400f
+        )
+        val displayed = Rect(
+            left = 120f,
+            top = 320f,
+            right = 960f,
+            bottom = 1760f
+        )
+
+        val startRect = resolveImagePreviewDismissStartRect(
+            previewSurfaceRect = previewSurface,
+            displayedImageRect = displayed,
+            preferPreviewSurface = false
+        )
+
+        assertEquals(displayed, startRect)
     }
 
     @Test

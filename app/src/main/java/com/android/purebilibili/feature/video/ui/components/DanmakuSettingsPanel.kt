@@ -6,11 +6,9 @@ import com.android.purebilibili.core.store.DanmakuSettingsScope
 import com.android.purebilibili.feature.video.danmaku.DanmakuBlockRuleSections
 import com.android.purebilibili.feature.video.danmaku.DanmakuCloudSyncStatus
 import com.android.purebilibili.feature.video.danmaku.DanmakuCloudSyncUiState
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionModuleState
 import com.android.purebilibili.feature.video.danmaku.mergeDanmakuBlockRuleSections
 import com.android.purebilibili.feature.video.danmaku.parseDanmakuBlockRules
 import com.android.purebilibili.feature.video.danmaku.partitionDanmakuBlockRules
-import com.android.purebilibili.feature.video.danmaku.resolveFaceOcclusionModuleUiState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -272,14 +270,12 @@ fun DanmakuSettingsPanel(
     allowColorful: Boolean = true,
     allowSpecial: Boolean = true,
     showBlockRuleEditor: Boolean = false,
-    showSmartOcclusionSection: Boolean = true,
+    showSmartOcclusionSection: Boolean = false,
     showSyncSection: Boolean = false,
     blockRulesRaw: String = "",
     smartOcclusion: Boolean = true,
     fullscreenWidthMode: DanmakuPanelWidthMode = DanmakuPanelWidthMode.THIRD,
     syncUiState: DanmakuCloudSyncUiState = DanmakuCloudSyncUiState(),
-    smartOcclusionModuleState: FaceOcclusionModuleState = FaceOcclusionModuleState.Checking,
-    smartOcclusionDownloadProgress: Int? = null,
     onOpacityChange: (Float) -> Unit,
     onFontScaleChange: (Float) -> Unit,
     onFontWeightChange: (Int) -> Unit = {},
@@ -302,7 +298,6 @@ fun DanmakuSettingsPanel(
     onSmartOcclusionChange: (Boolean) -> Unit = {},
     onFullscreenWidthModeChange: (DanmakuPanelWidthMode) -> Unit = {},
     onSyncNowClick: () -> Unit = {},
-    onSmartOcclusionDownloadClick: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var showBlockManager by remember { mutableStateOf(false) }
@@ -330,12 +325,6 @@ fun DanmakuSettingsPanel(
             screenWidthDp = configuration.screenWidthDp,
             screenHeightDp = configuration.screenHeightDp,
             fullscreenWidthMode = fullscreenWidthMode
-        )
-    }
-    val moduleUiState = remember(smartOcclusionModuleState, smartOcclusionDownloadProgress) {
-        resolveFaceOcclusionModuleUiState(
-            state = smartOcclusionModuleState,
-            progressPercent = smartOcclusionDownloadProgress
         )
     }
     Dialog(
@@ -810,54 +799,6 @@ fun DanmakuSettingsPanel(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (showSmartOcclusionSection) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = panelColors.itemColor,
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "人脸模型",
-                                        color = panelColors.titleColor,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = moduleUiState.statusText,
-                                        color = panelColors.supportingColor,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                                if (moduleUiState.showAction) {
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Button(
-                                        onClick = onSmartOcclusionDownloadClick,
-                                        enabled = moduleUiState.isActionEnabled,
-                                        shape = RoundedCornerShape(10.dp),
-                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = moduleUiState.actionText,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-    
-                        Spacer(modifier = Modifier.height(16.dp))
-    
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = panelColors.itemColor,

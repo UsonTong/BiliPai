@@ -366,7 +366,7 @@ private fun ImagePreviewOverlayContent(
                 startRect: androidx.compose.ui.geometry.Rect? = resolveImagePreviewDismissStartRect(
                     previewSurfaceRect = previewSurfaceRect,
                     displayedImageRect = currentImageDisplayRect,
-                    preferPreviewSurface = true
+                    preferPreviewSurface = false
                 )
             ) {
                 if (isDismissing) return
@@ -376,14 +376,21 @@ private fun ImagePreviewOverlayContent(
                 scope.launch {
                     verticalDismissOffsetYPx.snapTo(0f)
                     val dismissMotion = imagePreviewDismissMotion()
-                    animateTrigger.animateTo(
-                        targetValue = dismissMotion.overshootTarget,
-                        animationSpec = emphasizedExitTween(durationMillis = 240)
-                    )
-                    animateTrigger.animateTo(
-                        targetValue = dismissMotion.settleTarget,
-                        animationSpec = expressiveSnapSpring()
-                    )
+                    if (dismissMotion.overshootTarget != dismissMotion.settleTarget) {
+                        animateTrigger.animateTo(
+                            targetValue = dismissMotion.overshootTarget,
+                            animationSpec = emphasizedExitTween(durationMillis = 240)
+                        )
+                        animateTrigger.animateTo(
+                            targetValue = dismissMotion.settleTarget,
+                            animationSpec = expressiveSnapSpring()
+                        )
+                    } else {
+                        animateTrigger.animateTo(
+                            targetValue = dismissMotion.settleTarget,
+                            animationSpec = emphasizedExitTween(durationMillis = 220)
+                        )
+                    }
                     onDismiss()
                 }
             }

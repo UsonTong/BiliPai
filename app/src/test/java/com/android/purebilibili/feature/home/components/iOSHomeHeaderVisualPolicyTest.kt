@@ -786,7 +786,7 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `ios unified home header removes local glass panel while preserving top backdrop blur`() {
+    fun `ios unified home header keeps outer panel transparent while inner controls own blur`() {
         assertEquals(
             HomeTopChromeRenderMode.PLAIN,
             resolveHomeTopPanelChromeRenderMode(
@@ -805,9 +805,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `ios unified home header uses inset search styling instead of standalone blur pill`() {
+    fun `ios unified home header keeps search blur when blur is enabled`() {
         assertEquals(
-            HomeTopChromeRenderMode.PLAIN,
+            HomeTopChromeRenderMode.BLUR,
             resolveHomeTopSearchChromeRenderMode(
                 renderMode = HomeTopChromeRenderMode.BLUR,
                 uiPreset = UiPreset.IOS,
@@ -837,9 +837,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `md3 unified home header also keeps search blur on the outer panel`() {
+    fun `md3 unified home header also keeps search blur on the search pill`() {
         assertEquals(
-            HomeTopChromeRenderMode.PLAIN,
+            HomeTopChromeRenderMode.BLUR,
             resolveHomeTopSearchChromeRenderMode(
                 renderMode = HomeTopChromeRenderMode.BLUR,
                 uiPreset = UiPreset.MD3,

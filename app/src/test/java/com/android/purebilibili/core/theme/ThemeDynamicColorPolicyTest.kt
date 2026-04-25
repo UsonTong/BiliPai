@@ -2,6 +2,8 @@ package com.android.purebilibili.core.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import com.android.purebilibili.feature.settings.AppThemeMode
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
@@ -12,23 +14,23 @@ import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 class ThemeDynamicColorPolicyTest {
 
     @Test
-    fun `dynamic color follows miuix monet modes for each app theme mode`() {
+    fun `dynamic color keeps miuix bridge on explicit resolved colors`() {
         assertEquals(
-            ColorSchemeMode.MonetSystem,
+            ColorSchemeMode.System,
             resolveMiuixColorSchemeMode(
                 themeMode = AppThemeMode.FOLLOW_SYSTEM,
                 dynamicColorEnabled = true
             )
         )
         assertEquals(
-            ColorSchemeMode.MonetLight,
+            ColorSchemeMode.Light,
             resolveMiuixColorSchemeMode(
                 themeMode = AppThemeMode.LIGHT,
                 dynamicColorEnabled = true
             )
         )
         assertEquals(
-            ColorSchemeMode.MonetDark,
+            ColorSchemeMode.Dark,
             resolveMiuixColorSchemeMode(
                 themeMode = AppThemeMode.DARK,
                 dynamicColorEnabled = true
@@ -58,6 +60,23 @@ class ThemeDynamicColorPolicyTest {
                 themeMode = AppThemeMode.DARK,
                 dynamicColorEnabled = false
             )
+        )
+    }
+
+    @Test
+    fun `color style preference defaults to tonal spot and rejects invalid values`() {
+        assertEquals(PaletteStyle.TonalSpot, resolvePaletteStylePreference(null))
+        assertEquals(PaletteStyle.TonalSpot, resolvePaletteStylePreference("not-a-style"))
+        assertEquals(PaletteStyle.Vibrant, resolvePaletteStylePreference(PaletteStyle.Vibrant.name))
+    }
+
+    @Test
+    fun `color spec preference defaults to spec 2021 and rejects invalid values`() {
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, resolveColorSpecPreference(null))
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, resolveColorSpecPreference("not-a-spec"))
+        assertEquals(
+            ColorSpec.SpecVersion.SPEC_2025,
+            resolveColorSpecPreference(ColorSpec.SpecVersion.SPEC_2025.name)
         )
     }
 

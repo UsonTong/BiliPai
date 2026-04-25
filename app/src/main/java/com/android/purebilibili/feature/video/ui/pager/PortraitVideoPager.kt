@@ -106,13 +106,6 @@ import com.android.purebilibili.data.model.response.Stat
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.danmaku.DanmakuManager
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionDanmakuContainer
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionMaskStabilizer
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionModuleState
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionVisualMask
-import com.android.purebilibili.feature.video.danmaku.checkFaceOcclusionModuleState
-import com.android.purebilibili.feature.video.danmaku.createFaceOcclusionDetector
-import com.android.purebilibili.feature.video.danmaku.detectFaceOcclusionRegions
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.session.PlaybackSeekSessionState
 import com.android.purebilibili.feature.video.playback.session.SEEK_PLAYBACK_RECOVERY_DELAY_MS
@@ -138,14 +131,13 @@ import com.android.purebilibili.feature.video.viewmodel.PlayerViewModel
 import com.android.purebilibili.feature.video.viewmodel.VideoCommentViewModel
 import com.android.purebilibili.feature.video.viewmodel.resolvePlaybackCompletionRepeatMode
 import com.android.purebilibili.feature.video.viewmodel.resolvePlaybackEndAction
+import com.bytedance.danmaku.render.engine.DanmakuView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 internal data class PortraitVideoInteractionOverride(
@@ -223,19 +215,6 @@ fun PortraitVideoPager(
     val danmakuAllowSpecial = danmakuSettings.allowSpecial
     val danmakuBlockRules = danmakuSettings.blockRules
     val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
-    val faceDetector = remember { createFaceOcclusionDetector() }
-    var smartOcclusionModuleState by remember { mutableStateOf(FaceOcclusionModuleState.Checking) }
-    DisposableEffect(faceDetector) {
-        onDispose { faceDetector.close() }
-    }
-    LaunchedEffect(faceDetector, danmakuSmartOcclusion) {
-        if (!danmakuSmartOcclusion) {
-            smartOcclusionModuleState = FaceOcclusionModuleState.NotInstalled
-            return@LaunchedEffect
-        }
-        smartOcclusionModuleState = FaceOcclusionModuleState.Checking
-        smartOcclusionModuleState = checkFaceOcclusionModuleState(context, faceDetector)
-    }
     val autoPlayEnabled by SettingsManager
         .getAutoPlay(context)
         .collectAsState(initial = true)
@@ -895,8 +874,6 @@ fun PortraitVideoPager(
                 danmakuManager = danmakuManager,
                 danmakuEnabled = danmakuEnabled,
                 danmakuSmartOcclusion = danmakuSmartOcclusion,
-                faceDetector = faceDetector,
-                smartOcclusionModuleState = smartOcclusionModuleState,
                 onExitSnapshot = onExitSnapshot,
                 onSearchClick = onSearchClick,
                 onUserClick = handleUserClick,
@@ -951,8 +928,6 @@ private fun VideoPageItem(
     danmakuManager: DanmakuManager,
     danmakuEnabled: Boolean,
     danmakuSmartOcclusion: Boolean,
-    faceDetector: com.google.mlkit.vision.face.FaceDetector,
-    smartOcclusionModuleState: FaceOcclusionModuleState,
     onExitSnapshot: (String, Long, Long) -> Unit,
     onSearchClick: () -> Unit,
     onUserClick: (Long) -> Unit,
@@ -970,8 +945,6 @@ private fun VideoPageItem(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
-    var faceVisualMasks by remember { mutableStateOf(emptyList<FaceOcclusionVisualMask>()) }
-    val faceMaskStabilizer = remember { FaceOcclusionMaskStabilizer() }
     val longPressSpeed by SettingsManager
         .getLongPressSpeed(context)
         .collectAsState(initial = 2.0f)
@@ -1296,59 +1269,6 @@ private fun VideoPageItem(
         onCurrentPageScaleChange(if (isCurrentPage) scale else 1f)
     }
 
-    LaunchedEffect(
-        playerViewRef,
-        isCurrentPage,
-        isPlayerReadyForThisVideo,
-        danmakuEnabled,
-        danmakuSmartOcclusion,
-        smartOcclusionModuleState
-    ) {
-        if (
-            !isCurrentPage ||
-            !isPlayerReadyForThisVideo ||
-            !danmakuEnabled ||
-            !danmakuSmartOcclusion ||
-            smartOcclusionModuleState != FaceOcclusionModuleState.Ready
-        ) {
-            faceMaskStabilizer.reset()
-            faceVisualMasks = emptyList()
-            return@LaunchedEffect
-        }
-        faceMaskStabilizer.reset()
-
-        while (isActive) {
-            val view = playerViewRef
-            if (view == null || view.width <= 0 || view.height <= 0 || !exoPlayer.isPlaying) {
-                delay(1200L)
-                continue
-            }
-
-            val videoWidth = exoPlayer.videoSize.width
-            val videoHeight = exoPlayer.videoSize.height
-            val sampleWidth = 480
-            val sampleHeight = when {
-                videoWidth > 0 && videoHeight > 0 -> (sampleWidth * videoHeight / videoWidth).coerceIn(270, 960)
-                else -> 270
-            }
-
-            val detection = withTimeoutOrNull(1_500L) {
-                detectFaceOcclusionRegions(
-                    playerView = view,
-                    sampleWidth = sampleWidth,
-                    sampleHeight = sampleHeight,
-                    detector = faceDetector
-                )
-            } ?: com.android.purebilibili.feature.video.danmaku.FaceOcclusionDetectionResult(
-                verticalRegions = emptyList(),
-                maskRects = emptyList(),
-                visualMasks = emptyList()
-            )
-            faceVisualMasks = faceMaskStabilizer.step(detection.visualMasks)
-            delay(if (detection.visualMasks.isEmpty()) 1300L else 900L)
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1546,7 +1466,6 @@ private fun VideoPageItem(
                         if (danmakuEnabled && danmakuSurfaceMode == PortraitDanmakuSurfaceMode.VideoViewport) {
                             PortraitDanmakuOverlay(
                                 danmakuManager = danmakuManager,
-                                faceVisualMasks = faceVisualMasks,
                                 videoWidth = exoPlayer.videoSize.width,
                                 videoHeight = exoPlayer.videoSize.height,
                                 resizeMode = playerViewRef?.resizeMode ?: resolvePortraitPagerResizeMode(),
@@ -1566,7 +1485,6 @@ private fun VideoPageItem(
         ) {
             PortraitDanmakuOverlay(
                 danmakuManager = danmakuManager,
-                faceVisualMasks = faceVisualMasks,
                 videoWidth = exoPlayer.videoSize.width,
                 videoHeight = exoPlayer.videoSize.height,
                 resizeMode = playerViewRef?.resizeMode ?: resolvePortraitPagerResizeMode(),
@@ -2213,7 +2131,6 @@ internal fun resolvePortraitVideoInteractionUiState(
 @Composable
 private fun PortraitDanmakuOverlay(
     danmakuManager: DanmakuManager,
-    faceVisualMasks: List<FaceOcclusionVisualMask>,
     videoWidth: Int,
     videoHeight: Int,
     resizeMode: Int,
@@ -2221,31 +2138,17 @@ private fun PortraitDanmakuOverlay(
 ) {
     AndroidView(
         factory = { ctx ->
-            FaceOcclusionDanmakuContainer(ctx).apply {
-                setMasks(faceVisualMasks)
-                setVideoViewport(
-                    videoWidth = videoWidth,
-                    videoHeight = videoHeight,
-                    resizeMode = resizeMode
-                )
-                danmakuManager.attachView(danmakuView())
+            DanmakuView(ctx).apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                danmakuManager.attachView(this)
             }
         },
-        update = { container ->
-            container.setMasks(faceVisualMasks)
-            container.setVideoViewport(
-                videoWidth = videoWidth,
-                videoHeight = videoHeight,
-                resizeMode = resizeMode
-            )
-            val view = container.danmakuView()
-            if (view.width > 0 && view.height > 0) {
-                val sizeTag = "${view.width}x${view.height}"
-                if (view.tag != sizeTag) {
-                    view.tag = sizeTag
-                    danmakuManager.attachView(view)
+        update = { view ->
+            val viewportTag = "$videoWidth:$videoHeight:$resizeMode:${view.width}x${view.height}"
+            if (view.width > 0 && view.height > 0 && view.tag != viewportTag) {
+                view.tag = viewportTag
+                danmakuManager.attachView(view)
                 }
-            }
         },
         modifier = modifier
     )

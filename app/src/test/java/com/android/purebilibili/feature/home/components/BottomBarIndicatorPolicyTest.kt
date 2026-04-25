@@ -183,11 +183,30 @@ class BottomBarIndicatorPolicyTest {
             configuredAlpha = 0.12f
         )
 
-        assertTrue(alpha >= 0.22f)
+        assertTrue(alpha >= 0.32f)
     }
 
     @Test
-    fun `moving refraction profile adds panel offset and suppresses visible emphasis`() {
+    fun `ios neutral moving indicator keeps visible theme tint`() {
+        val themeColor = Color(0xFFFF6F6F)
+        val color = resolveIosFloatingBottomIndicatorColor(
+            themeColor = themeColor,
+            isDarkTheme = false,
+            visualPolicy = BottomBarIndicatorVisualPolicy(
+                isInMotion = true,
+                shouldRefract = true,
+                useNeutralTint = true
+            ),
+            liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.2f)
+        )
+        val neutral = resolveIos26BottomIndicatorGrayColor(isDarkTheme = false)
+
+        assertTrue(color.red > neutral.red)
+        assertTrue(color.green < neutral.green)
+    }
+
+    @Test
+    fun `moving refraction profile adds panel offset and keeps low theme emphasis`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 1.32f,
             velocity = 860f,
@@ -199,12 +218,14 @@ class BottomBarIndicatorPolicyTest {
         assertTrue(profile.indicatorPanelOffsetFraction > profile.exportPanelOffsetFraction)
         assertTrue(profile.visiblePanelOffsetFraction > 0f)
         assertTrue(profile.forceChromaticAberration)
-        assertTrue(profile.visibleSelectionEmphasis < 1f)
-        assertTrue(profile.visibleSelectionEmphasis >= 0.68f)
-        assertTrue(profile.exportSelectionEmphasis < 1f)
+        assertTrue(profile.visibleSelectionEmphasis > 0.22f)
+        assertTrue(profile.visibleSelectionEmphasis < 0.52f)
+        assertTrue(profile.exportSelectionEmphasis > 0.45f)
+        assertTrue(profile.exportSelectionEmphasis < 0.72f)
         assertEquals(1f, profile.exportCaptureWidthScale)
         assertTrue(profile.indicatorLensAmountScale > 1f)
         assertTrue(profile.indicatorLensHeightScale > 1f)
+        assertTrue(profile.chromaticBoostScale > 1.4f)
     }
 
     @Test
@@ -225,6 +246,64 @@ class BottomBarIndicatorPolicyTest {
         assertEquals(1f, profile.exportCaptureWidthScale)
         assertEquals(1f, profile.indicatorLensAmountScale)
         assertEquals(1f, profile.indicatorLensHeightScale)
+        assertEquals(1f, profile.chromaticBoostScale)
+    }
+
+    @Test
+    fun `sliding item visuals follow indicator instead of fixed selected tab`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+
+        assertTrue(dynamic.themeWeight > home.themeWeight)
+        assertTrue(dynamic.scale > home.scale)
+    }
+
+    @Test
+    fun `sliding item scale only affects indicator neighbors`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.5f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.5f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val history = resolveBottomBarItemMotionVisual(
+            itemIndex = 2,
+            indicatorPosition = 0.5f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val profile = resolveBottomBarRefractionMotionProfile(
+            position = 0.5f,
+            velocity = 620f,
+            isDragging = true
+        )
+
+        assertTrue(home.scale > 1f)
+        assertTrue(dynamic.scale > 1f)
+        assertEquals(1f, history.scale)
+        assertEquals(0f, history.themeWeight)
+        assertTrue(profile.progress > 0f)
     }
 
     @Test
@@ -272,7 +351,7 @@ class BottomBarIndicatorPolicyTest {
             configuredAlpha = 0.14f
         )
 
-        assertTrue(alpha >= 0.32f)
+        assertTrue(alpha >= 0.42f)
     }
 
     @Test

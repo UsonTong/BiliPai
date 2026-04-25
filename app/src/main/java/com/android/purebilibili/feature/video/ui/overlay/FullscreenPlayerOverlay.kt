@@ -1,14 +1,6 @@
 // 文件路径: feature/video/FullscreenPlayerOverlay.kt
 package com.android.purebilibili.feature.video.ui.overlay
 
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionDanmakuContainer
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionMaskStabilizer
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionModuleState
-import com.android.purebilibili.feature.video.danmaku.FaceOcclusionVisualMask
-import com.android.purebilibili.feature.video.danmaku.checkFaceOcclusionModuleState
-import com.android.purebilibili.feature.video.danmaku.createFaceOcclusionDetector
-import com.android.purebilibili.feature.video.danmaku.detectFaceOcclusionRegions
-import com.android.purebilibili.feature.video.danmaku.installFaceOcclusionModule
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.policy.shouldHoldPlaybackTransitionPosition
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
@@ -18,6 +10,7 @@ import com.android.purebilibili.feature.video.ui.section.shouldCommitGestureSeek
 import com.android.purebilibili.feature.video.ui.section.shouldKeepVideoPlaybackAwake
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
+import com.bytedance.danmaku.render.engine.DanmakuView
 
 import android.app.Activity
 import android.content.Context
@@ -92,7 +85,6 @@ import androidx.lifecycle.compose.currentStateAsState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.withTimeoutOrNull
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 
@@ -204,10 +196,6 @@ fun FullscreenPlayerOverlay(
             } ?: false
         )
     }
-    var faceVisualMasks by remember { mutableStateOf(emptyList<FaceOcclusionVisualMask>()) }
-    val faceMaskStabilizer = remember { FaceOcclusionMaskStabilizer() }
-    var smartOcclusionModuleState by remember { mutableStateOf(FaceOcclusionModuleState.Checking) }
-    var smartOcclusionDownloadProgress by remember { mutableStateOf<Int?>(null) }
     //  共享弹幕管理器（横竖屏切换保持状态，同时可用于手势 seek 同步）
     val danmakuManager = rememberDanmakuManager()
 
@@ -657,19 +645,6 @@ fun FullscreenPlayerOverlay(
         val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
         val danmakuBlockRulesRaw = danmakuSettings.blockRulesRaw
         val danmakuBlockRules = danmakuSettings.blockRules
-        val faceDetector = remember { createFaceOcclusionDetector() }
-        DisposableEffect(faceDetector) {
-            onDispose {
-                faceDetector.close()
-            }
-        }
-
-        LaunchedEffect(faceDetector) {
-            smartOcclusionModuleState = FaceOcclusionModuleState.Checking
-            smartOcclusionDownloadProgress = null
-            smartOcclusionModuleState = checkFaceOcclusionModuleState(context, faceDetector)
-        }
-        
         //  获取当前 cid 并加载弹幕
         val currentCid = miniPlayerManager.currentCid
         LaunchedEffect(currentCid, danmakuEnabled, player) {
@@ -723,57 +698,6 @@ fun FullscreenPlayerOverlay(
             )
         }
 
-        LaunchedEffect(
-            playerViewRef,
-            player,
-            faceDetector,
-            danmakuEnabled,
-            danmakuSmartOcclusion,
-            smartOcclusionModuleState
-        ) {
-            if (
-                !danmakuEnabled ||
-                !danmakuSmartOcclusion ||
-                smartOcclusionModuleState != FaceOcclusionModuleState.Ready
-            ) {
-                faceMaskStabilizer.reset()
-                faceVisualMasks = emptyList()
-                return@LaunchedEffect
-            }
-            faceMaskStabilizer.reset()
-            while (isActive) {
-                val view = playerViewRef
-                val exoPlayer = player
-                if (view == null || exoPlayer == null || !exoPlayer.isPlaying || view.width <= 0 || view.height <= 0) {
-                    delay(1200L)
-                    continue
-                }
-
-                val videoWidth = exoPlayer.videoSize.width
-                val videoHeight = exoPlayer.videoSize.height
-                val sampleWidth = 480
-                val sampleHeight = when {
-                    videoWidth > 0 && videoHeight > 0 -> (sampleWidth * videoHeight / videoWidth).coerceIn(270, 960)
-                    else -> 270
-                }
-
-                val detection = withTimeoutOrNull(1_500L) {
-                    detectFaceOcclusionRegions(
-                        playerView = view,
-                        sampleWidth = sampleWidth,
-                        sampleHeight = sampleHeight,
-                        detector = faceDetector
-                    )
-                } ?: com.android.purebilibili.feature.video.danmaku.FaceOcclusionDetectionResult(
-                    verticalRegions = emptyList(),
-                    maskRects = emptyList(),
-                    visualMasks = emptyList()
-                )
-                faceVisualMasks = faceMaskStabilizer.step(detection.visualMasks)
-                delay(if (detection.visualMasks.isEmpty()) 1300L else 900L)
-            }
-        }
-        
         //  绑定 Player（不在 onDispose 中释放，单例会保持状态）
         //  [修复] 移除 detachView 调用，避免横竖屏切换时弹幕消失
         // attachView 会自动暂停旧视图，不需要手动 detach
@@ -847,25 +771,13 @@ fun FullscreenPlayerOverlay(
                 if (danmakuEnabled) {
                     AndroidView(
                         factory = { ctx ->
-                            FaceOcclusionDanmakuContainer(ctx).apply {
-                                setMasks(faceVisualMasks)
-                                setVideoViewport(
-                                    videoWidth = exoPlayer.videoSize.width,
-                                    videoHeight = exoPlayer.videoSize.height,
-                                    resizeMode = aspectRatio.playerResizeMode
-                                )
-                                danmakuManager.attachView(danmakuView())
+                            DanmakuView(ctx).apply {
+                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                danmakuManager.attachView(this)
                                 com.android.purebilibili.core.util.Logger.d("FullscreenDanmaku", " DanmakuView (RenderEngine) created for fullscreen")
                             }
                         },
-                        update = { container ->
-                            container.setMasks(faceVisualMasks)
-                            container.setVideoViewport(
-                                videoWidth = exoPlayer.videoSize.width,
-                                videoHeight = exoPlayer.videoSize.height,
-                                resizeMode = aspectRatio.playerResizeMode
-                            )
-                            val view = container.danmakuView()
+                        update = { view ->
                             if (view.width > 0 && view.height > 0) {
                                 val sizeTag = "${view.width}x${view.height}"
                                 if (view.tag != sizeTag) {
@@ -1137,8 +1049,6 @@ fun FullscreenPlayerOverlay(
                 blockRulesRaw = localBlockRulesRaw,
                 smartOcclusion = localSmartOcclusion,
                 fullscreenWidthMode = localFullscreenPanelWidthMode,
-                smartOcclusionModuleState = smartOcclusionModuleState,
-                smartOcclusionDownloadProgress = smartOcclusionDownloadProgress,
                 onOpacityChange = { 
                     localOpacity = it
                     danmakuManager.opacity = it
@@ -1196,24 +1106,6 @@ fun FullscreenPlayerOverlay(
                 onFullscreenWidthModeChange = {
                     localFullscreenPanelWidthMode = it
                     scope.launch { SettingsManager.setDanmakuFullscreenPanelWidthMode(context, it) }
-                },
-                onSmartOcclusionDownloadClick = {
-                    if (smartOcclusionModuleState != FaceOcclusionModuleState.Downloading) {
-                        scope.launch {
-                            smartOcclusionModuleState = FaceOcclusionModuleState.Downloading
-                            smartOcclusionDownloadProgress = 0
-                            smartOcclusionModuleState = installFaceOcclusionModule(
-                                context = context,
-                                detector = faceDetector,
-                                onProgress = { progress ->
-                                    smartOcclusionDownloadProgress = progress
-                                }
-                            )
-                            if (smartOcclusionModuleState != FaceOcclusionModuleState.Downloading) {
-                                smartOcclusionDownloadProgress = null
-                            }
-                        }
-                    }
                 },
                 onDismiss = { showDanmakuSettings = false }
             )

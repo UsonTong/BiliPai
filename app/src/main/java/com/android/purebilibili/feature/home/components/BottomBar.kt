@@ -50,8 +50,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer  //  晃动动画
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -545,8 +545,45 @@ internal data class BottomBarRefractionMotionProfile(
     val exportCaptureWidthScale: Float,
     val forceChromaticAberration: Boolean,
     val indicatorLensAmountScale: Float,
-    val indicatorLensHeightScale: Float
+    val indicatorLensHeightScale: Float,
+    val chromaticBoostScale: Float
 )
+
+internal data class BottomBarItemMotionVisual(
+    val themeWeight: Float,
+    val scale: Float,
+    val useSelectedIcon: Boolean
+)
+
+internal fun resolveBottomBarItemMotionVisual(
+    itemIndex: Int,
+    indicatorPosition: Float,
+    currentSelectedIndex: Int,
+    motionProgress: Float,
+    selectionEmphasis: Float,
+    maxScale: Float = 1.2f
+): BottomBarItemMotionVisual {
+    val normalizedMotionProgress = motionProgress.coerceIn(0f, 1f)
+    val indicatorWeight = (1f - abs(itemIndex.toFloat() - indicatorPosition)).coerceIn(0f, 1f)
+    val isIdle = normalizedMotionProgress <= 0f
+    val idleSelected = itemIndex == currentSelectedIndex
+    val themeWeight = if (isIdle) {
+        if (idleSelected) 1f else 0f
+    } else {
+        indicatorWeight * selectionEmphasis.coerceIn(0f, 1f)
+    }
+    val scale = if (isIdle) {
+        1f
+    } else {
+        lerp(1f, maxScale, indicatorWeight * normalizedMotionProgress)
+    }
+
+    return BottomBarItemMotionVisual(
+        themeWeight = themeWeight,
+        scale = scale,
+        useSelectedIcon = if (isIdle) idleSelected else indicatorWeight >= 0.5f
+    )
+}
 
 internal fun resolveBottomBarIndicatorVisualPolicy(
     position: Float,
@@ -606,7 +643,8 @@ internal fun resolveBottomBarRefractionMotionProfile(
             exportCaptureWidthScale = 1f,
             forceChromaticAberration = false,
             indicatorLensAmountScale = 1f,
-            indicatorLensHeightScale = 1f
+            indicatorLensHeightScale = 1f,
+            chromaticBoostScale = 1f
         )
     }
 
@@ -623,12 +661,13 @@ internal fun resolveBottomBarRefractionMotionProfile(
         exportPanelOffsetFraction = panelOffsetFraction * 0.5f,
         indicatorPanelOffsetFraction = panelOffsetFraction,
         visiblePanelOffsetFraction = panelOffsetFraction * 0.25f,
-        visibleSelectionEmphasis = lerp(1f, 0.68f, progress),
-        exportSelectionEmphasis = lerp(1f, 0.72f, progress),
+        visibleSelectionEmphasis = lerp(1f, 0.28f, progress),
+        exportSelectionEmphasis = lerp(1f, 0.52f, progress),
         exportCaptureWidthScale = 1f,
         forceChromaticAberration = progress > 0.02f,
-        indicatorLensAmountScale = lerp(1f, 1.18f, progress),
-        indicatorLensHeightScale = lerp(1f, 1.08f, progress)
+        indicatorLensAmountScale = lerp(1f, 1.34f, progress),
+        indicatorLensHeightScale = lerp(1f, 1.18f, progress),
+        chromaticBoostScale = lerp(1f, 1.72f, progress)
     )
 }
 
@@ -647,7 +686,11 @@ internal fun resolveIosFloatingBottomIndicatorColor(
     liquidGlassTuning: LiquidGlassTuning
 ): Color {
     val baseColor = if (visualPolicy.useNeutralTint) {
-        resolveIos26BottomIndicatorGrayColor(isDarkTheme = isDarkTheme)
+        lerpColor(
+            resolveIos26BottomIndicatorGrayColor(isDarkTheme = isDarkTheme),
+            themeColor,
+            if (isDarkTheme) 0.46f else 0.58f
+        )
     } else {
         themeColor
     }
@@ -666,7 +709,7 @@ internal fun resolveIosFloatingBottomIndicatorTintAlpha(
         configuredAlpha = configuredAlpha
     )
     if (!visualPolicy.shouldRefract) return baseAlpha
-    val movingAlphaFloor = if (isDarkTheme) 0.20f else 0.22f
+    val movingAlphaFloor = if (isDarkTheme) 0.30f else 0.32f
     return baseAlpha.coerceAtLeast(movingAlphaFloor)
 }
 
@@ -690,8 +733,8 @@ internal fun resolveBottomBarIndicatorTintAlpha(
 ): Float {
     if (shouldRefract) return configuredAlpha
     val minAlpha = lerp(
-        start = 0.24f,
-        stop = 0.32f,
+        start = 0.30f,
+        stop = 0.42f,
         fraction = liquidGlassProgress.coerceIn(0f, 1f)
     )
     return configuredAlpha.coerceAtLeast(minAlpha)
@@ -1288,7 +1331,8 @@ fun FrostedBottomBar(
                                 isLiquidGlassEnabled = showGlassEffect,
                                 lensIntensityBoost = liquidGlassTuning.indicatorLensBoost,
                                 edgeWarpBoost = liquidGlassTuning.indicatorEdgeWarpBoost,
-                                chromaticBoost = liquidGlassTuning.indicatorChromaticBoost,
+                                chromaticBoost = liquidGlassTuning.indicatorChromaticBoost *
+                                    refractionMotionProfile.chromaticBoostScale,
                                 liquidGlassStyle = homeSettings.liquidGlassStyle, // [New] Pass style
                                 liquidGlassTuning = liquidGlassTuning,
                                 motionSpec = bottomBarMotionSpec,
@@ -2008,7 +2052,6 @@ private fun KernelSuAlignedBottomBar(
     val isDarkTheme = isSystemInDarkTheme()
     val selectedColor = MaterialTheme.colorScheme.primary
     val unselectedColor = MaterialTheme.colorScheme.onSurface
-    val exportTintColor = selectedColor
     val totalItems = allItems.size.coerceAtLeast(1)
     val dampedDragState = rememberDampedDragAnimationState(
         initialIndex = selectedIndex,
@@ -2024,9 +2067,16 @@ private fun KernelSuAlignedBottomBar(
     LaunchedEffect(selectedIndex) {
         dampedDragState.updateIndex(selectedIndex)
     }
-    val motionProgress by remember {
+    val pressMotionProgress by remember {
         derivedStateOf { dampedDragState.pressProgress }
     }
+    val refractionMotionProfile = resolveBottomBarRefractionMotionProfile(
+        position = dampedDragState.value,
+        velocity = dampedDragState.velocityPxPerSecond,
+        isDragging = dampedDragState.isDragging,
+        motionSpec = bottomBarMotionSpec
+    )
+    val motionProgress = maxOf(pressMotionProgress, refractionMotionProfile.progress)
     val contentBackdrop = if (backdrop != null) {
         rememberCombinedBackdrop(backdrop, tabsBackdrop)
     } else {
@@ -2063,6 +2113,22 @@ private fun KernelSuAlignedBottomBar(
                     }
                 }
             }
+            fun itemVisual(
+                index: Int,
+                selectionEmphasis: Float
+            ): BottomBarItemMotionVisual = resolveBottomBarItemMotionVisual(
+                itemIndex = index,
+                indicatorPosition = dampedDragState.value,
+                currentSelectedIndex = selectedIndex,
+                motionProgress = motionProgress,
+                selectionEmphasis = selectionEmphasis
+            )
+
+            fun itemContentColor(visual: BottomBarItemMotionVisual): Color = lerpColor(
+                unselectedColor,
+                selectedColor,
+                visual.themeWeight
+            )
 
             Box(
                 modifier = Modifier
@@ -2136,35 +2202,47 @@ private fun KernelSuAlignedBottomBar(
                         .graphicsLayer { translationX = panelOffsetPx },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    visibleItems.forEach { item ->
+                    visibleItems.forEachIndexed { index, item ->
+                        val visual = itemVisual(
+                            index = index,
+                            selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
+                        )
+                        val contentColor = itemContentColor(visual)
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
-                            selected = currentItem == item,
+                            selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
-                            selectedColor = selectedColor,
+                            selectedColor = contentColor,
                             unselectedColor = unselectedColor,
+                            contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {},
                             interactive = false,
-                            scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                            scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
 
                     if (isTablet && onToggleSidebar != null) {
+                        val visual = itemVisual(
+                            index = visibleItems.size,
+                            selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
+                        )
+                        val contentColor = itemContentColor(visual)
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
-                            selected = false,
+                            selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
-                            selectedColor = selectedColor,
+                            selectedColor = contentColor,
                             unselectedColor = unselectedColor,
+                            contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {},
                             interactive = false,
-                            scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                            scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
                 }
@@ -2182,10 +2260,16 @@ private fun KernelSuAlignedBottomBar(
                                     backdrop = backdrop,
                                     shape = { shellShape },
                                     effects = {
-                                        val progress = dampedDragState.pressProgress
                                         vibrancy()
                                         blur(8.dp.toPx())
-                                        lens(24.dp.toPx() * progress, 24.dp.toPx() * progress)
+                                        lens(
+                                            refractionHeight = 24.dp.toPx() *
+                                                motionProgress *
+                                                refractionMotionProfile.indicatorLensHeightScale,
+                                            refractionAmount = 24.dp.toPx() *
+                                                motionProgress *
+                                                refractionMotionProfile.indicatorLensAmountScale
+                                        )
                                     },
                                     highlight = {
                                         Highlight.Default.copy(alpha = motionProgress)
@@ -2198,7 +2282,6 @@ private fun KernelSuAlignedBottomBar(
                                 this
                             }
                         }
-                        .graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))
                 ) {
                     Row(
                         modifier = Modifier
@@ -2206,35 +2289,47 @@ private fun KernelSuAlignedBottomBar(
                             .padding(contentPadding),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        visibleItems.forEach { item ->
+                        visibleItems.forEachIndexed { index, item ->
+                            val visual = itemVisual(
+                                index = index,
+                                selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
+                            )
+                            val contentColor = itemContentColor(visual)
                             AndroidNativeBottomBarItem(
                                 item = item,
                                 label = resolveBottomNavItemLabel(item),
-                                selected = true,
+                                selected = visual.useSelectedIcon,
                                 showIcon = showIcon,
                                 showText = showText,
-                                selectedColor = exportTintColor,
-                                unselectedColor = exportTintColor,
+                                selectedColor = contentColor,
+                                unselectedColor = contentColor,
+                                contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
                                 onClick = {},
                                 interactive = false,
-                                scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                                scale = if (glassEnabled) visual.scale else 1f
                             )
                         }
 
                         if (isTablet && onToggleSidebar != null) {
+                            val visual = itemVisual(
+                                index = visibleItems.size,
+                                selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
+                            )
+                            val contentColor = itemContentColor(visual)
                             AndroidNativeBottomBarItem(
                                 item = null,
                                 label = stringResource(R.string.sidebar_toggle),
-                                selected = true,
+                                selected = visual.useSelectedIcon,
                                 showIcon = showIcon,
                                 showText = showText,
-                                selectedColor = exportTintColor,
-                                unselectedColor = exportTintColor,
+                                selectedColor = contentColor,
+                                unselectedColor = contentColor,
+                                contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
                                 onClick = {},
                                 interactive = false,
-                                scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                                scale = if (glassEnabled) visual.scale else 1f
                             )
                         }
                     }
@@ -2256,10 +2351,13 @@ private fun KernelSuAlignedBottomBar(
                                         backdrop = contentBackdrop,
                                         shape = { shellShape },
                                         effects = {
-                                            val progress = dampedDragState.pressProgress
                                             lens(
-                                                refractionHeight = 10.dp.toPx() * progress,
-                                                refractionAmount = 14.dp.toPx() * progress,
+                                                refractionHeight = 12.dp.toPx() *
+                                                    motionProgress *
+                                                    refractionMotionProfile.indicatorLensHeightScale,
+                                                refractionAmount = 18.dp.toPx() *
+                                                    motionProgress *
+                                                    refractionMotionProfile.indicatorLensAmountScale,
                                                 depthEffect = true,
                                                 chromaticAberration = true
                                             )
@@ -2326,15 +2424,21 @@ private fun KernelSuAlignedBottomBar(
                         ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    visibleItems.forEach { item ->
+                    visibleItems.forEachIndexed { index, item ->
+                        val visual = itemVisual(
+                            index = index,
+                            selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
+                        )
+                        val contentColor = itemContentColor(visual)
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
-                            selected = currentItem == item,
+                            selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
-                            selectedColor = selectedColor,
+                            selectedColor = contentColor,
                             unselectedColor = unselectedColor,
+                            contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
                                 performMaterialBottomBarTap(
@@ -2344,19 +2448,25 @@ private fun KernelSuAlignedBottomBar(
                             },
                             interactive = true,
                             onPressChanged = dampedDragState::setPressed,
-                            scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                            scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
 
                     if (isTablet && onToggleSidebar != null) {
+                        val visual = itemVisual(
+                            index = visibleItems.size,
+                            selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
+                        )
+                        val contentColor = itemContentColor(visual)
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
-                            selected = false,
+                            selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
-                            selectedColor = selectedColor,
+                            selectedColor = contentColor,
                             unselectedColor = unselectedColor,
+                            contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
                                 performMaterialBottomBarTap(
@@ -2366,7 +2476,7 @@ private fun KernelSuAlignedBottomBar(
                             },
                             interactive = true,
                             onPressChanged = dampedDragState::setPressed,
-                            scale = if (glassEnabled) lerp(1f, 1.2f, dampedDragState.pressProgress) else 1f
+                            scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
                 }
@@ -2384,6 +2494,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     showText: Boolean,
     selectedColor: Color,
     unselectedColor: Color,
+    contentColorOverride: Color? = null,
     iconStyle: SharedFloatingBottomBarIconStyle,
     onClick: () -> Unit,
     interactive: Boolean,
@@ -2391,7 +2502,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     scale: Float = 1f
 ) {
     val contentColor by animateColorAsState(
-        targetValue = if (selected) selectedColor else unselectedColor,
+        targetValue = contentColorOverride ?: if (selected) selectedColor else unselectedColor,
         label = "${label}_android_native_bottom_bar_color"
     )
     val interactionSource = remember { MutableInteractionSource() }

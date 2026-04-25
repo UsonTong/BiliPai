@@ -126,7 +126,7 @@ internal fun resolveImagePreviewVisualFrame(
 
 internal fun imagePreviewDismissMotion(): ImagePreviewDismissMotion {
     return ImagePreviewDismissMotion(
-        overshootTarget = -0.06f,
+        overshootTarget = 0f,
         settleTarget = 0f
     )
 }

@@ -381,6 +381,14 @@ fun AppearanceSettingsContent(
     val showMd3DynamicColorControl =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val showThemeColorPicker = !state.dynamicColor
+    val colorStyleOptions = remember { resolveColorStyleOptions() }
+    val colorSpecOptions = remember { resolveColorSpecOptions() }
+    val selectedColorStyleLabel = colorStyleOptions
+        .firstOrNull { it.value == state.colorStyle }
+        ?.label ?: state.colorStyle.name
+    val selectedColorSpecLabel = colorSpecOptions
+        .firstOrNull { it.value == state.colorSpec }
+        ?.label ?: state.colorSpec.name
 
     LazyColumn(
         state = listState,
@@ -500,6 +508,27 @@ fun AppearanceSettingsContent(
                                 iconTint = iOSPink
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        IOSDivider()
+                        ThemePresetDropdownSetting(
+                            icon = CupertinoIcons.Default.PaintbrushPointed,
+                            title = "色彩风格",
+                            selectedLabel = selectedColorStyleLabel,
+                            options = colorStyleOptions,
+                            onSelectionChange = viewModel::setThemeColorStyle,
+                            iconTint = iOSPurple
+                        )
+
+                        IOSDivider()
+                        ThemePresetDropdownSetting(
+                            icon = CupertinoIcons.Default.WandAndStars,
+                            title = "色彩标准",
+                            selectedLabel = selectedColorSpecLabel,
+                            options = colorSpecOptions,
+                            onSelectionChange = viewModel::setThemeColorSpec,
+                            iconTint = iOSBlue
+                        )
 
                         // 主题色选择 (仅当动态取色关闭时显示)
                         androidx.compose.animation.AnimatedVisibility(
@@ -1538,6 +1567,73 @@ fun ColorPreviewItem(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun <T> ThemePresetDropdownSetting(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    selectedLabel: String,
+    options: List<PlaybackSegmentOption<T>>,
+    onSelectionChange: (T) -> Unit,
+    iconTint: Color
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val effectiveIconTint = rememberAdaptiveSemanticIconTint(iconTint)
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = effectiveIconTint,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = selectedLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = CupertinoIcons.Default.ChevronDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        expanded = false
+                        onSelectionChange(option.value)
+                    }
+                )
+            }
+        }
     }
 }
 

@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-25 · 文档已同步至 v8.0.0 Alpha4（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-26 · 文档已同步至 v8.0.0-Alpha5（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0%20Alpha4-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha5-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,12 +572,11 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0 Alpha4 · 2026-04-25)
+### 最近更新 (v8.0.0-Alpha5 · 2026-04-26)
 
-- ✨ 底栏默认切换为新版浮动玻璃，补齐长按/点击色散放大动画。
-- 🔎 顶栏统一圆角、间距和分类按钮居中对齐。
-- 🎬 长按倍速锁定区域更轻量，并修复锁定后无法还原或升高倍速的问题。
-- 🛠️ 清理旧 Android 不兼容 API 调用，补充 UI 与兼容性策略测试。
+- 🖼️ 修复图片预览退出动画卡手、不连贯的问题。
+- ✨ 首页右上角设置按钮加入液态玻璃和磨砂模糊表面。
+- 🧪 补充图片预览退出和首页顶栏玻璃策略测试。
 
 ### 历史版本
 

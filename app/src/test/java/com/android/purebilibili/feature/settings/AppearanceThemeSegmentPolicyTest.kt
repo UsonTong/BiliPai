@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.settings
 
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -34,5 +36,16 @@ class AppearanceThemeSegmentPolicyTest {
         assertEquals("Standard Black", options[0].label)
         assertEquals(DarkThemeStyle.AMOLED, options[1].value)
         assertEquals("AMOLED Black", options[1].label)
+    }
+
+    @Test
+    fun `color preset option labels should expose KernelSU compatible names`() {
+        val styleOptions = resolveColorStyleOptions()
+        val specOptions = resolveColorSpecOptions()
+
+        assertEquals(PaletteStyle.TonalSpot, styleOptions.first().value)
+        assertEquals("TonalSpot", styleOptions.first().label)
+        assertEquals(ColorSpec.SpecVersion.SPEC_2021, specOptions.first().value)
+        assertEquals("SPEC_2021", specOptions.first().label)
     }
 }

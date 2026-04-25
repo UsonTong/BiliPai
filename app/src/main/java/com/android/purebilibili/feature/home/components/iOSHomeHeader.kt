@@ -715,8 +715,8 @@ internal fun resolveHomeTopSearchChromeRenderMode(
         }
         return when (renderMode) {
             HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
-            HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> renderMode
-            HomeTopChromeRenderMode.BLUR,
+            HomeTopChromeRenderMode.LIQUID_GLASS_HAZE,
+            HomeTopChromeRenderMode.BLUR -> renderMode
             HomeTopChromeRenderMode.PLAIN -> HomeTopChromeRenderMode.PLAIN
         }
     }
@@ -2220,9 +2220,11 @@ fun iOSHomeHeader(
                                 isGlassSupported,
                             liquidGlassStyle = liquidStyle,
                             liquidGlassTuning = liquidGlassTuning,
+                            hazeState = hazeState,
                             backdrop = backdrop,
-                            isFloatingStyle = if (useUnifiedTopPanel) false else isTabFloating,
+                            isFloatingStyle = isTabFloating,
                             edgeToEdge = integratedCollapsedTopBar,
+                            hasOuterChromeSurface = false,
                             interactionBudget = interactionBudget,
                             isViewportSyncEnabled = isTopTabViewportSyncEnabled
                         )
