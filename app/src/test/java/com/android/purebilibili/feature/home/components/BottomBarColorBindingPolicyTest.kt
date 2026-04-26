@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.theme.BottomBarColors
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -50,6 +52,74 @@ class BottomBarColorBindingPolicyTest {
 
         assertEquals(0, binding.colorIndex)
         assertFalse(binding.hasCustomAccent)
+    }
+
+    @Test
+    fun `selected foreground uses theme color when no custom color is configured`() {
+        val themeColor = Color(0xFF007AFF)
+        val color = resolveBottomBarSelectedContentColor(
+            item = BottomNavItem.DYNAMIC,
+            binding = BottomBarItemColorBinding(colorIndex = 0, hasCustomAccent = false),
+            themeColor = themeColor
+        )
+
+        assertEquals(themeColor, color)
+    }
+
+    @Test
+    fun `bottom bar selected icons use filled symbols`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+            .readText()
+        val selectedSymbols = listOf(
+            "House",
+            "Bell",
+            "PlayCircle",
+            "Clock",
+            "Person",
+            "Star",
+            "Video",
+            "Bookmark",
+            "Gearshape"
+        )
+
+        assertTrue(
+            selectedSymbols.all { symbol ->
+                source.contains("{ Icon(CupertinoIcons.Filled.$symbol, contentDescription = null) }")
+            },
+            "Bottom bar selected icons should use filled symbols so the whole selected icon is tinted by the theme color."
+        )
+    }
+
+    @Test
+    fun `selected foreground uses custom item color when configured`() {
+        val color = resolveBottomBarSelectedContentColor(
+            item = BottomNavItem.HOME,
+            binding = BottomBarItemColorBinding(colorIndex = 5, hasCustomAccent = true),
+            themeColor = Color(0xFF8D6E63)
+        )
+
+        assertEquals(BottomBarColors.getColorByIndex(5), color)
+    }
+
+    @Test
+    fun `android native item uses realtime override color without animation lag`() {
+        val realtimeColor = Color(0xFF00A1D6)
+        val animatedColor = Color(0xFF888888)
+
+        assertEquals(
+            realtimeColor,
+            resolveAndroidNativeBottomBarItemContentColor(
+                contentColorOverride = realtimeColor,
+                animatedContentColor = animatedColor
+            )
+        )
+        assertEquals(
+            animatedColor,
+            resolveAndroidNativeBottomBarItemContentColor(
+                contentColorOverride = null,
+                animatedContentColor = animatedColor
+            )
+        )
     }
 
     @Test

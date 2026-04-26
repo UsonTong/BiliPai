@@ -1027,6 +1027,28 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
+    fun tapAfterLongPressSpeedRelease_doesNotToggleControls() {
+        assertFalse(
+            shouldToggleControlsForVideoTap(
+                longPressSpeedEndedAtMs = 1_000L,
+                nowMs = 1_120L
+            )
+        )
+        assertTrue(
+            shouldToggleControlsForVideoTap(
+                longPressSpeedEndedAtMs = 1_000L,
+                nowMs = 1_700L
+            )
+        )
+        assertTrue(
+            shouldToggleControlsForVideoTap(
+                longPressSpeedEndedAtMs = 0L,
+                nowMs = 1_120L
+            )
+        )
+    }
+
+    @Test
     fun longPressSpeedGesture_disabledWhenScreenLockedOrVideoScaled() {
         assertFalse(
             shouldEnableLongPressSpeedGesture(

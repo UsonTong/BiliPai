@@ -23,6 +23,7 @@ private const val VIDEO_PLAYER_COVER_FADE_EXIT_DURATION_MILLIS = 300
 private const val VIDEO_PLAYER_COVER_REVEAL_HOLD_DELAY_MILLIS = 96
 private const val VIDEO_PLAYER_SURFACE_REVEAL_DURATION_MILLIS = 220
 private const val VIDEO_PLAYER_SURFACE_REVEAL_INITIAL_SCALE = 0.985f
+private const val LONG_PRESS_SPEED_TAP_SUPPRESSION_WINDOW_MS = 450L
 
 internal const val LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP = 96
 internal const val FOREGROUND_SURFACE_RECOVERY_DELAY_MS = 80L
@@ -224,6 +225,17 @@ internal fun shouldRestorePlaybackParametersAfterLongPressRelease(
     gestureEnded: Boolean
 ): Boolean {
     return gestureEnded && wasLongPressing && !longPressSpeedLocked
+}
+
+internal fun shouldToggleControlsForVideoTap(
+    longPressSpeedEndedAtMs: Long,
+    nowMs: Long,
+    suppressionWindowMs: Long = LONG_PRESS_SPEED_TAP_SUPPRESSION_WINDOW_MS
+): Boolean {
+    if (longPressSpeedEndedAtMs <= 0L || suppressionWindowMs <= 0L) return true
+    val elapsedSinceLongPressEndMs = nowMs - longPressSpeedEndedAtMs
+    if (elapsedSinceLongPressEndMs < 0L) return true
+    return elapsedSinceLongPressEndMs > suppressionWindowMs
 }
 
 internal fun resolveVerticalGestureMode(

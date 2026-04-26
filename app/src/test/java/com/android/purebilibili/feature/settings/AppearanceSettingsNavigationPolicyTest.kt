@@ -1,26 +1,28 @@
 package com.android.purebilibili.feature.settings
 
+import java.io.File
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 
 class AppearanceSettingsNavigationPolicyTest {
 
     @Test
-    fun openTopTabManagement_submitsBottomBarTopTabFocusBeforeNavigation() {
-        var navigated = false
-        SettingsSearchFocusController.clear()
+    fun appearanceSettings_noLongerHostsNavigationManagementShortcuts() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/screen/AppearanceSettingsScreen.kt")
 
-        openTopTabManagement {
-            navigated = true
-        }
+        assertFalse(source.contains("openTopTabManagement("))
+        assertFalse(source.contains("title = \"顶部标签页\""))
+        assertFalse(source.contains("title = \"顶部栏自动收缩\""))
+        assertFalse(source.contains("title = \"侧边导航栏\""))
+    }
 
-        val request = SettingsSearchFocusController.request.value
-        assertNotNull(request)
-        assertEquals(SettingsSearchTarget.BOTTOM_BAR, request.target)
-        assertEquals(SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS, request.focusId)
-        assertEquals(true, navigated)
-
-        SettingsSearchFocusController.clear(request.token)
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

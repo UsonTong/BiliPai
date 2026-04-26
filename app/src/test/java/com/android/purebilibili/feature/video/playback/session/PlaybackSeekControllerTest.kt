@@ -75,6 +75,58 @@ class PlaybackSeekControllerTest {
     }
 
     @Test
+    fun finishSeek_keepsPendingResumeWhenPositionCatchesUpBeforePlaybackResumes() {
+        val commitResult = finishPlaybackSeekInteraction(
+            updatePlaybackSeekInteraction(
+                state = startPlaybackSeekInteraction(
+                    state = syncPlaybackSeekSession(
+                        state = PlaybackSeekSessionState(),
+                        playbackPositionMs = 10_000L
+                    ),
+                    shouldResumePlayback = true
+                ),
+                positionMs = 25_000L
+            )
+        )
+
+        val synced = syncPlaybackSeekSession(
+            state = commitResult.state,
+            playbackPositionMs = 24_700L,
+            hasPlaybackResumedAfterPendingSeek = false
+        )
+
+        assertEquals(25_000L, synced.sliderPositionMs)
+        assertEquals(25_000L, synced.pendingSeekPositionMs)
+        assertEquals(true, synced.shouldResumePlayback)
+    }
+
+    @Test
+    fun finishSeek_clearsPendingResumeWhenPositionCatchesUpAfterPlaybackResumes() {
+        val commitResult = finishPlaybackSeekInteraction(
+            updatePlaybackSeekInteraction(
+                state = startPlaybackSeekInteraction(
+                    state = syncPlaybackSeekSession(
+                        state = PlaybackSeekSessionState(),
+                        playbackPositionMs = 10_000L
+                    ),
+                    shouldResumePlayback = true
+                ),
+                positionMs = 25_000L
+            )
+        )
+
+        val synced = syncPlaybackSeekSession(
+            state = commitResult.state,
+            playbackPositionMs = 24_700L,
+            hasPlaybackResumedAfterPendingSeek = true
+        )
+
+        assertEquals(24_700L, synced.sliderPositionMs)
+        assertNull(synced.pendingSeekPositionMs)
+        assertNull(synced.shouldResumePlayback)
+    }
+
+    @Test
     fun forwardPendingSeek_clearsWhenPlaybackHasAdvancedPastTarget() {
         val commitResult = finishPlaybackSeekInteraction(
             updatePlaybackSeekInteraction(

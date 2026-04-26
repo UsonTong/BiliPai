@@ -406,6 +406,7 @@ fun IOSGroup(
                 }
             )
             .clip(appliedShape),
+        shape = appliedShape,
         color = resolvedContainerColor,
         shadowElevation = if (uiPreset == UiPreset.MD3) 0.dp else 0.dp,
         tonalElevation = if (uiPreset == UiPreset.MD3) 0.dp else visualSpec.groupTonalElevationDp.dp,

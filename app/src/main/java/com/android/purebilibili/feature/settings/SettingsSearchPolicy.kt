@@ -48,7 +48,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "外观设置",
-        subtitle = "主题、图标、模糊效果",
+        subtitle = "主题、图标、动画效果",
         section = "常规",
         aliases = listOf(
             "外观",
@@ -85,10 +85,6 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "随机壁纸",
             "开屏图标动画",
             "应用图标",
-            "侧边导航栏",
-            "侧边栏",
-            "顶部栏自动收缩",
-            "首页收缩",
             "统计信息贴封面",
             "up主标识",
             "up标识",
@@ -182,14 +178,23 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,
-        title = "底栏设置",
-        subtitle = "自定义底栏和顶部标签",
+        title = "导航设置",
+        subtitle = "底栏、顶部标签、平板侧边栏",
         section = "常规",
         aliases = listOf(
+            "导航",
+            "导航设置",
             "底栏",
             "标签栏",
             "导航栏",
             "tab",
+            "顶部标签",
+            "顶部标签页",
+            "顶部栏自动收缩",
+            "首页收缩",
+            "侧边导航栏",
+            "侧边栏",
+            "平板导航",
             "底部导航",
             "底部栏",
             "底栏顺序",
@@ -368,18 +373,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
-        title = "平板布局 / 侧边导航栏",
-        subtitle = "平板布局",
+        title = "首页展示",
+        subtitle = "展示样式、玻璃样式、UP主标识",
         section = "外观设置",
-        aliases = listOf("平板布局", "侧边导航栏", "侧边栏"),
-        focusId = SettingsSearchFocusIds.APPEARANCE_TABLET
-    ),
-    SettingsSearchEntry(
-        target = SettingsSearchTarget.APPEARANCE,
-        title = "首页展示 / 顶部栏自动收缩",
-        subtitle = "展示样式、顶部栏自动收缩、玻璃样式、UP主标识",
-        section = "外观设置",
-        aliases = listOf("首页展示", "顶部栏自动收缩", "展示样式", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
+        aliases = listOf("首页展示", "展示样式", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
         focusId = SettingsSearchFocusIds.APPEARANCE_HOME
     ),
     SettingsSearchEntry(
@@ -457,24 +454,32 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,
         title = "底栏显示模式 / 标签样式",
-        subtitle = "显示设置",
-        section = "底栏设置",
-        aliases = listOf("显示模式", "标签样式", "顶部标签样式", "顶部模糊", "底栏显示模式"),
+        subtitle = "底部导航",
+        section = "导航设置",
+        aliases = listOf("显示模式", "标签样式", "底栏显示模式", "底栏标签样式"),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_DISPLAY
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,
         title = "顶部标签管理",
         subtitle = "显示/隐藏、排序、自动收缩",
-        section = "底栏设置",
-        aliases = listOf("顶部标签", "顶部标签管理", "标签排序", "标签显示", "顶部栏自动收缩", "自动收缩", "自动隐藏", "回到顶部显示", "推荐分类", "直播标签"),
+        section = "导航设置",
+        aliases = listOf("顶部标签", "顶部标签样式", "顶部模糊", "顶部标签管理", "标签排序", "标签显示", "顶部栏自动收缩", "自动收缩", "自动隐藏", "回到顶部显示", "推荐分类", "直播标签"),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.BOTTOM_BAR,
+        title = "平板侧边导航栏",
+        subtitle = "平板导航",
+        section = "导航设置",
+        aliases = listOf("平板布局", "平板导航", "侧边导航栏", "侧边栏"),
+        focusId = SettingsSearchFocusIds.BOTTOM_BAR_TABLET
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,
         title = "当前底栏预览",
         subtitle = "底栏顺序预览",
-        section = "底栏设置",
+        section = "导航设置",
         aliases = listOf("当前底栏", "底栏预览", "底栏顺序"),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_CURRENT
     ),
@@ -482,7 +487,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         target = SettingsSearchTarget.BOTTOM_BAR,
         title = "可用底栏项目",
         subtitle = "显示/隐藏底栏项目",
-        section = "底栏设置",
+        section = "导航设置",
         aliases = listOf("可用项目", "底栏项目", "显示隐藏项目", "底栏图标", "底栏文字"),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_AVAILABLE
     )

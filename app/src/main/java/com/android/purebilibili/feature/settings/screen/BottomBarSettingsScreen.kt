@@ -178,8 +178,8 @@ internal fun resolveAllTopTabs(uiPreset: UiPreset = UiPreset.IOS): List<TopTabCo
 )
 
 /**
- *  底栏管理设置页面
- * 支持拖拽排序和显示/隐藏配置
+ *  导航设置页面
+ * 支持底栏、顶部标签和平板侧边栏配置
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -251,6 +251,11 @@ fun BottomBarSettingsContent(
     val topTabOrder by SettingsManager.getTopTabOrder(context).collectAsState(initial = defaultTopTabIds)
     val topTabVisible by SettingsManager.getTopTabVisibleTabs(context).collectAsState(initial = defaultTopTabIds.toSet())
     val headerCollapseEnabled by SettingsManager.getHeaderCollapseEnabled(context).collectAsState(initial = true)
+    val topTabLabelMode by SettingsManager.getTopTabLabelMode(context)
+        .collectAsState(initial = SettingsManager.TopTabLabelMode.TEXT_ONLY)
+    val headerBlurMode by SettingsManager.getHomeHeaderBlurMode(context)
+        .collectAsState(initial = HomeHeaderBlurMode.FOLLOW_PRESET)
+    val tabletUseSidebar by SettingsManager.getTabletUseSidebar(context).collectAsState(initial = false)
     
     // 可编辑的本地状态
     var localOrder by remember(order) { mutableStateOf(order) }
@@ -345,17 +350,17 @@ fun BottomBarSettingsContent(
             item {
                 Box(modifier = Modifier.staggeredEntrance(0, isVisible, motionTier = effectiveMotionTier)) {
                     Text(
-                        text = "选择要在底栏显示的项目，最少 2 个，最多 5 个。",
+                        text = "集中管理底部导航、首页顶部标签和平板侧边栏。底栏项目最少 2 个，最多 5 个。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             
-            // 显示设置
+            // 底部导航
             item {
                 Box(modifier = Modifier.staggeredEntrance(1, isVisible, motionTier = effectiveMotionTier)) {
-                    IOSSectionTitle("显示设置")
+                    IOSSectionTitle("底部导航")
                 }
             }
 
@@ -365,10 +370,6 @@ fun BottomBarSettingsContent(
                         val scope = rememberCoroutineScope()
                         val visibilityMode by SettingsManager.getBottomBarVisibilityMode(context).collectAsState(initial = SettingsManager.BottomBarVisibilityMode.ALWAYS_VISIBLE)
                         val labelMode by SettingsManager.getBottomBarLabelMode(context).collectAsState(initial = 0)
-                        val topTabLabelMode by SettingsManager.getTopTabLabelMode(context)
-                            .collectAsState(initial = SettingsManager.TopTabLabelMode.TEXT_ONLY)
-                        val headerBlurMode by SettingsManager.getHomeHeaderBlurMode(context)
-                            .collectAsState(initial = HomeHeaderBlurMode.FOLLOW_PRESET)
                         
                         //  底栏显示模式选择（抽屉式）
                         var visibilityModeExpanded by remember { mutableStateOf(false) }
@@ -540,10 +541,24 @@ fun BottomBarSettingsContent(
                             }
                         }
 
-                        IOSDivider()
+                    }
+                }
+            }
 
-                        //  顶部标签样式（选择器）
-                        Column(modifier = Modifier.padding(16.dp)) {
+            // 顶部标签
+            item {
+                Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = effectiveMotionTier)) {
+                    IOSSectionTitle("顶部标签")
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.staggeredEntrance(4, isVisible, motionTier = effectiveMotionTier)) {
+                    IOSGroup {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     CupertinoIcons.Default.ListBullet,
@@ -569,7 +584,6 @@ fun BottomBarSettingsContent(
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -612,11 +626,9 @@ fun BottomBarSettingsContent(
                                     }
                                 }
                             }
-                        }
 
-                        IOSDivider()
+                            HorizontalDivider()
 
-                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     CupertinoIcons.Default.Drop,
@@ -642,7 +654,6 @@ fun BottomBarSettingsContent(
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -690,25 +701,9 @@ fun BottomBarSettingsContent(
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-            }
 
-            // 顶部标签管理
-            item {
-                Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = effectiveMotionTier)) {
-                    IOSSectionTitle("顶部标签管理")
-                }
-            }
+                            HorizontalDivider()
 
-            item {
-                Box(modifier = Modifier.staggeredEntrance(4, isVisible, motionTier = effectiveMotionTier)) {
-                    IOSGroup {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
                             Text(
                                 text = "推荐固定显示。可调整其余标签的显示/隐藏、顺序，以及下滑时的自动收起行为。",
                                 style = MaterialTheme.typography.bodySmall,
@@ -864,15 +859,41 @@ fun BottomBarSettingsContent(
                 }
             }
 
+            // 平板导航
+            item {
+                Box(modifier = Modifier.staggeredEntrance(5, isVisible, motionTier = effectiveMotionTier)) {
+                    IOSSectionTitle("平板导航")
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.staggeredEntrance(6, isVisible, motionTier = effectiveMotionTier)) {
+                    IOSGroup {
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Outlined.SidebarLeft,
+                            title = "侧边导航栏",
+                            subtitle = "在平板横屏或大屏布局中使用侧边栏代替底部导航",
+                            checked = tabletUseSidebar,
+                            onCheckedChange = { checked ->
+                                scope.launch {
+                                    SettingsManager.setTabletUseSidebar(context, checked)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                    }
+                }
+            }
+
             // 当前底栏预览
             item {
-                Box(modifier = Modifier.staggeredEntrance(3, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(7, isVisible, motionTier = effectiveMotionTier)) {
                     IOSSectionTitle("当前底栏")
                 }
             }
             
             item {
-                Box(modifier = Modifier.staggeredEntrance(4, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(8, isVisible, motionTier = effectiveMotionTier)) {
                     BottomBarPreview(
                         tabs = localOrder.filter { it in localVisibleTabs }
                             .mapNotNull { id -> allBottomBarTabs.find { it.id == id } },
@@ -884,7 +905,7 @@ fun BottomBarSettingsContent(
             
             // 可用项目列表
             item {
-                Box(modifier = Modifier.staggeredEntrance(5, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(9, isVisible, motionTier = effectiveMotionTier)) {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
                         IOSSectionTitle("可用项目")
@@ -893,7 +914,7 @@ fun BottomBarSettingsContent(
             }
             
             item {
-                Box(modifier = Modifier.staggeredEntrance(6, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(10, isVisible, motionTier = effectiveMotionTier)) {
                     IOSGroup {
                         allBottomBarTabs.forEachIndexed { index, tab ->
                             if (index > 0) {
@@ -933,7 +954,7 @@ fun BottomBarSettingsContent(
             
             // 顺序调整说明
             item {
-                Box(modifier = Modifier.staggeredEntrance(7, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(11, isVisible, motionTier = effectiveMotionTier)) {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -947,7 +968,7 @@ fun BottomBarSettingsContent(
             
             // 重置按钮
             item {
-                Box(modifier = Modifier.staggeredEntrance(8, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(12, isVisible, motionTier = effectiveMotionTier)) {
                     Column {
                         Spacer(modifier = Modifier.height(16.dp))
                         io.github.alexzhirkevich.cupertino.CupertinoButton(
@@ -960,6 +981,7 @@ fun BottomBarSettingsContent(
                                 saveTopTabConfig()
                                 scope.launch {
                                     SettingsManager.setHomeHeaderBlurMode(context, HomeHeaderBlurMode.FOLLOW_PRESET)
+                                    SettingsManager.setTabletUseSidebar(context, false)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

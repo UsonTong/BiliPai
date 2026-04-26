@@ -300,16 +300,13 @@ internal fun shouldRebindMediaSessionPlayer(
 internal fun resolveNotificationSmallIconRes(iconKey: String): Int {
     val normalizedKey = normalizeAppIconKey(iconKey)
     return when (normalizedKey) {
-        "icon_blue" -> R.mipmap.ic_launcher_blue
-        "icon_neon" -> R.mipmap.ic_launcher_neon
         "icon_flat" -> R.mipmap.ic_launcher_flat
         "icon_bilipai" -> R.mipmap.ic_launcher_bilipai
+        "icon_bilipai_pink" -> R.mipmap.ic_launcher_bilipai_pink
+        "icon_bilipai_white" -> R.mipmap.ic_launcher_bilipai_white
+        "icon_bilipai_monet" -> R.mipmap.ic_launcher_bilipai_monet
         "icon_anime" -> R.mipmap.ic_launcher_anime
         "icon_telegram_blue" -> R.mipmap.ic_launcher_telegram_blue
-        "icon_telegram_blue_coin" -> R.mipmap.ic_launcher_telegram_blue_coin
-        "icon_telegram_green" -> R.mipmap.ic_launcher_telegram_green
-        "icon_telegram_pink" -> R.mipmap.ic_launcher_telegram_pink
-        "icon_telegram_purple" -> R.mipmap.ic_launcher_telegram_purple
         "icon_telegram_dark" -> R.mipmap.ic_launcher_telegram_dark
         "Headphone" -> R.mipmap.ic_launcher_headphone
         "Yuki" -> R.mipmap.ic_launcher

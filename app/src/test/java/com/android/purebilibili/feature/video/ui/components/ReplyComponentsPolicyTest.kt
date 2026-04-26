@@ -557,6 +557,19 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
+    fun `reply item layout gives comment text a wider reading column`() {
+        val policy = resolveReplyItemLayoutPolicy()
+
+        assertEquals(12, policy.horizontalPaddingDp)
+        assertEquals(10, policy.avatarContentSpacingDp)
+        assertEquals(62, policy.dividerStartPaddingDp)
+        assertEquals(
+            286,
+            resolveReplyItemTextColumnWidthDp(containerWidthDp = 360, policy = policy)
+        )
+    }
+
+    @Test
     fun `timestamp parser supports spaces and full-width colon`() {
         val text = "自用18: 07\n19：30"
         val matches = COMMENT_TIMESTAMP_PATTERN.findAll(text).toList()

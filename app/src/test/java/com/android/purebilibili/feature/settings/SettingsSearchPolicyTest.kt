@@ -107,10 +107,10 @@ class SettingsSearchPolicyTest {
     @Test
     fun queryByBottomBar_surfacesTopTabDiscoverabilityInSubtitle() {
         val result = resolveSettingsSearchResults("底栏").firstOrNull {
-            it.target == SettingsSearchTarget.BOTTOM_BAR && it.title == "底栏设置"
+            it.target == SettingsSearchTarget.BOTTOM_BAR && it.title == "导航设置"
         }
 
-        assertEquals("自定义底栏和顶部标签", result?.subtitle)
+        assertEquals("底栏、顶部标签、平板侧边栏", result?.subtitle)
     }
 
     @Test
@@ -120,5 +120,17 @@ class SettingsSearchPolicyTest {
         }
 
         assertEquals("显示/隐藏、排序、自动收缩", result?.subtitle)
+        assertEquals("导航设置", result?.section)
+    }
+
+    @Test
+    fun queryBySidebarNavigation_hitsNavigationSettingsEntry() {
+        val result = resolveSettingsSearchResults("侧边导航栏").firstOrNull {
+            it.target == SettingsSearchTarget.BOTTOM_BAR &&
+                it.focusId == SettingsSearchFocusIds.BOTTOM_BAR_TABLET
+        }
+
+        assertEquals("平板侧边导航栏", result?.title)
+        assertEquals("导航设置", result?.section)
     }
 }

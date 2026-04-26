@@ -461,6 +461,7 @@ fun VideoPlayerSection(
     var longPressSpeedFeedbackVisible by remember { mutableStateOf(false) }
     var longPressSpeedLocked by remember(bvid) { mutableStateOf(false) }
     var lockedLongPressSpeed by remember(bvid) { mutableFloatStateOf(1.0f) }
+    var longPressSpeedEndedAtMs by remember { mutableLongStateOf(0L) }
     var isMultiTouchActive by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackVisible by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackRevision by remember { mutableIntStateOf(0) }
@@ -734,7 +735,8 @@ fun VideoPlayerSection(
         while (isActive) {
             sharedSeekSession = syncPlaybackSeekSession(
                 state = sharedSeekSession,
-                playbackPositionMs = playerState.player.currentPosition.coerceAtLeast(0L)
+                playbackPositionMs = playerState.player.currentPosition.coerceAtLeast(0L),
+                hasPlaybackResumedAfterPendingSeek = playerState.player.isPlaying
             )
             delay(200)
         }
@@ -891,6 +893,7 @@ fun VideoPlayerSection(
         }
         isLongPressing = false
         longPressSpeedFeedbackVisible = false
+        longPressSpeedEndedAtMs = android.os.SystemClock.elapsedRealtime()
         totalDragDistanceY = 0f
         totalDragDistanceX = 0f
         com.android.purebilibili.core.util.Logger.d("VideoPlayerSection") {
@@ -971,18 +974,7 @@ fun VideoPlayerSection(
                         isMultiTouchActive = true
 
                         if (isLongPressing) {
-                            if (
-                                shouldRestorePlaybackParametersAfterLongPressRelease(
-                                    wasLongPressing = isLongPressing,
-                                    longPressSpeedLocked = longPressSpeedLocked,
-                                    gestureEnded = true
-                                )
-                            ) {
-                                playerState.player.playbackParameters = originalPlaybackParameters
-                            }
-                            isLongPressing = false
-                            longPressSpeedFeedbackVisible = false
-                            totalDragDistanceY = 0f
+                            finishLongPressSpeedGesture(gestureEnded = true)
                         }
 
                         val pan = event.calculatePan()
@@ -1134,19 +1126,7 @@ fun VideoPlayerSection(
                         },
                         onDragEnd = {
                             if (isLongPressing) {
-                                if (
-                                    shouldRestorePlaybackParametersAfterLongPressRelease(
-                                        wasLongPressing = isLongPressing,
-                                        longPressSpeedLocked = longPressSpeedLocked,
-                                        gestureEnded = true
-                                    )
-                                ) {
-                                    playerState.player.playbackParameters = originalPlaybackParameters
-                                }
-                                isLongPressing = false
-                                longPressSpeedFeedbackVisible = false
-                                totalDragDistanceY = 0f
-                                totalDragDistanceX = 0f
+                                finishLongPressSpeedGesture(gestureEnded = true)
                                 isGestureVisible = false
                                 gestureMode = VideoGestureMode.None
                                 dragStartX = -1f
@@ -1204,19 +1184,7 @@ fun VideoPlayerSection(
                         },
                         onDragCancel = {
                             if (isLongPressing) {
-                                if (
-                                    shouldRestorePlaybackParametersAfterLongPressRelease(
-                                        wasLongPressing = isLongPressing,
-                                        longPressSpeedLocked = longPressSpeedLocked,
-                                        gestureEnded = true
-                                    )
-                                ) {
-                                    playerState.player.playbackParameters = originalPlaybackParameters
-                                }
-                                isLongPressing = false
-                                longPressSpeedFeedbackVisible = false
-                                totalDragDistanceX = 0f
-                                totalDragDistanceY = 0f
+                                finishLongPressSpeedGesture(gestureEnded = true)
                                 isGestureVisible = false
                                 gestureMode = VideoGestureMode.None
                                 dragStartX = -1f
@@ -1475,6 +1443,14 @@ fun VideoPlayerSection(
                 detectTapGestures(
                     onTap = { 
                         // 🔒 锁定时点击只显示解锁按钮
+                        if (
+                            !shouldToggleControlsForVideoTap(
+                                longPressSpeedEndedAtMs = longPressSpeedEndedAtMs,
+                                nowMs = android.os.SystemClock.elapsedRealtime()
+                            )
+                        ) {
+                            return@detectTapGestures
+                        }
                         if (isScreenLocked) {
                             showControls = !showControls  // 显示/隐藏解锁按钮
                         } else {

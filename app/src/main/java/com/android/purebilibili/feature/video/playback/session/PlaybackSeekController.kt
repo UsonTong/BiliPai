@@ -25,7 +25,8 @@ internal data class PlaybackSeekSessionCommitResult(
 internal fun syncPlaybackSeekSession(
     state: PlaybackSeekSessionState,
     playbackPositionMs: Long,
-    toleranceMs: Long = DEFAULT_PLAYBACK_SEEK_PENDING_TOLERANCE_MS
+    toleranceMs: Long = DEFAULT_PLAYBACK_SEEK_PENDING_TOLERANCE_MS,
+    hasPlaybackResumedAfterPendingSeek: Boolean = true
 ): PlaybackSeekSessionState {
     val safePlaybackPositionMs = playbackPositionMs.coerceAtLeast(0L)
     val syncedState = state.copy(playbackPositionMs = safePlaybackPositionMs)
@@ -38,6 +39,14 @@ internal fun syncPlaybackSeekSession(
             pendingSeekPositionMs = syncedState.pendingSeekPositionMs,
             pendingSeekOriginPositionMs = syncedState.pendingSeekOriginPositionMs,
             toleranceMs = toleranceMs
+        )
+    ) {
+        return syncedState
+    }
+    if (
+        shouldKeepPendingSeekUntilPlaybackResumes(
+            state = syncedState,
+            hasPlaybackResumedAfterPendingSeek = hasPlaybackResumedAfterPendingSeek
         )
     ) {
         return syncedState
@@ -189,6 +198,15 @@ private fun shouldHoldPendingSeekPosition(
             playerPositionMs > targetPositionMs + toleranceMs
         else -> true
     }
+}
+
+private fun shouldKeepPendingSeekUntilPlaybackResumes(
+    state: PlaybackSeekSessionState,
+    hasPlaybackResumedAfterPendingSeek: Boolean
+): Boolean {
+    return state.pendingSeekPositionMs != null &&
+        state.shouldResumePlayback == true &&
+        !hasPlaybackResumedAfterPendingSeek
 }
 
 internal fun shouldShowPlaybackRecoveryUiAfterSeek(

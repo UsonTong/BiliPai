@@ -134,9 +134,8 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `ios moving indicator keeps visible tint on light floating bar`() {
+    fun `ios moving indicator uses bottom dock surface on light floating bar`() {
         val color = resolveIosFloatingBottomIndicatorColor(
-            themeColor = Color(0xFF6750A4),
             isDarkTheme = false,
             visualPolicy = BottomBarIndicatorVisualPolicy(
                 isInMotion = true,
@@ -145,16 +144,18 @@ class BottomBarIndicatorPolicyTest {
             ),
             liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.2f)
         )
+        val surface = resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false)
 
-        assertTrue(color.red < 0.75f)
+        assertEquals(surface.red, color.red)
+        assertEquals(surface.green, color.green)
+        assertEquals(surface.blue, color.blue)
         assertTrue(color.alpha > 0f)
     }
 
     @Test
-    fun `ios moving indicator keeps theme color when neutral tint is disabled`() {
+    fun `ios indicator surface uses neutral dock color instead of theme color`() {
         val themeColor = Color(0xFF6750A4)
         val color = resolveIosFloatingBottomIndicatorColor(
-            themeColor = themeColor,
             isDarkTheme = false,
             visualPolicy = BottomBarIndicatorVisualPolicy(
                 isInMotion = true,
@@ -163,10 +164,12 @@ class BottomBarIndicatorPolicyTest {
             ),
             liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.7f)
         )
+        val surface = resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false)
 
-        assertEquals(themeColor.red, color.red)
-        assertEquals(themeColor.green, color.green)
-        assertEquals(themeColor.blue, color.blue)
+        assertEquals(surface.red, color.red)
+        assertEquals(surface.green, color.green)
+        assertEquals(surface.blue, color.blue)
+        assertTrue(color.blue > themeColor.blue)
         assertTrue(color.alpha > 0f)
     }
 
@@ -183,14 +186,12 @@ class BottomBarIndicatorPolicyTest {
             configuredAlpha = 0.12f
         )
 
-        assertTrue(alpha >= 0.32f)
+        assertTrue(alpha >= 0.40f)
     }
 
     @Test
-    fun `ios neutral moving indicator keeps visible theme tint`() {
-        val themeColor = Color(0xFFFF6F6F)
+    fun `ios neutral moving indicator keeps bottom dock surface hue`() {
         val color = resolveIosFloatingBottomIndicatorColor(
-            themeColor = themeColor,
             isDarkTheme = false,
             visualPolicy = BottomBarIndicatorVisualPolicy(
                 isInMotion = true,
@@ -199,10 +200,11 @@ class BottomBarIndicatorPolicyTest {
             ),
             liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.2f)
         )
-        val neutral = resolveIos26BottomIndicatorGrayColor(isDarkTheme = false)
+        val surface = resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false)
 
-        assertTrue(color.red > neutral.red)
-        assertTrue(color.green < neutral.green)
+        assertEquals(surface.red, color.red)
+        assertEquals(surface.green, color.green)
+        assertEquals(surface.blue, color.blue)
     }
 
     @Test
@@ -268,6 +270,42 @@ class BottomBarIndicatorPolicyTest {
 
         assertTrue(dynamic.themeWeight > home.themeWeight)
         assertTrue(dynamic.scale > home.scale)
+    }
+
+    @Test
+    fun `sliding item visual keeps icon state stable while color follows indicator`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+
+        assertTrue(home.themeWeight in 0f..1f)
+        assertTrue(dynamic.themeWeight in 0f..1f)
+        assertFalse(home.useSelectedIcon)
+        assertFalse(dynamic.useSelectedIcon)
+    }
+
+    @Test
+    fun `sliding item color weight follows indicator position without emphasis cap`() {
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+
+        assertEquals(0.8f, dynamic.themeWeight, 0.001f)
     }
 
     @Test
@@ -351,7 +389,7 @@ class BottomBarIndicatorPolicyTest {
             configuredAlpha = 0.14f
         )
 
-        assertTrue(alpha >= 0.42f)
+        assertTrue(alpha >= 0.56f)
     }
 
     @Test

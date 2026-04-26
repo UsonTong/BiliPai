@@ -122,8 +122,8 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayer_compactsWhenCommentTabSelectedForVerticalVideo() {
-        assertTrue(
+    fun inlinePortraitPlayer_keepsExpandedWhenCommentTabSelectedForVerticalVideo() {
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,

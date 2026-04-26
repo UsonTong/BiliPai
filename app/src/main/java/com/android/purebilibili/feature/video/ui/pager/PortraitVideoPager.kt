@@ -1171,7 +1171,8 @@ private fun VideoPageItem(
                     val realDuration = if (exoPlayer.duration > 0) exoPlayer.duration else initialDuration
                     seekSession = syncPlaybackSeekSession(
                         state = seekSession,
-                        playbackPositionMs = effectivePosition
+                        playbackPositionMs = effectivePosition,
+                        hasPlaybackResumedAfterPendingSeek = exoPlayer.isPlaying
                     )
                     progressState = PlayerProgress(
                         current = seekSession.sliderPositionMs,

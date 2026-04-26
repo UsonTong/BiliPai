@@ -8,20 +8,15 @@ import kotlin.test.assertTrue
 class SettingsSearchFocusPolicyTest {
 
     @Test
-    fun appearanceFocusIndex_accountsForTabletSpecificSection() {
-        assertEquals(
-            8,
+    fun appearanceFocusIndex_noLongerHostsTabletNavigationSection() {
+        assertNull(
             resolveAppearanceSettingsScrollIndex(
                 focusId = SettingsSearchFocusIds.APPEARANCE_TABLET,
                 isTablet = true
             )
         )
-        assertNull(
-            resolveAppearanceSettingsScrollIndex(
-                focusId = SettingsSearchFocusIds.APPEARANCE_TABLET,
-                isTablet = false
-            )
-        )
+        assertEquals(8, resolveAppearanceSettingsScrollIndex(SettingsSearchFocusIds.APPEARANCE_HOME, isTablet = true))
+        assertEquals(8, resolveAppearanceSettingsScrollIndex(SettingsSearchFocusIds.APPEARANCE_HOME, isTablet = false))
     }
 
     @Test
@@ -32,7 +27,8 @@ class SettingsSearchFocusPolicyTest {
 
     @Test
     fun bottomBarFocusIndex_mapsAvailableItemsSection() {
-        assertEquals(7, resolveBottomBarSettingsScrollIndex(SettingsSearchFocusIds.BOTTOM_BAR_AVAILABLE))
+        assertEquals(9, resolveBottomBarSettingsScrollIndex(SettingsSearchFocusIds.BOTTOM_BAR_AVAILABLE))
+        assertEquals(5, resolveBottomBarSettingsScrollIndex(SettingsSearchFocusIds.BOTTOM_BAR_TABLET))
     }
 
     @Test

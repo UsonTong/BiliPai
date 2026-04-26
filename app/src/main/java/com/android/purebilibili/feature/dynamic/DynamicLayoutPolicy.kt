@@ -39,3 +39,19 @@ internal fun resolveDynamicUserLiveBadgeReservedSpace(): Dp = 8.dp
 internal fun resolveDynamicCardOuterPadding(): Dp = 0.dp
 
 internal fun resolveDynamicCardContentPadding(): Dp = 12.dp
+
+internal fun resolveDynamicActionButtonText(label: String, count: Int): String? {
+    val countText = if (count > 0) formatDynamicActionCount(count) else null
+    return when (label) {
+        "转发", "评论" -> listOfNotNull(label, countText).joinToString(separator = " ")
+        else -> countText
+    }
+}
+
+private fun formatDynamicActionCount(count: Int): String {
+    return when {
+        count >= 10000 -> "${count / 10000}万"
+        count >= 1000 -> String.format("%.1fk", count / 1000f)
+        else -> count.toString()
+    }
+}

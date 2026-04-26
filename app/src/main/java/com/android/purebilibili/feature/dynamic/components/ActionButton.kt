@@ -27,6 +27,7 @@ import com.android.purebilibili.core.ui.rememberAppCommentIcon
 import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
 import com.android.purebilibili.core.ui.rememberAppLikeIcon
 import com.android.purebilibili.core.ui.rememberAppShareIcon
+import com.android.purebilibili.feature.dynamic.resolveDynamicActionButtonText
 /**
  *  iOS 风格操作按钮 - 现代化胶囊设计
  * 
@@ -78,6 +79,9 @@ fun ActionButton(
         isComment -> rememberAppCommentIcon()
         else -> icon
     }
+    val actionText = remember(label, count) {
+        resolveDynamicActionButtonText(label = label, count = count)
+    }
     
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -102,18 +106,14 @@ fun ActionButton(
             tint = buttonColor
         )
         
-        if (count > 0) {
+        if (actionText != null) {
             Spacer(modifier = Modifier.width(5.dp))
             Text(
-                text = when {
-                    count >= 10000 -> "${count / 10000}万"
-                    count >= 1000 -> String.format("%.1fk", count / 1000f)
-                    else -> count.toString()
-                },
+                text = actionText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = buttonColor,
-                letterSpacing = (-0.3).sp  //  iOS 紧凑字距
+                letterSpacing = 0.sp
             )
         }
     }

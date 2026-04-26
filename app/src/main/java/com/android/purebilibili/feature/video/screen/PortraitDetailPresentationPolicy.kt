@@ -78,7 +78,7 @@ internal fun shouldUseCompactInlinePortraitPlayerForCommentTab(
     isCommentThreadVisible: Boolean = false
 ): Boolean {
     return useOfficialInlinePortraitDetailExperience &&
-        (selectedTabIndex == 1 || isCommentThreadVisible) &&
+        isCommentThreadVisible &&
         !isPortraitFullscreen
 }
 

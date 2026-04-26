@@ -165,6 +165,30 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
+    fun pagerSwipePosition_tracksOffsetBeforeTargetPageChanges() {
+        assertEquals(
+            0.35f,
+            resolveTopTabPagerPosition(
+                selectedIndex = 0,
+                pagerCurrentPage = 0,
+                pagerTargetPage = 0,
+                pagerCurrentPageOffsetFraction = -0.35f,
+                pagerIsScrolling = true
+            )
+        )
+        assertEquals(
+            0.65f,
+            resolveTopTabPagerPosition(
+                selectedIndex = 1,
+                pagerCurrentPage = 1,
+                pagerTargetPage = 1,
+                pagerCurrentPageOffsetFraction = 0.35f,
+                pagerIsScrolling = true
+            )
+        )
+    }
+
+    @Test
     fun idlePagerPosition_prefersSettledPagerPage() {
         assertEquals(
             1f,

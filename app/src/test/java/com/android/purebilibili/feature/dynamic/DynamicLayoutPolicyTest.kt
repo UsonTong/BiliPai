@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.dynamic
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import androidx.compose.ui.unit.dp
 
@@ -54,5 +55,15 @@ class DynamicLayoutPolicyTest {
         assertEquals(16.dp, resolveDynamicUserLiveBadgeHeight())
         assertEquals(24.dp, resolveDynamicUserLiveBadgeMinWidth())
         assertEquals(8.dp, resolveDynamicUserLiveBadgeReservedSpace())
+    }
+
+    @Test
+    fun `dynamic share and comment actions keep readable text labels`() {
+        assertEquals("转发", resolveDynamicActionButtonText(label = "转发", count = 0))
+        assertEquals("评论", resolveDynamicActionButtonText(label = "评论", count = 0))
+        assertEquals("评论 9", resolveDynamicActionButtonText(label = "评论", count = 9))
+        assertEquals("评论 1.2k", resolveDynamicActionButtonText(label = "评论", count = 1200))
+        assertEquals("85", resolveDynamicActionButtonText(label = "点赞", count = 85))
+        assertNull(resolveDynamicActionButtonText(label = "点赞", count = 0))
     }
 }

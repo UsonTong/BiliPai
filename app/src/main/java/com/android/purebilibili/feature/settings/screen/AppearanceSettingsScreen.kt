@@ -60,8 +60,6 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
 fun AppearanceSettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
     onBack: () -> Unit,
-    onNavigateToBottomBarSettings: () -> Unit = {},  //  底栏设置导航
-
     onNavigateToIconSettings: () -> Unit = {},  //  [新增] 图标设置导航
     onNavigateToAnimationSettings: () -> Unit = {}  //  [新增] 动画设置导航
 ) {
@@ -127,7 +125,6 @@ fun AppearanceSettingsScreen(
             AppearanceSettingsContent(
                 modifier = Modifier.padding(padding),
                 state = state,
-                onNavigateToBottomBarSettings = onNavigateToBottomBarSettings,
                 onNavigateToIconSettings = onNavigateToIconSettings,
                 onNavigateToAnimationSettings = onNavigateToAnimationSettings,
                 viewModel = viewModel,
@@ -157,7 +154,6 @@ fun AppearanceSettingsScreen(
             AppearanceSettingsContent(
                 modifier = Modifier.padding(padding),
                 state = state,
-                onNavigateToBottomBarSettings = onNavigateToBottomBarSettings,
                 onNavigateToIconSettings = onNavigateToIconSettings,
                 onNavigateToAnimationSettings = onNavigateToAnimationSettings,
                 viewModel = viewModel,
@@ -207,7 +203,6 @@ fun AppearanceSettingsScreen(
 fun AppearanceSettingsContent(
     modifier: Modifier = Modifier,
     state: SettingsUiState,
-    onNavigateToBottomBarSettings: () -> Unit,
     onNavigateToIconSettings: () -> Unit,
     onNavigateToAnimationSettings: () -> Unit,
     viewModel: SettingsViewModel,
@@ -1013,19 +1008,16 @@ fun AppearanceSettingsContent(
                         value = when(state.appIcon) {
                             // 🎀 二次元少女系列
                             "BiliPai", "icon_bilipai" -> "BiliPai"
+                            "BiliPai Pink", "icon_bilipai_pink" -> "BiliPai 粉"
+                            "BiliPai White", "icon_bilipai_white" -> "BiliPai 白"
+                            "BiliPai Monet", "icon_bilipai_monet" -> "BiliPai Monet"
                             "Yuki" -> "比心少女"
                             "Anime", "icon_anime" -> "蓝发电视"
                             "Headphone" -> "耳机少女"
                             // 经典系列
                             "3D", "icon_3d" -> "3D立体"
-                            "Blue", "icon_blue" -> "经典蓝"
                             "Flat", "icon_flat" -> "扁平现代"
-                            "Neon", "icon_neon" -> "霓虹"
                             "Telegram Blue", "icon_telegram_blue" -> "纸飞机蓝"
-                            "Telegram Blue Coin", "icon_telegram_blue_coin" -> "蓝币电视"
-                            "Pink", "icon_telegram_pink" -> "樱花粉"
-                            "Purple", "icon_telegram_purple" -> "香芋紫"
-                            "Green", "icon_telegram_green" -> "薄荷绿"
                             "Dark", "icon_telegram_dark" -> "暗夜蓝"
                             else -> "3D立体"  // 默认显示 3D立体 (对应默认 icon_3d)
                         },
@@ -1055,29 +1047,6 @@ fun AppearanceSettingsContent(
             }
         } // End of Personalization item
 
-            //  [新增] 平板设置 (仅平板显示)
-            if (isTablet) {
-                item {
-                    Box(modifier = Modifier.staggeredEntrance(8, isVisible, motionTier = effectiveMotionTier)) {
-                        IOSSectionTitle("平板布局")
-                    }
-                }
-                item {
-                    Box(modifier = Modifier.staggeredEntrance(9, isVisible, motionTier = effectiveMotionTier)) {
-                        IOSGroup {
-                            IOSSwitchItem(
-                                icon = CupertinoIcons.Outlined.SidebarLeft,
-                                title = "侧边导航栏",
-                                subtitle = "开启后使用侧边栏代替底部导航",
-                                checked = state.tabletUseSidebar,
-                                onCheckedChange = { viewModel.toggleTabletUseSidebar(it) },
-                                iconTint = iOSBlue
-                            )
-                        }
-                    }
-                }
-            }
-        
             //  首页展示 - 抽屉式选择
             item { 
                 Box(modifier = Modifier.staggeredEntrance(6, isVisible, motionTier = effectiveMotionTier)) {
@@ -1196,27 +1165,6 @@ fun AppearanceSettingsContent(
                             }
                         }
                         
-                        IOSDivider(modifier = Modifier.padding(start = 16.dp))
-                        IOSClickableItem(
-                            icon = CupertinoIcons.Default.ListBullet,
-                            title = "顶部标签页",
-                            value = "显示/隐藏、排序、自动收缩",
-                            onClick = {
-                                openTopTabManagement(onNavigateToBottomBarSettings)
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-
-                        IOSDivider(modifier = Modifier.padding(start = 16.dp))
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ChevronUp,
-                            title = "顶部栏自动收缩",
-                            subtitle = "列表离开顶部时自动隐藏标签，回到顶部时自动出现",
-                            checked = state.isHeaderCollapseEnabled,
-                            onCheckedChange = { viewModel.toggleHeaderCollapse(it) },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-
                         IOSDivider(modifier = Modifier.padding(start = 16.dp))
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.SquareOnSquare,
@@ -1413,16 +1361,6 @@ fun AppearanceSettingsContent(
         
 
     }
-}
-
-internal fun openTopTabManagement(
-    onNavigateToBottomBarSettings: () -> Unit
-) {
-    SettingsSearchFocusController.submit(
-        SettingsSearchTarget.BOTTOM_BAR,
-        SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS
-    )
-    onNavigateToBottomBarSettings()
 }
 
 @Composable

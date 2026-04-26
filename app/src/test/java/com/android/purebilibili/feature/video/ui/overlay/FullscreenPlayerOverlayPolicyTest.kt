@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.ui.overlay
 
+import android.content.pm.ActivityInfo
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -87,6 +88,28 @@ class FullscreenPlayerOverlayPolicyTest {
             resolveFullscreenPendingGestureSeekPosition(
                 currentPositionMs = 24_700L,
                 pendingSeekPositionMs = 25_000L
+            )
+        )
+    }
+
+    @Test
+    fun fullscreenOverlayExitOrientation_restoresOriginalRequestForPhoneAndTablet() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            resolveFullscreenOverlayExitRequestedOrientation(
+                originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            resolveFullscreenOverlayExitRequestedOrientation(
+                originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+            resolveFullscreenOverlayExitRequestedOrientation(
+                originalRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             )
         )
     }

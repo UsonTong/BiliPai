@@ -95,6 +95,35 @@ const val COMMENT_VIEW_ALL_REPLIES_TAG_PREFIX = "comment_view_all_replies_"
 
 private val replyVideoTitleCache = ConcurrentHashMap<String, String>()
 
+internal data class ReplyItemLayoutPolicy(
+    val horizontalPaddingDp: Int,
+    val avatarSizeDp: Int,
+    val avatarContentSpacingDp: Int
+) {
+    val dividerStartPaddingDp: Int
+        get() = horizontalPaddingDp + avatarSizeDp + avatarContentSpacingDp
+}
+
+internal fun resolveReplyItemLayoutPolicy(): ReplyItemLayoutPolicy {
+    return ReplyItemLayoutPolicy(
+        horizontalPaddingDp = 12,
+        avatarSizeDp = 40,
+        avatarContentSpacingDp = 10
+    )
+}
+
+internal fun resolveReplyItemTextColumnWidthDp(
+    containerWidthDp: Int,
+    policy: ReplyItemLayoutPolicy = resolveReplyItemLayoutPolicy()
+): Int {
+    return (
+        containerWidthDp -
+            policy.horizontalPaddingDp * 2 -
+            policy.avatarSizeDp -
+            policy.avatarContentSpacingDp
+        ).coerceAtLeast(0)
+}
+
 internal enum class ReplyLevelBadgeAsset {
     LEVEL_0,
     LEVEL_1,
@@ -815,6 +844,7 @@ fun ReplyItemView(
         }
     }
     val showTopBadge = shouldShowReplyTopBadge(item = item, isPinned = isPinned)
+    val layoutPolicy = remember { resolveReplyItemLayoutPolicy() }
     val contentPrefix = remember(showTopBadge) {
         if (!showTopBadge) {
             null
@@ -986,7 +1016,12 @@ fun ReplyItemView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 12.dp, start = 16.dp, end = 16.dp)
+                .padding(
+                    top = 12.dp,
+                    bottom = 12.dp,
+                    start = layoutPolicy.horizontalPaddingDp.dp,
+                    end = layoutPolicy.horizontalPaddingDp.dp
+                )
         ) {
             // Avatar
             AsyncImage(
@@ -996,13 +1031,13 @@ fun ReplyItemView(
                     .build(),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(layoutPolicy.avatarSizeDp.dp)
                     .clip(CircleShape)
                     .background(appearance.placeholderColor)
                     .clickable { onAvatarClick(item.member.mid) }
             )
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(layoutPolicy.avatarContentSpacingDp.dp))
 
             Box(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -1304,9 +1339,8 @@ fun ReplyItemView(
             }
         }
         
-        // Inset Divider (starts after avatar + spacing = 16 + 40 + 12 = 68dp)
         HorizontalDivider(
-            modifier = Modifier.padding(start = 68.dp),
+            modifier = Modifier.padding(start = layoutPolicy.dividerStartPaddingDp.dp),
             thickness = 0.5.dp,
             color = appearance.dividerColor.copy(alpha = 0.25f)
         )

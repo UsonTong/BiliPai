@@ -95,6 +95,7 @@ class LiquidGlassTuningTest {
         assertEquals(0.40f, tuning.surfaceAlpha, 0.0001f)
         assertEquals(24f, tuning.refractionAmount, 0.0001f)
         assertEquals(24f, tuning.refractionHeight, 0.0001f)
+        assertEquals(0.28f, tuning.indicatorTintAlpha, 0.0001f)
         assertFalse(tuning.chromaticAberrationEnabled)
         assertTrue(tuning.depthEffectEnabled)
     }

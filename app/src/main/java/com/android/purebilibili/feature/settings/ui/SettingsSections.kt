@@ -174,8 +174,8 @@ fun GeneralSection(
         SettingClickableItem(
             icon = bottomBarVisual.icon,
             iconPainter = bottomBarVisual.iconResId?.let { painterResource(id = it) },
-            title = "底栏设置",
-            value = "自定义底栏和顶部标签",
+            title = "导航设置",
+            value = "底栏、顶部标签、平板侧边栏",
             onClick = onBottomBarClick,
             iconTint = bottomBarVisual.iconTint
         )

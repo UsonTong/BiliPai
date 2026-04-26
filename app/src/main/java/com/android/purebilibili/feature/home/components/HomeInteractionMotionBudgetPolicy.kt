@@ -1,7 +1,5 @@
 package com.android.purebilibili.feature.home.components
 
-import kotlin.math.abs
-
 internal const val HOME_HEADER_SECONDARY_BLUR_RESTORE_DELAY_MS = 120L
 
 enum class HomeInteractionMotionBudget {
@@ -72,12 +70,10 @@ internal fun resolveTopTabPagerPosition(
     if (!pagerIsScrolling) return (pagerCurrentPage ?: selectedIndex).toFloat()
     val currentPage = pagerCurrentPage ?: return selectedIndex.toFloat()
     val offsetFraction = pagerCurrentPageOffsetFraction ?: 0f
-    val targetPage = pagerTargetPage
-    if (targetPage != null && targetPage != currentPage) {
-        val direction = if (targetPage > currentPage) 1f else -1f
-        return currentPage + abs(offsetFraction).coerceIn(0f, 1f) * direction
-    }
-    return currentPage + offsetFraction
+    // PagerState.targetPage only changes after the drag crosses the settle threshold.
+    // currentPageOffsetFraction changes immediately, so deriving the absolute page
+    // position from it keeps the top capsule visually attached to the finger.
+    return currentPage - offsetFraction
 }
 
 internal fun resolveMd3TopTabViewportPosition(

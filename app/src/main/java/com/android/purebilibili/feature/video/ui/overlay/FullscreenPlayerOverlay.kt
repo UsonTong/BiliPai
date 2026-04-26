@@ -123,6 +123,12 @@ internal fun shouldRebindFullscreenSurfaceOnResume(
     return hasPlayerView && hasPlayer
 }
 
+internal fun resolveFullscreenOverlayExitRequestedOrientation(
+    originalRequestedOrientation: Int
+): Int {
+    return originalRequestedOrientation
+}
+
 internal fun shouldStartFullscreenDragGesture(
     gesturesEnabled: Boolean,
     showControls: Boolean,
@@ -353,8 +359,9 @@ fun FullscreenPlayerOverlay(
             //  移除生命周期观察器
             lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
             
-            // 恢复竖屏
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            activity.requestedOrientation = resolveFullscreenOverlayExitRequestedOrientation(
+                originalRequestedOrientation = originalOrientation
+            )
             
             // 恢复系统栏
             @Suppress("DEPRECATION")
