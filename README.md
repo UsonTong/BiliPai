@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-26 · 文档已同步至 v8.0.0-Alpha6（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-28 · 文档已同步至 v8.0.0-Alpha7（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha6-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha7-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,11 +572,11 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0-Alpha6 · 2026-04-26)
+### 最近更新 (v8.0.0-Alpha7 · 2026-04-28)
 
-- 🎬 修复拖动进度条后进度不再刷新的播放同步问题。
-- 🧭 将底栏、顶部标签和平板侧边栏统一整理为“导航设置”。
-- ✨ 优化液态玻璃指示器、动态操作按钮、设置圆角和 BiliPai 图标体系。
+- 🏠 修复首页视频网格遇到重复 `bvid` 时 LazyGrid key 冲突导致滚动闪退的问题。
+- ✨ 优化导航设置归类、外观设置结构、液态玻璃指示器、动态操作按钮、评论宽度、设置圆角和 BiliPai 图标体系。
+- 🔖 版本号升级到 `8.0.0-Alpha7`，`versionCode` 升级到 `169`，并补充重复 `bvid` key 策略单测。
 
 ### 历史版本
 

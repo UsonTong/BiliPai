@@ -50,6 +50,20 @@ import androidx.compose.ui.Alignment
 import coil.compose.AsyncImage
 import kotlinx.coroutines.yield
 
+internal fun resolveHomeCategoryVideoGridKey(
+    video: VideoItem,
+    index: Int
+): String {
+    val primaryId = when {
+        video.bvid.isNotBlank() -> video.bvid
+        video.id > 0L -> "${video.id}_${video.aid.takeIf { it > 0L } ?: video.cid}"
+        video.aid > 0L -> "aid_${video.aid}"
+        video.cid > 0L -> "cid_${video.cid}"
+        else -> "${video.owner.mid}_${video.title.hashCode()}_${video.pubdate}"
+    }
+    return "home_video_${primaryId}_$index"
+}
+
 @Composable
 internal fun HomeCategoryPageContent(
     category: HomeCategory,
@@ -262,7 +276,7 @@ internal fun HomeCategoryPageContent(
                     }
 
                     item(
-                        key = if (video.bvid.isNotBlank()) video.bvid else "video_${video.id}_$index",
+                        key = resolveHomeCategoryVideoGridKey(video, index),
                         contentType = "home_video_card"
                     ) {
                         val isDynamicDetailCard = video.dynamicId.isNotBlank() && !video.bvid.startsWith("BV", ignoreCase = true)
