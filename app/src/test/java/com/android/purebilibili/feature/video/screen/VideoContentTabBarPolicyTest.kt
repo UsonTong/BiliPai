@@ -15,6 +15,14 @@ class VideoContentTabBarPolicyTest {
         assertTrue(spec.tabsRowScrollable)
         assertEquals(12, spec.containerHorizontalPaddingDp)
         assertEquals(12, spec.tabHorizontalPaddingDp)
+        assertEquals(48, spec.segmentedControlHeightDp)
+        assertEquals(30, spec.segmentedControlIndicatorHeightDp)
+        assertTrue(
+            hasVideoContentTabBarIndicatorScaleClearance(
+                containerHeightDp = spec.segmentedControlHeightDp,
+                indicatorHeightDp = spec.segmentedControlIndicatorHeightDp
+            )
+        )
     }
 
     @Test
@@ -53,6 +61,12 @@ class VideoContentTabBarPolicyTest {
         assertEquals(8, spec.tabHorizontalPaddingDp)
         assertEquals(10, spec.tabSpacingDp)
         assertEquals(16, spec.selectedTabFontSizeSp)
+        assertTrue(
+            hasVideoContentTabBarIndicatorScaleClearance(
+                containerHeightDp = spec.segmentedControlHeightDp,
+                indicatorHeightDp = spec.segmentedControlIndicatorHeightDp
+            )
+        )
         assertEquals("发弹幕", policy.sendLabel)
         assertEquals(36, policy.settingsButtonSizeDp)
         assertEquals(18, policy.settingsIconSizeDp)

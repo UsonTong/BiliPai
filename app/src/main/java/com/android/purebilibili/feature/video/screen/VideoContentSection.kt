@@ -95,8 +95,18 @@ internal data class VideoContentTabBarLayoutSpec(
     val tabSpacingDp: Int,
     val selectedTabFontSizeSp: Int,
     val unselectedTabFontSizeSp: Int,
-    val indicatorWidthDp: Int
+    val indicatorWidthDp: Int,
+    val segmentedControlHeightDp: Int,
+    val segmentedControlIndicatorHeightDp: Int
 )
+
+internal fun hasVideoContentTabBarIndicatorScaleClearance(
+    containerHeightDp: Int,
+    indicatorHeightDp: Int
+): Boolean {
+    val bottomBarScale = 78f / 56f
+    return containerHeightDp >= indicatorHeightDp * bottomBarScale + 2f
+}
 
 internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabBarLayoutSpec {
     return if (widthDp < 400) {
@@ -109,7 +119,9 @@ internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabB
             tabSpacingDp = 10,
             selectedTabFontSizeSp = 16,
             unselectedTabFontSizeSp = 15,
-            indicatorWidthDp = 28
+            indicatorWidthDp = 28,
+            segmentedControlHeightDp = 46,
+            segmentedControlIndicatorHeightDp = 29
         )
     } else {
         VideoContentTabBarLayoutSpec(
@@ -121,7 +133,9 @@ internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabB
             tabSpacingDp = 16,
             selectedTabFontSizeSp = 17,
             unselectedTabFontSizeSp = 16,
-            indicatorWidthDp = 32
+            indicatorWidthDp = 32,
+            segmentedControlHeightDp = 48,
+            segmentedControlIndicatorHeightDp = 30
         )
     }
 }
@@ -1040,9 +1054,9 @@ private fun VideoContentTabBar(
                 onSelected = onTabSelected,
                 modifier = Modifier
                     .weight(layoutSpec.tabsRowWeight)
-                    .padding(start = 0.dp, top = 7.dp, end = 8.dp, bottom = 7.dp),
-                height = 40.dp,
-                indicatorHeight = 34.dp,
+                    .padding(start = 0.dp, top = 5.dp, end = 8.dp, bottom = 5.dp),
+                height = layoutSpec.segmentedControlHeightDp.dp,
+                indicatorHeight = layoutSpec.segmentedControlIndicatorHeightDp.dp,
                 labelFontSize = layoutSpec.unselectedTabFontSizeSp.sp
             )
 

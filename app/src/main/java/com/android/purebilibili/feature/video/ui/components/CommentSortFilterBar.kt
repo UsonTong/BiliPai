@@ -19,6 +19,28 @@ import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.Person
 
+internal data class CommentSortSegmentedControlSpec(
+    val itemWidthDp: Int,
+    val heightDp: Int,
+    val indicatorHeightDp: Int
+)
+
+internal fun resolveCommentSortSegmentedControlSpec(itemCount: Int): CommentSortSegmentedControlSpec {
+    return CommentSortSegmentedControlSpec(
+        itemWidthDp = if (itemCount >= 4) 56 else 66,
+        heightDp = 38,
+        indicatorHeightDp = 24
+    )
+}
+
+internal fun hasCommentSortIndicatorScaleClearance(
+    containerHeightDp: Int,
+    indicatorHeightDp: Int
+): Boolean {
+    val bottomBarScale = 78f / 56f
+    return containerHeightDp >= indicatorHeightDp * bottomBarScale + 2f
+}
+
 /**
  *  评论排序筛选栏 (iOS Style)
  *  Header: "评论 (123)"
@@ -93,13 +115,16 @@ fun iOSSegmentedControl(
     selectedIndex: Int,
     onScaleChange: (Int) -> Unit
 ) {
+    val spec = remember(items.size) {
+        resolveCommentSortSegmentedControlSpec(itemCount = items.size)
+    }
     BottomBarLiquidSegmentedControl(
         items = items,
         selectedIndex = selectedIndex,
         onSelected = onScaleChange,
-        itemWidth = if (items.size >= 4) 56.dp else 66.dp,
-        height = 32.dp,
-        indicatorHeight = 26.dp,
+        itemWidth = spec.itemWidthDp.dp,
+        height = spec.heightDp.dp,
+        indicatorHeight = spec.indicatorHeightDp.dp,
         labelFontSize = 13.sp
     )
 }
