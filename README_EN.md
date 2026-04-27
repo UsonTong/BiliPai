@@ -433,7 +433,7 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 ### Latest (v8.0.0-Alpha7 · 2026-04-28)
 
 - 🏠 Fixed a home video grid crash caused by duplicate `bvid` LazyGrid keys.
-- ✨ Refined Navigation settings grouping, Appearance settings structure, detail/comment liquid-glass indicators, dynamic action buttons, comment width, grouped setting corners, and BiliPai app icons.
+- ✨ Refined Navigation settings grouping, Appearance settings structure, segmented-control liquid-glass indicators, dynamic action buttons, comment width, grouped setting corners, and BiliPai app icons.
 - 🔖 Bumped the app to `8.0.0-Alpha7` with `versionCode` `169`, with a focused duplicate `bvid` key policy test.
 
 ---

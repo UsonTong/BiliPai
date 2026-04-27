@@ -136,8 +136,7 @@ fun BottomBarLiquidSegmentedControl(
                 }
             )
             .height(height)
-            .clip(containerShape)
-            .background(containerColor)
+            .background(containerColor, containerShape)
             .border(
                 width = 0.6.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(
@@ -185,7 +184,7 @@ fun BottomBarLiquidSegmentedControl(
             modifier = Modifier
                 .matchParentSize()
                 .layerBackdrop(shellBackdrop)
-                .background(containerColor)
+                .background(containerColor, containerShape)
         )
 
         BottomBarLiquidSegmentedLabels(

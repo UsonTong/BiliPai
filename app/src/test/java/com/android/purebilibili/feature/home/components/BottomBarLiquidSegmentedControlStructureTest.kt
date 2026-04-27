@@ -17,6 +17,8 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("resolveBottomBarRefractionMotionProfile("))
         assertTrue(source.contains("rememberCombinedBackdrop(shellBackdrop, contentBackdrop)"))
         assertTrue(source.contains(".layerBackdrop(contentBackdrop)"))
+        assertTrue(source.contains(".background(containerColor, containerShape)"))
+        assertFalse(source.contains(".clip(containerShape)"))
         assertTrue(source.contains("val shouldRefractContent = dragState.isDragging"))
         assertFalse(source.contains("val shouldRefractContent = dragState.isDragging || abs(dragState.dragOffset) > 0.5f"))
         assertTrue(source.contains("val indicatorEffectProgress = if (shouldRefractContent) motionProgress else 0f"))
