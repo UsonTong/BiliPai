@@ -765,8 +765,14 @@ internal fun resolveHomeTopUnifiedSearchContainerColor(
     return if (isLightMode) {
         Color.White.copy(alpha = 0.34f)
     } else {
-        Color.White.copy(alpha = 0.08f)
+        Color.Black.copy(alpha = 0.18f)
     }
+}
+
+internal fun resolveHomeTopSearchDarkWhiteOverlayMultiplier(
+    isLightMode: Boolean
+): Float {
+    return if (isLightMode) 0.86f else 0.30f
 }
 
 internal fun resolveHomeTopUnifiedSearchBorderColor(
@@ -1047,7 +1053,8 @@ internal fun Modifier.homeTopChromeSurface(
     isScrolling: Boolean,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
-    preferFlatGlass: Boolean = false
+    preferFlatGlass: Boolean = false,
+    darkThemeWhiteOverlayMultiplier: Float = 0.86f
 ): Modifier = composed {
     this.appChromeLiquidSurface(
         renderMode = renderMode,
@@ -1101,7 +1108,7 @@ internal fun Modifier.homeTopChromeSurface(
                 renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP ||
                 renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
             ) {
-                0.86f
+                darkThemeWhiteOverlayMultiplier
             } else {
                 1f
             },
@@ -1932,6 +1939,9 @@ fun iOSHomeHeader(
                                             forceLowBlurBudget = forceLowBlurBudget,
                                             preferFlatGlass = resolveHomeTopWideChromePreferFlatGlass(
                                                 searchChromeRenderMode
+                                            ),
+                                            darkThemeWhiteOverlayMultiplier = resolveHomeTopSearchDarkWhiteOverlayMultiplier(
+                                                isLightMode = isLightMode
                                             )
                                         )
                                         .border(

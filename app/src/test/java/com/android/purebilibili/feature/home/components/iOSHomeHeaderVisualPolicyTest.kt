@@ -819,6 +819,18 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `dark unified search pill uses dark surface instead of white lift`() {
+        val darkContainer = resolveHomeTopUnifiedSearchContainerColor(isLightMode = false)
+
+        assertEquals(Color.Black.red, darkContainer.red)
+        assertEquals(Color.Black.green, darkContainer.green)
+        assertEquals(Color.Black.blue, darkContainer.blue)
+        assertTrue(darkContainer.alpha >= 0.16f)
+        assertTrue(resolveHomeTopSearchDarkWhiteOverlayMultiplier(isLightMode = false) < 0.5f)
+        assertEquals(0.86f, resolveHomeTopSearchDarkWhiteOverlayMultiplier(isLightMode = true), 0.0001f)
+    }
+
+    @Test
     fun `md3 unified home header uses subtle outer panel rounding`() {
         assertEquals(
             16.dp,

@@ -279,7 +279,11 @@ fun BottomBarLiquidSegmentedControl(
                                     78f / 56f,
                                     indicatorEffectProgress
                                 )
-                                val velocity = dragState.velocity / 10f
+                                val velocity = if (shouldRefractContent) {
+                                    dragState.velocity / 10f
+                                } else {
+                                    0f
+                                }
                                 scaleX = indicatorScale / (
                                     1f - (
                                         velocity * 0.75f
