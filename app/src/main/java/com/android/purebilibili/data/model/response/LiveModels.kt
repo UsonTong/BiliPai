@@ -198,6 +198,7 @@ data class FollowedLiveRoom(
 @Serializable
 data class LiveAreaListResponse(
     val code: Int = 0,
+    val msg: String = "",
     val message: String = "",
     val data: List<LiveAreaParent>? = null
 )
@@ -229,7 +230,9 @@ data class LiveAreaChild(
 data class LiveFavoriteTagEntry(
     val parentAreaId: Int = 0,
     val areaId: Int = 0,
-    val title: String = ""
+    val title: String = "",
+    val coverUrl: String = "",
+    val parentTitle: String = ""
 )
 
 @Serializable

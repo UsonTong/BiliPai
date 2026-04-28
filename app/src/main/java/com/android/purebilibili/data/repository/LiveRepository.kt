@@ -211,7 +211,7 @@ object LiveRepository {
             if (resp.code == 0) {
                 Result.success(resp.data ?: emptyList())
             } else {
-                Result.failure(Exception(resp.message.ifBlank { "获取直播标签失败" }))
+                Result.failure(Exception(resp.message.ifBlank { resp.msg.ifBlank { "获取直播标签失败" } }))
             }
         } catch (e: Exception) {
             Result.failure(e)

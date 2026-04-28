@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,7 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
@@ -42,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,9 +76,10 @@ fun LiveAreaScreen(
     var areas by remember { mutableStateOf<List<LiveAreaParent>>(emptyList()) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var isEditing by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableIntStateOf(0) }
     val favoriteTags by SettingsManager.getLiveFavoriteTags(context).collectAsStateWithLifecycle(emptyList())
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reloadKey) {
         LiveRepository.getLiveAreaIndex()
             .onSuccess {
                 areas = it
@@ -94,6 +99,7 @@ fun LiveAreaScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -107,7 +113,7 @@ fun LiveAreaScreen(
             Text(
                 text = "全部标签",
                 color = colorScheme.onBackground,
-                fontSize = 20.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
@@ -121,7 +127,22 @@ fun LiveAreaScreen(
                 CircularProgressIndicator()
             }
             error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = error ?: "", color = colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = error ?: "", color = colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            isLoading = true
+                            error = null
+                            reloadKey += 1
+                        }
+                    ) {
+                        Text("重试")
+                    }
+                }
+            }
+            areas.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "暂无直播标签", color = colorScheme.onSurfaceVariant)
             }
             areas.isNotEmpty() -> {
                 LiveFavoriteTagsPanel(
@@ -141,7 +162,7 @@ fun LiveAreaScreen(
                         }
                     }
                 )
-                ScrollableTabRow(
+                PrimaryScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = colorScheme.background,
                     edgePadding = metrics.safeSpaceDp.dp
@@ -156,6 +177,9 @@ fun LiveAreaScreen(
                 }
                 val selectedArea = areas.getOrNull(selectedTab)
                 if (selectedArea != null) {
+                    val displayChildren = remember(selectedArea.list) {
+                        sortLiveAreaChildrenForDisplay(selectedArea.list.orEmpty())
+                    }
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
                         contentPadding = PaddingValues(
@@ -167,7 +191,7 @@ fun LiveAreaScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(selectedArea.list.orEmpty(), key = { it.id }) { child ->
+                        items(displayChildren, key = { it.id }) { child ->
                             val childAreaId = child.id.toIntOrNull() ?: 0
                             val childParentId = child.parent_id.toIntOrNull() ?: selectedArea.id
                             val isFavorite = favoriteTags.any {
@@ -180,17 +204,10 @@ fun LiveAreaScreen(
                                 onClick = {
                                     if (isEditing && childAreaId != 0) {
                                         scope.launch {
-                                            val next = if (isFavorite) {
-                                                favoriteTags.filterNot {
-                                                    it.parentAreaId == childParentId && it.areaId == childAreaId
-                                                }
-                                            } else {
-                                                favoriteTags + LiveFavoriteTagEntry(
-                                                    parentAreaId = childParentId,
-                                                    areaId = childAreaId,
-                                                    title = child.name
-                                                )
-                                            }
+                                            val next = toggleLiveFavoriteTag(
+                                                current = favoriteTags,
+                                                entry = child.toLiveFavoriteTagEntry(selectedArea)
+                                            )
                                             SettingsManager.setLiveFavoriteTags(context, next)
                                         }
                                     } else {
@@ -233,47 +250,130 @@ private fun LiveFavoriteTagsPanel(
             )
         }
         Spacer(Modifier.height(8.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            favoriteTags.forEach { child ->
-                Box {
-                    Surface(
-                        color = colorScheme.surface,
-                        shape = RoundedCornerShape(4.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outline)
-                    ) {
-                        Text(
-                            text = child.title,
-                            color = colorScheme.onSurface,
-                            fontSize = 14.sp,
-                            modifier = Modifier
-                                .clickable { onTagClick(child) }
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
-                    }
-                    if (isEditing) {
-                        Surface(
-                            onClick = { onRemove(child) },
-                            shape = CircleShape,
-                            color = colorScheme.errorContainer,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.StarBorder,
-                                contentDescription = "移除常用标签",
-                                tint = colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(2.dp)
-                            )
-                        }
-                    }
+        if (favoriteTags.isEmpty()) {
+            Text(
+                text = "编辑时点亮标签，常用分区会显示在这里",
+                color = colorScheme.outline,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(end = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(favoriteTags, key = { "${it.parentAreaId}_${it.areaId}" }) { child ->
+                    LiveFavoriteTagCard(
+                        child = child,
+                        isEditing = isEditing,
+                        onClick = { onTagClick(child) },
+                        onRemove = { onRemove(child) }
+                    )
                 }
             }
         }
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun LiveFavoriteTagCard(
+    child: LiveFavoriteTagEntry,
+    isEditing: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Box {
+        Surface(
+            onClick = { if (isEditing) onRemove() else onClick() },
+            color = colorScheme.surface,
+            shape = RoundedCornerShape(8.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.28f)),
+            modifier = Modifier
+                .width(86.dp)
+                .height(92.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                LiveAreaIcon(
+                    imageUrl = child.coverUrl,
+                    title = child.title,
+                    modifier = Modifier.size(44.dp)
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    text = child.title,
+                    color = colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+                if (child.parentTitle.isNotBlank()) {
+                    Text(
+                        text = child.parentTitle,
+                        color = colorScheme.onSurfaceVariant,
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        if (isEditing) {
+            Surface(
+                onClick = onRemove,
+                shape = CircleShape,
+                color = colorScheme.errorContainer,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.StarBorder,
+                    contentDescription = "移除常用标签",
+                    tint = colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveAreaIcon(
+    imageUrl: String,
+    title: String,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    if (imageUrl.isBlank()) {
+        Surface(
+            color = colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(8.dp),
+            modifier = modifier
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = title.take(1),
+                    color = colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
+                )
+            }
+        }
+    } else {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "$title 图标",
+            contentScale = ContentScale.Fit,
+            modifier = modifier.clip(RoundedCornerShape(8.dp))
+        )
     }
 }
 
@@ -292,10 +392,9 @@ private fun LiveAreaGridItem(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            AsyncImage(
-                model = child.pic,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
+            LiveAreaIcon(
+                imageUrl = child.pic,
+                title = child.name,
                 modifier = Modifier.size(45.dp)
             )
             Spacer(Modifier.height(4.dp))
