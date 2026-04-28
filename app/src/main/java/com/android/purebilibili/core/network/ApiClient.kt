@@ -247,6 +247,7 @@ interface BilibiliApi {
     @GET("https://api.live.bilibili.com/room/v3/area/getRoomList")
     suspend fun getLiveList(
         @Query("parent_area_id") parentAreaId: Int = 0,  // 0=全站
+        @Query("area_id") areaId: Int = 0,
         @Query("page") page: Int = 1,
         @Query("page_size") pageSize: Int = 30,
         @Query("sort_type") sortType: String = "online"  // 按人气排序

@@ -421,7 +421,7 @@ internal fun resolveMiuixFloatingBottomBarTuning(
 internal fun resolveAndroidNativeBottomBarGlassEnabled(
     liquidGlassEnabled: Boolean,
     blurEnabled: Boolean
-): Boolean = liquidGlassEnabled && !blurEnabled
+): Boolean = liquidGlassEnabled
 
 internal fun shouldUseAndroidNativeFloatingHazeBlur(
     blurEnabled: Boolean,

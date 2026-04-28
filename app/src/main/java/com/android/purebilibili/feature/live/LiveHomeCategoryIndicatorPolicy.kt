@@ -57,7 +57,7 @@ internal fun resolveLiveHomeCategoryFollowScrollTarget(
 
 internal fun resolveLiveAreaParentSegmentedControlSpec(): LiveCategorySegmentedControlSpec {
     return LiveCategorySegmentedControlSpec(
-        itemWidthDp = null,
+        itemWidthDp = 112,
         heightDp = 52,
         indicatorHeightDp = 44,
         labelFontSizeSp = 16,

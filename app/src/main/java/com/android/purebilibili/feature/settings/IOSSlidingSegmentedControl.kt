@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -37,6 +39,41 @@ internal fun resolveMd3SegmentedLabelFontSizeSp(
         optionCount >= 4 -> 14f
         longestLabelLength >= 8 -> 13f
         else -> 15f
+    }
+}
+
+internal data class Md3SegmentedControlColorTokens(
+    val outerContainerColor: Color,
+    val activeContainerColor: Color,
+    val activeContentColor: Color,
+    val inactiveContentColor: Color
+)
+
+internal fun resolveMd3SegmentedControlColorTokens(
+    androidNativeVariant: AndroidNativeVariant,
+    materialPrimaryContainer: Color,
+    materialOnPrimaryContainer: Color,
+    materialSurfaceContainerHigh: Color,
+    materialOnSurfaceVariant: Color,
+    miuixSecondaryContainer: Color,
+    miuixOnSecondaryContainer: Color,
+    miuixSurfaceContainerHigh: Color,
+    miuixOnSurfaceVariantSummary: Color
+): Md3SegmentedControlColorTokens {
+    return if (androidNativeVariant == AndroidNativeVariant.MATERIAL3) {
+        Md3SegmentedControlColorTokens(
+            outerContainerColor = materialSurfaceContainerHigh,
+            activeContainerColor = materialPrimaryContainer,
+            activeContentColor = materialOnPrimaryContainer,
+            inactiveContentColor = materialOnSurfaceVariant
+        )
+    } else {
+        Md3SegmentedControlColorTokens(
+            outerContainerColor = miuixSurfaceContainerHigh,
+            activeContainerColor = miuixSecondaryContainer,
+            activeContentColor = miuixOnSecondaryContainer,
+            inactiveContentColor = miuixOnSurfaceVariantSummary
+        )
     }
 }
 
@@ -130,6 +167,20 @@ private fun <T> Md3SegmentedControl(
     val longestLabelLength = remember(options) {
         options.maxOfOrNull { it.label.length } ?: 0
     }
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val materialColorScheme = MaterialTheme.colorScheme
+    val miuixColorScheme = MiuixTheme.colorScheme
+    val colorTokens = resolveMd3SegmentedControlColorTokens(
+        androidNativeVariant = androidNativeVariant,
+        materialPrimaryContainer = materialColorScheme.primaryContainer,
+        materialOnPrimaryContainer = materialColorScheme.onPrimaryContainer,
+        materialSurfaceContainerHigh = materialColorScheme.surfaceContainerHigh,
+        materialOnSurfaceVariant = materialColorScheme.onSurfaceVariant,
+        miuixSecondaryContainer = miuixColorScheme.secondaryContainer,
+        miuixOnSecondaryContainer = miuixColorScheme.onSecondaryContainer,
+        miuixSurfaceContainerHigh = miuixColorScheme.surfaceContainerHigh,
+        miuixOnSurfaceVariantSummary = miuixColorScheme.onSurfaceVariantSummary
+    )
     val labelFontSize = remember(options.size, longestLabelLength) {
         resolveMd3SegmentedLabelFontSizeSp(
             optionCount = options.size,
@@ -140,7 +191,7 @@ private fun <T> Md3SegmentedControl(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(colorTokens.outerContainerColor)
             .padding(4.dp)
     ) {
         SingleChoiceSegmentedButtonRow(
@@ -156,14 +207,14 @@ private fun <T> Md3SegmentedControl(
                         count = options.size
                     ),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MiuixTheme.colorScheme.secondaryContainer,
-                        activeContentColor = MiuixTheme.colorScheme.onSecondaryContainer,
+                        activeContainerColor = colorTokens.activeContainerColor,
+                        activeContentColor = colorTokens.activeContentColor,
                         inactiveContainerColor = Color.Transparent,
-                        inactiveContentColor = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        disabledActiveContainerColor = MiuixTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
-                        disabledActiveContentColor = MiuixTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.55f),
+                        inactiveContentColor = colorTokens.inactiveContentColor,
+                        disabledActiveContainerColor = colorTokens.activeContainerColor.copy(alpha = 0.35f),
+                        disabledActiveContentColor = colorTokens.activeContentColor.copy(alpha = 0.55f),
                         disabledInactiveContainerColor = Color.Transparent,
-                        disabledInactiveContentColor = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.45f)
+                        disabledInactiveContentColor = colorTokens.inactiveContentColor.copy(alpha = 0.45f)
                     ),
                     modifier = Modifier.weight(1f),
                     icon = {}

@@ -3,6 +3,7 @@ package com.android.purebilibili.data.model.response
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonNames
 
 /**
@@ -29,7 +30,9 @@ data class LiveData(
 }
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class LiveRoom(
+    @JsonNames("roomid", "room_id")
     val roomid: Long = 0,
     val uid: Long = 0,
     val title: String = "",
@@ -37,11 +40,23 @@ data class LiveRoom(
     val face: String = "",
     val cover: String = "",
     @SerialName("user_cover") val userCover: String = "",
+    @SerialName("system_cover") val systemCover: String = "",
+    @SerialName("show_cover") val showCover: String = "",
     val online: Int = 0,
-    @SerialName("area_name") val areaName: String = "",
-    @SerialName("parent_name") val parentName: String = "",
+    @JsonNames("area_name", "area_v2_name")
+    @SerialName("area_name")
+    val areaName: String = "",
+    @JsonNames("parent_name", "area_v2_parent_name")
+    @SerialName("parent_name")
+    val parentName: String = "",
     val keyframe: String = ""
-)
+) {
+    fun displayCover(): String {
+        return listOf(cover, userCover, showCover, systemCover, keyframe, face)
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
+    }
+}
 
 // --- 直播播放 URL Response ---
 @Serializable
@@ -118,6 +133,7 @@ data class FollowedLiveResponse(
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class FollowedLiveData(
     val list: List<FollowedLiveRoom>? = null,
     @JsonNames("living_num", "live_count") val livingNum: Int = 0,

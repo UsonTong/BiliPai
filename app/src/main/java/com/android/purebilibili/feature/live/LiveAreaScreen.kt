@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.live
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -224,20 +228,58 @@ private fun LiveAreaParentTabRow(
 ) {
     if (areas.isEmpty()) return
     val segmentedSpec = remember { resolveLiveAreaParentSegmentedControlSpec() }
-    BottomBarLiquidSegmentedControl(
-        items = areas.map { it.name },
-        selectedIndex = selectedTab.coerceIn(0, areas.lastIndex),
-        onSelected = onTabSelected,
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    val safeSelectedTab = selectedTab.coerceIn(0, areas.lastIndex)
+    val itemWidthPx = with(density) { (segmentedSpec.itemWidthDp ?: 0).dp.toPx() }
+    val scrollEdgeBufferPx = with(density) { 20.dp.toPx() }
+    var indicatorPosition by remember { mutableFloatStateOf(safeSelectedTab.toFloat()) }
+
+    LaunchedEffect(safeSelectedTab) {
+        indicatorPosition = safeSelectedTab.toFloat()
+    }
+
+    LaunchedEffect(indicatorPosition, areas.size, scrollState.maxValue, itemWidthPx) {
+        if (itemWidthPx <= 0f || scrollState.maxValue <= 0) return@LaunchedEffect
+        val contentWidthPx = itemWidthPx * areas.size +
+            with(density) { (segmentedSpec.containerHorizontalPaddingDp * 2).dp.toPx() }
+        val viewportWidthPx = (contentWidthPx - scrollState.maxValue).coerceAtLeast(1f)
+        val targetScroll = resolveLiveHomeCategoryFollowScrollTarget(
+            indicatorPosition = indicatorPosition,
+            itemWidthPx = itemWidthPx,
+            itemCount = areas.size,
+            viewportWidthPx = viewportWidthPx,
+            currentScrollPx = scrollState.value.toFloat(),
+            maxScrollPx = scrollState.maxValue.toFloat(),
+            edgeBufferPx = scrollEdgeBufferPx
+        )
+
+        if (kotlin.math.abs(targetScroll - scrollState.value) > 1) {
+            scrollState.scrollTo(targetScroll)
+        }
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = horizontalPadding),
-        itemWidth = segmentedSpec.itemWidthDp?.dp,
-        height = segmentedSpec.heightDp.dp,
-        indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
-        labelFontSize = segmentedSpec.labelFontSizeSp.sp,
-        containerHorizontalPadding = segmentedSpec.containerHorizontalPaddingDp.dp,
-        containerVerticalPadding = segmentedSpec.containerVerticalPaddingDp.dp
-    )
+            .padding(horizontal = horizontalPadding)
+            .height(segmentedSpec.heightDp.dp)
+            .horizontalScroll(scrollState, enabled = false),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BottomBarLiquidSegmentedControl(
+            items = areas.map { it.name },
+            selectedIndex = safeSelectedTab,
+            onSelected = onTabSelected,
+            itemWidth = segmentedSpec.itemWidthDp?.dp,
+            height = segmentedSpec.heightDp.dp,
+            indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
+            labelFontSize = segmentedSpec.labelFontSizeSp.sp,
+            containerHorizontalPadding = segmentedSpec.containerHorizontalPaddingDp.dp,
+            containerVerticalPadding = segmentedSpec.containerVerticalPaddingDp.dp,
+            onIndicatorPositionChanged = { indicatorPosition = it }
+        )
+    }
 }
 
 @Composable

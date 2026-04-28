@@ -33,6 +33,10 @@ class LiveCategorySegmentedControlStructureTest {
 
         assertTrue(source.contains("BottomBarLiquidSegmentedControl("))
         assertTrue(source.contains("resolveLiveAreaParentSegmentedControlSpec()"))
+        assertTrue(source.contains(".horizontalScroll(scrollState, enabled = false)"))
+        assertTrue(source.contains("resolveLiveHomeCategoryFollowScrollTarget("))
+        assertTrue(source.contains("scrollState.scrollTo(targetScroll)"))
+        assertTrue(source.contains("onIndicatorPositionChanged = { indicatorPosition = it }"))
         assertFalse(source.contains("dragSelectionEnabled = false"))
         assertFalse(source.contains("liquidGlassEffectsEnabled = false"))
     }

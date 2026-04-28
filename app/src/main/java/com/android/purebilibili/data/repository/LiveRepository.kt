@@ -58,6 +58,12 @@ data class LiveRedPocketInfo(
     val remainingSeconds: Int = 0
 )
 
+data class LiveAreaRoomsPage(
+    val rooms: List<LiveRoom>,
+    val hasMore: Boolean,
+    val totalCount: Int = 0
+)
+
 internal fun parseLiveDanmakuHistoryItems(rawJson: String): Result<List<LivePrefetchDanmaku>> {
     val root = liveRepositoryJson.parseToJsonElement(rawJson).jsonObject
     if (root.int("code", -1) != 0) {
@@ -224,29 +230,62 @@ object LiveRepository {
         page: Int = 1,
         sortType: String = "online",
         areaTitle: String = ""
-    ): Result<List<LiveRoom>> = withContext(Dispatchers.IO) {
+    ): Result<List<LiveRoom>> = getAreaRoomsPage(
+        parentAreaId = parentAreaId,
+        areaId = areaId,
+        page = page,
+        sortType = sortType,
+        areaTitle = areaTitle
+    ).map { it.rooms }
+
+    suspend fun getAreaRoomsPage(
+        parentAreaId: Int,
+        areaId: Int = 0,
+        page: Int = 1,
+        pageSize: Int = 30,
+        sortType: String = "online",
+        areaTitle: String = ""
+    ): Result<LiveAreaRoomsPage> = withContext(Dispatchers.IO) {
         try {
-            val resp = api.getLiveSecondAreaList(
+            val resp = api.getLiveList(
                 parentAreaId = parentAreaId,
                 areaId = areaId,
                 page = page,
+                pageSize = pageSize,
                 sortType = sortType
             )
             if (resp.code == 0) {
-                Result.success(resp.data?.list ?: emptyList())
+                val data = resp.data
+                val rooms = data?.getAllRooms() ?: emptyList()
+                Result.success(
+                    LiveAreaRoomsPage(
+                        rooms = rooms,
+                        hasMore = hasMoreLiveAreaRooms(
+                            loadedCount = rooms.size,
+                            page = page,
+                            pageSize = pageSize,
+                            hasMoreFlag = data?.hasMore ?: 0,
+                            totalCount = data?.count ?: 0
+                        ),
+                        totalCount = data?.count ?: 0
+                    )
+                )
             } else if (shouldFallbackLiveAreaRooms(code = resp.code, message = resp.message)) {
-                val fallbackResp = api.getLiveList(
+                val fallbackResp = api.getLiveSecondAreaList(
                     parentAreaId = parentAreaId,
+                    areaId = areaId,
                     page = page,
-                    pageSize = 100,
                     sortType = sortType
                 )
                 if (fallbackResp.code == 0) {
-                    val filteredRooms = filterFallbackLiveAreaRooms(
-                        rooms = fallbackResp.data?.getAllRooms() ?: emptyList(),
-                        areaTitle = areaTitle
+                    val data = fallbackResp.data
+                    Result.success(
+                        LiveAreaRoomsPage(
+                            rooms = data?.list ?: emptyList(),
+                            hasMore = data?.hasMore == 1,
+                            totalCount = data?.count ?: 0
+                        )
                     )
-                    Result.success(filteredRooms)
                 } else {
                     Result.failure(
                         Exception(

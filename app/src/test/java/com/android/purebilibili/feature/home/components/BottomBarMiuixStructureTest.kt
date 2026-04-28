@@ -20,7 +20,6 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("drawBackdrop("))
         assertTrue(kernelSuRendererSource.contains("vibrancy()"))
         assertTrue(kernelSuRendererSource.contains("lens("))
-        assertTrue(kernelSuRendererSource.contains("ColorFilter.tint("))
         assertTrue(kernelSuRendererSource.contains("rememberCombinedBackdrop(backdrop, tabsBackdrop)"))
         assertTrue(kernelSuRendererSource.contains("val tabsBackdrop = rememberLayerBackdrop()"))
         assertTrue(kernelSuRendererSource.contains("val progress = dampedDragState.pressProgress"))
@@ -30,9 +29,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("scaleX = indicatorScale /"))
         assertTrue(kernelSuRendererSource.contains("scaleY = indicatorScale *"))
         assertTrue(kernelSuRendererSource.contains("chromaticAberration = true"))
-        assertTrue(kernelSuRendererSource.contains("selected = true,"))
-        assertTrue(kernelSuRendererSource.contains("selectedColor = exportTintColor,"))
-        assertTrue(kernelSuRendererSource.contains("unselectedColor = exportTintColor,"))
+        assertTrue(kernelSuRendererSource.contains("selected = visual.useSelectedIcon,"))
+        assertTrue(kernelSuRendererSource.contains("contentColorOverride = contentColor,"))
+        assertTrue(kernelSuRendererSource.contains("selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis"))
         assertTrue(kernelSuRendererSource.contains("Highlight.Default.copy(alpha = motionProgress)"))
         assertFalse(kernelSuRendererSource.contains("item = currentItem,"))
         assertFalse(kernelSuRendererSource.contains("val tintedContentBackdrop = rememberLayerBackdrop()"))
@@ -46,7 +45,9 @@ class BottomBarMiuixStructureTest {
             .substringAfter("private fun KernelSuAlignedBottomBar(")
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
 
-        val visibleContentIndex = kernelSuRendererSource.indexOf("selected = currentItem == item")
+        val visibleContentIndex = kernelSuRendererSource.indexOf(
+            "selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis"
+        )
         val tintCaptureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
         val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = contentBackdrop")
         val hitOverlayIndex = kernelSuRendererSource.indexOf(

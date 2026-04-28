@@ -185,9 +185,9 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
-    fun portraitDanmakuSurface_usesFullPageForLandscapeVideo() {
+    fun portraitDanmakuSurface_keepsLandscapeVideoDanmakuAnchoredToViewport() {
         assertEquals(
-            PortraitDanmakuSurfaceMode.Page,
+            PortraitDanmakuSurfaceMode.VideoViewport,
             resolvePortraitDanmakuSurfaceMode(currentVideoAspect = 16f / 9f)
         )
     }

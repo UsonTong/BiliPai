@@ -4,6 +4,8 @@ import com.android.purebilibili.data.model.response.LiveAreaChild
 import com.android.purebilibili.data.model.response.LiveFavoriteTagEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class LiveAreaScreenPolicyTest {
 
@@ -65,6 +67,25 @@ class LiveAreaScreenPolicyTest {
         )
 
         assertEquals(listOf(35), next.map { it.areaId })
+    }
+
+    @Test
+    fun parentTabWidthFitsFourItemsAndKeepsOverflowScrollable() {
+        assertEquals(
+            100f,
+            resolveLiveAreaParentTabItemWidthDp(containerWidthDp = 400f, itemCount = 4)
+        )
+        assertEquals(
+            112f,
+            resolveLiveAreaParentTabItemWidthDp(containerWidthDp = 400f, itemCount = 6)
+        )
+    }
+
+    @Test
+    fun parentTabLiquidIndicatorFollowsBottomBarLiquidGlassSetting() {
+        assertTrue(shouldUseLiveAreaParentLiquidIndicator(itemCount = 4, bottomBarLiquidGlassEnabled = true))
+        assertFalse(shouldUseLiveAreaParentLiquidIndicator(itemCount = 1, bottomBarLiquidGlassEnabled = true))
+        assertFalse(shouldUseLiveAreaParentLiquidIndicator(itemCount = 4, bottomBarLiquidGlassEnabled = false))
     }
 
     private fun liveAreaChild(

@@ -2,7 +2,6 @@ package com.android.purebilibili.feature.live
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class LiveHomeCategoryIndicatorPolicyTest {
 
@@ -49,10 +48,10 @@ class LiveHomeCategoryIndicatorPolicyTest {
     }
 
     @Test
-    fun `all tags parent category fills width with bottom bar motion dimensions`() {
+    fun `all tags parent category uses fixed width so labels are not compressed`() {
         val spec = resolveLiveAreaParentSegmentedControlSpec()
 
-        assertNull(spec.itemWidthDp)
+        assertEquals(112, spec.itemWidthDp)
         assertEquals(52, spec.heightDp)
         assertEquals(44, spec.indicatorHeightDp)
         assertEquals(16, spec.labelFontSizeSp)

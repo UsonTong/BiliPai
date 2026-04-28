@@ -433,7 +433,7 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 ### Latest (v8.0.0-Alpha8 · 2026-04-29)
 
 - 📺 Live home primary categories continue to reuse the bottom-bar liquid-glass indicator, drag animation, and chromatic dispersion.
-- ✨ While dragging the indicator, the category row now follows the indicator position in real time; the outer row no longer handles separate horizontal dragging.
+- ✨ While dragging the indicator, the category row now follows the indicator position in real time; the all-tags parent row no longer compresses or hides labels.
 - 🔖 Bumped the app to `8.0.0-Alpha8` with `versionCode` `170`, with focused live-category indicator follow-scroll tests.
 
 ---

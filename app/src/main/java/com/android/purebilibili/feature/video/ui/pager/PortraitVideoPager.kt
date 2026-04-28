@@ -2158,11 +2158,7 @@ private fun PortraitDanmakuOverlay(
 internal fun resolvePortraitPagerRepeatMode(): Int = Player.REPEAT_MODE_OFF
 
 internal fun resolvePortraitDanmakuSurfaceMode(currentVideoAspect: Float): PortraitDanmakuSurfaceMode {
-    return if (currentVideoAspect > 1f) {
-        PortraitDanmakuSurfaceMode.Page
-    } else {
-        PortraitDanmakuSurfaceMode.VideoViewport
-    }
+    return PortraitDanmakuSurfaceMode.VideoViewport
 }
 
 internal fun resolvePortraitDanmakuReadableFontScale(fontScale: Float): Float {

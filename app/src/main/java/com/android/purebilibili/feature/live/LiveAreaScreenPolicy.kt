@@ -41,3 +41,26 @@ internal fun toggleLiveFavoriteTag(
     if (withoutEntry.size != current.size) return withoutEntry
     return (withoutEntry + entry).takeLast(maxSize.coerceAtLeast(1))
 }
+
+internal fun resolveLiveAreaParentTabItemWidthDp(
+    containerWidthDp: Float,
+    itemCount: Int,
+    maxVisibleItems: Int = 4,
+    minScrollableItemWidthDp: Float = 112f
+): Float {
+    if (containerWidthDp <= 0f || itemCount <= 0) return 0f
+    val visibleCount = itemCount.coerceAtMost(maxVisibleItems).coerceAtLeast(1)
+    val fittedWidth = containerWidthDp / visibleCount
+    return if (itemCount > maxVisibleItems) {
+        fittedWidth.coerceAtLeast(minScrollableItemWidthDp)
+    } else {
+        fittedWidth
+    }
+}
+
+internal fun shouldUseLiveAreaParentLiquidIndicator(
+    itemCount: Int,
+    bottomBarLiquidGlassEnabled: Boolean
+): Boolean {
+    return itemCount > 1 && bottomBarLiquidGlassEnabled
+}

@@ -137,14 +137,14 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
-    fun `android native blur disables liquid glass surface treatment`() {
+    fun `android native liquid glass stays enabled when blur toggle is also on`() {
         assertFalse(
             resolveAndroidNativeBottomBarGlassEnabled(
                 liquidGlassEnabled = false,
                 blurEnabled = true
             )
         )
-        assertFalse(
+        assertTrue(
             resolveAndroidNativeBottomBarGlassEnabled(
                 liquidGlassEnabled = true,
                 blurEnabled = true
