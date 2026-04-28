@@ -63,6 +63,14 @@ class LivePiliPlusVisualPolicyTest {
     }
 
     @Test
+    fun `chat only uses image emoticon branch for non blank urls`() {
+        assertEquals(false, shouldRenderLiveDanmakuImageEmoticon(null))
+        assertEquals(false, shouldRenderLiveDanmakuImageEmoticon(""))
+        assertEquals(false, shouldRenderLiveDanmakuImageEmoticon("   "))
+        assertEquals(true, shouldRenderLiveDanmakuImageEmoticon("https://example.com/e.png"))
+    }
+
+    @Test
     fun `live room backdrop and input alpha mirror PiliPlus transparent stack`() {
         val tokens = resolveLivePiliPlusRoomColorTokens(
             inputOverlayColor = Color(0xFFDDE1E6),

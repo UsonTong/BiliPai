@@ -36,6 +36,7 @@ import com.android.purebilibili.feature.live.LiveDanmakuItem
 import com.android.purebilibili.feature.live.rememberLiveChromePalette
 import com.android.purebilibili.feature.live.resolveLivePiliPlusChatBubbleTokens
 import com.android.purebilibili.feature.live.resolveLivePiliPlusRoomColorTokens
+import com.android.purebilibili.feature.live.shouldRenderLiveDanmakuImageEmoticon
 import com.android.purebilibili.feature.live.shouldRenderLiveDanmaku
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.Paperplane
@@ -257,7 +258,7 @@ private fun ChatMessageItem(
             .padding(horizontal = tokens.horizontalPaddingDp.dp, vertical = tokens.verticalPaddingDp.dp)
 
         Box(modifier = bubbleModifier) {
-            if (item.emoticonUrl != null) {
+            if (shouldRenderLiveDanmakuImageEmoticon(item.emoticonUrl)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${item.uname.ifBlank { "直播观众" }}: ",

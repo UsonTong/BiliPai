@@ -18,6 +18,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import com.android.purebilibili.feature.live.LiveDanmakuItem
+import com.android.purebilibili.feature.live.shouldRenderLiveDanmakuImageEmoticon
 import kotlinx.coroutines.flow.SharedFlow
 import coil.compose.AsyncImage
 
@@ -131,7 +132,7 @@ private fun LandscapeChatItem(item: LiveDanmakuItem) {
             fontWeight = FontWeight.Medium
         )
 
-        if (item.emoticonUrl != null) {
+        if (shouldRenderLiveDanmakuImageEmoticon(item.emoticonUrl)) {
             Text(
                 text = "${item.uname}: ",
                 style = textStyle

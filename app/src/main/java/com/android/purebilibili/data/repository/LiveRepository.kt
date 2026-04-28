@@ -58,6 +58,39 @@ data class LiveRedPocketInfo(
     val remainingSeconds: Int = 0
 )
 
+internal fun parseLiveDanmakuHistoryItems(rawJson: String): Result<List<LivePrefetchDanmaku>> {
+    val root = liveRepositoryJson.parseToJsonElement(rawJson).jsonObject
+    if (root.int("code", -1) != 0) {
+        return Result.failure(Exception(root.string("message").ifBlank { "获取直播弹幕历史失败" }))
+    }
+    val roomArray = root.obj("data")?.array("room")
+    val items = buildList {
+        roomArray?.forEach { element ->
+            val obj = element as? JsonObject ?: return@forEach
+            val user = obj.obj("user")
+            val base = user?.obj("base")
+            val checkInfo = obj.obj("check_info")
+            val reply = obj.obj("reply")
+            add(
+                LivePrefetchDanmaku(
+                    uid = user?.long("uid") ?: 0L,
+                    uname = base?.string("name").orEmpty(),
+                    text = obj.string("text"),
+                    emoticonUrl = obj.obj("emoticon")
+                        ?.string("url")
+                        ?.takeIf { it.isNotBlank() },
+                    replyToName = reply?.string("reply_uname").orEmpty(),
+                    dmType = obj.int("dm_type"),
+                    idStr = obj.string("id_str"),
+                    reportTs = checkInfo?.long("ts") ?: 0L,
+                    reportSign = checkInfo?.string("ct").orEmpty()
+                )
+            )
+        }
+    }
+    return Result.success(items)
+}
+
 enum class LiveContributionRankType(
     val title: String,
     val switchValue: String
@@ -308,36 +341,7 @@ object LiveRepository {
     suspend fun getLiveDanmakuHistory(roomId: Long): Result<List<LivePrefetchDanmaku>> = withContext(Dispatchers.IO) {
         try {
             val realRoomId = resolveRealRoomId(roomId)
-            val json = JSONObject(api.getLiveDanmakuHistory(realRoomId).string())
-            if (json.optInt("code", -1) != 0) {
-                return@withContext Result.failure(Exception(json.optString("message", "获取直播弹幕历史失败")))
-            }
-            val roomArray = json.optJSONObject("data")?.optJSONArray("room")
-            val items = buildList {
-                if (roomArray != null) {
-                    for (index in 0 until roomArray.length()) {
-                        val obj = roomArray.optJSONObject(index) ?: continue
-                        val user = obj.optJSONObject("user")
-                        val base = user?.optJSONObject("base")
-                        val checkInfo = obj.optJSONObject("check_info")
-                        val reply = obj.optJSONObject("reply")
-                        add(
-                            LivePrefetchDanmaku(
-                                uid = user?.optLong("uid", 0L) ?: 0L,
-                                uname = base?.optString("name").orEmpty(),
-                                text = obj.optString("text"),
-                                emoticonUrl = obj.optJSONObject("emoticon")?.optString("url"),
-                                replyToName = reply?.optString("reply_uname").orEmpty(),
-                                dmType = obj.optInt("dm_type", 0),
-                                idStr = obj.optString("id_str"),
-                                reportTs = checkInfo?.optLong("ts", 0L) ?: 0L,
-                                reportSign = checkInfo?.optString("ct").orEmpty()
-                            )
-                        )
-                    }
-                }
-            }
-            Result.success(items)
+            parseLiveDanmakuHistoryItems(api.getLiveDanmakuHistory(realRoomId).string())
         } catch (e: Exception) {
             Result.failure(e)
         }

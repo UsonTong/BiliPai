@@ -93,6 +93,10 @@ internal fun shouldRenderLiveDanmaku(
     return text.isNotBlank() || !emoticonUrl.isNullOrBlank()
 }
 
+internal fun shouldRenderLiveDanmakuImageEmoticon(emoticonUrl: String?): Boolean {
+    return !emoticonUrl.isNullOrBlank()
+}
+
 internal fun resolveLivePiliPlusRoomColorTokens(
     inputOverlayColor: Color = Color.White,
     inputContentColor: Color = Color(0xFFEEEEEE)
