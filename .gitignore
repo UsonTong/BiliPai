@@ -67,6 +67,7 @@ bilipai_log_*.txt
 bilibili-API-collect/
 
 # 🔥 Ignore external projects/useless files
+external/
 AndroidLiquidGlass/
 SimpMusic/
 Telegram/
