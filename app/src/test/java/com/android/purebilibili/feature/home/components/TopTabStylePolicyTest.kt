@@ -86,9 +86,9 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `reduced interaction budget removes liquid glass from home header tab material mode`() {
+    fun `reduced interaction budget keeps liquid glass home header tab material mode`() {
         assertEquals(
-            TopTabMaterialMode.BLUR,
+            TopTabMaterialMode.LIQUID_GLASS,
             resolveEffectiveHomeHeaderTabMaterialMode(
                 materialMode = TopTabMaterialMode.LIQUID_GLASS,
                 interactionBudget = HomeInteractionMotionBudget.REDUCED
@@ -104,8 +104,8 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `reduced interaction budget disables top tab liquid glass`() {
-        assertFalse(
+    fun `reduced interaction budget keeps top tab liquid glass enabled`() {
+        assertTrue(
             resolveEffectiveTopTabLiquidGlassEnabled(
                 isLiquidGlassEnabled = true,
                 interactionBudget = HomeInteractionMotionBudget.REDUCED

@@ -38,6 +38,28 @@ class LiveAudioOnlyPlaybackPolicyTest {
     }
 
     @Test
+    fun `shared live player transition uses texture surface`() {
+        assertTrue(
+            shouldUseTextureSurfaceForLivePlayer(
+                hasSharedTransitionScope = true,
+                hasAnimatedVisibilityScope = true
+            )
+        )
+        assertFalse(
+            shouldUseTextureSurfaceForLivePlayer(
+                hasSharedTransitionScope = false,
+                hasAnimatedVisibilityScope = true
+            )
+        )
+        assertFalse(
+            shouldUseTextureSurfaceForLivePlayer(
+                hasSharedTransitionScope = true,
+                hasAnimatedVisibilityScope = false
+            )
+        )
+    }
+
+    @Test
     fun `audio only mode disables video track and video size`() {
         val current = TrackSelectionParameters.Builder().build()
 

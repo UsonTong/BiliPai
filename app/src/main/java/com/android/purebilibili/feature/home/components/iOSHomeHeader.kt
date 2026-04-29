@@ -145,9 +145,6 @@ internal fun resolveHomeTopChromeMaterialMode(
     isLiquidGlassEnabled: Boolean,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): TopTabMaterialMode {
-    if (androidNativeVariant == AndroidNativeVariant.MIUIX && (isHeaderBlurEnabled || isBottomBarBlurEnabled)) {
-        return TopTabMaterialMode.BLUR
-    }
     return when {
         isLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
         !isHeaderBlurEnabled && !isBottomBarBlurEnabled -> TopTabMaterialMode.PLAIN

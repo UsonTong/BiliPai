@@ -743,7 +743,8 @@ fun CacheClearAnimationDialog(
         properties = DialogProperties(
             dismissOnBackPress = progress.isComplete,
             dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
         )
     ) {
         Box(

@@ -40,7 +40,7 @@ class LivePiliPlusVisualPolicyTest {
     }
 
     @Test
-    fun `overlay chat bubble mirrors PiliPlus portrait player density`() {
+    fun `overlay chat bubble removes black shadow background`() {
         val dark = resolveLivePiliPlusChatBubbleTokens(isOverlay = true, isDark = true)
         val light = resolveLivePiliPlusChatBubbleTokens(isOverlay = true, isDark = false)
 
@@ -48,9 +48,9 @@ class LivePiliPlusVisualPolicyTest {
         assertEquals(10, dark.horizontalPaddingDp)
         assertEquals(4, dark.verticalPaddingDp)
         assertEquals(14, dark.fontSizeSp)
-        assertEquals(0.56f, dark.backgroundAlpha)
+        assertEquals(0f, dark.backgroundAlpha)
         assertEquals(0.90f, dark.nameAlpha)
-        assertEquals(0.56f, light.backgroundAlpha)
+        assertEquals(0f, light.backgroundAlpha)
         assertEquals(0.90f, light.nameAlpha)
     }
 

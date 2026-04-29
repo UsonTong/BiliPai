@@ -16,6 +16,13 @@ internal fun shouldRenderLiveDanmakuOverlayForAudioOnly(
     return isDanmakuEnabled && !isAudioOnly
 }
 
+internal fun shouldUseTextureSurfaceForLivePlayer(
+    hasSharedTransitionScope: Boolean,
+    hasAnimatedVisibilityScope: Boolean
+): Boolean {
+    return hasSharedTransitionScope && hasAnimatedVisibilityScope
+}
+
 internal fun resolveLiveTrackSelectionParametersForAudioOnly(
     currentTrackSelectionParameters: TrackSelectionParameters,
     isAudioOnly: Boolean

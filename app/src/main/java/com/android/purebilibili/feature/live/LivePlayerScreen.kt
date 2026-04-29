@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -214,6 +215,12 @@ fun LivePlayerScreen(
         shouldShowLiveLandscapeChatOverlay(
             layoutMode = liveLayoutMode,
             isChatVisible = isChatVisible
+        )
+    }
+    val useTextureSurfaceForLivePlayer = remember(sharedTransitionScope, animatedVisibilityScope) {
+        shouldUseTextureSurfaceForLivePlayer(
+            hasSharedTransitionScope = sharedTransitionScope != null,
+            hasAnimatedVisibilityScope = animatedVisibilityScope != null
         )
     }
     val liveSubtitle = remember(roomInfo, anchorInfo) {
@@ -633,7 +640,13 @@ fun LivePlayerScreen(
             // Video View
             AndroidView(
                 factory = { ctx ->
-                    PlayerView(ctx).apply {
+                    val livePlayerView = if (useTextureSurfaceForLivePlayer) {
+                        LayoutInflater.from(ctx)
+                            .inflate(com.android.purebilibili.R.layout.view_player_texture, null, false) as PlayerView
+                    } else {
+                        PlayerView(ctx)
+                    }
+                    livePlayerView.apply {
                         player = if (shouldBindLivePlayerViewForAudioOnly(isLiveAudioOnly)) exoPlayer else null
                         useController = false
                         resizeMode = videoAspectRatio.playerResizeMode

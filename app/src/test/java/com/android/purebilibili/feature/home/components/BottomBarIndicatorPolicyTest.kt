@@ -296,6 +296,27 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `sliding item selected icon alpha follows indicator position continuously`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+
+        assertEquals(0.2f, home.selectedIconAlpha, 0.001f)
+        assertEquals(0.8f, dynamic.selectedIconAlpha, 0.001f)
+    }
+
+    @Test
     fun `sliding item color weight follows indicator position without emphasis cap`() {
         val dynamic = resolveBottomBarItemMotionVisual(
             itemIndex = 1,

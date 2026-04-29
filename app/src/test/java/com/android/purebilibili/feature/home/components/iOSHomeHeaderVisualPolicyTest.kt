@@ -861,9 +861,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `miuix top chrome prefers blur over liquid glass when blur is enabled`() {
+    fun `miuix top chrome keeps liquid glass when global liquid glass is enabled`() {
         assertEquals(
-            TopTabMaterialMode.BLUR,
+            TopTabMaterialMode.LIQUID_GLASS,
             resolveHomeTopChromeMaterialMode(
                 isHeaderBlurEnabled = true,
                 isBottomBarBlurEnabled = true,

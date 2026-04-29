@@ -365,8 +365,45 @@ internal fun shouldClearPendingCrashLogAfterAction(
 
 internal fun shouldUseRealtimeSplashBlur(sdkInt: Int): Boolean = sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 
+internal fun resolveSplashIconResIdForComponentClassName(className: String?): Int {
+    return when (className?.substringAfterLast('.')) {
+        "MainActivityAlias3DLauncher",
+        "MainActivityAlias3D",
+        "MainActivitySplashIcon3D" -> R.drawable.splash_icon_3d
+        "MainActivityAliasBiliPai",
+        "MainActivitySplashBiliPai" -> R.drawable.splash_icon_bilipai
+        "MainActivityAliasBiliPaiPink",
+        "MainActivitySplashBiliPaiPink" -> R.drawable.splash_icon_bilipai_pink
+        "MainActivityAliasBiliPaiWhite",
+        "MainActivitySplashBiliPaiWhite" -> R.drawable.splash_icon_bilipai_white
+        "MainActivityAliasBiliPaiMonet",
+        "MainActivitySplashBiliPaiMonet" -> R.drawable.splash_icon_bilipai_monet
+        "MainActivityAliasFlat",
+        "MainActivitySplashFlat" -> R.drawable.splash_icon_flat
+        "MainActivityAliasTelegramBlue",
+        "MainActivitySplashTelegramBlue" -> R.drawable.splash_icon_telegram_blue
+        "MainActivityAliasDark",
+        "MainActivitySplashTelegramDark" -> R.drawable.splash_icon_telegram_dark
+        "MainActivityAliasYuki",
+        "MainActivitySplashYuki" -> R.drawable.splash_icon_yuki
+        "MainActivityAliasAnime",
+        "MainActivitySplashAnime" -> R.drawable.splash_icon_anime
+        "MainActivityAliasHeadphone",
+        "MainActivitySplashHeadphone" -> R.drawable.splash_icon_headphone
+        else -> 0
+    }
+}
+
 @Suppress("DEPRECATION")
 internal fun resolveLaunchIconResId(context: Context, launchIntent: android.content.Intent?): Int {
+    resolveSplashIconResIdForComponentClassName(context::class.java.name)
+        .takeIf { it != 0 }
+        ?.let { return it }
+
+    resolveSplashIconResIdForComponentClassName(launchIntent?.component?.className)
+        .takeIf { it != 0 }
+        ?.let { return it }
+
     val fromLaunchComponent = runCatching {
         launchIntent?.component
             ?.let { context.packageManager.getActivityInfo(it, 0).getIconResource() }
@@ -586,7 +623,7 @@ internal fun shouldLogWarmResume(
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) // 解决 UnsafeOptInUsageError，因为 AppNavigation 内部使用了不稳定的 API
-class MainActivity : AppCompatActivity() {
+open class MainActivity : AppCompatActivity() {
     
     //  PiP 状态
     var isInPipMode by mutableStateOf(false)

@@ -80,7 +80,7 @@ internal fun resolveLivePiliPlusChatBubbleTokens(
     isDark: Boolean
 ): LivePiliPlusChatBubbleTokens {
     val backgroundAlpha = when {
-        isOverlay -> 0.56f
+        isOverlay -> 0f
         else -> 0.08f
     }
     val nameAlpha = if (isOverlay) 0.90f else 0.60f

@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.util.CacheClearTarget
 import com.android.purebilibili.core.util.CacheUtils
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -112,5 +113,25 @@ class CacheClearUiPolicyTest {
                 )
             )
         )
+    }
+
+    @Test
+    fun cacheClearAnimationDialog_drawsBehindSystemBars() {
+        val source = loadCacheClearAnimationSource()
+
+        assertTrue(
+            source.contains("decorFitsSystemWindows = false"),
+            "Cache clear animation dialog should be edge-to-edge so the scrim covers status and navigation bars"
+        )
+    }
+
+    private fun loadCacheClearAnimationSource(): String {
+        val candidates = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/ui/CacheClearAnimation.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/ui/CacheClearAnimation.kt")
+        )
+        val sourceFile = candidates.firstOrNull { it.exists() }
+            ?: error("Cannot locate CacheClearAnimation.kt from ${File(".").absolutePath}")
+        return sourceFile.readText()
     }
 }

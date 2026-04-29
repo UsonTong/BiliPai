@@ -118,6 +118,31 @@ class BottomBarColorBindingPolicyTest {
     }
 
     @Test
+    fun `sliding content keeps selected hue instead of mixing with unselected black`() {
+        val unselected = Color.Black
+        val selected = Color(0xFFFF5F9A)
+
+        assertEquals(
+            selected,
+            resolveBottomBarSlidingContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0.35f,
+                isPending = false
+            )
+        )
+        assertEquals(
+            unselected,
+            resolveBottomBarSlidingContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0f,
+                isPending = false
+            )
+        )
+    }
+
+    @Test
     fun `android native item uses realtime override color without animation lag`() {
         val realtimeColor = Color(0xFF00A1D6)
         val animatedColor = Color(0xFF888888)

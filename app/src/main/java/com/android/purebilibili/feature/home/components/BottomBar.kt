@@ -642,7 +642,8 @@ internal data class BottomBarRefractionMotionProfile(
 internal data class BottomBarItemMotionVisual(
     val themeWeight: Float,
     val scale: Float,
-    val useSelectedIcon: Boolean
+    val useSelectedIcon: Boolean,
+    val selectedIconAlpha: Float
 )
 
 internal fun resolveBottomBarItemMotionVisual(
@@ -677,7 +678,8 @@ internal fun resolveBottomBarItemMotionVisual(
     return BottomBarItemMotionVisual(
         themeWeight = themeWeight,
         scale = scale,
-        useSelectedIcon = useSelectedIcon
+        useSelectedIcon = useSelectedIcon,
+        selectedIconAlpha = themeWeight
     )
 }
 
@@ -2322,6 +2324,7 @@ private fun KernelSuAlignedBottomBar(
                             iconStyle = iconStyle,
                             onClick = {},
                             interactive = false,
+                            selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
@@ -2344,6 +2347,7 @@ private fun KernelSuAlignedBottomBar(
                             iconStyle = iconStyle,
                             onClick = {},
                             interactive = false,
+                            selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
@@ -2409,6 +2413,7 @@ private fun KernelSuAlignedBottomBar(
                                 iconStyle = iconStyle,
                                 onClick = {},
                                 interactive = false,
+                                selectedIconAlpha = visual.selectedIconAlpha,
                                 scale = if (glassEnabled) visual.scale else 1f
                             )
                         }
@@ -2431,6 +2436,7 @@ private fun KernelSuAlignedBottomBar(
                                 iconStyle = iconStyle,
                                 onClick = {},
                                 interactive = false,
+                                selectedIconAlpha = visual.selectedIconAlpha,
                                 scale = if (glassEnabled) visual.scale else 1f
                             )
                         }
@@ -2550,6 +2556,7 @@ private fun KernelSuAlignedBottomBar(
                             },
                             interactive = true,
                             onPressChanged = dampedDragState::setPressed,
+                            selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
@@ -2578,6 +2585,7 @@ private fun KernelSuAlignedBottomBar(
                             },
                             interactive = true,
                             onPressChanged = dampedDragState::setPressed,
+                            selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
@@ -2601,6 +2609,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     onClick: () -> Unit,
     interactive: Boolean,
     onPressChanged: (Boolean) -> Unit = {},
+    selectedIconAlpha: Float = if (selected) 1f else 0f,
     scale: Float = 1f
 ) {
     val animatedContentColor by animateColorAsState(
@@ -2663,12 +2672,18 @@ private fun RowScope.AndroidNativeBottomBarItem(
                             )
                         }
                         iconStyle == SharedFloatingBottomBarIconStyle.CUPERTINO -> {
-                            if (selected) item.selectedIcon() else item.unselectedIcon()
+                            BottomBarBlendedCupertinoIcon(
+                                item = item,
+                                selectedAlpha = selectedIconAlpha,
+                                contentColor = contentColor
+                            )
                         }
                         else -> {
-                            Icon(
-                                imageVector = resolveMaterialBottomBarIcon(item, selected),
-                                contentDescription = label
+                            BottomBarBlendedMaterialIcon(
+                                item = item,
+                                selectedAlpha = selectedIconAlpha,
+                                contentDescription = label,
+                                contentColor = contentColor
                             )
                         }
                     }
@@ -2777,6 +2792,55 @@ private fun resolveMaterialBottomBarIcon(
     BottomNavItem.LIVE -> if (selected) Icons.Filled.LiveTv else Icons.Outlined.LiveTv
     BottomNavItem.WATCHLATER -> if (selected) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder
     BottomNavItem.SETTINGS -> if (selected) Icons.Filled.Settings else Icons.Outlined.Settings
+}
+
+@Composable
+private fun BottomBarBlendedCupertinoIcon(
+    item: BottomNavItem,
+    selectedAlpha: Float,
+    contentColor: Color
+) {
+    val clampedSelectedAlpha = selectedAlpha.coerceIn(0f, 1f)
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.alpha(1f - clampedSelectedAlpha),
+                contentAlignment = Alignment.Center
+            ) {
+                item.unselectedIcon()
+            }
+            Box(
+                modifier = Modifier.alpha(clampedSelectedAlpha),
+                contentAlignment = Alignment.Center
+            ) {
+                item.selectedIcon()
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomBarBlendedMaterialIcon(
+    item: BottomNavItem,
+    selectedAlpha: Float,
+    contentDescription: String?,
+    contentColor: Color
+) {
+    val clampedSelectedAlpha = selectedAlpha.coerceIn(0f, 1f)
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = resolveMaterialBottomBarIcon(item, selected = false),
+                contentDescription = contentDescription,
+                modifier = Modifier.alpha(1f - clampedSelectedAlpha)
+            )
+            Icon(
+                imageVector = resolveMaterialBottomBarIcon(item, selected = true),
+                contentDescription = null,
+                modifier = Modifier.alpha(clampedSelectedAlpha)
+            )
+        }
+    }
 }
 
 internal fun resolveBottomBarSurfaceColor(
@@ -2939,6 +3003,17 @@ internal fun resolveAndroidNativeBottomBarItemContentColor(
     animatedContentColor: Color
 ): Color {
     return contentColorOverride ?: animatedContentColor
+}
+
+internal fun resolveBottomBarSlidingContentColor(
+    unselectedColor: Color,
+    selectedColor: Color,
+    selectionFraction: Float,
+    isPending: Boolean
+): Color {
+    val fraction = selectionFraction.coerceIn(0f, 1f)
+    if (isPending || fraction > 0.001f) return selectedColor
+    return unselectedColor
 }
 
 internal fun resolveBottomBarReadableContentColor(
@@ -3145,23 +3220,17 @@ private fun BottomBarItem(
         themeColor = primaryColor
     )
     val emphasizedSelectionFraction = (selectionFraction * selectionEmphasis).coerceIn(0f, 1f)
+    val realtimeSelectionFraction = selectionFraction.coerceIn(0f, 1f)
 
-    // [修改] 颜色插值：根据 selectionFraction 在 unselected 和 selected 之间混合
-    // 还要考虑 isPending (点击态)
-    val targetIconColor = androidx.compose.ui.graphics.lerp(
-        unselectedColor, 
-        selectedAccent, 
-        if (isPending) 1f else emphasizedSelectionFraction
+    // Color must stay locked to the indicator position. Refraction emphasis can damp scale,
+    // but tint transfer should not wait for a secondary animation or a fixed selected route.
+    val iconColor = resolveBottomBarSlidingContentColor(
+        unselectedColor = unselectedColor,
+        selectedColor = selectedAccent,
+        selectionFraction = realtimeSelectionFraction,
+        isPending = isPending
     )
-    
-    // 仍然使用 animateColorAsState 但目标值现在是动态插值的
-    // 使用较快的动画以跟手，或者直接使用 lerp 结果如果非常平滑
-    // 为了平滑过渡，这里使用 FastOutSlowIn 且时间短
-    val iconColor by animateColorAsState(
-        targetValue = targetIconColor,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 100), // 快速响应
-        label = "iconColor"
-    )
+    val selectedIconAlpha = if (isPending) 1f else realtimeSelectionFraction
     
     // [修改] 缩放插值 - 跃动效果
     // selectionFraction: 0f (未选中) -> 1f (完全选中)
@@ -3286,7 +3355,11 @@ private fun BottomBarItem(
                     contentAlignment = Alignment.Center
                 ) {
                     CompositionLocalProvider(LocalContentColor provides iconColor) {
-                        if (isSelected) item.selectedIcon() else item.unselectedIcon()
+                        BottomBarBlendedCupertinoIcon(
+                            item = item,
+                            selectedAlpha = selectedIconAlpha,
+                            contentColor = iconColor
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -3294,7 +3367,7 @@ private fun BottomBarItem(
                     text = itemLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = iconColor,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontWeight = if (selectedIconAlpha > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
                     fontSize = if (isTablet) 12.sp else 11.sp,
                     lineHeight = if (isTablet) 12.sp else 11.sp,
                     maxLines = 1
@@ -3304,7 +3377,7 @@ private fun BottomBarItem(
                 Text(
                     text = itemLabel,
                     fontSize = if (isTablet) 16.sp else 14.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (selectedIconAlpha > 0.5f) FontWeight.Bold else FontWeight.Medium,
                     color = iconColor,
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
@@ -3327,7 +3400,11 @@ private fun BottomBarItem(
                     contentAlignment = Alignment.Center
                 ) {
                     CompositionLocalProvider(LocalContentColor provides iconColor) {
-                        if (isSelected) item.selectedIcon() else item.unselectedIcon()
+                        BottomBarBlendedCupertinoIcon(
+                            item = item,
+                            selectedAlpha = selectedIconAlpha,
+                            contentColor = iconColor
+                        )
                     }
                 }
             }
