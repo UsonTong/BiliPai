@@ -727,12 +727,12 @@ fun VideoDetailScreen(
     val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
         .getHorizontalAdaptationEnabled(context)
         .collectAsStateWithLifecycle(
-            initialValue = configuration.smallestScreenWidthDp >= 600,
+            initialValue = windowSizeClass.isTabletDevice,
             lifecycle = lifecycleOwner.lifecycle
         )
     val useTabletLayout = shouldUseTabletVideoLayout(
         isExpandedScreen = windowSizeClass.isExpandedScreen,
-        smallestScreenWidthDp = configuration.smallestScreenWidthDp
+        isTabletDevice = windowSizeClass.isTabletDevice
     ) && horizontalAdaptationEnabled
     
     // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
@@ -755,7 +755,7 @@ fun VideoDetailScreen(
     }
     val isOrientationDrivenFullscreen = !prefersManualFullscreenMode &&
         shouldUseOrientationDrivenFullscreen(
-        useTabletLayout = useTabletLayout
+        isCompactDevice = windowSizeClass.isCompactDevice
     )
     val isFullscreenMode = if (isOrientationDrivenFullscreen) isLandscape else userRequestedFullscreen
     ManualFullscreenRequestLifecycleEffect(
@@ -1505,7 +1505,7 @@ fun VideoDetailScreen(
             autoRotateEnabled = autoRotateEnabled,
             systemAutoRotateEnabled = systemAutoRotateEnabled,
             fullscreenMode = fullscreenMode,
-            useTabletLayout = useTabletLayout,
+            isCompactDevice = windowSizeClass.isCompactDevice,
             isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
             isFullscreenMode = isFullscreenMode,
             manualFullscreenRequested = userRequestedFullscreen,
@@ -1536,7 +1536,7 @@ fun VideoDetailScreen(
             !shouldObservePhoneAutoRotate(
                 autoRotateEnabled = autoRotateEnabled,
                 systemAutoRotateEnabled = systemAutoRotateEnabled,
-                useTabletLayout = useTabletLayout,
+                isCompactDevice = windowSizeClass.isCompactDevice,
                 isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
                 fullscreenMode = fullscreenMode,
                 manualPortraitHoldActive = manualPortraitHoldActive
@@ -1900,7 +1900,7 @@ fun VideoDetailScreen(
             isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
             isLandscape = isLandscape,
             isFullscreenMode = isFullscreenMode,
-            smallestScreenWidthDp = configuration.smallestScreenWidthDp,
+            isCompactDevice = windowSizeClass.isCompactDevice,
             fullscreenMode = fullscreenMode,
             isVerticalVideo = isVerticalVideo,
             portraitExperienceEnabled = portraitExperienceEnabled,
@@ -1923,7 +1923,7 @@ fun VideoDetailScreen(
     // 📱 [新增] 拦截系统返回键：手机横屏进入了平板分栏模式，应切换回竖屏而非退出
     val isPhoneInLandscapeSplitView = shouldRotateToPortraitOnSplitBack(
         useTabletLayout = useTabletLayout,
-        smallestScreenWidthDp = configuration.smallestScreenWidthDp,
+        isCompactDevice = windowSizeClass.isCompactDevice,
         orientation = configuration.orientation
     )
     
@@ -2127,18 +2127,16 @@ fun VideoDetailScreen(
                         coverUrl = coverUrl,
                         onBack = {
                             // 📱 手机误入平板模式（如横屏宽度触发 Expanded），点击返回应切换回竖屏
-                            // 🔧 [修复] 检查 smallestScreenWidthDp 确保这不是真正的平板
-                            val smallestWidth = configuration.smallestScreenWidthDp
                             val currentOrientation = configuration.orientation
                             val shouldRotatePortrait = shouldRotateToPortraitOnSplitBack(
                                 useTabletLayout = true,
-                                smallestScreenWidthDp = smallestWidth,
+                                isCompactDevice = windowSizeClass.isCompactDevice,
                                 orientation = currentOrientation
                             )
                             
                             com.android.purebilibili.core.util.Logger.d(
                                 "VideoDetailScreen", 
-                                "📱 onBack clicked: smallestWidth=$smallestWidth, shouldRotatePortrait=$shouldRotatePortrait, " +
+                                "📱 onBack clicked: compactDevice=${windowSizeClass.isCompactDevice}, shouldRotatePortrait=$shouldRotatePortrait, " +
                                 "orientation=$currentOrientation, " +
                                 "activity=${activity != null}"
                             )
@@ -4131,7 +4129,7 @@ private fun toggleVideoDetailFullscreen(
     isOrientationDrivenFullscreen: Boolean,
     isLandscape: Boolean,
     isFullscreenMode: Boolean,
-    smallestScreenWidthDp: Int,
+    isCompactDevice: Boolean,
     fullscreenMode: com.android.purebilibili.core.store.FullscreenMode,
     isVerticalVideo: Boolean,
     portraitExperienceEnabled: Boolean,
@@ -4161,7 +4159,7 @@ private fun toggleVideoDetailFullscreen(
         val nextRequestedFullscreen = !isFullscreenMode
         onUserRequestedFullscreenChange(nextRequestedFullscreen)
         if (!nextRequestedFullscreen &&
-            smallestScreenWidthDp < 600 &&
+            isCompactDevice &&
             fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.VERTICAL
         ) {
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -4225,25 +4223,25 @@ internal fun resolveIsPlayerCollapsed(
 
 internal fun shouldRotateToPortraitOnSplitBack(
     useTabletLayout: Boolean,
-    smallestScreenWidthDp: Int,
+    isCompactDevice: Boolean,
     orientation: Int
 ): Boolean {
     return useTabletLayout &&
-        smallestScreenWidthDp < 600 &&
+        isCompactDevice &&
         orientation == Configuration.ORIENTATION_LANDSCAPE
 }
 
 internal fun shouldUseTabletVideoLayout(
     isExpandedScreen: Boolean,
-    smallestScreenWidthDp: Int
+    isTabletDevice: Boolean
 ): Boolean {
-    return isExpandedScreen && smallestScreenWidthDp >= 600
+    return isExpandedScreen && isTabletDevice
 }
 
 internal fun shouldUseOrientationDrivenFullscreen(
-    useTabletLayout: Boolean
+    isCompactDevice: Boolean
 ): Boolean {
-    return !useTabletLayout 
+    return isCompactDevice
 }
 
 internal fun shouldShowDetachedVideoCommentThreadHost(
@@ -4260,9 +4258,9 @@ internal fun resolveVideoDetailCommentThreadHostMainSheetVisible(
 }
 
 internal fun shouldApplyPhoneAutoRotatePolicy(
-    useTabletLayout: Boolean
+    isCompactDevice: Boolean
 ): Boolean {
-    return !useTabletLayout 
+    return isCompactDevice
 }
 
 internal fun resolvePhoneFullscreenEnterOrientation(
@@ -4323,14 +4321,14 @@ internal fun resolvePhoneVideoRequestedOrientation(
     autoRotateEnabled: Boolean,
     systemAutoRotateEnabled: Boolean = true,
     fullscreenMode: com.android.purebilibili.core.store.FullscreenMode,
-    useTabletLayout: Boolean,
+    isCompactDevice: Boolean,
     isOrientationDrivenFullscreen: Boolean,
     isFullscreenMode: Boolean,
     manualFullscreenRequested: Boolean = false,
     manualPortraitHoldActive: Boolean = false,
     isVerticalVideo: Boolean = false
 ): Int? {
-    if (!shouldApplyPhoneAutoRotatePolicy(useTabletLayout)) return null
+    if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) return null
     if (fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.NONE) {
         return null
     }
@@ -4443,14 +4441,14 @@ internal fun resolveEffectivePhoneAutoRotateEnabled(
 internal fun shouldObservePhoneAutoRotate(
     autoRotateEnabled: Boolean,
     systemAutoRotateEnabled: Boolean,
-    useTabletLayout: Boolean,
+    isCompactDevice: Boolean,
     isOrientationDrivenFullscreen: Boolean,
     fullscreenMode: com.android.purebilibili.core.store.FullscreenMode,
     manualPortraitHoldActive: Boolean
 ): Boolean {
     if (!autoRotateEnabled) return false
     if (!systemAutoRotateEnabled) return false
-    if (!shouldApplyPhoneAutoRotatePolicy(useTabletLayout)) return false
+    if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) return false
     if (!isOrientationDrivenFullscreen) return false
     if (fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.NONE) return false
     if (fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.VERTICAL) return false

@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.video.screen
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import com.android.purebilibili.core.store.FullscreenMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,7 +15,7 @@ class VideoDetailLayoutModePolicyTest {
         assertTrue(
             shouldUseTabletVideoLayout(
                 isExpandedScreen = true,
-                smallestScreenWidthDp = 700
+                isTabletDevice = true
             )
         )
     }
@@ -24,7 +25,7 @@ class VideoDetailLayoutModePolicyTest {
         assertFalse(
             shouldUseTabletVideoLayout(
                 isExpandedScreen = false,
-                smallestScreenWidthDp = 700
+                isTabletDevice = true
             )
         )
     }
@@ -34,7 +35,7 @@ class VideoDetailLayoutModePolicyTest {
         assertFalse(
             shouldUseTabletVideoLayout(
                 isExpandedScreen = true,
-                smallestScreenWidthDp = 411
+                isTabletDevice = false
             )
         )
     }
@@ -43,17 +44,17 @@ class VideoDetailLayoutModePolicyTest {
     fun autoRotatePolicy_appliesOnlyOnPhoneLayout() {
         assertTrue(
             shouldApplyPhoneAutoRotatePolicy(
-                useTabletLayout = false
+                isCompactDevice = true
             )
         )
         assertFalse(
             shouldApplyPhoneAutoRotatePolicy(
-                useTabletLayout = true
+                isCompactDevice = false
             )
         )
         assertFalse(
             shouldApplyPhoneAutoRotatePolicy(
-                useTabletLayout = true
+                isCompactDevice = false
             )
         )
     }
@@ -75,17 +76,17 @@ class VideoDetailLayoutModePolicyTest {
     fun orientationDrivenFullscreen_isPhoneOnly() {
         assertTrue(
             shouldUseOrientationDrivenFullscreen(
-                useTabletLayout = false
+                isCompactDevice = true
             )
         )
         assertFalse(
             shouldUseOrientationDrivenFullscreen(
-                useTabletLayout = true
+                isCompactDevice = false
             )
         )
         assertFalse(
             shouldUseOrientationDrivenFullscreen(
-                useTabletLayout = true
+                isCompactDevice = false
             )
         )
     }
@@ -100,6 +101,24 @@ class VideoDetailLayoutModePolicyTest {
         assertFalse(
             shouldShowDetachedVideoCommentThreadHost(
                 useTabletLayout = true
+            )
+        )
+    }
+
+    @Test
+    fun splitBackRotationPolicy_treatsExpandedPhoneLandscapeAsPhone() {
+        assertTrue(
+            shouldRotateToPortraitOnSplitBack(
+                useTabletLayout = true,
+                isCompactDevice = true,
+                orientation = Configuration.ORIENTATION_LANDSCAPE
+            )
+        )
+        assertFalse(
+            shouldRotateToPortraitOnSplitBack(
+                useTabletLayout = true,
+                isCompactDevice = false,
+                orientation = Configuration.ORIENTATION_LANDSCAPE
             )
         )
     }
@@ -228,7 +247,7 @@ class VideoDetailLayoutModePolicyTest {
             resolvePhoneVideoRequestedOrientation(
                 autoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = true,
+                isCompactDevice = false,
                 isOrientationDrivenFullscreen = false,
                 isFullscreenMode = false
             )
@@ -243,7 +262,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = false
             )
@@ -254,7 +273,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = true
             )
@@ -269,7 +288,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = false,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = false
             )
@@ -280,7 +299,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = false,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = true
             )
@@ -295,7 +314,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = false,
                 manualFullscreenRequested = true
@@ -333,7 +352,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.HORIZONTAL,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = false,
                 manualFullscreenRequested = false
@@ -374,7 +393,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = false,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = true
             )
@@ -389,7 +408,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 isFullscreenMode = true,
                 manualPortraitHoldActive = true
@@ -445,7 +464,7 @@ class VideoDetailLayoutModePolicyTest {
             shouldObservePhoneAutoRotate(
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 fullscreenMode = FullscreenMode.AUTO,
                 manualPortraitHoldActive = true
@@ -455,7 +474,7 @@ class VideoDetailLayoutModePolicyTest {
             shouldObservePhoneAutoRotate(
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = false,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = true,
                 fullscreenMode = FullscreenMode.AUTO,
                 manualPortraitHoldActive = true
@@ -471,7 +490,7 @@ class VideoDetailLayoutModePolicyTest {
                 autoRotateEnabled = true,
                 systemAutoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.NONE,
-                useTabletLayout = false,
+                isCompactDevice = true,
                 isOrientationDrivenFullscreen = false,
                 isFullscreenMode = true
             )
