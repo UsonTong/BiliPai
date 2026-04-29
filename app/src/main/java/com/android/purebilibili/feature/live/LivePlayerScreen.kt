@@ -64,6 +64,7 @@ import com.android.purebilibili.core.util.AnalyticsHelper
 import com.android.purebilibili.core.util.CrashReporter
 import com.android.purebilibili.core.store.DanmakuSettingsScope
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.data.repository.LiveRedPocketInfo
 import com.android.purebilibili.feature.live.components.LandscapeChatOverlay
@@ -115,6 +116,7 @@ fun LivePlayerScreen(
     // 📺 [新增] 获取小窗管理器
     val miniPlayerManager = remember { com.android.purebilibili.feature.video.player.MiniPlayerManager.getInstance(context) }
     val configuration = LocalConfiguration.current
+    val windowSizeClass = LocalWindowSizeClass.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     
@@ -167,8 +169,8 @@ fun LivePlayerScreen(
     // Haze blur 状态 (用于侧边栏实时模糊)
     val hazeState = com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState()
     
-    // 平板判断: 宽度 > 600dp 且为横屏
-    val isTablet = configuration.screenWidthDp > 600
+    // 直播布局的设备类别判断走统一 WindowSizeUtils，避免手机横屏误判成平板。
+    val isTablet = windowSizeClass.isTabletDevice
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val liveLayoutMode = resolveLiveRoomLayoutMode(
         isLandscape = isLandscape,
