@@ -282,6 +282,7 @@ data class HomeSettings(
     val isBottomBarBlurEnabled: Boolean = true,
     val isTopBarLiquidGlassEnabled: Boolean = true,
     val isBottomBarLiquidGlassEnabled: Boolean = true,
+    val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
     val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
     val liquidGlassStrength: Float = 0.52f,
@@ -698,6 +699,10 @@ object SettingsManager {
     private val KEY_BOTTOM_BAR_BLUR_ENABLED = booleanPreferencesKey("bottom_bar_blur_enabled")
     private val KEY_TOP_BAR_LIQUID_GLASS_ENABLED = booleanPreferencesKey("top_bar_liquid_glass_enabled")
     private val KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED = booleanPreferencesKey("bottom_bar_liquid_glass_enabled")
+    private val KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED =
+        booleanPreferencesKey("android_native_liquid_glass_enabled")
+    private val KEY_LEGACY_ANDROID_NATIVE_TOP_TAB_LIQUID_GLASS_ENABLED =
+        booleanPreferencesKey("android_native_top_tab_liquid_glass_enabled")
     //  Legacy shared Liquid Glass toggle, kept as migration fallback.
     private val KEY_LIQUID_GLASS_ENABLED = booleanPreferencesKey("liquid_glass_enabled")
     
@@ -778,6 +783,10 @@ object SettingsManager {
             isBottomBarBlurEnabled = preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true,
             isTopBarLiquidGlassEnabled = preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] ?: legacyLiquidGlassEnabled,
             isBottomBarLiquidGlassEnabled = preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] ?: legacyLiquidGlassEnabled,
+            androidNativeLiquidGlassEnabled =
+                preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED]
+                    ?: preferences[KEY_LEGACY_ANDROID_NATIVE_TOP_TAB_LIQUID_GLASS_ENABLED]
+                    ?: false,
             liquidGlassStyle = FIXED_LIQUID_GLASS_STYLE,
             liquidGlassMode = FIXED_LIQUID_GLASS_MODE,
             liquidGlassStrength = FIXED_LIQUID_GLASS_STRENGTH,
@@ -1848,6 +1857,20 @@ object SettingsManager {
     suspend fun setBottomBarLiquidGlassEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] = value
+        }
+    }
+
+    fun getAndroidNativeLiquidGlassEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data
+            .map { preferences ->
+                preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED]
+                    ?: preferences[KEY_LEGACY_ANDROID_NATIVE_TOP_TAB_LIQUID_GLASS_ENABLED]
+                    ?: false
+            }
+
+    suspend fun setAndroidNativeLiquidGlassEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED] = value
         }
     }
     
@@ -4248,6 +4271,10 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_BOTTOM_BAR_BLUR_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_TOP_BAR_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
+            BooleanShareablePreferenceDefinition(
+                KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED,
+                SettingsShareSection.APPEARANCE
+            ),
             BooleanShareablePreferenceDefinition(KEY_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_LIQUID_GLASS_STYLE, SettingsShareSection.APPEARANCE),
             StringShareablePreferenceDefinition(KEY_BLUR_INTENSITY, SettingsShareSection.APPEARANCE),

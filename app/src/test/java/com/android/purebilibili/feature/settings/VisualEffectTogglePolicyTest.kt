@@ -96,16 +96,25 @@ class VisualEffectTogglePolicyTest {
 
     @Test
     fun `android native preset preserves liquid glass when enabled`() {
+        assertFalse(
+            resolveEffectiveLiquidGlassEnabled(
+                requestedEnabled = true,
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = false
+            )
+        )
         assertTrue(
             resolveEffectiveLiquidGlassEnabled(
                 requestedEnabled = true,
-                uiPreset = UiPreset.MD3
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = true
             )
         )
         assertFalse(
             resolveEffectiveLiquidGlassEnabled(
                 requestedEnabled = false,
-                uiPreset = UiPreset.MD3
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = true
             )
         )
     }
@@ -116,14 +125,16 @@ class VisualEffectTogglePolicyTest {
             true,
             resolveEffectiveLiquidGlassEnabled(
                 requestedEnabled = true,
-                uiPreset = UiPreset.IOS
+                uiPreset = UiPreset.IOS,
+                androidNativeLiquidGlassEnabled = false
             )
         )
         assertEquals(
             false,
             resolveEffectiveLiquidGlassEnabled(
                 requestedEnabled = false,
-                uiPreset = UiPreset.IOS
+                uiPreset = UiPreset.IOS,
+                androidNativeLiquidGlassEnabled = true
             )
         )
     }

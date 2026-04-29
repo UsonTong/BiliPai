@@ -31,6 +31,7 @@ internal fun resolveHomePerformanceConfig(
     bottomBarBlurEnabled: Boolean,
     topBarLiquidGlassEnabled: Boolean,
     bottomBarLiquidGlassEnabled: Boolean,
+    androidNativeLiquidGlassEnabled: Boolean = false,
     cardAnimationEnabled: Boolean,
     cardTransitionEnabled: Boolean,
     isDataSaverActive: Boolean,
@@ -42,11 +43,13 @@ internal fun resolveHomePerformanceConfig(
     val effectiveDataSaver = isDataSaverActive
     val effectiveTopBarLiquidGlass = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = topBarLiquidGlassEnabled,
-        uiPreset = uiPreset
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = androidNativeLiquidGlassEnabled
     ) && !shouldPrioritizeSmoothness
     val effectiveBottomBarLiquidGlass = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = bottomBarLiquidGlassEnabled,
-        uiPreset = uiPreset
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = androidNativeLiquidGlassEnabled
     ) && !shouldPrioritizeSmoothness
     val effectivePreloadAheadCount = when {
         shouldPrioritizeSmoothness -> normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)

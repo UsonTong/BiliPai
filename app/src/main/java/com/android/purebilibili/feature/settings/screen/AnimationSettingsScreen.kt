@@ -27,7 +27,6 @@ import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.SettingsManager
-import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.rememberAppBackIcon
@@ -85,11 +84,13 @@ fun AnimationSettingsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
-        AnimationSettingsContent(
-            modifier = Modifier.padding(padding),
-            state = state,
-            viewModel = viewModel
-        )
+        CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
+            AnimationSettingsContent(
+                modifier = Modifier.padding(padding),
+                state = state,
+                viewModel = viewModel
+            )
+        }
     }
 }
 
@@ -244,7 +245,7 @@ fun AnimationSettingsContent(
                             )
                             IOSDivider()
                             IOSSwitchItem(
-                                icon = CupertinoIcons.Default.Drop,
+                                icon = CupertinoIcons.Default.RectangleStack,
                                 title = "底栏液态玻璃",
                                 subtitle = "底部导航栏的液态玻璃折射效果",
                                 checked = bottomBarLiquidGlassEnabled,
@@ -256,17 +257,20 @@ fun AnimationSettingsContent(
                                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                                 exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                             ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        "当前使用固定材质策略",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = "顶部与底栏共用同一套液态玻璃材质配方，但开关彼此独立。",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                Column {
+                                    IOSDivider()
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            "当前使用固定材质策略",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "顶部与底栏共用同一套液态玻璃材质配方，但开关彼此独立。",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                             IOSDivider()

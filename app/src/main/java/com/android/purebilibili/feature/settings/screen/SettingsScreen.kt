@@ -45,6 +45,7 @@ import com.android.purebilibili.core.util.CacheClearTarget
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.store.DEFAULT_ANALYTICS_ENABLED
 import com.android.purebilibili.core.store.DEFAULT_CRASH_TRACKING_ENABLED
+import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.ui.LocalBottomBarVisible
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.AnalyticsHelper
@@ -834,9 +835,10 @@ fun SettingsScreen(
     }
 
     // 页面跳转逻辑
-    if (showBlockedList) {
-        BlockedListScreen(onBack = { showBlockedList = false })
-    } else {
+    CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
+        if (showBlockedList) {
+            BlockedListScreen(onBack = { showBlockedList = false })
+        } else {
         // Layout Switching
         Box(
             modifier = Modifier
@@ -1031,6 +1033,7 @@ fun SettingsScreen(
             
             // Onboarding Bottom Sheet (Shared)
     
+        }
         }
     }
 }

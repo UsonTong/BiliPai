@@ -4,9 +4,11 @@ import com.android.purebilibili.core.theme.UiPreset
 
 internal fun resolveEffectiveLiquidGlassEnabled(
     requestedEnabled: Boolean,
-    uiPreset: UiPreset
+    uiPreset: UiPreset,
+    androidNativeLiquidGlassEnabled: Boolean = false
 ): Boolean {
-    return requestedEnabled
+    if (!requestedEnabled) return false
+    return uiPreset == UiPreset.IOS || androidNativeLiquidGlassEnabled
 }
 
 internal fun resolveEffectiveHomeSettings(
@@ -15,11 +17,13 @@ internal fun resolveEffectiveHomeSettings(
 ): HomeSettings {
     val effectiveTopBarLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = homeSettings.isTopBarLiquidGlassEnabled,
-        uiPreset = uiPreset
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
     )
     val effectiveBottomBarLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
-        uiPreset = uiPreset
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
     )
     return if (
         effectiveTopBarLiquidGlassEnabled == homeSettings.isTopBarLiquidGlassEnabled &&

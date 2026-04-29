@@ -50,7 +50,8 @@ internal fun resolveCommonListVideoCardAppearance(
     return CommonListVideoCardAppearance(
         glassEnabled = resolveEffectiveLiquidGlassEnabled(
             requestedEnabled = homeSettings.isLiquidGlassEnabled,
-            uiPreset = uiPreset
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
         ),
         blurEnabled = headerBlurEnabled || homeSettings.isBottomBarBlurEnabled,
         showCoverGlassBadges = homeSettings.showHomeCoverGlassBadges,

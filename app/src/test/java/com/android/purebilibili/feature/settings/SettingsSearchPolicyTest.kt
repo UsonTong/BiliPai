@@ -70,6 +70,14 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByAndroidNativeLiquidGlass_focusesAppearanceThemeSection() {
+        val result = resolveSettingsSearchResults("安卓原生液态玻璃").firstOrNull()
+
+        assertEquals(SettingsSearchTarget.APPEARANCE, result?.target)
+        assertEquals(SettingsSearchFocusIds.APPEARANCE_THEME, result?.focusId)
+    }
+
+    @Test
     fun queryByPinyin_hitsChineseAlias() {
         val results = resolveSettingsSearchResults("waiguan")
 

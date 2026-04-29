@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -230,6 +231,33 @@ class BottomBarSurfaceColorPolicyTest {
         )
 
         assertEquals(neutralColor, color)
+    }
+
+    @Test
+    fun `md3 segmented control falls back to android underline when global liquid glass is disabled`() {
+        assertEquals(
+            SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE,
+            resolveSegmentedControlChromeStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = false
+            )
+        )
+
+        assertEquals(
+            SegmentedControlChromeStyle.LIQUID_PILL,
+            resolveSegmentedControlChromeStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = true
+            )
+        )
+
+        assertEquals(
+            SegmentedControlChromeStyle.LIQUID_PILL,
+            resolveSegmentedControlChromeStyle(
+                uiPreset = UiPreset.IOS,
+                androidNativeLiquidGlassEnabled = false
+            )
+        )
     }
 
     @Test

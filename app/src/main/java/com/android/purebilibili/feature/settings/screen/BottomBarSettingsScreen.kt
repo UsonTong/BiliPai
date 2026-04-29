@@ -53,6 +53,7 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.BottomBarColors  //  统一底栏颜色配置
 import com.android.purebilibili.core.theme.BottomBarColorPalette  //  调色板
 import com.android.purebilibili.core.theme.BottomBarColorNames  //  颜色名称
+import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.AdaptiveScaffold
@@ -186,6 +187,8 @@ internal fun resolveAllTopTabs(uiPreset: UiPreset = UiPreset.IOS): List<TopTabCo
 fun BottomBarSettingsScreen(
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val settingsLiquidGlassEnabled by SettingsManager.getLiquidGlassEnabled(context).collectAsState(initial = true)
     val screenTitle = stringResource(R.string.bottom_bar_management_title)
     val backLabel = stringResource(R.string.common_back)
     AdaptiveScaffold(
@@ -206,9 +209,11 @@ fun BottomBarSettingsScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        BottomBarSettingsContent(
-            modifier = Modifier.padding(padding)
-        )
+        CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides settingsLiquidGlassEnabled) {
+            BottomBarSettingsContent(
+                modifier = Modifier.padding(padding)
+            )
+        }
     }
 }
 

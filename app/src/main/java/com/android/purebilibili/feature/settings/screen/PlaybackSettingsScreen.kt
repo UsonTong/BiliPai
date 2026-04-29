@@ -38,6 +38,7 @@ import com.android.purebilibili.core.store.BottomProgressBehavior
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.PlaybackCompletionBehavior
 import com.android.purebilibili.core.theme.iOSGreen
+import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSOrange
 import com.android.purebilibili.core.theme.iOSSystemGray
@@ -83,8 +84,10 @@ fun PlaybackSettingsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-             PlaybackSettingsContent(viewModel = viewModel, state = state)
+        CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
+            Box(modifier = Modifier.padding(padding)) {
+                PlaybackSettingsContent(viewModel = viewModel, state = state)
+            }
         }
     }
 }
@@ -699,7 +702,7 @@ fun PlaybackSettingsContent(
                             .getClickToPlay(context).collectAsState(initial = true)
 
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Play,
+                            icon = CupertinoIcons.Default.PlayCircle,
                             title = "点击视频直接播放",
                             subtitle = "进入视频详情页时自动开始播放",
                             checked = clickToPlayEnabled,
@@ -884,7 +887,7 @@ fun PlaybackSettingsContent(
 
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandDraw,
+                            icon = CupertinoIcons.Default.HandTap,
                             title = "中部滑动切换全屏",
                             subtitle = if (centerSwipeToFullscreenEnabled) {
                                 "开启后：播放器中部纵向滑动可切换进入/退出全屏（受手势反向影响）"
@@ -1056,7 +1059,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowLeftArrowRight,
+                            icon = CupertinoIcons.Default.RectangleStack,
                             title = "横屏适配",
                             subtitle = horizontalAdaptationSubtitle,
                             checked = horizontalAdaptationEnabled,
@@ -1110,7 +1113,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Play,
+                            icon = CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
                             title = "自动进入全屏",
                             subtitle = "视频开始播放后自动切到全屏",
                             checked = autoEnterFullscreen,
@@ -1124,7 +1127,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ForwardEnd,
+                            icon = CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft,
                             title = "自动退出全屏",
                             subtitle = "视频结束播放后自动退出全屏",
                             checked = autoExitFullscreen,
@@ -1194,7 +1197,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandThumbsup,
+                            icon = CupertinoIcons.Default.SquareAndArrowUp,
                             title = "全屏显示互动按钮",
                             subtitle = if (showFullscreenActionItems) {
                                 "横屏顶部显示点赞/投币/分享等快捷操作"

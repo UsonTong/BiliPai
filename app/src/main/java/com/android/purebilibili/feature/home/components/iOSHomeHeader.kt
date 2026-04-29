@@ -68,6 +68,7 @@ import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
 import com.android.purebilibili.core.store.HomeHeaderBlurMode
 import com.android.purebilibili.core.store.HomeSettings
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
 import com.android.purebilibili.feature.home.resolveHomeTopCollapsedHandleHeight
 import com.android.purebilibili.feature.home.resolveHomeTopTabPresentationHeight
@@ -130,7 +131,11 @@ internal fun resolveHomeTopLinkedBottomBarAppearance(
     return HomeTopLinkedBottomBarAppearance(
         isFloating = navigationAppearance.bottomBarFloating,
         blurEnabled = navigationAppearance.bottomBarBlurEnabled,
-        liquidGlassEnabled = resolvedHomeSettings.isBottomBarLiquidGlassEnabled
+        liquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
+            requestedEnabled = resolvedHomeSettings.isBottomBarLiquidGlassEnabled,
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = resolvedHomeSettings.androidNativeLiquidGlassEnabled
+        )
     )
 }
 
@@ -1184,8 +1189,12 @@ fun iOSHomeHeader(
     val searchContainerShape = resolveHomeTopSearchContainerShape(uiPreset, androidNativeVariant)
     val searchIcon = if (uiPreset == UiPreset.MD3) Icons.Outlined.Search else CupertinoIcons.Default.MagnifyingGlass
     val settingsIcon = rememberAppSettingsIcon()
-    val topChromeLiquidGlassEnabled = homeSettings?.isTopBarLiquidGlassEnabled == true ||
-        linkedBottomBarAppearance.liquidGlassEnabled
+    val topChromeLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
+        requestedEnabled = homeSettings?.isTopBarLiquidGlassEnabled == true ||
+            linkedBottomBarAppearance.liquidGlassEnabled,
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = homeSettings?.androidNativeLiquidGlassEnabled == true
+    )
 
     // 状态栏高度
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

@@ -68,6 +68,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "皮肤",
             "玻璃",
             "液态玻璃",
+            "安卓原生液态玻璃",
+            "Android Native 液态玻璃",
+            "全局液态玻璃",
+            "评论区液态玻璃",
             "毛玻璃",
             "封面玻璃",
             "信息区玻璃",
@@ -345,6 +349,14 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         subtitle = "iOS、安卓原生、深色风格、应用语言",
         section = "外观设置",
         aliases = listOf("界面预设", "主题模式", "深色风格", "应用语言", "语言", "material you", "动态取色"),
+        focusId = SettingsSearchFocusIds.APPEARANCE_THEME
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.APPEARANCE,
+        title = "安卓原生液态玻璃",
+        subtitle = "全局启用顶部、底栏和评论区控件",
+        section = "外观设置",
+        aliases = listOf("全局液态玻璃", "评论区液态玻璃", "Android Native 液态玻璃"),
         focusId = SettingsSearchFocusIds.APPEARANCE_THEME
     ),
     SettingsSearchEntry(

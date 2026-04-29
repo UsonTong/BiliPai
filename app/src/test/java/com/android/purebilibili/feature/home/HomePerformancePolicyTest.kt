@@ -92,13 +92,34 @@ class HomePerformancePolicyTest {
     }
 
     @Test
-    fun md3Preset_preservesLiquidGlassWhenStoredSettingIsOn() {
+    fun md3Preset_requiresAndroidNativeGlobalOptInForLiquidGlass() {
         val config = resolveHomePerformanceConfig(
             uiPreset = UiPreset.MD3,
             headerBlurEnabled = true,
             bottomBarBlurEnabled = true,
             topBarLiquidGlassEnabled = true,
             bottomBarLiquidGlassEnabled = true,
+            androidNativeLiquidGlassEnabled = false,
+            cardAnimationEnabled = true,
+            cardTransitionEnabled = true,
+            isDataSaverActive = false,
+            smartVisualGuardEnabled = false,
+            normalPreloadAheadCount = 5
+        )
+
+        assertFalse(config.topBarLiquidGlassEnabled)
+        assertFalse(config.bottomBarLiquidGlassEnabled)
+    }
+
+    @Test
+    fun md3Preset_allowsGlobalLiquidGlassWhenAndroidNativeOptInIsEnabled() {
+        val config = resolveHomePerformanceConfig(
+            uiPreset = UiPreset.MD3,
+            headerBlurEnabled = true,
+            bottomBarBlurEnabled = true,
+            topBarLiquidGlassEnabled = true,
+            bottomBarLiquidGlassEnabled = true,
+            androidNativeLiquidGlassEnabled = true,
             cardAnimationEnabled = true,
             cardTransitionEnabled = true,
             isDataSaverActive = false,

@@ -3,21 +3,33 @@ package com.android.purebilibili.core.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +39,7 @@ import androidx.compose.ui.graphics.SolidColor
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalDynamicColorActive
+import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
@@ -48,6 +61,7 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import kotlin.math.max
 
 // ═══════════════════════════════════════════════════
 //  Common iOS List Components (Reused across Settings, Profile, etc.)
@@ -280,6 +294,7 @@ fun AppAdaptiveSwitch(
     enabled: Boolean = true
 ) {
     val uiPreset = LocalUiPreset.current
+    val settingsLiquidGlassEnabled = LocalSettingsLiquidGlassEnabled.current
     val colorScheme = MaterialTheme.colorScheme
     val switchSpec = remember(uiPreset, colorScheme) {
         resolveAdaptiveSwitchVisualSpec(
@@ -287,41 +302,168 @@ fun AppAdaptiveSwitch(
             colorScheme = colorScheme
         )
     }
-    if (uiPreset == UiPreset.MD3) {
-        if (switchSpec.usePlatformDefaults) {
-            Switch(
+    when (
+        resolveAppAdaptiveSwitchTreatment(
+            uiPreset = uiPreset,
+            settingsLiquidGlassEnabled = settingsLiquidGlassEnabled
+        )
+    ) {
+        AppAdaptiveSwitchTreatment.MATERIAL -> {
+            if (switchSpec.usePlatformDefaults) {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    enabled = enabled,
+                    modifier = modifier
+                )
+            } else {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    enabled = enabled,
+                    modifier = modifier,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = switchSpec.checkedThumbColor,
+                        checkedTrackColor = switchSpec.checkedTrackColor,
+                        checkedBorderColor = switchSpec.checkedTrackColor,
+                        uncheckedThumbColor = switchSpec.uncheckedThumbColor,
+                        uncheckedTrackColor = switchSpec.uncheckedTrackColor,
+                        uncheckedBorderColor = switchSpec.uncheckedBorderColor
+                    )
+                )
+            }
+        }
+        AppAdaptiveSwitchTreatment.CUPERTINO -> {
+            CupertinoSwitch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                modifier = modifier,
+                colors = CupertinoSwitchDefaults.colors(
+                    thumbColor = switchSpec.checkedThumbColor,
+                    checkedTrackColor = switchSpec.checkedTrackColor,
+                    uncheckedTrackColor = switchSpec.uncheckedTrackColor
+                )
+            )
+        }
+        AppAdaptiveSwitchTreatment.LIQUID_GLASS -> {
+            IOSLiquidGlassSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 enabled = enabled,
                 modifier = modifier
             )
-        } else {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-                modifier = modifier,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = switchSpec.checkedThumbColor,
-                    checkedTrackColor = switchSpec.checkedTrackColor,
-                    checkedBorderColor = switchSpec.checkedTrackColor,
-                    uncheckedThumbColor = switchSpec.uncheckedThumbColor,
-                    uncheckedTrackColor = switchSpec.uncheckedTrackColor,
-                    uncheckedBorderColor = switchSpec.uncheckedBorderColor
-                )
-            )
         }
-    } else {
-        CupertinoSwitch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            modifier = modifier,
-            colors = CupertinoSwitchDefaults.colors(
-                thumbColor = switchSpec.checkedThumbColor,
-                checkedTrackColor = switchSpec.checkedTrackColor,
-                uncheckedTrackColor = switchSpec.uncheckedTrackColor
-            )
+    }
+}
+
+@Composable
+private fun IOSLiquidGlassSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val clickPulse = remember { Animatable(0f) }
+    var didInitializePulse by remember { mutableStateOf(false) }
+    val layoutSpec = remember { resolveLiquidSwitchLayoutSpec() }
+    val motionSpec = remember { resolveLiquidSwitchMotionSpec() }
+    val themePrimaryColor = MaterialTheme.colorScheme.primary
+    val uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    val position by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = motionSpec.selectionSpring.toSpringSpec(),
+        label = "settingsLiquidSwitchPosition"
+    )
+    val pressProgress by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = motionSpec.pressSpring.toSpringSpec(),
+        label = "settingsLiquidSwitchPress"
+    )
+    val trackColor = resolveLiquidSwitchTrackColor(
+        checked = checked,
+        themePrimaryColor = themePrimaryColor,
+        uncheckedTrackColor = uncheckedTrackColor
+    )
+    val thumbOffsetDp by animateFloatAsState(
+        targetValue = layoutSpec.checkedThumbOffsetXDp * position,
+        animationSpec = motionSpec.selectionSpring.toSpringSpec(),
+        label = "settingsLiquidSwitchThumbOffset"
+    )
+    val highlightProgress = max(pressProgress, clickPulse.value)
+    val targetThumbTransform = resolveLiquidSwitchThumbTransform(highlightProgress, motionSpec)
+    val thumbScaleX = targetThumbTransform.scaleX
+    val thumbScaleY = targetThumbTransform.scaleY
+    val thumbPulseOverscan = 2.dp * highlightProgress
+
+    LaunchedEffect(checked) {
+        if (!didInitializePulse) {
+            didInitializePulse = true
+            return@LaunchedEffect
+        }
+        clickPulse.snapTo(1f)
+        clickPulse.animateTo(0f, motionSpec.indicatorScaleSpring.toSpringSpec())
+    }
+
+    Box(
+        modifier = modifier
+            .alpha(if (enabled) 1f else 0.45f)
+            .size(width = layoutSpec.containerWidthDp.dp, height = layoutSpec.containerHeightDp.dp)
+            .clip(RoundedCornerShape(50))
+            .clipToBounds()
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                interactionSource = interactionSource,
+                indication = null,
+                onValueChange = onCheckedChange
+            ),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = 0.dp, y = layoutSpec.trackOffsetYDp.dp)
+                .size(width = layoutSpec.trackWidthDp.dp, height = layoutSpec.trackHeightDp.dp)
+                .clip(RoundedCornerShape(50))
+                .background(trackColor)
+                .drawBehind {
+                    drawRect(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (checked) 0.18f else 0.08f),
+                                Color.White.copy(alpha = 0.02f),
+                                Color.Black.copy(alpha = if (checked) 0.04f else 0.02f)
+                            )
+                        )
+                    )
+                }
+        )
+        Box(
+            modifier = Modifier
+                .offset(
+                    x = thumbOffsetDp.dp - thumbPulseOverscan,
+                    y = layoutSpec.thumbOffsetYDp.dp
+                )
+                .size(
+                    width = layoutSpec.thumbWidthDp.dp + thumbPulseOverscan * 2,
+                    height = layoutSpec.thumbHeightDp.dp
+                )
+                .graphicsLayer {
+                    scaleX = thumbScaleX
+                    scaleY = thumbScaleY
+                    shape = RoundedCornerShape(50)
+                    clip = false
+                }
+                .clip(RoundedCornerShape(50))
+                .drawBehind {
+                    drawRoundRect(
+                        color = Color.White,
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+                    )
+                }
         )
     }
 }

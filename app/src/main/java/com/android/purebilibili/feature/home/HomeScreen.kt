@@ -564,16 +564,26 @@ fun HomeScreen(
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled &&
         !predictiveStableBackRouteMotionEnabled // 预测返回稳定路由模式下禁用首页共享元素，避免叠层滞留
-    val baseTopBarLiquidGlassEnabled = remember(homeSettings.isTopBarLiquidGlassEnabled, uiPreset) {
+    val baseTopBarLiquidGlassEnabled = remember(
+        homeSettings.isTopBarLiquidGlassEnabled,
+        homeSettings.androidNativeLiquidGlassEnabled,
+        uiPreset
+    ) {
         resolveEffectiveLiquidGlassEnabled(
             requestedEnabled = homeSettings.isTopBarLiquidGlassEnabled,
-            uiPreset = uiPreset
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
         )
     }
-    val baseBottomBarLiquidGlassEnabled = remember(homeSettings.isBottomBarLiquidGlassEnabled, uiPreset) {
+    val baseBottomBarLiquidGlassEnabled = remember(
+        homeSettings.isBottomBarLiquidGlassEnabled,
+        homeSettings.androidNativeLiquidGlassEnabled,
+        uiPreset
+    ) {
         resolveEffectiveLiquidGlassEnabled(
             requestedEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
-            uiPreset = uiPreset
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
         )
     }
     val baseIsDataSaverActive = remember(context) {
@@ -586,7 +596,8 @@ fun HomeScreen(
         baseBottomBarLiquidGlassEnabled,
         baseCardAnimationEnabled,
         baseCardTransitionEnabled,
-        baseIsDataSaverActive
+        baseIsDataSaverActive,
+        homeSettings.androidNativeLiquidGlassEnabled
     ) {
         resolveHomePerformanceConfig(
             uiPreset = uiPreset,
@@ -594,6 +605,7 @@ fun HomeScreen(
             bottomBarBlurEnabled = baseIsBottomBarBlurEnabled,
             topBarLiquidGlassEnabled = baseTopBarLiquidGlassEnabled,
             bottomBarLiquidGlassEnabled = baseBottomBarLiquidGlassEnabled,
+            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled,
             cardAnimationEnabled = baseCardAnimationEnabled,
             cardTransitionEnabled = baseCardTransitionEnabled,
             isDataSaverActive = baseIsDataSaverActive,

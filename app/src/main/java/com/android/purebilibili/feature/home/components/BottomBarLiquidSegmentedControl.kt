@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -41,8 +42,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.purebilibili.core.store.LiquidGlassStyle
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.HomeSettings
+import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
@@ -57,6 +61,35 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.abs
 import kotlin.math.sign
+
+internal fun resolveSegmentedControlLiquidGlassEnabled(
+    storedLiquidGlassEnabled: Boolean,
+    liquidGlassEffectsEnabled: Boolean,
+    uiPreset: UiPreset,
+    androidNativeLiquidGlassEnabled: Boolean
+): Boolean {
+    return liquidGlassEffectsEnabled && resolveEffectiveLiquidGlassEnabled(
+        requestedEnabled = storedLiquidGlassEnabled,
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = androidNativeLiquidGlassEnabled
+    )
+}
+
+internal enum class SegmentedControlChromeStyle {
+    LIQUID_PILL,
+    ANDROID_NATIVE_UNDERLINE
+}
+
+internal fun resolveSegmentedControlChromeStyle(
+    uiPreset: UiPreset,
+    androidNativeLiquidGlassEnabled: Boolean
+): SegmentedControlChromeStyle {
+    return if (uiPreset == UiPreset.MD3 && !androidNativeLiquidGlassEnabled) {
+        SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE
+    } else {
+        SegmentedControlChromeStyle.LIQUID_PILL
+    }
+}
 
 @Composable
 fun BottomBarLiquidSegmentedControl(
@@ -78,13 +111,36 @@ fun BottomBarLiquidSegmentedControl(
     if (items.isEmpty()) return
 
     val context = LocalContext.current
-    val storedLiquidGlassEnabled by SettingsManager
-        .getBottomBarLiquidGlassEnabled(context)
-        .collectAsState(initial = true)
-    val liquidGlassStyle by SettingsManager
-        .getLiquidGlassStyle(context)
-        .collectAsState(initial = LiquidGlassStyle.SUKISU)
-    val liquidGlassEnabled = storedLiquidGlassEnabled && liquidGlassEffectsEnabled
+    val uiPreset = LocalUiPreset.current
+    val homeSettings by SettingsManager
+        .getHomeSettings(context)
+        .collectAsState(initial = HomeSettings())
+    val chromeStyle = resolveSegmentedControlChromeStyle(
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+    )
+    if (chromeStyle == SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE) {
+        AndroidNativeUnderlinedSegmentedControl(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelected = onSelected,
+            modifier = modifier,
+            enabled = enabled,
+            itemWidth = itemWidth,
+            height = height,
+            labelFontSize = labelFontSize,
+            onIndicatorPositionChanged = onIndicatorPositionChanged
+        )
+        return
+    }
+
+    val liquidGlassStyle = homeSettings.liquidGlassStyle
+    val liquidGlassEnabled = resolveSegmentedControlLiquidGlassEnabled(
+        storedLiquidGlassEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
+        liquidGlassEffectsEnabled = liquidGlassEffectsEnabled,
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+    )
     val blurIntensity = currentUnifiedBlurIntensity()
     val density = LocalDensity.current
     val itemCount = items.size
@@ -329,6 +385,79 @@ fun BottomBarLiquidSegmentedControl(
                 .graphicsLayer { translationX = panelOffsetPx }
                 .then(dragModifier)
         )
+    }
+}
+
+@Composable
+private fun AndroidNativeUnderlinedSegmentedControl(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    itemWidth: Dp? = null,
+    height: Dp,
+    labelFontSize: TextUnit,
+    onIndicatorPositionChanged: ((Float) -> Unit)? = null
+) {
+    val itemCount = items.size
+    val safeSelectedIndex = selectedIndex.coerceIn(0, itemCount - 1)
+    val selectedTextColor = MaterialTheme.colorScheme.primary
+    val unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.78f else 0.42f)
+    val underlineShape = RoundedCornerShape(2.dp)
+
+    SideEffect {
+        onIndicatorPositionChanged?.invoke(safeSelectedIndex.toFloat())
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .then(
+                if (itemWidth != null) {
+                    Modifier.width(itemWidth * itemCount)
+                } else {
+                    Modifier.fillMaxWidth()
+                }
+            )
+            .height(height)
+    ) {
+        val segmentWidth = maxWidth / itemCount
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEachIndexed { index, label ->
+                val selected = index == safeSelectedIndex
+                Box(
+                    modifier = Modifier
+                        .width(segmentWidth)
+                        .fillMaxHeight()
+                        .clickable(enabled = enabled) { onSelected(index) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        color = if (selected) selectedTextColor else unselectedTextColor,
+                        fontSize = labelFontSize,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (selected) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .width(segmentWidth * 0.42f)
+                                .widthIn(min = 28.dp, max = 56.dp)
+                                .height(3.dp)
+                                .clip(underlineShape)
+                                .background(selectedTextColor)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -47,3 +47,4 @@ fun resolveUiRenderingProfile(preset: UiPreset): UiRenderingProfile {
 val LocalUiPreset = staticCompositionLocalOf { UiPreset.IOS }
 val LocalAndroidNativeVariant = staticCompositionLocalOf { AndroidNativeVariant.MATERIAL3 }
 val LocalDynamicColorActive = staticCompositionLocalOf { false }
+val LocalSettingsLiquidGlassEnabled = staticCompositionLocalOf { false }

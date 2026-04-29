@@ -41,6 +41,7 @@ import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.blur.BlurIntensity
+import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppSparklesIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -122,19 +123,21 @@ fun AppearanceSettingsScreen(
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
-            AppearanceSettingsContent(
-                modifier = Modifier.padding(padding),
-                state = state,
-                onNavigateToIconSettings = onNavigateToIconSettings,
-                onNavigateToAnimationSettings = onNavigateToAnimationSettings,
-                viewModel = viewModel,
-                context = context,
-                onAppLanguageChange = { language ->
-                    if (shouldPromptAppRestartForLanguageChange(state.appLanguage, language)) {
-                        pendingLanguageRestart = language
+            CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
+                AppearanceSettingsContent(
+                    modifier = Modifier.padding(padding),
+                    state = state,
+                    onNavigateToIconSettings = onNavigateToIconSettings,
+                    onNavigateToAnimationSettings = onNavigateToAnimationSettings,
+                    viewModel = viewModel,
+                    context = context,
+                    onAppLanguageChange = { language ->
+                        if (shouldPromptAppRestartForLanguageChange(state.appLanguage, language)) {
+                            pendingLanguageRestart = language
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     } else {
         MiuixScaffold(
@@ -151,19 +154,21 @@ fun AppearanceSettingsScreen(
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
-            AppearanceSettingsContent(
-                modifier = Modifier.padding(padding),
-                state = state,
-                onNavigateToIconSettings = onNavigateToIconSettings,
-                onNavigateToAnimationSettings = onNavigateToAnimationSettings,
-                viewModel = viewModel,
-                context = context,
-                onAppLanguageChange = { language ->
-                    if (shouldPromptAppRestartForLanguageChange(state.appLanguage, language)) {
-                        pendingLanguageRestart = language
+            CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
+                AppearanceSettingsContent(
+                    modifier = Modifier.padding(padding),
+                    state = state,
+                    onNavigateToIconSettings = onNavigateToIconSettings,
+                    onNavigateToAnimationSettings = onNavigateToAnimationSettings,
+                    viewModel = viewModel,
+                    context = context,
+                    onAppLanguageChange = { language ->
+                        if (shouldPromptAppRestartForLanguageChange(state.appLanguage, language)) {
+                            pendingLanguageRestart = language
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
 
@@ -373,6 +378,7 @@ fun AppearanceSettingsContent(
     val showOnlineCount by SettingsManager
         .getShowOnlineCount(context)
         .collectAsState(initial = false)
+    val isLiquidGlassAvailable = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)
     val showMd3DynamicColorControl =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val showThemeColorPicker = !state.dynamicColor
@@ -430,6 +436,22 @@ fun AppearanceSettingsContent(
                                     onSelectionChange = { variant ->
                                         viewModel.setAndroidNativeVariant(variant)
                                     }
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                IOSDivider()
+                                IOSSwitchItem(
+                                    icon = CupertinoIcons.Default.Drop,
+                                    title = "安卓原生液态玻璃",
+                                    subtitle = if (isLiquidGlassAvailable) {
+                                        "全局启用顶部、底栏和评论区复用的液态分段控件"
+                                    } else {
+                                        "当前 Android 版本暂不支持液态玻璃效果"
+                                    },
+                                    checked = state.androidNativeLiquidGlassEnabled,
+                                    onCheckedChange = { viewModel.toggleAndroidNativeLiquidGlass(it) },
+                                    enabled = isLiquidGlassAvailable,
+                                    iconTint = iOSBlue
                                 )
                             }
                         }
@@ -507,7 +529,7 @@ fun AppearanceSettingsContent(
                         Spacer(modifier = Modifier.height(8.dp))
                         IOSDivider()
                         ThemePresetDropdownSetting(
-                            icon = CupertinoIcons.Default.PaintbrushPointed,
+                            icon = CupertinoIcons.Default.Sparkles,
                             title = "色彩风格",
                             selectedLabel = selectedColorStyleLabel,
                             options = colorStyleOptions,

@@ -34,9 +34,13 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("Highlight.Default.copy(alpha = motionProgress)"))
         assertTrue(source.contains("Shadow(alpha = if (liquidGlassEnabled) motionProgress else 0f)"))
         assertTrue(source.contains("InnerShadow("))
-        assertTrue(source.contains("getBottomBarLiquidGlassEnabled("))
-        assertTrue(source.contains("getLiquidGlassStyle("))
-        assertTrue(source.contains("storedLiquidGlassEnabled && liquidGlassEffectsEnabled"))
+        assertTrue(source.contains("getHomeSettings("))
+        assertTrue(source.contains("resolveEffectiveLiquidGlassEnabled("))
+        assertTrue(source.contains("resolveSegmentedControlChromeStyle("))
+        assertTrue(source.contains("AndroidNativeUnderlinedSegmentedControl("))
+        assertTrue(source.contains("SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE"))
+        assertTrue(source.contains("onIndicatorPositionChanged?.invoke(safeSelectedIndex.toFloat())"))
+        assertTrue(source.contains(".widthIn(min = 28.dp, max = 56.dp)"))
         assertTrue(source.contains("if (enabled && itemCount > 1)"))
         assertTrue(source.contains("consumePointerChanges = dragSelectionEnabled"))
         assertTrue(source.contains("notifyIndexChanged = dragSelectionEnabled"))
@@ -60,6 +64,25 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertFalse(source.contains("resolveBottomBarIndicatorPolicy(itemCount = itemCount)"))
         assertFalse(source.contains("indicatorWidthMultiplier = 0.92f"))
         assertFalse(source.contains("maxScale = 1.06f"))
+    }
+
+    @Test
+    fun `global video dynamic and live segmented surfaces share android native fallback`() {
+        val paths = listOf(
+            "app/src/main/java/com/android/purebilibili/feature/video/ui/components/CommentSortFilterBar.kt",
+            "app/src/main/java/com/android/purebilibili/feature/video/screen/VideoContentSection.kt",
+            "app/src/main/java/com/android/purebilibili/feature/dynamic/components/DynamicTopBar.kt",
+            "app/src/main/java/com/android/purebilibili/feature/live/LiveListScreen.kt",
+            "app/src/main/java/com/android/purebilibili/feature/live/LiveAreaScreen.kt",
+            "app/src/main/java/com/android/purebilibili/feature/live/LivePlayerScreen.kt"
+        )
+
+        paths.forEach { path ->
+            assertTrue(
+                loadSource(path).contains("BottomBarLiquidSegmentedControl("),
+                "$path should keep using BottomBarLiquidSegmentedControl so the global Android native fallback applies"
+            )
+        }
     }
 
     private fun loadSource(path: String): String {
