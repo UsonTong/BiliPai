@@ -3676,11 +3676,10 @@ fun VideoPlayerSection(
                 isSeekScrubbing = sharedSeekSession.isSliderMoving && gestureMode != VideoGestureMode.Seek,
                 //  [加固] 显式同步弹幕到新进度，避免某些设备 seek 回调时机差导致短暂不同步
                 onSeekTo = { position ->
-                    val commitResult = finishPlaybackSeekInteraction(
-                        updatePlaybackSeekInteraction(
-                            state = sharedSeekSession,
-                            positionMs = position
-                        )
+                    val commitResult = commitPlaybackSeekInteraction(
+                        state = sharedSeekSession,
+                        player = playerState.player,
+                        positionMs = position
                     )
                     sharedSeekSession = commitResult.state
                     seekPlayerFromUserAction(

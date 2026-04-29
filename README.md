@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-29 · 文档已同步至 v8.0.0-Alpha8（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-29 · 文档已同步至 v8.0.0-Alpha9（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha8-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha9-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,11 +572,12 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0-Alpha8 · 2026-04-29)
+### 最近更新 (v8.0.0-Alpha9 · 2026-04-29)
 
-- 📺 直播首页一级分类继续复用底栏液态玻璃指示器、滑动动画和色散效果。
-- ✨ 指示器左右拖动时，分类区域会按指示器位置实时跟随露出目标项；“全部标签”父分类不再压缩隐藏文字。
-- 🔖 版本号升级到 `8.0.0-Alpha8`，`versionCode` 升级到 `170`，并补充直播分类指示器跟随滚动测试。
+- 🪟 新增“小窗+画中画”模式，应用内小窗和手机桌面系统画中画可同时配置。
+- 💬 “小窗/画中画不加载弹幕”覆盖应用内小窗与系统画中画，AI 总结时间点跳转保留播放状态。
+- ✨ 热门二级分类改为液态玻璃分段控件，并补齐首页顶部标签、直播分类和播放器策略测试。
+- 🔖 版本号升级到 `8.0.0-Alpha9`，`versionCode` 升级到 `171`。
 
 ### 历史版本
 

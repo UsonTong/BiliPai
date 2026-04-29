@@ -77,7 +77,7 @@ internal fun shouldShowInAppMiniPlayerByPolicy(
     stopPlaybackOnExit: Boolean
 ): Boolean {
     if (stopPlaybackOnExit) return false
-    return mode == SettingsManager.MiniPlayerMode.IN_APP_ONLY && isActive && !isNavigatingToVideo
+    return mode.supportsInAppMiniPlayer && isActive && !isNavigatingToVideo
 }
 
 internal fun shouldEnterPipByPolicy(
@@ -86,7 +86,7 @@ internal fun shouldEnterPipByPolicy(
     stopPlaybackOnExit: Boolean
 ): Boolean {
     if (stopPlaybackOnExit) return false
-    return mode == SettingsManager.MiniPlayerMode.SYSTEM_PIP && isActive
+    return mode.supportsSystemPip && isActive
 }
 
 internal fun shouldContinueBackgroundAudioByPolicy(
@@ -104,7 +104,8 @@ internal fun shouldContinueBackgroundAudioByPolicy(
     return when (mode) {
         SettingsManager.MiniPlayerMode.OFF -> true
         SettingsManager.MiniPlayerMode.IN_APP_ONLY -> true
-        SettingsManager.MiniPlayerMode.SYSTEM_PIP -> !shouldKeepPlaybackForPipTransition
+        SettingsManager.MiniPlayerMode.SYSTEM_PIP,
+        SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP -> !shouldKeepPlaybackForPipTransition
     }
 }
 
@@ -1366,9 +1367,9 @@ class MiniPlayerManager private constructor(private val context: Context) :
         val mode = getCurrentMode()
         Logger.d(TAG) { "📲 enterMiniMode called: isActive=$isActive, forced=$forced, mode=$mode" }
         
-        // 非强制模式下，只有 IN_APP_ONLY 才自动进入小窗
-        if (!forced && mode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY) {
-            Logger.d(TAG) { "⚠️ Auto mini player only works in IN_APP_ONLY mode, current mode=$mode" }
+        // 非强制模式下，只有支持应用内小窗的模式才自动进入小窗
+        if (!forced && !mode.supportsInAppMiniPlayer) {
+            Logger.d(TAG) { "⚠️ Auto mini player only works in in-app mini modes, current mode=$mode" }
             return
         }
         

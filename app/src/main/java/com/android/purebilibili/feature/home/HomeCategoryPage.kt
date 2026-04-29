@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.animation.DissolveAnimationPreset
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard
@@ -41,6 +42,7 @@ import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.data.model.response.VideoItem
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.home.components.cards.LiveRoomCard
 import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
@@ -257,21 +259,13 @@ internal fun HomeCategoryPageContent(
             }
             if (category == HomeCategory.POPULAR) {
                 item(span = { GridItemSpan(gridColumns) }) {
-                    FlowRow(
+                    PopularSubCategorySegmentedControl(
+                        selectedSubCategory = popularSubCategory,
+                        onSubCategoryChange = onPopularSubCategoryChange,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        PopularSubCategory.entries.forEach { subCategory ->
-                            FilterChip(
-                                selected = popularSubCategory == subCategory,
-                                onClick = { onPopularSubCategoryChange(subCategory) },
-                                label = { Text(stringResource(resolvePopularSubCategoryLabelRes(subCategory))) }
-                            )
-                        }
-                    }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
 
@@ -416,6 +410,35 @@ internal fun HomeCategoryPageContent(
             Box(modifier = Modifier.fillMaxWidth().height(20.dp))
         }
     }
+}
+
+@Composable
+private fun PopularSubCategorySegmentedControl(
+    selectedSubCategory: PopularSubCategory,
+    onSubCategoryChange: (PopularSubCategory) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val subCategories = PopularSubCategory.entries
+    val selectedIndex = subCategories.indexOf(selectedSubCategory).coerceAtLeast(0)
+    val labels = subCategories.map { subCategory ->
+        stringResource(resolvePopularSubCategoryLabelRes(subCategory))
+    }
+
+    BottomBarLiquidSegmentedControl(
+        items = labels,
+        selectedIndex = selectedIndex,
+        onSelected = { index ->
+            subCategories.getOrNull(index)?.let(onSubCategoryChange)
+        },
+        modifier = modifier,
+        height = 44.dp,
+        indicatorHeight = 36.dp,
+        labelFontSize = 14.sp,
+        containerHorizontalPadding = 3.dp,
+        containerVerticalPadding = 3.dp,
+        liquidGlassEffectsEnabled = true,
+        dragSelectionEnabled = true
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

@@ -36,10 +36,10 @@ class LiveHomeCategoryIndicatorPolicyTest {
     }
 
     @Test
-    fun `live home category control uses compact width for indicator driven paging`() {
+    fun `live home category control fits four visible items with matching indicator width`() {
         val spec = resolveLiveHomeCategorySegmentedControlSpec()
 
-        assertEquals(112, spec.itemWidthDp)
+        assertEquals(82, spec.itemWidthDp)
         assertEquals(48, spec.heightDp)
         assertEquals(36, spec.indicatorHeightDp)
         assertEquals(14, spec.labelFontSizeSp)

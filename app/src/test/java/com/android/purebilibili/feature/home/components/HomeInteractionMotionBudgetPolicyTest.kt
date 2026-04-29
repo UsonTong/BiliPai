@@ -203,6 +203,34 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
+    fun topTabIndicatorRenderPosition_tracksPagerOffsetWhileUserSwipesContent() {
+        assertEquals(
+            0.35f,
+            resolveTopTabIndicatorRenderPosition(
+                selectedIndex = 0,
+                pagerCurrentPage = 0,
+                pagerTargetPage = 1,
+                pagerCurrentPageOffsetFraction = 0.35f,
+                pagerIsScrolling = true
+            )
+        )
+    }
+
+    @Test
+    fun topTabIndicatorRenderPosition_prefersSettledPagerPageWhenIdle() {
+        assertEquals(
+            2f,
+            resolveTopTabIndicatorRenderPosition(
+                selectedIndex = 0,
+                pagerCurrentPage = 2,
+                pagerTargetPage = 3,
+                pagerCurrentPageOffsetFraction = 0.4f,
+                pagerIsScrolling = false
+            )
+        )
+    }
+
+    @Test
     fun md3TopTabViewportPosition_matchesPagerProgressWithinVisibleSlots() {
         assertEquals(
             1.35f,

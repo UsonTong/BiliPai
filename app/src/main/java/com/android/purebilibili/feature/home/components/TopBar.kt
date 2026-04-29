@@ -2,7 +2,6 @@
 package com.android.purebilibili.feature.home.components
 
 import android.os.Build
-import android.os.SystemClock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuOpen
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
@@ -17,9 +16,6 @@ import androidx.compose.material.icons.outlined.Tv
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -84,18 +80,10 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import kotlinx.coroutines.flow.map
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
-import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import androidx.compose.foundation.combinedClickable // [Added]
@@ -652,7 +640,6 @@ fun CategoryTabRow(
     //  [交互优化] 触觉反馈
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
     val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
-    val coroutineScope = rememberCoroutineScope()
     val tabRowHeight = resolveIosTopTabRowHeight(isFloatingStyle)
     val actionButtonSize = resolveIosTopTabActionButtonSize(isFloatingStyle)
     val actionButtonCorner = resolveIosTopTabActionButtonCorner(isFloatingStyle)
@@ -768,11 +755,10 @@ fun CategoryTabRow(
             val localDensity = LocalDensity.current
             val tabListState = rememberLazyListState()
             
-            // [简化] 直接从 PagerState 计算位置，不再使用 DampedDragAnimationState
-            // 这是唯一的状态源，消除多状态同步问题
+            // 渲染位置保持离散，避免内容区横滑时顶部指示器产生左右滑动效果。
             val currentPosition by remember(pagerState, selectedIndex) {
                 derivedStateOf {
-                    resolveTopTabPagerPosition(
+                    resolveTopTabIndicatorRenderPosition(
                         selectedIndex = selectedIndex,
                         pagerCurrentPage = pagerState?.currentPage,
                         pagerTargetPage = pagerState?.targetPage,
@@ -781,58 +767,65 @@ fun CategoryTabRow(
                     )
                 }
             }
-            val viewportAnchorIndex by remember(pagerState, selectedIndex) {
-                derivedStateOf {
-                    resolveTopTabViewportAnchorIndex(
-                        selectedIndex = selectedIndex,
-                        pagerCurrentPage = pagerState?.currentPage,
-                        pagerTargetPage = pagerState?.targetPage,
-                        pagerIsScrolling = pagerState?.isScrollInProgress == true
-                    )
-                }
-            }
+            val isInteracting = false
+            val indicatorVelocityPxPerSecond = 0f
             
-            // [简化] 是否正在交互（用于指示器缩放效果）
-            var isInteracting by remember { mutableStateOf(false) }
-            var indicatorVelocityPxPerSecond by remember { mutableFloatStateOf(0f) }
-            var lastPosition by remember { mutableFloatStateOf(currentPosition) }
-            var lastTimeMs by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
-            var velocityDecayJob by remember { mutableStateOf<Job?>(null) }
-            
-            // 同步滚动位置：当选中索引变化时，自动滚动到可见区域
+            // 同步滚动位置：跟随指示器位置保持当前滑动方向上的 Tab 可见
             val firstVisibleIndex by remember {
                 derivedStateOf {
                     tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
                 }
             }
-            val lastVisibleIndex by remember {
-                derivedStateOf {
-                    tabListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                }
+            val firstVisibleScrollOffsetPx by remember {
+                derivedStateOf { tabListState.firstVisibleItemScrollOffset }
             }
-
-            LaunchedEffect(viewportAnchorIndex, interactionBudget, firstVisibleIndex, lastVisibleIndex) {
-                if (!isViewportSyncEnabled) {
-                    return@LaunchedEffect
-                }
-                val targetIndex = viewportAnchorIndex.coerceIn(0, categories.size - 1)
-                if (!shouldAnimateTopTabAutoScroll(targetIndex, firstVisibleIndex, lastVisibleIndex, interactionBudget)) {
-                    return@LaunchedEffect
-                }
-                if (interactionBudget == HomeInteractionMotionBudget.REDUCED) {
-                    tabListState.scrollToItem(targetIndex)
-                } else {
-                    tabListState.animateScrollToItem(targetIndex)
-                }
+            val tabViewportWidthPx by remember {
+                derivedStateOf { tabListState.layoutInfo.viewportSize.width.toFloat() }
             }
-
             // [修复] 从 layoutInfo 中获取第一个 Tab 的实际物理宽度
             val actualTabWidthPx by remember {
                 derivedStateOf {
-                    tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.size?.toFloat() 
+                    tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.size?.toFloat()
                         ?: with(localDensity) { tabWidth.toPx() }
                 }
             }
+
+            LaunchedEffect(
+                currentPosition,
+                categories.size,
+                actualTabWidthPx,
+                tabViewportWidthPx,
+                firstVisibleIndex,
+                firstVisibleScrollOffsetPx
+            ) {
+                if (!isViewportSyncEnabled) {
+                    return@LaunchedEffect
+                }
+                if (actualTabWidthPx <= 0f || tabViewportWidthPx <= 0f || categories.isEmpty()) {
+                    return@LaunchedEffect
+                }
+                val maxScrollPx = (actualTabWidthPx * categories.size - tabViewportWidthPx).coerceAtLeast(0f)
+                val target = resolveTopTabFollowScrollTarget(
+                    indicatorPosition = currentPosition,
+                    itemWidthPx = actualTabWidthPx,
+                    itemCount = categories.size,
+                    viewportWidthPx = tabViewportWidthPx,
+                    currentFirstVisibleItemIndex = firstVisibleIndex,
+                    currentFirstVisibleItemScrollOffsetPx = firstVisibleScrollOffsetPx,
+                    maxScrollPx = maxScrollPx,
+                    edgeBufferPx = with(localDensity) { 20.dp.toPx() }
+                )
+                if (
+                    target.firstVisibleItemIndex != firstVisibleIndex ||
+                    abs(target.firstVisibleItemScrollOffsetPx - firstVisibleScrollOffsetPx) > 1
+                ) {
+                    tabListState.scrollToItem(
+                        index = target.firstVisibleItemIndex,
+                        scrollOffset = target.firstVisibleItemScrollOffsetPx
+                    )
+                }
+            }
+
             val floatingIndicatorWidthPx by remember(isFloatingStyle) {
                 derivedStateOf {
                     if (!isFloatingStyle) 0f
@@ -859,52 +852,10 @@ fun CategoryTabRow(
                 ).toDp()
             }
 
-            LaunchedEffect(effectiveLiquidGlassEnabled) {
-                snapshotFlow { Pair(currentPosition, actualTabWidthPx) }
-                    .collect { (position, tabWidthPx) ->
-                        val now = SystemClock.uptimeMillis()
-                        val dt = (now - lastTimeMs).coerceAtLeast(1L)
-                        val horizontalDeltaPx = resolveTopTabHorizontalDeltaPx(
-                            positionDeltaPages = position - lastPosition,
-                            tabWidthPx = tabWidthPx
-                        )
-                        val rawHorizontalVelocity = (horizontalDeltaPx * 1000f) / dt
-                        val rawVelocity = resolveTopTabIndicatorVelocity(
-                            horizontalVelocityPxPerSecond = rawHorizontalVelocity
-                        )
-                        indicatorVelocityPxPerSecond =
-                            indicatorVelocityPxPerSecond * 0.32f + rawVelocity * 0.68f
-                        isInteracting = shouldTopTabIndicatorBeInteracting(
-                            pagerIsScrolling = pagerState?.isScrollInProgress == true,
-                            combinedVelocityPxPerSecond = rawVelocity,
-                            liquidGlassEnabled = effectiveLiquidGlassEnabled
-                        )
-                        lastPosition = position
-                        lastTimeMs = now
-
-                        velocityDecayJob?.cancel()
-                        velocityDecayJob = coroutineScope.launch {
-                            delay(90)
-                            indicatorVelocityPxPerSecond *= 0.35f
-                            isInteracting = shouldTopTabIndicatorBeInteracting(
-                                pagerIsScrolling = pagerState?.isScrollInProgress == true,
-                                combinedVelocityPxPerSecond = indicatorVelocityPxPerSecond,
-                                liquidGlassEnabled = effectiveLiquidGlassEnabled
-                            )
-                            delay(90)
-                            indicatorVelocityPxPerSecond = 0f
-                            isInteracting = pagerState?.isScrollInProgress == true
-                        }
-                    }
-            }
-
             Box(modifier = Modifier.fillMaxSize()) {
                 val tabContentBackdrop = rememberLayerBackdrop()
-                val topIndicatorVisualPolicy = resolveTopTabIndicatorVisualPolicy(
-                    position = currentPosition,
-                    interacting = isInteracting,
-                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
-                    useNeutralIndicatorTint = resolvedLiquidGlassTuning.useNeutralIndicatorTint
+                val topIndicatorVisualPolicy = resolveTopTabStaticIndicatorVisualPolicy(
+                    useNeutralIndicatorTint = true
                 )
                 val shouldRefract = topIndicatorVisualPolicy.shouldRefract
                 val topIndicatorBackdropPolicy = resolveTopTabIndicatorBackdropPolicy(
@@ -965,24 +916,10 @@ fun CategoryTabRow(
                         liquidGlassProgress = resolvedLiquidGlassTuning.progress,
                         configuredAlpha = resolvedLiquidGlassTuning.indicatorTintAlpha
                     )
-                    val topIndicatorColor = if (uiPreset == UiPreset.IOS) {
-                        resolveIosFloatingBottomIndicatorColor(
-                            themeColor = MaterialTheme.colorScheme.primary,
-                            isDarkTheme = isDarkTheme,
-                            visualPolicy = topIndicatorVisualPolicy,
-                            liquidGlassTuning = resolvedLiquidGlassTuning
-                        ).copy(alpha = topIndicatorTintAlpha)
-                    } else if (topIndicatorVisualPolicy.useNeutralTint) {
-                        Color.White.copy(
-                            alpha = if (isDarkTheme) {
-                                topIndicatorTintAlpha * 0.68f
-                            } else {
-                                topIndicatorTintAlpha * 0.82f
-                            }
-                        )
-                    } else {
-                        MaterialTheme.colorScheme.primary.copy(alpha = topIndicatorTintAlpha)
-                    }
+                    val topIndicatorColor = resolveTopTabNeutralIndicatorColor(
+                        isDarkTheme = isDarkTheme,
+                        alpha = topIndicatorTintAlpha
+                    )
 
                     if (isFloatingStyle) {
                         LiquidIndicator(
@@ -1228,14 +1165,14 @@ private fun Md3CategoryTabRow(
         else -> TopTabMaterialMode.PLAIN
     }
     val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
-    val viewportAnchorIndex by remember(pagerState, selectedIndex) {
+    val viewportAnchorIndex by remember(pagerState, selectedIndex, categories.size) {
         derivedStateOf {
             resolveTopTabViewportAnchorIndex(
                 selectedIndex = selectedIndex,
                 pagerCurrentPage = pagerState?.currentPage,
                 pagerTargetPage = pagerState?.targetPage,
                 pagerIsScrolling = pagerState?.isScrollInProgress == true
-            )
+            ).coerceIn(0, (categories.size - 1).coerceAtLeast(0))
         }
     }
     val visibleIndices = remember(categories, viewportAnchorIndex) {
@@ -1252,7 +1189,7 @@ private fun Md3CategoryTabRow(
     }
     val currentPagerPosition by remember(pagerState, selectedIndex) {
         derivedStateOf {
-            resolveTopTabPagerPosition(
+            resolveTopTabIndicatorRenderPosition(
                 selectedIndex = selectedIndex,
                 pagerCurrentPage = pagerState?.currentPage,
                 pagerTargetPage = pagerState?.targetPage,
@@ -1306,10 +1243,7 @@ private fun Md3CategoryTabRow(
             } else {
                 (slotWidth * 0.34f).coerceIn(24.dp, 32.dp)
             }
-            val animatedIndicatorOffset by animateDpAsState(
-                targetValue = slotWidth * currentVisiblePosition + ((slotWidth - indicatorWidth) / 2f),
-                label = "md3TopTabIndicatorOffset"
-            )
+            val indicatorOffset = slotWidth * currentVisiblePosition + ((slotWidth - indicatorWidth) / 2f)
 
             Box(modifier = Modifier.fillMaxSize()) {
                 val selectedContainerColor = resolveMd3TopTabSelectedContainerColor(
@@ -1318,7 +1252,7 @@ private fun Md3CategoryTabRow(
                 )
                 Surface(
                     modifier = Modifier
-                        .offset(x = animatedIndicatorOffset)
+                        .offset(x = indicatorOffset)
                         .width(indicatorWidth)
                         .height(visualSpec.selectedCapsuleHeight)
                         .padding(bottom = if (isMiuixChrome) 0.dp else 2.dp)
@@ -1464,12 +1398,13 @@ private fun MiuixCategoryTabRow(
 ) {
     val selectedTabIndex by remember(pagerState, selectedIndex, categories.size) {
         derivedStateOf {
-            resolveTopTabViewportAnchorIndex(
+            resolveTopTabIndicatorRenderPosition(
                 selectedIndex = selectedIndex,
                 pagerCurrentPage = pagerState?.currentPage,
                 pagerTargetPage = pagerState?.targetPage,
+                pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction,
                 pagerIsScrolling = pagerState?.isScrollInProgress == true
-            ).coerceIn(0, (categories.size - 1).coerceAtLeast(0))
+            ).roundToInt().coerceIn(0, (categories.size - 1).coerceAtLeast(0))
         }
     }
     val topTabSpec = resolveMd3TopTabVisualSpec(
@@ -1611,6 +1546,24 @@ internal fun resolveTopTabIndicatorVisualPolicy(
         shouldRefract = shouldRefract,
         useNeutralTint = shouldRefract && useNeutralIndicatorTint
     )
+}
+
+internal fun resolveTopTabStaticIndicatorVisualPolicy(
+    useNeutralIndicatorTint: Boolean
+): BottomBarIndicatorVisualPolicy {
+    return BottomBarIndicatorVisualPolicy(
+        isInMotion = false,
+        shouldRefract = false,
+        useNeutralTint = useNeutralIndicatorTint
+    )
+}
+
+internal fun resolveTopTabNeutralIndicatorColor(
+    isDarkTheme: Boolean,
+    alpha: Float
+): Color {
+    return resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = isDarkTheme)
+        .copy(alpha = alpha)
 }
 
 internal data class TopTabIndicatorBackdropPolicy(
