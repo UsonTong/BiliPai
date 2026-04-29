@@ -211,13 +211,13 @@ fun BottomBarLiquidSegmentedControl(
     ) {
         val segmentWidth = maxWidth / itemCount
         val itemWidthPx = with(density) { segmentWidth.toPx() }
-        val dragModifier = if (enabled && itemCount > 1) {
+        val dragModifier = if (enabled && itemCount > 1 && dragSelectionEnabled) {
             Modifier.horizontalDragGesture(
                 dragState = dragState,
                 itemWidthPx = itemWidthPx,
-                consumePointerChanges = dragSelectionEnabled,
-                settleIndex = if (dragSelectionEnabled) null else safeSelectedIndex,
-                notifyIndexChanged = dragSelectionEnabled
+                consumePointerChanges = true,
+                settleIndex = null,
+                notifyIndexChanged = true
             )
         } else {
             Modifier

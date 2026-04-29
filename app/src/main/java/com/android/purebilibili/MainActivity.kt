@@ -369,27 +369,27 @@ internal fun resolveSplashIconResIdForComponentClassName(className: String?): In
     return when (className?.substringAfterLast('.')) {
         "MainActivityAlias3DLauncher",
         "MainActivityAlias3D",
-        "MainActivitySplashIcon3D" -> R.drawable.splash_icon_3d
+        "MainActivitySplashIcon3D" -> R.mipmap.ic_launcher_3d
         "MainActivityAliasBiliPai",
-        "MainActivitySplashBiliPai" -> R.drawable.splash_icon_bilipai
+        "MainActivitySplashBiliPai" -> R.mipmap.ic_launcher_bilipai
         "MainActivityAliasBiliPaiPink",
-        "MainActivitySplashBiliPaiPink" -> R.drawable.splash_icon_bilipai_pink
+        "MainActivitySplashBiliPaiPink" -> R.mipmap.ic_launcher_bilipai_pink
         "MainActivityAliasBiliPaiWhite",
-        "MainActivitySplashBiliPaiWhite" -> R.drawable.splash_icon_bilipai_white
+        "MainActivitySplashBiliPaiWhite" -> R.mipmap.ic_launcher_bilipai_white
         "MainActivityAliasBiliPaiMonet",
-        "MainActivitySplashBiliPaiMonet" -> R.drawable.splash_icon_bilipai_monet
+        "MainActivitySplashBiliPaiMonet" -> R.mipmap.ic_launcher_bilipai_monet
         "MainActivityAliasFlat",
-        "MainActivitySplashFlat" -> R.drawable.splash_icon_flat
+        "MainActivitySplashFlat" -> R.mipmap.ic_launcher_flat
         "MainActivityAliasTelegramBlue",
-        "MainActivitySplashTelegramBlue" -> R.drawable.splash_icon_telegram_blue
+        "MainActivitySplashTelegramBlue" -> R.mipmap.ic_launcher_telegram_blue
         "MainActivityAliasDark",
-        "MainActivitySplashTelegramDark" -> R.drawable.splash_icon_telegram_dark
+        "MainActivitySplashTelegramDark" -> R.mipmap.ic_launcher_telegram_dark
         "MainActivityAliasYuki",
-        "MainActivitySplashYuki" -> R.drawable.splash_icon_yuki
+        "MainActivitySplashYuki" -> R.mipmap.ic_launcher
         "MainActivityAliasAnime",
-        "MainActivitySplashAnime" -> R.drawable.splash_icon_anime
+        "MainActivitySplashAnime" -> R.mipmap.ic_launcher_anime
         "MainActivityAliasHeadphone",
-        "MainActivitySplashHeadphone" -> R.drawable.splash_icon_headphone
+        "MainActivitySplashHeadphone" -> R.mipmap.ic_launcher_headphone
         else -> 0
     }
 }

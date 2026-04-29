@@ -40,26 +40,26 @@ class MainActivityAppCompatContractTest {
     }
 
     @Test
-    fun splashTheme_shouldUseHighResolutionSplashIconInsteadOfLauncherBitmap() {
+    fun splashTheme_shouldReuseLauncherMipmapAssets() {
         val lightThemes = loadResourceText("values/themes.xml")
         val nightThemes = loadResourceText("values-night/themes.xml")
 
         assertTrue(
-            lightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_bilipai</item>"""),
-            "Light splash theme should use the high-resolution splash icon, not the 192px launcher bitmap"
+            lightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_bilipai</item>"""),
+            "Light splash theme should reuse the launcher mipmap instead of packaging duplicate splash bitmaps"
         )
         assertTrue(
-            nightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_bilipai</item>"""),
-            "Night splash theme should use the high-resolution splash icon, not the 192px launcher bitmap"
+            nightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_bilipai</item>"""),
+            "Night splash theme should reuse the launcher mipmap instead of packaging duplicate splash bitmaps"
         )
         assertTrue(
             lightThemes.contains("""<item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>"""),
             "Light splash theme should not add a second icon background around the adaptive icon"
         )
         assertTrue(
-            !lightThemes.contains("""windowSplashScreenAnimatedIcon">@mipmap/""") &&
-                !nightThemes.contains("""windowSplashScreenAnimatedIcon">@mipmap/"""),
-            "Splash themes should not use launcher mipmap assets because full launcher bitmaps are too low resolution for splash"
+            !lightThemes.contains("""windowSplashScreenAnimatedIcon">@drawable/splash_icon_""") &&
+                !nightThemes.contains("""windowSplashScreenAnimatedIcon">@drawable/splash_icon_"""),
+            "Splash themes should not reference duplicate drawable-nodpi splash assets"
         )
         assertTrue(
             !splashDrawableVectorExists(),
@@ -75,7 +75,7 @@ class MainActivityAppCompatContractTest {
         ).find(lightThemes)?.value.orEmpty()
 
         assertTrue(
-            bilipaiWhiteTheme.contains("""<item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_bilipai_white</item>"""),
+            bilipaiWhiteTheme.contains("""<item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_bilipai_white</item>"""),
             "BiliPai white splash theme should use the matching white icon"
         )
         assertTrue(
@@ -85,7 +85,7 @@ class MainActivityAppCompatContractTest {
     }
 
     @Test
-    fun splashIcons_shouldUseHighResolutionDrawableAssets() {
+    fun splashIcons_shouldNotPackageDuplicateDrawableAssets() {
         listOf(
             "splash_icon_3d.png",
             "splash_icon_bilipai.png",
@@ -99,36 +99,9 @@ class MainActivityAppCompatContractTest {
             "splash_icon_anime.png",
             "splash_icon_headphone.png"
         ).forEach { fileName ->
-            val imageFile = loadResourceFile("drawable-nodpi/$fileName")
-            val imageSize = readPngOrJpegSize(imageFile)
-            assertTrue(imageSize.width >= 432 && imageSize.height >= 432, "$fileName should be at least 432px for splash rendering")
-        }
-    }
-
-    @Test
-    fun splashIcons_shouldBeRgbaPngWithHighDensityHeadroom() {
-        listOf(
-            "splash_icon_3d.png",
-            "splash_icon_bilipai.png",
-            "splash_icon_bilipai_pink.png",
-            "splash_icon_bilipai_white.png",
-            "splash_icon_bilipai_monet.png",
-            "splash_icon_flat.png",
-            "splash_icon_telegram_blue.png",
-            "splash_icon_telegram_dark.png",
-            "splash_icon_yuki.png",
-            "splash_icon_anime.png",
-            "splash_icon_headphone.png"
-        ).forEach { fileName ->
-            val header = readPngHeader(loadResourceFile("drawable-nodpi/$fileName"))
-            assertTrue(header.colorType == 6, "$fileName should be an RGBA PNG so splash corners stay transparent")
             assertTrue(
-                header.width >= 1024 && header.height >= 1024,
-                "$fileName should provide at least 1024px source pixels for high-density splash rendering"
-            )
-            assertTrue(
-                readPngCornerAlphaValues(loadResourceFile("drawable-nodpi/$fileName")).all { it == 0 },
-                "$fileName should keep transparent outer corners so the splash icon never shows square edges"
+                !resourcePathExists("drawable-nodpi/$fileName"),
+                "$fileName should not be packaged separately; splash should reuse existing launcher mipmaps"
             )
         }
     }
@@ -167,38 +140,22 @@ class MainActivityAppCompatContractTest {
     }
 
     @Test
-    fun bilipaiSplashIcons_shouldNotContainVisibleBlackCornerPixels() {
-        listOf(
-            "splash_icon_bilipai.png",
-            "splash_icon_bilipai_pink.png",
-            "splash_icon_bilipai_white.png",
-            "splash_icon_bilipai_monet.png"
-        ).forEach { fileName ->
-            val imageFile = loadResourceFile("drawable-nodpi/$fileName")
-            assertTrue(
-                readVisibleDarkOuterEdgePngPixelCount(imageFile) == 0,
-                "$fileName should not contain visible black edge pixels"
-            )
-        }
-    }
-
-    @Test
     fun launcherAliases_shouldBindMatchingSplashThemesForSelectedIcons() {
         val manifest = loadResourceText("../AndroidManifest.xml")
 
         mapOf(
-            "MainActivityAlias3DLauncher" to SplashAliasContract("MainActivitySplashIcon3D", "Theme.PureBiliBili.Splash.Icon3D", "ic_launcher_3d", "splash_icon_3d"),
-            "MainActivityAlias3D" to SplashAliasContract("MainActivitySplashIcon3D", "Theme.PureBiliBili.Splash.Icon3D", "ic_launcher_3d", "splash_icon_3d"),
-            "MainActivityAliasBiliPai" to SplashAliasContract("MainActivitySplashBiliPai", "Theme.PureBiliBili.Splash.BiliPai", "ic_launcher_bilipai", "splash_icon_bilipai"),
-            "MainActivityAliasBiliPaiPink" to SplashAliasContract("MainActivitySplashBiliPaiPink", "Theme.PureBiliBili.Splash.BiliPaiPink", "ic_launcher_bilipai_pink", "splash_icon_bilipai_pink"),
-            "MainActivityAliasBiliPaiWhite" to SplashAliasContract("MainActivitySplashBiliPaiWhite", "Theme.PureBiliBili.Splash.BiliPaiWhite", "ic_launcher_bilipai_white", "splash_icon_bilipai_white"),
-            "MainActivityAliasBiliPaiMonet" to SplashAliasContract("MainActivitySplashBiliPaiMonet", "Theme.PureBiliBili.Splash.BiliPaiMonet", "ic_launcher_bilipai_monet", "splash_icon_bilipai_monet"),
-            "MainActivityAliasFlat" to SplashAliasContract("MainActivitySplashFlat", "Theme.PureBiliBili.Splash.Flat", "ic_launcher_flat", "splash_icon_flat"),
-            "MainActivityAliasTelegramBlue" to SplashAliasContract("MainActivitySplashTelegramBlue", "Theme.PureBiliBili.Splash.TelegramBlue", "ic_launcher_telegram_blue", "splash_icon_telegram_blue"),
-            "MainActivityAliasDark" to SplashAliasContract("MainActivitySplashTelegramDark", "Theme.PureBiliBili.Splash.TelegramDark", "ic_launcher_telegram_dark", "splash_icon_telegram_dark"),
-            "MainActivityAliasYuki" to SplashAliasContract("MainActivitySplashYuki", "Theme.PureBiliBili.Splash.Yuki", "ic_launcher", "splash_icon_yuki"),
-            "MainActivityAliasAnime" to SplashAliasContract("MainActivitySplashAnime", "Theme.PureBiliBili.Splash.Anime", "ic_launcher_anime", "splash_icon_anime"),
-            "MainActivityAliasHeadphone" to SplashAliasContract("MainActivitySplashHeadphone", "Theme.PureBiliBili.Splash.Headphone", "ic_launcher_headphone", "splash_icon_headphone")
+            "MainActivityAlias3DLauncher" to SplashAliasContract("MainActivitySplashIcon3D", "Theme.PureBiliBili.Splash.Icon3D", "ic_launcher_3d"),
+            "MainActivityAlias3D" to SplashAliasContract("MainActivitySplashIcon3D", "Theme.PureBiliBili.Splash.Icon3D", "ic_launcher_3d"),
+            "MainActivityAliasBiliPai" to SplashAliasContract("MainActivitySplashBiliPai", "Theme.PureBiliBili.Splash.BiliPai", "ic_launcher_bilipai"),
+            "MainActivityAliasBiliPaiPink" to SplashAliasContract("MainActivitySplashBiliPaiPink", "Theme.PureBiliBili.Splash.BiliPaiPink", "ic_launcher_bilipai_pink"),
+            "MainActivityAliasBiliPaiWhite" to SplashAliasContract("MainActivitySplashBiliPaiWhite", "Theme.PureBiliBili.Splash.BiliPaiWhite", "ic_launcher_bilipai_white"),
+            "MainActivityAliasBiliPaiMonet" to SplashAliasContract("MainActivitySplashBiliPaiMonet", "Theme.PureBiliBili.Splash.BiliPaiMonet", "ic_launcher_bilipai_monet"),
+            "MainActivityAliasFlat" to SplashAliasContract("MainActivitySplashFlat", "Theme.PureBiliBili.Splash.Flat", "ic_launcher_flat"),
+            "MainActivityAliasTelegramBlue" to SplashAliasContract("MainActivitySplashTelegramBlue", "Theme.PureBiliBili.Splash.TelegramBlue", "ic_launcher_telegram_blue"),
+            "MainActivityAliasDark" to SplashAliasContract("MainActivitySplashTelegramDark", "Theme.PureBiliBili.Splash.TelegramDark", "ic_launcher_telegram_dark"),
+            "MainActivityAliasYuki" to SplashAliasContract("MainActivitySplashYuki", "Theme.PureBiliBili.Splash.Yuki", "ic_launcher"),
+            "MainActivityAliasAnime" to SplashAliasContract("MainActivitySplashAnime", "Theme.PureBiliBili.Splash.Anime", "ic_launcher_anime"),
+            "MainActivityAliasHeadphone" to SplashAliasContract("MainActivitySplashHeadphone", "Theme.PureBiliBili.Splash.Headphone", "ic_launcher_headphone")
         ).forEach { (alias, contract) ->
             val aliasBlock = Regex(
                 """<activity-alias\b(?=[^>]*android:name="\.$alias")[\s\S]*?</activity-alias>"""
@@ -220,32 +177,32 @@ class MainActivityAppCompatContractTest {
                 "${contract.targetActivity} should bind ${contract.theme} so Android splash follows the selected launcher icon"
             )
             assertTrue(
-                targetActivityBlock.contains("""android:icon="@drawable/${contract.splashIcon}""""),
-                "${contract.targetActivity} should expose ${contract.splashIcon} for high-resolution splash fallback rendering"
+                targetActivityBlock.contains("""android:icon="@mipmap/${contract.launcherIcon}""""),
+                "${contract.targetActivity} should reuse ${contract.launcherIcon} instead of exposing duplicate splash drawables"
             )
         }
     }
 
     @Test
-    fun splashFlyout_shouldUseHighResolutionIconForSelectedLauncherComponent() {
+    fun splashFlyout_shouldReuseLauncherIconForSelectedLauncherComponent() {
         mapOf(
-            "com.android.purebilibili.MainActivityAlias3DLauncher" to R.drawable.splash_icon_3d,
-            "com.android.purebilibili.MainActivitySplashIcon3D" to R.drawable.splash_icon_3d,
-            "com.android.purebilibili.MainActivityAliasBiliPai" to R.drawable.splash_icon_bilipai,
-            "com.android.purebilibili.MainActivitySplashBiliPai" to R.drawable.splash_icon_bilipai,
-            "com.android.purebilibili.MainActivityAliasBiliPaiPink" to R.drawable.splash_icon_bilipai_pink,
-            "com.android.purebilibili.MainActivityAliasBiliPaiWhite" to R.drawable.splash_icon_bilipai_white,
-            "com.android.purebilibili.MainActivityAliasBiliPaiMonet" to R.drawable.splash_icon_bilipai_monet,
-            "com.android.purebilibili.MainActivityAliasFlat" to R.drawable.splash_icon_flat,
-            "com.android.purebilibili.MainActivityAliasTelegramBlue" to R.drawable.splash_icon_telegram_blue,
-            "com.android.purebilibili.MainActivityAliasDark" to R.drawable.splash_icon_telegram_dark,
-            "com.android.purebilibili.MainActivityAliasYuki" to R.drawable.splash_icon_yuki,
-            "com.android.purebilibili.MainActivityAliasAnime" to R.drawable.splash_icon_anime,
-            "com.android.purebilibili.MainActivityAliasHeadphone" to R.drawable.splash_icon_headphone
+            "com.android.purebilibili.MainActivityAlias3DLauncher" to R.mipmap.ic_launcher_3d,
+            "com.android.purebilibili.MainActivitySplashIcon3D" to R.mipmap.ic_launcher_3d,
+            "com.android.purebilibili.MainActivityAliasBiliPai" to R.mipmap.ic_launcher_bilipai,
+            "com.android.purebilibili.MainActivitySplashBiliPai" to R.mipmap.ic_launcher_bilipai,
+            "com.android.purebilibili.MainActivityAliasBiliPaiPink" to R.mipmap.ic_launcher_bilipai_pink,
+            "com.android.purebilibili.MainActivityAliasBiliPaiWhite" to R.mipmap.ic_launcher_bilipai_white,
+            "com.android.purebilibili.MainActivityAliasBiliPaiMonet" to R.mipmap.ic_launcher_bilipai_monet,
+            "com.android.purebilibili.MainActivityAliasFlat" to R.mipmap.ic_launcher_flat,
+            "com.android.purebilibili.MainActivityAliasTelegramBlue" to R.mipmap.ic_launcher_telegram_blue,
+            "com.android.purebilibili.MainActivityAliasDark" to R.mipmap.ic_launcher_telegram_dark,
+            "com.android.purebilibili.MainActivityAliasYuki" to R.mipmap.ic_launcher,
+            "com.android.purebilibili.MainActivityAliasAnime" to R.mipmap.ic_launcher_anime,
+            "com.android.purebilibili.MainActivityAliasHeadphone" to R.mipmap.ic_launcher_headphone
         ).forEach { (className, iconResId) ->
             assertTrue(
                 resolveSplashIconResIdForComponentClassName(className) == iconResId,
-                "$className should resolve to a high-resolution splash drawable"
+                "$className should resolve to the matching launcher mipmap"
             )
         }
     }
@@ -297,6 +254,13 @@ class MainActivityAppCompatContractTest {
             ?: error("Cannot locate $resourcePath from ${File(".").absolutePath}")
     }
 
+    private fun resourcePathExists(resourcePath: String): Boolean {
+        return listOf(
+            File("app/src/main/res/$resourcePath"),
+            File("src/main/res/$resourcePath")
+        ).any { it.exists() }
+    }
+
     private fun loadResourceText(resourcePath: String): String {
         return loadResourceFile(resourcePath).readText()
     }
@@ -308,8 +272,7 @@ class MainActivityAppCompatContractTest {
     private data class SplashAliasContract(
         val targetActivity: String,
         val theme: String,
-        val launcherIcon: String,
-        val splashIcon: String
+        val launcherIcon: String
     )
 
     private fun readPngHeader(file: File): PngHeader {

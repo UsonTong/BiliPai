@@ -67,10 +67,10 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE"))
         assertTrue(source.contains("onIndicatorPositionChanged?.invoke(safeSelectedIndex.toFloat())"))
         assertTrue(source.contains(".widthIn(min = 28.dp, max = 56.dp)"))
-        assertTrue(source.contains("if (enabled && itemCount > 1)"))
-        assertTrue(source.contains("consumePointerChanges = dragSelectionEnabled"))
-        assertTrue(source.contains("notifyIndexChanged = dragSelectionEnabled"))
-        assertTrue(source.contains("settleIndex = if (dragSelectionEnabled) null else safeSelectedIndex"))
+        assertTrue(source.contains("if (enabled && itemCount > 1 && dragSelectionEnabled)"))
+        assertTrue(source.contains("consumePointerChanges = true"))
+        assertTrue(source.contains("notifyIndexChanged = true"))
+        assertTrue(source.contains("settleIndex = null"))
         assertFalse(source.contains("indicatorEffectProgress"))
         assertFalse(source.contains("backdrop = if (shouldRefractContent)"))
         assertFalse(source.contains("backdrop = shellBackdrop"))
@@ -90,6 +90,18 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertFalse(source.contains("resolveBottomBarIndicatorPolicy(itemCount = itemCount)"))
         assertFalse(source.contains("indicatorWidthMultiplier = 0.92f"))
         assertFalse(source.contains("maxScale = 1.06f"))
+    }
+
+    @Test
+    fun `segmented control does not attach drag gesture when drag selection is disabled`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarLiquidSegmentedControl.kt"
+        )
+
+        assertTrue(
+            source.contains("if (enabled && itemCount > 1 && dragSelectionEnabled)"),
+            "Scrollable contribution tabs disable drag selection, so the liquid indicator must not attach a competing horizontal drag gesture"
+        )
     }
 
     @Test
