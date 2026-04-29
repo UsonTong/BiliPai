@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-29 · 文档已同步至 v8.0.0-Alpha9（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-30 · 文档已同步至 v8.0.0 RC（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha9-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0%20RC-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,12 +572,13 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0-Alpha9 · 2026-04-29)
+### 最近更新 (v8.0.0 RC · 2026-04-30)
 
-- 🪟 新增“小窗+画中画”模式，应用内小窗和手机桌面系统画中画可同时配置。
-- 💬 “小窗/画中画不加载弹幕”覆盖应用内小窗与系统画中画，AI 总结时间点跳转保留播放状态。
-- ✨ 热门二级分类改为液态玻璃分段控件，并补齐首页顶部标签、直播分类和播放器策略测试。
-- 🔖 版本号升级到 `8.0.0-Alpha9`，`versionCode` 升级到 `171`。
+- 🖥️ 修复平板视频与直播全屏退出方向问题，并把视频详情、直播播放器和平板判断统一到稳定设备尺寸分类。
+- ✨ 打磨首页 UI 预设、空间页、直播分区、底栏液态分段控件和设置页结构。
+- 💬 补齐命令弹幕、实时消息、听视频模式和回复组件的解析、展示与回归测试。
+- 🙌 感谢 @chenx-dust 的 PR #253、PR #260，以及 @jay3-yy 的主线整合与发布整理。
+- 🔖 版本号升级到 `8.0.0 RC`，`versionCode` 升级到 `172`。
 
 ### 历史版本
 

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-29 · Synced to v8.0.0-Alpha9 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-04-30 · Synced to v8.0.0 RC (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0--Alpha9-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0%20RC-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -430,12 +430,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.0-Alpha9 · 2026-04-29)
+### Latest (v8.0.0 RC · 2026-04-30)
 
-- 🪟 Added a combined mini-player + system PiP mode so in-app floating playback and launcher PiP can coexist.
-- 💬 The no-danmaku option now covers both mini-player and PiP, and AI-summary timestamp jumps preserve playback intent.
-- ✨ Popular subcategories now use the liquid-glass segmented control, with focused home tab, live category, and playback policy tests.
-- 🔖 Bumped the app to `8.0.0-Alpha9` with `versionCode` `171`.
+- 🖥️ Fixed tablet orientation after exiting fullscreen video/live playback, and unified video detail, live player, and tablet checks on stable device size classes.
+- ✨ Polished home UI presets, space pages, live categories, bottom liquid segmented controls, and settings structure.
+- 💬 Expanded command danmaku, realtime messages, audio mode, and reply component parsing, display behavior, and regression tests.
+- 🙌 Thanks to @chenx-dust for PR #253 and PR #260, and @jay3-yy for mainline integration and release notes.
+- 🔖 Bumped the app to `8.0.0 RC` with `versionCode` `172`.
 
 ---
 
