@@ -214,7 +214,7 @@ class VideoActivity : ComponentActivity() {
         super.onUserLeaveHint()
         //  [修复] 使用 SettingsManager 读取正确的小窗模式设置
         val mode = com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(this)
-        val shouldEnterPip = mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP
+        val shouldEnterPip = mode.supportsSystemPip
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && shouldEnterPip) {
             val state = viewModel.uiState.value

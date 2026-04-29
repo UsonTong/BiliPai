@@ -20,7 +20,7 @@ internal fun resolveLiveHomeCategorySelectedIndex(
 
 internal fun resolveLiveHomeCategorySegmentedControlSpec(): LiveCategorySegmentedControlSpec {
     return LiveCategorySegmentedControlSpec(
-        itemWidthDp = 112,
+        itemWidthDp = 82,
         heightDp = 48,
         indicatorHeightDp = 36,
         labelFontSizeSp = 14,

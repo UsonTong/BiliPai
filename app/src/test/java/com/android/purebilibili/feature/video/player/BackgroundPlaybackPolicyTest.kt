@@ -34,6 +34,25 @@ class BackgroundPlaybackPolicyTest {
     }
 
     @Test
+    fun combinedMiniPlayerModeShowsInAppMiniPlayerAndCanEnterSystemPip() {
+        assertTrue(
+            shouldShowInAppMiniPlayerByPolicy(
+                mode = SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP,
+                isActive = true,
+                isNavigatingToVideo = false,
+                stopPlaybackOnExit = false
+            )
+        )
+        assertTrue(
+            shouldEnterPipByPolicy(
+                mode = SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP,
+                isActive = true,
+                stopPlaybackOnExit = false
+            )
+        )
+    }
+
+    @Test
     fun stopOnExitDisablesInAppMiniPlayer() {
         assertFalse(
             shouldShowInAppMiniPlayerByPolicy(
@@ -520,7 +539,7 @@ class BackgroundPlaybackPolicyTest {
     }
 
     @Test
-    fun navigationExitShouldClearPlaybackNotificationForOffAndPip() {
+    fun navigationExitShouldClearPlaybackNotificationForOffAndPipButNotInAppModes() {
         assertTrue(
             shouldClearPlaybackNotificationOnNavigationExit(
                 mode = SettingsManager.MiniPlayerMode.OFF,
@@ -536,6 +555,12 @@ class BackgroundPlaybackPolicyTest {
         assertFalse(
             shouldClearPlaybackNotificationOnNavigationExit(
                 mode = SettingsManager.MiniPlayerMode.IN_APP_ONLY,
+                stopPlaybackOnExit = false
+            )
+        )
+        assertFalse(
+            shouldClearPlaybackNotificationOnNavigationExit(
+                mode = SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP,
                 stopPlaybackOnExit = false
             )
         )

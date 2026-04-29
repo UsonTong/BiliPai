@@ -400,7 +400,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         title = "后台播放 / 画中画 / 小窗",
         subtitle = "小窗播放",
         section = "播放设置",
-        aliases = listOf("后台播放", "画中画", "pip", "小窗", "音频焦点", "自动进入画中画", "离开播放页后停止"),
+        aliases = listOf("后台播放", "画中画", "pip", "小窗", "小窗画中画", "音频焦点", "自动进入画中画", "离开播放页后停止"),
         focusId = SettingsSearchFocusIds.PLAYBACK_MINI_PLAYER
     ),
     SettingsSearchEntry(

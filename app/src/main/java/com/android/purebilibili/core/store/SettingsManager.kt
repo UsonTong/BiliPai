@@ -3390,20 +3390,29 @@ object SettingsManager {
     private val KEY_MINI_PLAYER_MODE = intPreferencesKey("mini_player_mode")
     
     /**
-     *  小窗播放模式（3 种）
+     *  小窗播放模式
      * - OFF: 默认模式（官方B站行为：切到桌面后台播放，返回主页停止）
      * - IN_APP_ONLY: 应用内小窗（返回主页时显示悬浮小窗）
      * - SYSTEM_PIP: 系统画中画（切到桌面时自动进入画中画模式）
+     * - IN_APP_AND_SYSTEM_PIP: 应用内小窗 + 系统画中画
      */
     enum class MiniPlayerMode(val value: Int, val label: String, val description: String) {
         OFF(0, "默认", "切到桌面后台播放，返回主页停止"),
         IN_APP_ONLY(1, "应用内小窗", "返回主页时显示悬浮小窗"),
-        SYSTEM_PIP(2, "画中画", "切到桌面进入系统画中画");
+        SYSTEM_PIP(2, "画中画", "切到桌面进入系统画中画"),
+        IN_APP_AND_SYSTEM_PIP(3, "小窗+画中画", "返回主页显示小窗，切到桌面进入画中画");
+
+        val supportsInAppMiniPlayer: Boolean
+            get() = this == IN_APP_ONLY || this == IN_APP_AND_SYSTEM_PIP
+
+        val supportsSystemPip: Boolean
+            get() = this == SYSTEM_PIP || this == IN_APP_AND_SYSTEM_PIP
         
         companion object {
             fun fromValue(value: Int): MiniPlayerMode = when(value) {
                 1 -> IN_APP_ONLY
                 2 -> SYSTEM_PIP
+                3 -> IN_APP_AND_SYSTEM_PIP
                 else -> OFF
             }
         }
@@ -3502,7 +3511,7 @@ object SettingsManager {
     }
 
     internal fun shouldEnableAudioModeAutoPipToggle(mode: MiniPlayerMode): Boolean {
-        return mode == MiniPlayerMode.SYSTEM_PIP
+        return mode.supportsSystemPip
     }
 
     fun getVideoAiSummaryEntryEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data

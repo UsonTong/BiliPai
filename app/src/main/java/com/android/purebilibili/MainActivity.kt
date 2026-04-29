@@ -1038,12 +1038,14 @@ class MainActivity : AppCompatActivity() {
                         Box(
                             modifier = Modifier.fillMaxSize()
                         ) {
+                            val isPipRenderingActive =
+                                isInPipMode || miniPlayerManager.shouldKeepPlaybackForPipTransition()
                             //  SharedTransitionProvider 包裹导航，启用共享元素过渡
                             SharedTransitionProvider {
                                 AppNavigation(
                                     navController = navController,
                                     miniPlayerManager = miniPlayerManager,
-                                    isInPipMode = isInPipMode,
+                                    isInPipMode = isPipRenderingActive,
                                     initialSearchKeyword = pendingSearchKeyword,
                                     onInitialSearchKeywordConsumed = { consumedKeyword ->
                                         if (pendingSearchKeyword == consumedKeyword) {

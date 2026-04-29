@@ -1,11 +1,18 @@
 package com.android.purebilibili.feature.home.components
 
+import kotlin.math.roundToInt
+
 internal const val HOME_HEADER_SECONDARY_BLUR_RESTORE_DELAY_MS = 120L
 
 enum class HomeInteractionMotionBudget {
     FULL,
     REDUCED
 }
+
+internal data class TopTabScrollTarget(
+    val firstVisibleItemIndex: Int,
+    val firstVisibleItemScrollOffsetPx: Int
+)
 
 internal fun resolveHomeTopTabViewportSyncEnabled(
     currentTabHeightDp: Float,
@@ -74,6 +81,64 @@ internal fun resolveTopTabPagerPosition(
     // forward page movement as a positive offset, so adding it keeps the capsule
     // attached to the finger instead of mirroring the swipe direction.
     return currentPage + offsetFraction
+}
+
+internal fun resolveTopTabIndicatorRenderPosition(
+    selectedIndex: Int,
+    pagerCurrentPage: Int?,
+    pagerTargetPage: Int?,
+    pagerCurrentPageOffsetFraction: Float?,
+    pagerIsScrolling: Boolean
+): Float {
+    return resolveTopTabPagerPosition(
+        selectedIndex = selectedIndex,
+        pagerCurrentPage = pagerCurrentPage,
+        pagerTargetPage = pagerTargetPage,
+        pagerCurrentPageOffsetFraction = pagerCurrentPageOffsetFraction,
+        pagerIsScrolling = pagerIsScrolling
+    )
+}
+
+internal fun resolveTopTabFollowScrollTarget(
+    indicatorPosition: Float,
+    itemWidthPx: Float,
+    itemCount: Int,
+    viewportWidthPx: Float,
+    currentFirstVisibleItemIndex: Int,
+    currentFirstVisibleItemScrollOffsetPx: Int,
+    maxScrollPx: Float,
+    edgeBufferPx: Float
+): TopTabScrollTarget {
+    val currentTarget = TopTabScrollTarget(
+        firstVisibleItemIndex = currentFirstVisibleItemIndex.coerceAtLeast(0),
+        firstVisibleItemScrollOffsetPx = currentFirstVisibleItemScrollOffsetPx.coerceAtLeast(0)
+    )
+    if (itemWidthPx <= 0f || itemCount <= 0 || viewportWidthPx <= 0f || maxScrollPx <= 0f) {
+        return currentTarget
+    }
+
+    val currentScrollPx = resolveTopTabIndicatorViewportShiftPx(
+        firstVisibleItemIndex = currentTarget.firstVisibleItemIndex,
+        firstVisibleItemScrollOffsetPx = currentTarget.firstVisibleItemScrollOffsetPx,
+        tabWidthPx = itemWidthPx
+    )
+    val clampedPosition = indicatorPosition.coerceIn(0f, (itemCount - 1).toFloat())
+    val itemStartPx = clampedPosition * itemWidthPx
+    val itemEndPx = itemStartPx + itemWidthPx
+    val viewportEndPx = currentScrollPx + viewportWidthPx
+    val rawTargetPx = when {
+        itemStartPx - edgeBufferPx < currentScrollPx -> itemStartPx - edgeBufferPx
+        itemEndPx + edgeBufferPx > viewportEndPx -> itemEndPx + edgeBufferPx - viewportWidthPx
+        else -> currentScrollPx
+    }
+    val targetScrollPx = rawTargetPx.toInt().coerceIn(0, maxScrollPx.toInt().coerceAtLeast(0))
+    val targetIndex = (targetScrollPx / itemWidthPx).toInt().coerceIn(0, itemCount - 1)
+    val targetOffsetPx = (targetScrollPx - targetIndex * itemWidthPx).roundToInt().coerceAtLeast(0)
+
+    return TopTabScrollTarget(
+        firstVisibleItemIndex = targetIndex,
+        firstVisibleItemScrollOffsetPx = targetOffsetPx
+    )
 }
 
 internal fun resolveMd3TopTabViewportPosition(

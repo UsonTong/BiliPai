@@ -116,7 +116,7 @@ fun TipsSettingsScreen(
                 icon = CupertinoIcons.Filled.Pip,
                 iconTint = iOSTeal,
                 title = "7. 小窗和画中画是两种玩法",
-                content = "播放设置中的「后台播放模式」可切换：默认后台播放或系统画中画；画中画需先授予权限。"
+                content = "播放设置中的「后台播放模式」可选择应用内小窗、系统画中画，或让两者同时生效；画中画需先授予权限。"
             ),
             TipEntry(
                 icon = CupertinoIcons.Filled.HandThumbsup,

@@ -1178,10 +1178,10 @@ fun VideoDetailScreen(
     }
     
     //  [PiP修复] 当视频播放器位置更新时，同步更新PiP参数
-    //  [修复] 只有 SYSTEM_PIP 模式才启用自动进入PiP
+    //  [修复] 只有支持系统 PiP 的模式才启用自动进入 PiP
     val pipModeEnabled = remember { 
-        com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(context) == 
-            com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP
+        com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(context)
+            .supportsSystemPip
     }
     val feedbackBottomInsetDp = WindowInsets.navigationBars
         .asPaddingValues()

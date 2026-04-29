@@ -362,10 +362,15 @@ fun PlaybackSettingsContent(
                         com.android.purebilibili.core.store.SettingsManager
                             .shouldEnableAudioModeAutoPipToggle(miniPlayerMode) && backgroundPlaybackEnabled
                     }
+                    val pipDanmakuToggleEnabled = remember(miniPlayerMode, backgroundPlaybackEnabled) {
+                        backgroundPlaybackEnabled &&
+                            miniPlayerMode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF
+                    }
                     val miniPlayerOptions = listOf(
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF, "默认"),
-                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY, "应用内小窗"),
-                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP, "画中画")
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_ONLY, "小窗"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP, "画中画"),
+                        PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP, "小窗+PiP")
                     )
                     
                     IOSGroup {
@@ -436,7 +441,7 @@ fun PlaybackSettingsContent(
                                     com.android.purebilibili.core.store.SettingsManager
                                         .setMiniPlayerMode(context, mode)
                                 }
-                                if (mode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP &&
+                                if (mode.supportsSystemPip &&
                                     !checkPipPermission()
                                 ) {
                                     showPipPermissionDialog = true
@@ -444,9 +449,9 @@ fun PlaybackSettingsContent(
                             }
                         )
                         
-                        //  权限提示（仅当选择系统PiP且无权限时显示）
+                        //  权限提示（仅当选择支持系统 PiP 的模式且无权限时显示）
                         if (modeControlsEnabled &&
-                            miniPlayerMode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP
+                            miniPlayerMode.supportsSystemPip
                             && !checkPipPermission()) {
                             IOSDivider()
                             Row(
@@ -486,18 +491,17 @@ fun PlaybackSettingsContent(
                         IOSDivider()
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.TextBubble,
-                            title = "画中画不加载弹幕",
+                            title = "小窗/画中画不加载弹幕",
                             subtitle = if (!backgroundPlaybackEnabled) {
-                                "开启后台播放后，系统画中画相关设置才会生效"
-                            } else if (miniPlayerMode == com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
-                                if (pipNoDanmakuEnabled) "已开启：系统画中画中不显示弹幕" else "关闭后：系统画中画中也会显示弹幕"
+                                "开启后台播放后，小窗和画中画相关设置才会生效"
+                            } else if (miniPlayerMode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF) {
+                                if (pipNoDanmakuEnabled) "已开启：小窗/画中画中不显示弹幕" else "关闭后：小窗/画中画中也会显示弹幕"
                             } else {
-                                "仅系统画中画模式下生效"
+                                "选择小窗或画中画模式后生效"
                             },
                             checked = pipNoDanmakuEnabled,
                             onCheckedChange = {
-                                if (!backgroundPlaybackEnabled ||
-                                    miniPlayerMode != com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP) {
+                                if (!pipDanmakuToggleEnabled) {
                                     return@IOSSwitchItem
                                 }
                                 scope.launch {
@@ -518,7 +522,7 @@ fun PlaybackSettingsContent(
                                     "关闭后仅保留听视频页内的画中画按钮"
                                 }
                             } else {
-                                "仅系统画中画模式下生效"
+                                "仅支持系统画中画的模式下生效"
                             },
                             checked = audioModeAutoPipEnabled,
                             onCheckedChange = {

@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -94,5 +95,58 @@ class TopTabMotionVelocityTest {
         )
 
         assertEquals(0f, shift, 0.0001f)
+    }
+
+    @Test
+    fun `static top tab indicator policy keeps neutral color without motion effects`() {
+        val policy = resolveTopTabStaticIndicatorVisualPolicy(useNeutralIndicatorTint = true)
+
+        assertEquals(false, policy.isInMotion)
+        assertEquals(false, policy.shouldRefract)
+        assertEquals(true, policy.useNeutralTint)
+    }
+
+    @Test
+    fun `top tab neutral indicator color matches bottom bar moving surface`() {
+        assertEquals(
+            Color(0xFFFDFEFF).copy(alpha = 0.5f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.5f)
+        )
+        assertEquals(
+            Color(0xFFF6F8FB).copy(alpha = 0.5f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.5f)
+        )
+    }
+
+    @Test
+    fun `follow scroll moves right while indicator approaches hidden top tab`() {
+        val target = resolveTopTabFollowScrollTarget(
+            indicatorPosition = 4.2f,
+            itemWidthPx = 100f,
+            itemCount = 8,
+            viewportWidthPx = 300f,
+            currentFirstVisibleItemIndex = 0,
+            currentFirstVisibleItemScrollOffsetPx = 0,
+            maxScrollPx = 500f,
+            edgeBufferPx = 20f
+        )
+
+        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 2, firstVisibleItemScrollOffsetPx = 40), target)
+    }
+
+    @Test
+    fun `follow scroll moves left while indicator returns toward hidden top tab`() {
+        val target = resolveTopTabFollowScrollTarget(
+            indicatorPosition = 1f,
+            itemWidthPx = 100f,
+            itemCount = 8,
+            viewportWidthPx = 300f,
+            currentFirstVisibleItemIndex = 2,
+            currentFirstVisibleItemScrollOffsetPx = 50,
+            maxScrollPx = 500f,
+            edgeBufferPx = 20f
+        )
+
+        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 0, firstVisibleItemScrollOffsetPx = 80), target)
     }
 }

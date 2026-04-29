@@ -70,9 +70,11 @@ class HomeChromeLiquidSurfaceStructureTest {
             topBar.readText().contains("viewportShiftPx = scrollOffset - indicatorPanelOffsetPx")
         )
         assertTrue(
-            "top tab indicator should follow pager position during horizontal swipes",
-            topBar.readText().contains("resolveTopTabPagerPosition(") &&
-                topBar.readText().contains("pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction")
+            "top tab indicator should follow pager drag offset while using a static neutral visual policy",
+            topBar.readText().contains("resolveTopTabIndicatorRenderPosition(") &&
+                topBar.readText().contains("pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction") &&
+                topBar.readText().contains("resolveTopTabStaticIndicatorVisualPolicy(") &&
+                topBar.readText().contains("resolveTopTabNeutralIndicatorColor(")
         )
         assertTrue(
             "top tab indicator should combine page backdrop and exported tab content while moving",
