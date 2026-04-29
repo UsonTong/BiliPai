@@ -217,6 +217,8 @@ fun LivePlayerScreen(
         isFullscreen = !isFullscreen
         activity?.requestedOrientation = if (isFullscreen) {
             ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else if (isTablet) {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         } else {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
