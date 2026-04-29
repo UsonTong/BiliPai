@@ -102,7 +102,7 @@ class SpaceTabChromePolicyTest {
     }
 
     @Test
-    fun `contribution tab chrome expands item width for full collection labels`() {
+    fun `contribution tab chrome keeps drag selection for three contribution entries`() {
         val tabs = listOf(
             SpaceContributionTab(
                 id = "video",
@@ -131,9 +131,9 @@ class SpaceTabChromePolicyTest {
             selectedSubTab = SpaceSubTab.VIDEO
         )
 
-        assertTrue(spec.scrollable)
-        assertTrue((spec.itemWidthDp ?: 0) >= 220)
-        assertFalse(spec.dragSelectionEnabled)
+        assertFalse(spec.scrollable)
+        assertEquals(null, spec.itemWidthDp)
+        assertTrue(spec.dragSelectionEnabled)
     }
 
     @Test

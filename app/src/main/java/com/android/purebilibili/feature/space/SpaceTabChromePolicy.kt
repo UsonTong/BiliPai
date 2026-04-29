@@ -60,8 +60,7 @@ internal fun resolveSpaceContributionTabChromeSpec(
 }
 
 private fun shouldScrollSpaceContributionTabs(tabs: List<SpaceContributionTab>): Boolean {
-    if (tabs.size > 3) return true
-    return tabs.any { estimateSpaceContributionTabTitleWidthDp(it.title) > SPACE_SCROLLABLE_CONTRIBUTION_ITEM_MIN_WIDTH_DP }
+    return tabs.size > 3
 }
 
 internal fun resolveSpaceContributionTabItemWidthDp(tabs: List<SpaceContributionTab>): Int {
