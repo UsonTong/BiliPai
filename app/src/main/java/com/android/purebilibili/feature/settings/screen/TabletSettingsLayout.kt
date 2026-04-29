@@ -11,7 +11,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
@@ -168,15 +170,16 @@ fun TabletSettingsLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(layoutPolicy.masterPanePaddingDp.dp)
+                    .padding(horizontal = layoutPolicy.masterPanePaddingDp.dp)
+                    .statusBarsPadding()
             ) {
                 // Back Button Row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .padding(bottom = 16.dp, start = 4.dp)
+                        .padding(bottom = 12.dp)
                         .clickable(onClick = onBack)
-                        .padding(4.dp)
+                        .padding(8.dp)
                 ) {
                     Icon(
                         rememberAppBackIcon(),
@@ -245,7 +248,7 @@ fun TabletSettingsLayout(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(layoutPolicy.detailPanePaddingDp.dp),
+                    .padding(horizontal = layoutPolicy.detailPanePaddingDp.dp),
                 contentAlignment = Alignment.TopCenter
             ) {
                 Box(
@@ -255,7 +258,10 @@ fun TabletSettingsLayout(
                 // If we have an active detail, show it. Otherwise show Category Root.
                 val detail = activeDetail
                 if (searchQuery.isNotBlank()) {
-                    Column(modifier = Modifier.widthIn(max = layoutPolicy.detailMaxWidthDp.dp)) {
+                    Column(modifier = Modifier
+                        .widthIn(max = layoutPolicy.detailMaxWidthDp.dp)
+                        .statusBarsPadding()
+                    ) {
                         SettingsSearchResultsSection(
                             results = searchResults,
                             onResultClick = { target ->
@@ -266,7 +272,10 @@ fun TabletSettingsLayout(
                     }
                 } else if (detail != null) {
                     // Sub-page Content
-                    Column(modifier = Modifier.widthIn(max = layoutPolicy.detailMaxWidthDp.dp)) {
+                    Column(modifier = Modifier
+                        .widthIn(max = layoutPolicy.detailMaxWidthDp.dp)
+                        .statusBarsPadding()
+                    ) {
                         // Header with Back Button
                         Row(
                             verticalAlignment = Alignment.CenterVertically, 
@@ -425,12 +434,18 @@ fun TabletSettingsLayout(
                         },
                         label = "SettingsDetailTransition"
                     ) { category ->
-                        Column(modifier = Modifier.widthIn(max = layoutPolicy.rootPanelMaxWidthDp.dp)) {
+                        Column(modifier = Modifier
+                            .widthIn(max = layoutPolicy.rootPanelMaxWidthDp.dp)
+                            .verticalScroll(rememberScrollState())
+                        ) {
                             Text(
                                 text = stringResource(category.titleResId),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 24.dp, start = 16.dp)
+                                modifier = Modifier
+                                    .padding(bottom = 24.dp, start = 16.dp)
+                                    .padding(top = layoutPolicy.detailPanePaddingDp.dp)
+                                    .statusBarsPadding()
                             )
                             
                             when (category) {
@@ -523,8 +538,11 @@ fun TabletSettingsLayout(
                                         onTipsClick = onTipsClick,
                                         onOpenLinksClick = onOpenLinksClick
                                     )
-                }
-            }
+                                }
+                            }
+                            Spacer(modifier = Modifier
+                                .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                            )
         }
     }
 
