@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.ui.overlay
 
+import androidx.media3.common.Player
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -57,6 +58,30 @@ class FullscreenDoubleTapPolicyTest {
                 relativeX = 0.9f,
                 doubleTapSeekEnabled = true,
                 playWhenReady = false
+            )
+        )
+    }
+
+    @Test
+    fun seekEnabled_silentReadyPlaybackAlwaysTogglePlayPause() {
+        assertEquals(
+            FullscreenDoubleTapAction.TogglePlayPause,
+            resolveFullscreenDoubleTapAction(
+                relativeX = 0.1f,
+                doubleTapSeekEnabled = true,
+                playWhenReady = true,
+                isPlaying = false,
+                playbackState = Player.STATE_READY
+            )
+        )
+        assertEquals(
+            FullscreenDoubleTapAction.TogglePlayPause,
+            resolveFullscreenDoubleTapAction(
+                relativeX = 0.9f,
+                doubleTapSeekEnabled = true,
+                playWhenReady = true,
+                isPlaying = false,
+                playbackState = Player.STATE_READY
             )
         )
     }

@@ -98,5 +98,5 @@ internal fun shouldKickPlaybackOnForegroundResume(
     return shouldEnsureAudibleOnForeground &&
         playWhenReady &&
         !isPlaying &&
-        playbackState == Player.STATE_BUFFERING
+        (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY)
 }

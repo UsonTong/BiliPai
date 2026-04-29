@@ -499,7 +499,9 @@ fun FullscreenPlayerOverlay(
                                 resolveFullscreenDoubleTapAction(
                                     relativeX = relativeX,
                                     doubleTapSeekEnabled = doubleTapSeekEnabled,
-                                    playWhenReady = p.playWhenReady
+                                    playWhenReady = p.playWhenReady,
+                                    isPlaying = p.isPlaying,
+                                    playbackState = p.playbackState
                                 )
                             ) {
                                 FullscreenDoubleTapAction.SeekBackward -> {

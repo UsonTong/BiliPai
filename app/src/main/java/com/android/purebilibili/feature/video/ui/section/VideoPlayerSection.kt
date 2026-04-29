@@ -1474,7 +1474,9 @@ fun VideoPlayerSection(
                             resolveFullscreenDoubleTapAction(
                                 relativeX = relativeX,
                                 doubleTapSeekEnabled = doubleTapSeekEnabled,
-                                playWhenReady = player.playWhenReady
+                                playWhenReady = player.playWhenReady,
+                                isPlaying = player.isPlaying,
+                                playbackState = player.playbackState
                             )
                         ) {
                             FullscreenDoubleTapAction.SeekForward -> {

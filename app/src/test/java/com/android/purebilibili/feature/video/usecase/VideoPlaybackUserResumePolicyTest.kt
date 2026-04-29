@@ -68,6 +68,20 @@ class VideoPlaybackUserResumePolicyTest {
     }
 
     @Test
+    fun `togglePlayerPlaybackFromUserAction kicks silent ready playback instead of pausing first`() {
+        val player = mockk<Player>(relaxed = true)
+        every { player.playbackState } returns Player.STATE_READY
+        every { player.mediaItemCount } returns 1
+        every { player.isPlaying } returns false
+        every { player.playWhenReady } returns true
+
+        togglePlayerPlaybackFromUserAction(player)
+
+        verify(exactly = 0) { player.pause() }
+        verify(exactly = 1) { player.play() }
+    }
+
+    @Test
     fun `applyPlaybackIntentAfterSourceChange replays source swaps when autoplay should continue`() {
         val player = mockk<Player>(relaxed = true)
 

@@ -233,6 +233,14 @@ internal fun seekPlayerFromUserAction(
     }
 }
 
+internal fun shouldPauseForPlaybackToggle(
+    isPlaying: Boolean,
+    playWhenReady: Boolean,
+    playbackState: Int
+): Boolean {
+    return playWhenReady && (isPlaying || playbackState == Player.STATE_BUFFERING)
+}
+
 internal fun togglePlayerPlaybackFromUserAction(player: Player) {
     Logger.d(
         "VideoPlaybackUseCase",
@@ -248,7 +256,13 @@ internal fun togglePlayerPlaybackFromUserAction(player: Player) {
         playPlayerFromUserAction(player)
         return
     }
-    if (player.playWhenReady) {
+    if (
+        shouldPauseForPlaybackToggle(
+            isPlaying = player.isPlaying,
+            playWhenReady = player.playWhenReady,
+            playbackState = player.playbackState
+        )
+    ) {
         PlaybackUserActionTracker.recordAction(
             player = player,
             type = PlaybackUserActionType.PAUSE
