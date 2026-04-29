@@ -98,7 +98,8 @@ private val replyVideoTitleCache = ConcurrentHashMap<String, String>()
 internal data class ReplyItemLayoutPolicy(
     val horizontalPaddingDp: Int,
     val avatarSizeDp: Int,
-    val avatarContentSpacingDp: Int
+    val avatarContentSpacingDp: Int,
+    val actionButtonSizeDp: Int
 ) {
     val dividerStartPaddingDp: Int
         get() = horizontalPaddingDp + avatarSizeDp + avatarContentSpacingDp
@@ -108,8 +109,16 @@ internal fun resolveReplyItemLayoutPolicy(): ReplyItemLayoutPolicy {
     return ReplyItemLayoutPolicy(
         horizontalPaddingDp = 12,
         avatarSizeDp = 40,
-        avatarContentSpacingDp = 10
+        avatarContentSpacingDp = 10,
+        actionButtonSizeDp = 40
     )
+}
+
+internal fun resolveReplyItemHeaderEndPaddingDp(
+    hasPiliPlusDecoration: Boolean,
+    policy: ReplyItemLayoutPolicy = resolveReplyItemLayoutPolicy()
+): Int {
+    return policy.actionButtonSizeDp + if (hasPiliPlusDecoration) 88 else 0
 }
 
 internal fun resolveReplyItemTextColumnWidthDp(
@@ -1039,14 +1048,22 @@ fun ReplyItemView(
             
             Spacer(modifier = Modifier.width(layoutPolicy.avatarContentSpacingDp.dp))
 
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                val headerEndPadding = resolveReplyItemHeaderEndPaddingDp(
+                    hasPiliPlusDecoration = piliPlusDecoration != null,
+                    policy = layoutPolicy
+                ).dp
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // User Info Header
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(end = if (piliPlusDecoration != null) 88.dp else 0.dp)
+                            .padding(end = headerEndPadding)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1319,23 +1336,27 @@ fun ReplyItemView(
                         visual = piliPlusDecoration,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 2.dp)
+                            .padding(
+                                top = 2.dp,
+                                end = layoutPolicy.actionButtonSizeDp.dp
+                            )
                     )
                 }
-            }
 
-            IconButton(
-                onClick = { showActionSheet = true },
-                modifier = Modifier
-                    .size(40.dp)
-                    .testTag("$COMMENT_ACTION_BUTTON_TAG_PREFIX${item.rpid}")
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "评论操作",
-                    tint = appearance.actionTint,
-                    modifier = Modifier.size(18.dp)
-                )
+                IconButton(
+                    onClick = { showActionSheet = true },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(layoutPolicy.actionButtonSizeDp.dp)
+                        .testTag("$COMMENT_ACTION_BUTTON_TAG_PREFIX${item.rpid}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = "评论操作",
+                        tint = appearance.actionTint,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
         

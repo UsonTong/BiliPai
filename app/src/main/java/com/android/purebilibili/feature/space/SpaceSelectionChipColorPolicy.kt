@@ -35,8 +35,8 @@ internal fun resolveSpaceFollowButtonColors(
 ): SpaceSelectionChipColors {
     return if (isFollowed) {
         SpaceSelectionChipColors(
-            backgroundColor = colorScheme.secondaryContainer,
-            textColor = colorScheme.onSecondaryContainer
+            backgroundColor = colorScheme.surfaceVariant,
+            textColor = colorScheme.onSurfaceVariant
         )
     } else {
         val selectedColors = resolveAdaptivePrimaryAccentColors(colorScheme)

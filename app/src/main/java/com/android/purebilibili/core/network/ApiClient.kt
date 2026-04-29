@@ -540,10 +540,25 @@ interface BilibiliApi {
         @retrofit2.http.Field("mode") mode: Int = 1,           // 模式: 1滚动/4底部/5顶部
         @retrofit2.http.Field("pool") pool: Int = 0,           // 弹幕池: 0普通/1字幕/2特殊
         @retrofit2.http.Field("colorful") colorful: Int? = null, // 60001=大会员渐变彩色
-        @retrofit2.http.Field("checkbox_type") checkboxType: Int? = null, // 1=关注/鼓励弹幕
+        @retrofit2.http.Field("checkbox_type") checkboxType: Int? = null, // 4=UP身份标识
         @retrofit2.http.Field("plat") plat: Int = 1,           // 平台: 1=web
         @retrofit2.http.Field("csrf") csrf: String
     ): SendDanmakuResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v2/dm/command/post")
+    suspend fun sendCommandDanmaku(
+        @retrofit2.http.Field("type") type: Int,
+        @retrofit2.http.Field("aid") aid: Long,
+        @retrofit2.http.Field("cid") cid: Long,
+        @retrofit2.http.Field("progress") progress: Long,
+        @retrofit2.http.Field("plat") plat: Int = 1,
+        @retrofit2.http.Field("data") data: String,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): CommandDanmakuResponse
+
+    @GET
+    suspend fun getDanmakuSpecialDm(@retrofit2.http.Url url: String): ResponseBody
 
     // [新增] 撤回弹幕 (2分钟内可撤回，每天3次)
     @retrofit2.http.FormUrlEncoded
@@ -1193,13 +1208,9 @@ interface SpaceApi {
     ): com.android.purebilibili.data.model.response.SpaceAudioResponse
 
     //  [New] Get User Article List
-    @GET("https://api.bilibili.com/x/article/up/lists")
+    @GET("x/space/wbi/article")
     suspend fun getSpaceArticleList(
-        @Query("mid") mid: Long,
-        @Query("pn") pn: Int = 1,
-        @Query("ps") ps: Int = 30,
-        @Query("sort") sort: String = "publish_time",  // publish_time, view, fav
-        @Query("jsonp") jsonp: String = "jsonp"
+        @QueryMap params: Map<String, String>
     ): com.android.purebilibili.data.model.response.SpaceArticleResponse
 }
 

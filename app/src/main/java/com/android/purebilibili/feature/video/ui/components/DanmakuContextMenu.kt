@@ -300,8 +300,8 @@ private fun MainMenu(
         MenuSeparator()
 
         val voteLabel = when {
-            voteLoading -> "加载投票状态..."
-            !canVote -> "当前弹幕不支持投票"
+            voteLoading -> "加载点赞状态..."
+            !canVote -> "当前弹幕不支持点赞"
             hasLiked -> "取消点赞 (${formatVoteCount(voteCount)})"
             else -> "点赞弹幕 (${formatVoteCount(voteCount)})"
         }

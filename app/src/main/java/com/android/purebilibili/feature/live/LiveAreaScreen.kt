@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +83,7 @@ fun LiveAreaScreen(
     var isEditing by remember { mutableStateOf(false) }
     var reloadKey by remember { mutableIntStateOf(0) }
     val favoriteTags by SettingsManager.getLiveFavoriteTags(context).collectAsStateWithLifecycle(emptyList())
+    val pagerState = rememberPagerState(pageCount = { areas.size })
 
     LaunchedEffect(reloadKey) {
         LiveRepository.getLiveAreaIndex()
@@ -148,6 +151,23 @@ fun LiveAreaScreen(
                 Text(text = "暂无直播标签", color = colorScheme.onSurfaceVariant)
             }
             areas.isNotEmpty() -> {
+                LaunchedEffect(areas.size) {
+                    if (areas.isNotEmpty() && selectedTab > areas.lastIndex) {
+                        selectedTab = areas.lastIndex
+                    }
+                }
+                LaunchedEffect(selectedTab, areas.size) {
+                    if (areas.isEmpty()) return@LaunchedEffect
+                    val target = selectedTab.coerceIn(0, areas.lastIndex)
+                    if (pagerState.currentPage != target) {
+                        pagerState.animateScrollToPage(target)
+                    }
+                }
+                LaunchedEffect(pagerState.currentPage, areas.size) {
+                    if (areas.isNotEmpty() && selectedTab != pagerState.currentPage) {
+                        selectedTab = pagerState.currentPage
+                    }
+                }
                 LiveFavoriteTagsPanel(
                     favoriteTags = favoriteTags,
                     isEditing = isEditing,
@@ -167,50 +187,58 @@ fun LiveAreaScreen(
                 )
                 LiveAreaParentTabRow(
                     areas = areas,
-                    selectedTab = selectedTab,
+                    selectedTab = pagerState.currentPage,
                     horizontalPadding = metrics.safeSpaceDp.dp,
                     onTabSelected = { selectedTab = it }
                 )
-                val selectedArea = areas.getOrNull(selectedTab)
-                if (selectedArea != null) {
-                    val displayChildren = remember(selectedArea.list) {
-                        sortLiveAreaChildrenForDisplay(selectedArea.list.orEmpty())
-                    }
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
-                        contentPadding = PaddingValues(
-                            start = metrics.safeSpaceDp.dp,
-                            end = metrics.safeSpaceDp.dp,
-                            top = 12.dp,
-                            bottom = 100.dp
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(displayChildren, key = { it.id }) { child ->
-                            val childAreaId = child.id.toIntOrNull() ?: 0
-                            val childParentId = child.parent_id.toIntOrNull() ?: selectedArea.id
-                            val isFavorite = favoriteTags.any {
-                                it.parentAreaId == childParentId && it.areaId == childAreaId
-                            }
-                            LiveAreaGridItem(
-                                child = child,
-                                isEditing = isEditing,
-                                isFavorite = isFavorite,
-                                onClick = {
-                                    if (isEditing && childAreaId != 0) {
-                                        scope.launch {
-                                            val next = toggleLiveFavoriteTag(
-                                                current = favoriteTags,
-                                                entry = child.toLiveFavoriteTagEntry(selectedArea)
-                                            )
-                                            SettingsManager.setLiveFavoriteTags(context, next)
-                                        }
-                                    } else {
-                                        onAreaClick(childParentId, childAreaId, child.name)
-                                    }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) { page ->
+                    val selectedArea = areas.getOrNull(page)
+                    if (selectedArea != null) {
+                        val displayChildren = remember(selectedArea.list) {
+                            sortLiveAreaChildrenForDisplay(selectedArea.list.orEmpty())
+                        }
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(4),
+                            contentPadding = PaddingValues(
+                                start = metrics.safeSpaceDp.dp,
+                                end = metrics.safeSpaceDp.dp,
+                                top = 12.dp,
+                                bottom = 100.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(displayChildren, key = { it.id }) { child ->
+                                val childAreaId = child.id.toIntOrNull() ?: 0
+                                val childParentId = child.parent_id.toIntOrNull() ?: selectedArea.id
+                                val isFavorite = favoriteTags.any {
+                                    it.parentAreaId == childParentId && it.areaId == childAreaId
                                 }
-                            )
+                                LiveAreaGridItem(
+                                    child = child,
+                                    isEditing = isEditing,
+                                    isFavorite = isFavorite,
+                                    onClick = {
+                                        if (isEditing && childAreaId != 0) {
+                                            scope.launch {
+                                                val next = toggleLiveFavoriteTag(
+                                                    current = favoriteTags,
+                                                    entry = child.toLiveFavoriteTagEntry(selectedArea)
+                                                )
+                                                SettingsManager.setLiveFavoriteTags(context, next)
+                                            }
+                                        } else {
+                                            onAreaClick(childParentId, childAreaId, child.name)
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

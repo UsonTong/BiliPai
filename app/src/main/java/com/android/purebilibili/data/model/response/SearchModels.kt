@@ -197,6 +197,7 @@ object FlexibleLongSerializer : KSerializer<Long> {
         val element = decoder.decodeJsonElement()
         val primitive = element as? JsonPrimitive ?: return 0L
         val content = runCatching { primitive.content }.getOrNull() ?: return 0L
+        content.trim().replace(",", "").toLongOrNull()?.let { return it }
         return parseFlexibleNumber(content)?.toLong() ?: 0L
     }
 }

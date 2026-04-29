@@ -656,7 +656,7 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `home top links md3 shell liquid glass to bottom bar`() {
+    fun `home top md3 shell keeps liquid glass off by default`() {
         val appearance = resolveHomeTopLinkedBottomBarAppearance(
             homeSettings = HomeSettings(),
             uiPreset = UiPreset.MD3,
@@ -665,7 +665,7 @@ class iOSHomeHeaderVisualPolicyTest {
 
         assertTrue(appearance.isFloating)
         assertTrue(appearance.blurEnabled)
-        assertTrue(appearance.liquidGlassEnabled)
+        assertFalse(appearance.liquidGlassEnabled)
     }
 
     @Test

@@ -701,28 +701,51 @@ data class SpaceArticleResponse(
 
 @Serializable
 data class SpaceArticleData(
+    @JsonNames("articles", "items")
     val lists: List<SpaceArticleItem> = emptyList(),
     val pn: Int = 1,
     val ps: Int = 30,
+    @JsonNames("count")
     val total: Int = 0
 )
 
 @Serializable
 data class SpaceArticleItem(
+    @JsonNames("opus_id")
+    @Serializable(with = FlexibleLongSerializer::class)
     val id: Long = 0,
     val category: SpaceArticleCategory? = null,
+    @JsonNames("content")
     val title: String = "",
     val summary: String = "",
     val banner_url: String = "",
+    val cover: SpaceArticleCover? = null,
     val template_id: Int = 0,
     val state: Int = 0,
     val author: SpaceArticleAuthor? = null,
+    @JsonNames("stat")
     val stats: SpaceArticleStats? = null,
     val publish_time: Long = 0,
     val ctime: Long = 0,
     val mtime: Long = 0,
     val is_like: Boolean = false,
     val image_urls: List<String> = emptyList()
+)
+
+fun SpaceArticleItem.displayImageUrls(): List<String> {
+    return image_urls.ifEmpty {
+        listOfNotNull(
+            banner_url.takeIf { it.isNotBlank() },
+            cover?.url?.takeIf { it.isNotBlank() }
+        )
+    }
+}
+
+@Serializable
+data class SpaceArticleCover(
+    val url: String = "",
+    val width: Int = 0,
+    val height: Int = 0
 )
 
 @Serializable
@@ -741,12 +764,19 @@ data class SpaceArticleAuthor(
 
 @Serializable
 data class SpaceArticleStats(
+    @Serializable(with = FlexibleIntSerializer::class)
     val view: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val favorite: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val like: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val dislike: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val reply: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val share: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
     val coin: Int = 0,
     val dynamic: Int = 0
 )

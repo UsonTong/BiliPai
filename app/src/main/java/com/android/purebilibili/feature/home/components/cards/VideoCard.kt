@@ -931,10 +931,10 @@ fun ElegantVideoCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal
                 ),
-                nameColor = iOSSystemGray,
+                nameColor = MaterialTheme.colorScheme.primary,
                 metaColor = MaterialTheme.colorScheme.primary,
                 badgeTextColor = iOSSystemGray.copy(alpha = 0.85f),
-                badgeBorderColor = iOSSystemGray.copy(alpha = 0.4f),
+                badgeBackgroundColor = iOSSystemGray.copy(alpha = 0.12f),
                 reserveTrailingSlot = true,
                 showUpBadge = showUpBadge,
                 modifier = upNameModifier

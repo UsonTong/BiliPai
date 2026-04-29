@@ -45,10 +45,15 @@ import androidx.media3.common.Player
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.android.purebilibili.core.store.HomeSettings
+import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AppIcons
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.video.ui.components.CoinDialog
 import com.android.purebilibili.feature.video.player.PlayMode
 import com.android.purebilibili.feature.video.player.PlaylistManager
@@ -69,6 +74,13 @@ internal fun resolveAudioPlayModeLabel(mode: PlayMode): String {
         PlayMode.SHUFFLE -> "随机播放"
         PlayMode.REPEAT_ONE -> "单曲循环"
     }
+}
+
+internal fun shouldUseAudioModeLiquidPlayModeControl(
+    uiPreset: UiPreset,
+    androidNativeLiquidGlassEnabled: Boolean
+): Boolean {
+    return uiPreset != UiPreset.MD3 || androidNativeLiquidGlassEnabled
 }
 
 internal enum class AudioModePlayPauseAction {
@@ -174,6 +186,14 @@ fun AudioModeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sleepTimerMinutes by viewModel.sleepTimerMinutes.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val uiPreset = LocalUiPreset.current
+    val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(initial = HomeSettings())
+    val useLiquidPlayModeControl = remember(uiPreset, homeSettings.androidNativeLiquidGlassEnabled) {
+        shouldUseAudioModeLiquidPlayModeControl(
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+        )
+    }
     val showPipButton = remember { shouldShowAudioModePipButton(Build.VERSION.SDK_INT) }
     val enterPip = remember(context) { { enterAudioModePip(context.findHostActivity()) } }
     val renderPolicy = remember(isInPipMode) {
@@ -473,7 +493,8 @@ fun AudioModeScreen(
                                 // 🎵 [修复] 使用分P优先播放方法
                                 onNext = { viewModel.playNextPageOrRecommended() },
                                 currentPlayMode = currentPlayMode,
-                                onSelectPlayMode = { PlaylistManager.setPlayMode(it) }
+                                onSelectPlayMode = { PlaylistManager.setPlayMode(it) },
+                                useLiquidPlayModeControl = useLiquidPlayModeControl
                             )
                         } else {
                             Text("Connecting to player...", color = Color.White)
@@ -973,7 +994,8 @@ private fun PlayerControls(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     currentPlayMode: PlayMode,
-    onSelectPlayMode: (PlayMode) -> Unit
+    onSelectPlayMode: (PlayMode) -> Unit,
+    useLiquidPlayModeControl: Boolean
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var draggingProgress by remember { mutableFloatStateOf(0f) }
@@ -1072,32 +1094,11 @@ private fun PlayerControls(
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            listOf(PlayMode.SEQUENTIAL, PlayMode.SHUFFLE, PlayMode.REPEAT_ONE).forEach { mode ->
-                val isSelected = currentPlayMode == mode
-                Surface(
-                    onClick = { onSelectPlayMode(mode) },
-                    shape = RoundedCornerShape(999.dp),
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-                    } else {
-                        Color.White.copy(alpha = 0.15f)
-                    }
-                ) {
-                    Text(
-                        text = resolveAudioPlayModeLabel(mode),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        }
+        AudioPlayModeSelector(
+            currentPlayMode = currentPlayMode,
+            onSelectPlayMode = onSelectPlayMode,
+            useLiquidPlayModeControl = useLiquidPlayModeControl
+        )
 
         Spacer(modifier = Modifier.height(18.dp))
         
@@ -1140,6 +1141,66 @@ private fun PlayerControls(
                     tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioPlayModeSelector(
+    currentPlayMode: PlayMode,
+    onSelectPlayMode: (PlayMode) -> Unit,
+    useLiquidPlayModeControl: Boolean
+) {
+    val playModes = remember {
+        listOf(PlayMode.SEQUENTIAL, PlayMode.SHUFFLE, PlayMode.REPEAT_ONE)
+    }
+    if (useLiquidPlayModeControl) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            BottomBarLiquidSegmentedControl(
+                items = playModes.map(::resolveAudioPlayModeLabel),
+                selectedIndex = playModes.indexOf(currentPlayMode).coerceAtLeast(0),
+                onSelected = { index ->
+                    playModes.getOrNull(index)?.let(onSelectPlayMode)
+                },
+                itemWidth = 86.dp,
+                height = 44.dp,
+                indicatorHeight = 36.dp,
+                labelFontSize = 13.sp,
+                containerHorizontalPadding = 3.dp,
+                containerVerticalPadding = 3.dp,
+                liquidGlassEffectsEnabled = true,
+                dragSelectionEnabled = true
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            playModes.forEach { mode ->
+                val isSelected = currentPlayMode == mode
+                Surface(
+                    onClick = { onSelectPlayMode(mode) },
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                    } else {
+                        Color.White.copy(alpha = 0.15f)
+                    }
+                ) {
+                    Text(
+                        text = resolveAudioPlayModeLabel(mode),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }

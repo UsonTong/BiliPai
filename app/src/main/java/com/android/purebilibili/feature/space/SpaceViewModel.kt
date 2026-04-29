@@ -1491,7 +1491,18 @@ class SpaceViewModel(
 
     private suspend fun fetchSpaceArticleList(mid: Long, page: Int): SpaceArticleResponse? {
         return try {
-            spaceApi.getSpaceArticleList(mid = mid, pn = page)
+            if (!ensureWbiKeysLoaded()) return null
+            val params = WbiUtils.sign(
+                mapOf(
+                    "mid" to mid.toString(),
+                    "pn" to page.toString(),
+                    "ps" to pageSize.toString(),
+                    "sort" to "publish_time"
+                ),
+                cachedImgKey,
+                cachedSubKey
+            )
+            spaceApi.getSpaceArticleList(params)
         } catch (e: Exception) {
             android.util.Log.e("SpaceVM", "fetchArticle error: ${e.message}")
             null

@@ -1,11 +1,37 @@
 package com.android.purebilibili.feature.home.components
 
 import java.io.File
+import com.android.purebilibili.core.theme.UiPreset
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BottomBarLiquidSegmentedControlStructureTest {
+
+    @Test
+    fun `android native inline segmented control avoids liquid pill when global glass is enabled`() {
+        assertEquals(
+            SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE,
+            resolveSegmentedControlChromeStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = true,
+                preferInlineContentStyle = true
+            )
+        )
+    }
+
+    @Test
+    fun `android native chrome segmented control keeps liquid pill when global glass is enabled`() {
+        assertEquals(
+            SegmentedControlChromeStyle.LIQUID_PILL,
+            resolveSegmentedControlChromeStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeLiquidGlassEnabled = true,
+                preferInlineContentStyle = false
+            )
+        )
+    }
 
     @Test
     fun `segmented control keeps sliding glass by default with opt out flag`() {

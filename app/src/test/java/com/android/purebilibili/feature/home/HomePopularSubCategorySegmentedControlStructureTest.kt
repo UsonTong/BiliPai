@@ -17,6 +17,7 @@ class HomePopularSubCategorySegmentedControlStructureTest {
         assertTrue(source.contains("PopularSubCategorySegmentedControl("))
         assertTrue(source.contains("dragSelectionEnabled = true"))
         assertTrue(source.contains("liquidGlassEffectsEnabled = true"))
+        assertTrue(source.contains("preferInlineContentStyle = true"))
         assertFalse(source.contains("PopularSubCategory.entries.forEach { subCategory ->\n                            FilterChip("))
     }
 

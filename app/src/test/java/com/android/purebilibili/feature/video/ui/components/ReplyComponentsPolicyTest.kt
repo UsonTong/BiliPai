@@ -562,10 +562,19 @@ class ReplyComponentsPolicyTest {
 
         assertEquals(12, policy.horizontalPaddingDp)
         assertEquals(10, policy.avatarContentSpacingDp)
+        assertEquals(40, policy.actionButtonSizeDp)
         assertEquals(62, policy.dividerStartPaddingDp)
         assertEquals(
             286,
             resolveReplyItemTextColumnWidthDp(containerWidthDp = 360, policy = policy)
+        )
+        assertEquals(
+            40,
+            resolveReplyItemHeaderEndPaddingDp(hasPiliPlusDecoration = false, policy = policy)
+        )
+        assertEquals(
+            128,
+            resolveReplyItemHeaderEndPaddingDp(hasPiliPlusDecoration = true, policy = policy)
         )
     }
 

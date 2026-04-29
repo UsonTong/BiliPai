@@ -445,9 +445,9 @@ fun GlassVideoCard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             ),
-                            nameColor = onSurfaceVariant,
+                            nameColor = MaterialTheme.colorScheme.primary,
                             badgeTextColor = onSurfaceVariant.copy(alpha = 0.85f),
-                            badgeBorderColor = onSurfaceVariant.copy(alpha = 0.35f),
+                            badgeBackgroundColor = onSurfaceVariant.copy(alpha = 0.12f),
                             showUpBadge = showUpBadge,
                             modifier = Modifier.weight(1f, fill = false)
                         )

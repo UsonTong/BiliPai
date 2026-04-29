@@ -468,10 +468,10 @@ fun StoryVideoCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 ),
-                nameColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                nameColor = MaterialTheme.colorScheme.primary,
                 metaColor = MaterialTheme.colorScheme.primary,
                 badgeTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                badgeBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                badgeBackgroundColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
                 showUpBadge = showUpBadge,
                 modifier = upNameModifier
             )

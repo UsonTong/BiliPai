@@ -76,8 +76,8 @@ class AppAdaptiveSwitchPolicyTest {
         assertEquals(34, layout.thumbWidthDp)
         assertEquals(22, layout.thumbHeightDp)
         assertEquals(0, layout.thumbOffsetYDp)
-        assertEquals(21, layout.checkedThumbOffsetXDp)
-        assertEquals(1, layout.trackWidthDp - layout.checkedThumbOffsetXDp - layout.thumbWidthDp)
+        assertEquals(22, layout.checkedThumbOffsetXDp)
+        assertEquals(0, layout.trackWidthDp - layout.checkedThumbOffsetXDp - layout.thumbWidthDp)
         assertEquals(0, layout.thumbOffsetYDp)
         assertEquals(0, layout.trackHeightDp - layout.thumbOffsetYDp - layout.thumbHeightDp)
     }

@@ -13,7 +13,14 @@ data class LivePortraitOverlayMetrics(
     val panelHeightFraction: Float,
     val minPanelHeightDp: Int,
     val minPlayerClearanceDp: Int,
-    val playerControlsGapDp: Int
+    val playerControlsGapDp: Int,
+    val topChromeReserveDp: Int,
+    val playerControlsReserveDp: Int
+)
+
+data class LiveOverlayContentInsets(
+    val topDp: Int,
+    val bottomDp: Int
 )
 
 data class LiveLandscapeChatOverlayMetrics(
@@ -89,15 +96,25 @@ fun shouldApplyLiveBottomControlSystemInsets(
         layoutMode == LiveRoomLayoutMode.LandscapeOverlay
 }
 
+fun shouldShowLivePlayerControlsTopBar(
+    layoutMode: LiveRoomLayoutMode,
+    isFullscreen: Boolean
+): Boolean {
+    if (isFullscreen) return true
+    return layoutMode == LiveRoomLayoutMode.LandscapeOverlay
+}
+
 fun resolveLivePortraitOverlayMetrics(
     screenHeightDp: Int
 ): LivePortraitOverlayMetrics {
     val compactHeight = screenHeightDp < 720
     return LivePortraitOverlayMetrics(
-        panelHeightFraction = if (compactHeight) 0.46f else 0.48f,
-        minPanelHeightDp = if (compactHeight) 260 else 300,
-        minPlayerClearanceDp = if (compactHeight) 304 else 360,
-        playerControlsGapDp = 10
+        panelHeightFraction = if (compactHeight) 0.35f else 0.38f,
+        minPanelHeightDp = if (compactHeight) 220 else 260,
+        minPlayerClearanceDp = if (compactHeight) 380 else 460,
+        playerControlsGapDp = 10,
+        topChromeReserveDp = if (compactHeight) 86 else 96,
+        playerControlsReserveDp = if (compactHeight) 68 else 74
     )
 }
 
@@ -110,6 +127,22 @@ fun resolveLivePortraitOverlayPanelHeightDp(
     val lowerBound = metrics.minPanelHeightDp.coerceAtMost(maxPanelHeight)
     val preferredHeight = (screenHeightDp * metrics.panelHeightFraction).roundToInt()
     return preferredHeight.coerceIn(lowerBound, maxPanelHeight)
+}
+
+fun resolveLiveOverlayContentInsets(
+    layoutMode: LiveRoomLayoutMode,
+    portraitPanelHeightDp: Int,
+    portraitMetrics: LivePortraitOverlayMetrics
+): LiveOverlayContentInsets {
+    if (layoutMode != LiveRoomLayoutMode.PortraitVerticalOverlay) {
+        return LiveOverlayContentInsets(topDp = 0, bottomDp = 0)
+    }
+    return LiveOverlayContentInsets(
+        topDp = portraitMetrics.topChromeReserveDp,
+        bottomDp = portraitPanelHeightDp +
+            portraitMetrics.playerControlsGapDp +
+            portraitMetrics.playerControlsReserveDp
+    )
 }
 
 fun resolveLiveLandscapeChatOverlayMetrics(

@@ -82,9 +82,10 @@ internal enum class SegmentedControlChromeStyle {
 
 internal fun resolveSegmentedControlChromeStyle(
     uiPreset: UiPreset,
-    androidNativeLiquidGlassEnabled: Boolean
+    androidNativeLiquidGlassEnabled: Boolean,
+    preferInlineContentStyle: Boolean = false
 ): SegmentedControlChromeStyle {
-    return if (uiPreset == UiPreset.MD3 && !androidNativeLiquidGlassEnabled) {
+    return if (uiPreset == UiPreset.MD3 && (preferInlineContentStyle || !androidNativeLiquidGlassEnabled)) {
         SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE
     } else {
         SegmentedControlChromeStyle.LIQUID_PILL
@@ -106,6 +107,7 @@ fun BottomBarLiquidSegmentedControl(
     containerVerticalPadding: Dp = 3.dp,
     liquidGlassEffectsEnabled: Boolean = true,
     dragSelectionEnabled: Boolean = true,
+    preferInlineContentStyle: Boolean = false,
     onIndicatorPositionChanged: ((Float) -> Unit)? = null
 ) {
     if (items.isEmpty()) return
@@ -117,7 +119,8 @@ fun BottomBarLiquidSegmentedControl(
         .collectAsState(initial = HomeSettings())
     val chromeStyle = resolveSegmentedControlChromeStyle(
         uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled,
+        preferInlineContentStyle = preferInlineContentStyle
     )
     if (chromeStyle == SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE) {
         AndroidNativeUnderlinedSegmentedControl(

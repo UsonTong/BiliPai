@@ -2544,6 +2544,23 @@ fun VideoPlayerSection(
             }
         }
 
+        val commandDanmakuList by danmakuManager.commandDanmakuFlow.collectAsStateWithLifecycle()
+        if (shouldShowDanmakuLayer && commandDanmakuList.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clipToBounds()
+            ) {
+                com.android.purebilibili.feature.video.ui.overlay.CommandDanmakuOverlay(
+                    items = commandDanmakuList,
+                    player = playerState.player,
+                    onFollowClick = onToggleFollow,
+                    onTripleClick = onTriple,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
         // 4. B站字幕叠加层（支持中英双语）
         val subtitleFeatureEnabled = isSubtitleFeatureEnabledForUser()
         val subtitleBelongsToCurrentVideo = remember(uiState, subtitleFeatureEnabled) {

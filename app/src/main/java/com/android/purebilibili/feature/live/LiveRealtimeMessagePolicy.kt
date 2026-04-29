@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.math.roundToInt
 
 internal sealed interface LiveRealtimeAction {
     data object Ignore : LiveRealtimeAction
@@ -56,6 +57,7 @@ internal fun resolveLiveRealtimeAction(
         cmd == "SEND_GIFT" || cmd == "COMBO_SEND" || cmd == "SPECIAL_GIFT" -> parseGiftMessage(json, cmd)
         cmd == "GUARD_BUY" || cmd == "USER_TOAST_MSG" -> parseGuardMessage(json, cmd)
         cmd == "INTERACT_WORD" || cmd == "INTERACT_WORD_V2" -> parseInteractMessage(json)
+        cmd == "DM_INTERACTION" -> parseDmInteraction(json)
         cmd == "RECALL_DANMU_MSG" -> {
             val id = json.obj("data")?.string("target_id").orEmpty()
             if (id.isBlank()) LiveRealtimeAction.Ignore else LiveRealtimeAction.RecallDanmaku(id)
@@ -182,6 +184,40 @@ private fun parseInteractMessage(json: JsonObject): LiveRealtimeAction {
     return systemMessage("互动", message, uid = data.long("uid"))
 }
 
+private fun parseDmInteraction(json: JsonObject): LiveRealtimeAction {
+    val data = json.obj("data") ?: return LiveRealtimeAction.Ignore
+    val nested = data.string("data")
+        .takeIf { it.isNotBlank() }
+        ?.let { raw -> runCatching { Json.parseToJsonElement(raw).asObjectOrNull() }.getOrNull() }
+        ?: return LiveRealtimeAction.Ignore
+    return when (data.int("type")) {
+        101 -> parseVoteInteraction(nested)
+        103 -> parseFollowInteraction(nested)
+        else -> LiveRealtimeAction.Ignore
+    }
+}
+
+private fun parseVoteInteraction(data: JsonObject): LiveRealtimeAction {
+    val question = data.string("question").ifBlank { return LiveRealtimeAction.Ignore }
+    val options = data.array("options").orEmpty()
+        .mapNotNull { option ->
+            val obj = option.asObjectOrNull() ?: return@mapNotNull null
+            val desc = obj.string("desc").ifBlank { return@mapNotNull null }
+            val percent = (obj.float("percent") * 100f).roundToInt()
+            "$desc $percent%"
+        }
+        .take(2)
+    if (options.isEmpty()) return LiveRealtimeAction.Ignore
+    val remainingSeconds = (data.long("left_duration") / 1000L).coerceAtLeast(0L)
+    val suffix = if (remainingSeconds > 0L) "｜剩余 ${remainingSeconds}s" else ""
+    return systemMessage("投票", "投票：$question｜${options.joinToString(" / ")}$suffix")
+}
+
+private fun parseFollowInteraction(data: JsonObject): LiveRealtimeAction {
+    val count = data.long("cnt").takeIf { it > 0L } ?: return LiveRealtimeAction.Ignore
+    return systemMessage("关注", "已有 $count 人关注了主播")
+}
+
 private fun resolveDanmakuEmoticonUrl(
     text: String,
     meta: JsonArray,
@@ -230,6 +266,10 @@ private fun JsonObject.int(name: String, default: Int = 0): Int {
 
 private fun JsonObject.long(name: String): Long {
     return this[name]?.asPrimitiveOrNull()?.contentOrNull?.toLongOrNull() ?: 0L
+}
+
+private fun JsonObject.float(name: String): Float {
+    return this[name]?.asPrimitiveOrNull()?.contentOrNull?.toFloatOrNull() ?: 0f
 }
 
 private fun JsonObject.obj(name: String): JsonObject? = this[name]?.asObjectOrNull()

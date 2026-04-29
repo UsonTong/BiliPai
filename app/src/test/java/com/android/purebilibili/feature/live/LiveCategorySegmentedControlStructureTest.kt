@@ -31,6 +31,10 @@ class LiveCategorySegmentedControlStructureTest {
             "app/src/main/java/com/android/purebilibili/feature/live/LiveAreaScreen.kt"
         )
 
+        assertTrue(source.contains("rememberPagerState"))
+        assertTrue(source.contains("HorizontalPager("))
+        assertTrue(source.contains("pagerState.animateScrollToPage"))
+        assertTrue(source.contains("selectedTab = pagerState.currentPage"))
         assertTrue(source.contains("BottomBarLiquidSegmentedControl("))
         assertTrue(source.contains("resolveLiveAreaParentSegmentedControlSpec()"))
         assertTrue(source.contains(".horizontalScroll(scrollState, enabled = false)"))
@@ -39,6 +43,18 @@ class LiveCategorySegmentedControlStructureTest {
         assertTrue(source.contains("onIndicatorPositionChanged = { indicatorPosition = it }"))
         assertFalse(source.contains("dragSelectionEnabled = false"))
         assertFalse(source.contains("liquidGlassEffectsEnabled = false"))
+    }
+
+    @Test
+    fun `live room interaction panel supports horizontal pager gestures`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/live/LivePlayerScreen.kt"
+        )
+
+        assertTrue(source.contains("rememberPagerState"))
+        assertTrue(source.contains("HorizontalPager("))
+        assertTrue(source.contains("pagerState.animateScrollToPage"))
+        assertTrue(source.contains("selectedIndex = pagerState.currentPage"))
     }
 
     private fun loadSource(path: String): String {

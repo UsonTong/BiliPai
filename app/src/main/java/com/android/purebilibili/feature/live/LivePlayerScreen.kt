@@ -19,6 +19,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -183,6 +185,13 @@ fun LivePlayerScreen(
         resolveLivePortraitOverlayPanelHeightDp(
             screenHeightDp = configuration.screenHeightDp,
             metrics = portraitOverlayMetrics
+        )
+    }
+    val overlayContentInsets = remember(liveLayoutMode, portraitOverlayPanelHeightDp, portraitOverlayMetrics) {
+        resolveLiveOverlayContentInsets(
+            layoutMode = liveLayoutMode,
+            portraitPanelHeightDp = portraitOverlayPanelHeightDp,
+            portraitMetrics = portraitOverlayMetrics
         )
     }
     val reservedBottomOverlayDp = if (liveLayoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay) {
@@ -646,7 +655,12 @@ fun LivePlayerScreen(
             ) {
                 LiveDanmakuOverlay(
                     danmakuFlow = viewModel.danmakuFlow,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            top = overlayContentInsets.topDp.dp,
+                            bottom = overlayContentInsets.bottomDp.dp
+                        )
                 )
             }
             
@@ -654,9 +668,10 @@ fun LivePlayerScreen(
             LivePlayerControls(
                 isPlaying = isPlaying,
                 isFullscreen = isFullscreen,
-                showTopBar = liveLayoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay ||
-                    liveLayoutMode == LiveRoomLayoutMode.LandscapeOverlay ||
-                    isFullscreen,
+                showTopBar = shouldShowLivePlayerControlsTopBar(
+                    layoutMode = liveLayoutMode,
+                    isFullscreen = isFullscreen
+                ),
                 title = liveRoomTitle,
                 subtitle = liveSubtitle,
                 onPlayPause = {
@@ -1415,6 +1430,22 @@ private fun LivePrimaryInteractionPanel(
 ) {
     val segmentedSpec = remember { resolveLiveInteractionSegmentedControlSpec() }
     val tabs = remember { listOf("聊天", "SC") }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(selectedTab) {
+        val target = selectedTab.coerceIn(0, tabs.lastIndex)
+        if (pagerState.currentPage != target) {
+            pagerState.animateScrollToPage(target)
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedTab != pagerState.currentPage) {
+            onSelectedTab(pagerState.currentPage)
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -1426,18 +1457,26 @@ private fun LivePrimaryInteractionPanel(
         ) {
             BottomBarLiquidSegmentedControl(
                 items = tabs,
-                selectedIndex = selectedTab,
-                onSelected = onSelectedTab,
+                selectedIndex = pagerState.currentPage,
+                onSelected = { index ->
+                    onSelectedTab(index)
+                    scope.launch {
+                        pagerState.animateScrollToPage(index)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 height = segmentedSpec.heightDp.dp,
                 indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
                 labelFontSize = segmentedSpec.labelFontSizeSp.sp
             )
         }
-        Box(modifier = Modifier.weight(1f)) {
-            when (selectedTab) {
-                0 -> chatContent()
-                else -> superChatContent()
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            when (page) {
+                0 -> Box(modifier = Modifier.fillMaxSize()) { chatContent() }
+                else -> Box(modifier = Modifier.fillMaxSize()) { superChatContent() }
             }
         }
     }

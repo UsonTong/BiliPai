@@ -134,17 +134,65 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
-    fun `portrait overlay panel leaves room for player controls`() {
+    fun `portrait overlay panel keeps video as primary content`() {
         val metrics = resolveLivePortraitOverlayMetrics(screenHeightDp = 844)
         val panelHeight = resolveLivePortraitOverlayPanelHeightDp(
             screenHeightDp = 844,
             metrics = metrics
         )
 
-        assertEquals(0.48f, metrics.panelHeightFraction)
-        assertTrue(panelHeight < 844 / 2)
+        assertEquals(0.38f, metrics.panelHeightFraction)
+        assertTrue(panelHeight <= (844 * 0.40f).toInt())
         assertTrue(844 - panelHeight >= metrics.minPlayerClearanceDp)
         assertTrue(metrics.playerControlsGapDp >= 8)
+    }
+
+    @Test
+    fun `portrait overlay uses room app bar instead of duplicate player top bar`() {
+        assertFalse(
+            shouldShowLivePlayerControlsTopBar(
+                layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+                isFullscreen = false
+            )
+        )
+        assertTrue(
+            shouldShowLivePlayerControlsTopBar(
+                layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+                isFullscreen = true
+            )
+        )
+        assertTrue(
+            shouldShowLivePlayerControlsTopBar(
+                layoutMode = LiveRoomLayoutMode.LandscapeOverlay,
+                isFullscreen = false
+            )
+        )
+    }
+
+    @Test
+    fun `portrait overlay danmaku avoids app bar controls and interaction panel`() {
+        val metrics = resolveLivePortraitOverlayMetrics(screenHeightDp = 844)
+        val panelHeight = resolveLivePortraitOverlayPanelHeightDp(
+            screenHeightDp = 844,
+            metrics = metrics
+        )
+        val insets = resolveLiveOverlayContentInsets(
+            layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+            portraitPanelHeightDp = panelHeight,
+            portraitMetrics = metrics
+        )
+
+        assertTrue(insets.topDp >= metrics.topChromeReserveDp)
+        assertTrue(insets.bottomDp > panelHeight)
+        assertTrue(844 - insets.topDp - insets.bottomDp >= 320)
+        assertEquals(
+            LiveOverlayContentInsets(topDp = 0, bottomDp = 0),
+            resolveLiveOverlayContentInsets(
+                layoutMode = LiveRoomLayoutMode.PortraitPanel,
+                portraitPanelHeightDp = panelHeight,
+                portraitMetrics = metrics
+            )
+        )
     }
 
     @Test

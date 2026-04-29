@@ -214,7 +214,10 @@ internal fun resolveSpaceInitialSeedFromAggregate(
     val relation = card.relation
     val isFollowed = relation.isFollow == 1 || relation.status in setOf(2, 6)
     val mainTabs = resolveSpaceMainTabs(data.tab2)
-    val contributionTabs = resolveSpaceContributionTabs(data.tab2)
+    val contributionTabs = ensureSpaceContributionTabsForAvailableContent(
+        tabs = resolveSpaceContributionTabs(data.tab2),
+        hasArticles = (data.article?.count ?: 0) > 0 || data.article?.item.orEmpty().isNotEmpty()
+    )
     val defaultSelection = resolveSpaceAggregateDefaultSelection(
         defaultTab = data.defaultTab,
         contributionTabs = contributionTabs

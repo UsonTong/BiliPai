@@ -437,7 +437,8 @@ private fun PopularSubCategorySegmentedControl(
         containerHorizontalPadding = 3.dp,
         containerVerticalPadding = 3.dp,
         liquidGlassEffectsEnabled = true,
-        dragSelectionEnabled = true
+        dragSelectionEnabled = true,
+        preferInlineContentStyle = true
     )
 }
 

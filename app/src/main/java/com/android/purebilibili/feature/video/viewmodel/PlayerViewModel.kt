@@ -2371,7 +2371,7 @@ class PlayerViewModel : ViewModel() {
      */
     fun likeDanmaku(dmid: Long) {
         if (dmid <= 0L) {
-            viewModelScope.launch { toast("当前弹幕不支持投票") }
+            viewModelScope.launch { toast("当前弹幕不支持点赞") }
             return
         }
 
@@ -2971,7 +2971,7 @@ class PlayerViewModel : ViewModel() {
         color: Int = 16777215,
         mode: Int = 1,
         fontSize: Int = 25,
-        encourage: Boolean = false
+        attentionCommand: Boolean = false
     ) {
         val current = _uiState.value as? PlayerUiState.Success ?: run {
             viewModelScope.launch { toast("视频未加载") }
@@ -2990,19 +2990,31 @@ class PlayerViewModel : ViewModel() {
         
         viewModelScope.launch {
             _isSendingDanmaku.value = true
-            
-            com.android.purebilibili.data.repository.DanmakuRepository
-                .sendDanmaku(
-                    aid = current.info.aid,
-                    cid = currentCid,
-                    message = message,
-                    progress = progress,
-                    color = actualColor,
-                    fontSize = fontSize,
-                    mode = mode,
-                    colorful = isVipGradualColor,
-                    encourage = encourage
-                )
+
+            val result = if (attentionCommand) {
+                com.android.purebilibili.data.repository.DanmakuRepository
+                    .sendAttentionCommandDanmaku(
+                        aid = current.info.aid,
+                        cid = currentCid,
+                        progress = progress
+                    )
+                    .map { Unit }
+            } else {
+                com.android.purebilibili.data.repository.DanmakuRepository
+                    .sendDanmaku(
+                        aid = current.info.aid,
+                        cid = currentCid,
+                        message = message,
+                        progress = progress,
+                        color = actualColor,
+                        fontSize = fontSize,
+                        mode = mode,
+                        colorful = isVipGradualColor,
+                        upIdentity = false
+                    )
+                    .map { Unit }
+            }
+            result
                 .onSuccess {
                     toast("发送成功")
                     _showDanmakuDialog.value = false
@@ -3010,7 +3022,9 @@ class PlayerViewModel : ViewModel() {
                     // 本地即时显示弹幕
                     // 注意：这需要在 Composable 中通过 DanmakuManager 调用
                     // 这里只发送事件通知
-                    _danmakuSentEvent.trySend(DanmakuSentData(message, actualColor, mode, fontSize))
+                    if (!attentionCommand) {
+                        _danmakuSentEvent.trySend(DanmakuSentData(message, actualColor, mode, fontSize))
+                    }
                 }
                 .onFailure { error ->
                     toast(error.message ?: "发送失败")
@@ -3128,7 +3142,7 @@ class PlayerViewModel : ViewModel() {
             return
         }
         if (dmid <= 0L) {
-            viewModelScope.launch { toast("当前弹幕不支持投票") }
+            viewModelScope.launch { toast("当前弹幕不支持点赞") }
             return
         }
 

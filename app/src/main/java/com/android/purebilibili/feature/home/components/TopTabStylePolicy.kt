@@ -297,6 +297,11 @@ internal fun resolveEffectiveHomeHeaderTabMaterialMode(
     materialMode: TopTabMaterialMode,
     interactionBudget: HomeInteractionMotionBudget
 ): TopTabMaterialMode {
+    if (interactionBudget == HomeInteractionMotionBudget.REDUCED &&
+        materialMode == TopTabMaterialMode.LIQUID_GLASS
+    ) {
+        return TopTabMaterialMode.BLUR
+    }
     return materialMode
 }
 
@@ -304,5 +309,6 @@ internal fun resolveEffectiveTopTabLiquidGlassEnabled(
     isLiquidGlassEnabled: Boolean,
     interactionBudget: HomeInteractionMotionBudget
 ): Boolean {
+    if (interactionBudget == HomeInteractionMotionBudget.REDUCED) return false
     return isLiquidGlassEnabled
 }

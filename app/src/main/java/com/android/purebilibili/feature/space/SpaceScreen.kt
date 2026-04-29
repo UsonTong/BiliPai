@@ -40,7 +40,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -98,6 +97,7 @@ import com.android.purebilibili.data.model.response.FavFolder
 import com.android.purebilibili.data.model.response.FollowBangumiItem
 import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceArticleItem
+import com.android.purebilibili.data.model.response.displayImageUrls
 import com.android.purebilibili.data.model.response.SpaceAudioItem
 import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.SpaceTopArcData
@@ -112,6 +112,7 @@ import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentOverlayHost
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 
@@ -648,6 +649,10 @@ private fun SpaceContent(
         onPlayAllAudioClick?.invoke(startBvid) ?: onVideoClick(startBvid)
     }
 
+    LaunchedEffect(state.userInfo.mid) {
+        onLoadHome()
+    }
+
     val bangumiTabState = state.tabShellState.tabStates[SpaceMainTab.BANGUMI] ?: SpaceTabContentState()
 
     LaunchedEffect(selectedMainTab, state.hasLoadedDynamicsOnce, state.isLoadingDynamics) {
@@ -708,6 +713,21 @@ private fun SpaceContent(
 
         when (selectedMainTab) {
             SpaceMainTab.HOME -> {
+                state.topVideo?.let { topVideo ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceTopVideoCard(
+                            video = topVideo,
+                            onClick = { playVideoFromSpace(topVideo.bvid) }
+                        )
+                    }
+                }
+
+                if (state.notice.isNotBlank()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SpaceNoticeCard(notice = state.notice)
+                    }
+                }
+
                 if (state.videos.isNotEmpty() || state.totalVideos > 0) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         SpaceSectionHeader(
@@ -1012,6 +1032,7 @@ private fun SpaceContent(
                         SpaceContributionTabRow(
                             tabs = displayedContributionTabs,
                             selectedTabId = state.selectedContributionTabId,
+                            selectedSubTab = state.selectedSubTab,
                             onSelect = onContributionTabSelected
                         )
                     }
@@ -1472,9 +1493,12 @@ private fun SpaceHeader(
     val topPhotoUrl = normalizeSpaceTopPhotoUrl(userInfo.topPhoto)
     val followLabel = if (userInfo.isFollowed) "已关注" else "关注"
     val officialText = userInfo.official.title.ifBlank { userInfo.official.desc }
-    val fans = relationStat?.follower?.toLong() ?: 0L
-    val following = relationStat?.following?.toLong() ?: 0L
-    val likes = upStat?.likes ?: 0L
+    val metrics = remember(relationStat, upStat) {
+        resolveSpaceHeaderMetricItems(
+            relationStat = relationStat,
+            upStat = upStat
+        )
+    }
     val colorScheme = MaterialTheme.colorScheme
     val followButtonColors = resolveSpaceFollowButtonColors(
         isFollowed = userInfo.isFollowed,
@@ -1543,156 +1567,149 @@ private fun SpaceHeader(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                val avatarModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                    with(sharedTransitionScope) {
-                        Modifier.sharedBounds(
-                            rememberSharedContentState(key = "up_avatar_${userInfo.mid}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            clipInOverlayDuringTransition = OverlayClip(CircleShape)
-                        )
-                    }
-                } else {
-                    Modifier
-                }
-
-                Box(
-                    modifier = Modifier.size(avatarSize)
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(FormatUtils.buildSizedImageUrl(userInfo.face, width = 320, height = 320))
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(avatarModifier)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-
-                    if (userInfo.liveRoom?.liveStatus == 1) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 2.dp),
-                            shape = CircleShape,
-                            color = Color(0xFFFFC107)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Bolt,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .padding(6.dp)
-                                    .size(16.dp)
+                    val avatarModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            Modifier.sharedBounds(
+                                rememberSharedContentState(key = "up_avatar_${userInfo.mid}"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                clipInOverlayDuringTransition = OverlayClip(CircleShape)
                             )
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SpaceHeaderStat(
-                            label = "粉丝",
-                            value = fans,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SpaceHeaderMetricDivider()
-                        SpaceHeaderStat(
-                            label = "关注",
-                            value = following,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SpaceHeaderMetricDivider()
-                        SpaceHeaderStat(
-                            label = "获赞",
-                            value = likes,
-                            modifier = Modifier.weight(1f)
-                        )
+                    } else {
+                        Modifier
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier.size(avatarSize)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-                            border = BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                            )
-                        ) {
-                            IconButton(
-                                modifier = Modifier.size(38.dp),
-                                onClick = {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "暂不支持私信",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(FormatUtils.buildSizedImageUrl(userInfo.face, width = 320, height = 320))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(avatarModifier)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+
+                        if (userInfo.liveRoom?.liveStatus == 1) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 2.dp),
+                                shape = CircleShape,
+                                color = Color(0xFFFFC107)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Email,
-                                    contentDescription = "私信",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    imageVector = Icons.Outlined.Bolt,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .padding(6.dp)
+                                        .size(16.dp)
                                 )
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.Center
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Button(
-                                onClick = onFollowClick,
-                                modifier = Modifier
-                                    .widthIn(min = 112.dp, max = 136.dp)
-                                    .height(36.dp),
-                                shape = RoundedCornerShape(999.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = followButtonColors.backgroundColor,
-                                    contentColor = followButtonColors.textColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            metrics.forEachIndexed { index, metric ->
+                                SpaceHeaderStat(
+                                    label = metric.label,
+                                    value = metric.value,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (index < metrics.lastIndex) {
+                                    SpaceHeaderMetricDivider()
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                )
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    if (userInfo.isFollowed) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Menu,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    modifier = Modifier.size(38.dp),
+                                    onClick = {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "暂不支持私信",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
                                     }
-                                    Text(
-                                        text = followLabel,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Email,
+                                        contentDescription = "私信",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Button(
+                                    onClick = onFollowClick,
+                                    modifier = Modifier
+                                        .widthIn(min = 112.dp, max = 136.dp)
+                                        .height(36.dp),
+                                    shape = RoundedCornerShape(999.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = followButtonColors.backgroundColor,
+                                        contentColor = followButtonColors.textColor
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        if (userInfo.isFollowed) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Menu,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                        }
+                                        Text(
+                                            text = followLabel,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
             }
         }
 
@@ -1776,51 +1793,32 @@ private fun SpaceMainTabRow(
     selectedTab: SpaceMainTab,
     onSelect: (SpaceMainTab) -> Unit
 ) {
-    val selectedColors = resolveSpaceSelectionChipColors(
-        isSelected = true,
-        colorScheme = MaterialTheme.colorScheme
-    )
+    val spec = remember(tabs, selectedTab) {
+        resolveSpaceMainTabChromeSpec(tabs = tabs, selectedTab = selectedTab)
+    }
+    val safeSelectedIndex = spec.selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp)
+            .padding(top = 6.dp, bottom = 2.dp)
     ) {
-        Row(
+        BottomBarLiquidSegmentedControl(
+            items = tabs.map { it.title },
+            selectedIndex = safeSelectedIndex,
+            onSelected = { index ->
+                tabs.getOrNull(index)?.let { onSelect(it.tab) }
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            tabs.forEach { tab ->
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onSelect(tab.tab) }
-                        .padding(top = 10.dp, bottom = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = tab.title,
-                        fontSize = 18.sp,
-                        fontWeight = if (tab.tab == selectedTab) FontWeight.Bold else FontWeight.Medium,
-                        color = if (tab.tab == selectedTab) selectedColors.backgroundColor else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(42.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(
-                                if (tab.tab == selectedTab) selectedColors.backgroundColor else Color.Transparent
-                            )
-                    )
-                }
-            }
-        }
+                .padding(horizontal = spec.horizontalPaddingDp.dp),
+            height = spec.heightDp.dp,
+            indicatorHeight = spec.indicatorHeightDp.dp,
+            labelFontSize = 14.sp,
+            liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled
+        )
         HorizontalDivider(
-            modifier = Modifier.padding(top = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            modifier = Modifier.padding(top = 10.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.36f)
         )
     }
 }
@@ -1829,48 +1827,59 @@ private fun SpaceMainTabRow(
 private fun SpaceContributionTabRow(
     tabs: List<SpaceContributionTab>,
     selectedTabId: String,
+    selectedSubTab: SpaceSubTab,
     onSelect: (String) -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    val spec = remember(tabs, selectedTabId, selectedSubTab) {
+        resolveSpaceContributionTabChromeSpec(
+            tabs = tabs,
+            selectedTabId = selectedTabId,
+            selectedSubTab = selectedSubTab
+        )
+    }
+    val safeSelectedIndex = spec.selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spec.horizontalPaddingDp.dp, vertical = 6.dp)
     ) {
-        items(tabs, key = { it.id }) { tab ->
-            val isSelected = tab.id == selectedTabId
-            val chipColors = resolveSpaceSelectionChipColors(
-                isSelected = isSelected,
-                colorScheme = colorScheme,
-                unselectedAlpha = 0f
-            )
-            if (isSelected) {
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .clickable { onSelect(tab.id) },
-                    shape = RoundedCornerShape(999.dp),
-                    color = chipColors.backgroundColor
-                ) {
-                    Text(
-                        text = tab.title,
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = chipColors.textColor
-                    )
-                }
-            } else {
-                Text(
-                    text = tab.title,
-                    modifier = Modifier
-                        .clickable { onSelect(tab.id) }
-                        .padding(vertical = 10.dp),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = chipColors.textColor
+        val viewportWidth = maxWidth
+
+        LaunchedEffect(spec.scrollable, safeSelectedIndex, spec.itemWidthDp, viewportWidth) {
+            val itemWidthDp = spec.itemWidthDp ?: return@LaunchedEffect
+            if (!spec.scrollable) return@LaunchedEffect
+            val target = with(density) {
+                resolveSpaceContributionTabCenteredScrollOffsetPx(
+                    selectedIndex = safeSelectedIndex,
+                    itemWidthPx = itemWidthDp.dp.toPx(),
+                    viewportWidthPx = viewportWidth.toPx()
                 )
             }
+            scrollState.animateScrollTo(target)
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (spec.scrollable) Modifier.horizontalScroll(scrollState) else Modifier)
+        ) {
+            BottomBarLiquidSegmentedControl(
+                items = tabs.map { it.title },
+                selectedIndex = safeSelectedIndex,
+                onSelected = { index ->
+                    tabs.getOrNull(index)?.let { onSelect(it.id) }
+                },
+                modifier = if (spec.scrollable) Modifier else Modifier.fillMaxWidth(),
+                itemWidth = spec.itemWidthDp?.dp,
+                height = spec.heightDp.dp,
+                indicatorHeight = spec.indicatorHeightDp.dp,
+                labelFontSize = 14.sp,
+                liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled,
+                dragSelectionEnabled = spec.dragSelectionEnabled
+            )
         }
     }
 }
@@ -2566,10 +2575,14 @@ private fun SpaceArticleListItem(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        if (article.image_urls.isNotEmpty()) {
+        val imageUrls = article.displayImageUrls()
+        if (imageUrls.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(article.image_urls.take(3)) { imageUrl ->
+                items(
+                    items = imageUrls.take(3),
+                    key = { it }
+                ) { imageUrl ->
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(FormatUtils.buildSizedImageUrl(imageUrl, width = 480, height = 320))

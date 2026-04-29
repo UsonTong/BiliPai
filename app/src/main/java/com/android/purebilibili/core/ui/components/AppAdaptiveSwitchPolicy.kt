@@ -107,6 +107,6 @@ internal fun resolveLiquidSwitchLayoutSpec(): LiquidSwitchLayoutSpec {
         thumbWidthDp = 34,
         thumbHeightDp = 22,
         thumbOffsetYDp = 0,
-        checkedThumbOffsetXDp = 21
+        checkedThumbOffsetXDp = 22
     )
 }

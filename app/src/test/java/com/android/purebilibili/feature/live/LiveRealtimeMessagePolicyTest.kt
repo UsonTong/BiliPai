@@ -124,6 +124,67 @@ class LiveRealtimeMessagePolicyTest {
         assertEquals(null, chat.item.emoticonUrl)
     }
 
+    @Test
+    fun `dm interaction vote emits readable chat card`() {
+        val action = resolveLiveRealtimeAction(
+            json(
+                """
+                {
+                  "cmd": "DM_INTERACTION",
+                  "data": {
+                    "type": 101,
+                    "data": "{\"question\":\"投票\",\"options\":[{\"idx\":1,\"desc\":\"赞成\",\"percent\":0.5},{\"idx\":2,\"desc\":\"弃权\",\"percent\":0.5}],\"left_duration\":60000}"
+                  }
+                }
+                """
+            )
+        )
+
+        val chat = assertIs<LiveRealtimeAction.EmitChat>(action)
+        assertEquals("投票：投票｜赞成 50% / 弃权 50%｜剩余 60s", chat.item.text)
+        assertEquals("投票", chat.item.uname)
+    }
+
+    @Test
+    fun `dm interaction follow aggregate emits readable chat card`() {
+        val action = resolveLiveRealtimeAction(
+            json(
+                """
+                {
+                  "cmd": "DM_INTERACTION",
+                  "data": {
+                    "type": 103,
+                    "data": "{\"cnt\":42,\"suffix_text\":\"人关注了主播\"}"
+                  }
+                }
+                """
+            )
+        )
+
+        val chat = assertIs<LiveRealtimeAction.EmitChat>(action)
+        assertEquals("已有 42 人关注了主播", chat.item.text)
+        assertEquals("关注", chat.item.uname)
+    }
+
+    @Test
+    fun `dm interaction invalid nested data is ignored`() {
+        val action = resolveLiveRealtimeAction(
+            json(
+                """
+                {
+                  "cmd": "DM_INTERACTION",
+                  "data": {
+                    "type": 101,
+                    "data": "{\"question\":"
+                  }
+                }
+                """
+            )
+        )
+
+        assertEquals(LiveRealtimeAction.Ignore, action)
+    }
+
     private fun liveDanmakuJson(): JsonObject {
         return liveDanmakuJson(text = "[热]", emotsKey = "[热]")
     }
