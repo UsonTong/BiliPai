@@ -1,15 +1,17 @@
 # 🔌 BiliPai 插件开发指南
 
-本文档面向想要为 BiliPai 创建自定义插件的开发者。BiliPai 提供了一个灵活的插件系统，支持两种类型的插件：
+本文档面向想要为 BiliPai 创建自定义插件的开发者。BiliPai 提供了一个灵活的插件系统，当前主要支持三种开发路径：
 
 | 类型 | 难度 | 适用场景 |
 |------|------|----------|
 | **JSON 规则插件** | ⭐ 简单 | 内容过滤、弹幕净化、关键词屏蔽 |
-| **原生 Kotlin 插件** | ⭐⭐⭐ 进阶 | 复杂功能、API 集成、自定义 UI |
+| **外部 `.bpplugin` Kotlin 包** | ⭐⭐ 预览 | 推荐算法、播放器/弹幕接口适配、能力授权流程验证 |
+| **源码级原生 Kotlin 插件** | ⭐⭐⭐ 进阶 | 复杂功能、API 集成、自定义 UI、立即运行的深度集成 |
 
 > [!CAUTION]
 > 当前仓库已内置 5 个内置插件，并支持通过 URL 导入外部 JSON 规则插件；但插件生态仍处于早期阶段。
 > `plugins/community/` 目前仅包含 1 个演示插件，社区规模和兼容性样本都还有限。
+> 外部 `.bpplugin` Kotlin 包当前支持预览、签名/哈希展示和能力授权记录，宿主尚不执行外部 Dex。
 > 引入第三方插件前请自行审阅规则内容、验证兼容性，并假设规则能力与导入体验会继续随版本迭代。
 
 ---
@@ -22,7 +24,11 @@
   - [字段参考](#字段参考)
   - [操作符大全](#操作符大全)
   - [示例插件](#示例插件)
-- [原生 Kotlin 插件](#-原生-kotlin-插件)
+- [外部 `.bpplugin` Kotlin 包（预览）](#-外部-bpplugin-kotlin-包预览)
+  - [开发步骤](#开发步骤)
+  - [推荐插件最小示例](#推荐插件最小示例)
+  - [打包为 `.bpplugin`](#打包为-bpplugin)
+- [源码级原生 Kotlin 插件](#-源码级原生-kotlin-插件)
   - [插件接口](#插件接口)
   - [插件类型](#插件类型)
 - [安装与分发](#-安装与分发)
@@ -267,7 +273,157 @@ JSON 规则插件是最简单的插件形式，只需编写一个 JSON 文件即
 
 ---
 
-## 🔧 原生 Kotlin 插件
+## 📦 外部 `.bpplugin` Kotlin 包（预览）
+
+外部 `.bpplugin` 是面向未来插件生态的 Kotlin 包格式。它适合提前开发推荐算法、播放器和弹幕接口适配，并验证插件包预览、签名展示和能力授权流程。
+
+> [!IMPORTANT]
+> 当前宿主只解析和保存 `.bpplugin`，不会执行外部 Dex。如果你需要插件立即影响应用行为，请使用[源码级原生 Kotlin 插件](#-源码级原生-kotlin-插件)。
+
+### 开发步骤
+
+1. 创建 Android Library 插件工程。
+2. 添加 SDK 依赖：
+
+```kotlin
+repositories {
+    google()
+    mavenCentral()
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    implementation("com.github.jay3-yy.BiliPai:plugin-sdk:<tag-or-commit>")
+}
+```
+
+3. 选择接口：
+   - `RecommendationPluginApi`：推荐队列排序和分组。
+   - `PlayerPluginApi`：播放器状态读取、跳过片段、跳转控制等预留接口。
+   - `DanmakuPluginApi`：弹幕过滤和样式化预留接口。
+4. 实现入口类，并声明 `PluginCapabilityManifest`。
+5. 在插件包根目录创建 `plugin-manifest.json`，字段与代码里的 `capabilityManifest` 保持一致。
+6. 编译插件模块，生成 `classes.jar`。
+7. 将 `plugin-manifest.json`、可选 `plugin-signature.json`、`classes.jar` 打包为 `.bpplugin`。
+8. 在 BiliPai 插件中心选择 `.bpplugin`，检查 manifest、SHA-256、签名状态和能力授权提示。
+
+完整 SDK 中文说明见：[Plugin SDK](../plugins/sdk/README.md)。
+
+### Manifest 示例
+
+`.bpplugin` 根目录必须包含 `plugin-manifest.json`：
+
+```json
+{
+  "pluginId": "dev.example.today_watch_remix",
+  "displayName": "Today Watch Remix",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entryClassName": "dev.example.todaywatchremix.TodayWatchRemixPlugin",
+  "capabilities": [
+    "RECOMMENDATION_CANDIDATES",
+    "LOCAL_HISTORY_READ"
+  ]
+}
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `pluginId` | 全局唯一 ID，建议使用反向域名 |
+| `displayName` | 插件中心展示名称 |
+| `version` | 插件版本 |
+| `apiVersion` | SDK API 版本，当前为 `1` |
+| `entryClassName` | 插件入口类完整类名 |
+| `capabilities` | 插件申请的能力 |
+
+### 能力说明
+
+| 能力 | 含义 |
+| --- | --- |
+| `RECOMMENDATION_CANDIDATES` | 读取推荐候选，用于排序或筛选 |
+| `LOCAL_HISTORY_READ` | 读取本地历史摘要和偏好画像 |
+| `LOCAL_FEEDBACK_READ` | 读取本地“不感兴趣”等反馈 |
+| `NETWORK` | 访问远程服务 |
+| `PLUGIN_STORAGE` | 读写插件本地配置或缓存 |
+| `PLAYER_STATE` / `PLAYER_CONTROL` | 读取或控制播放器 |
+| `DANMAKU_STREAM` / `DANMAKU_MUTATION` | 读取或改写弹幕 |
+
+敏感能力会在安装前要求用户确认。开发者应只申请当前插件确实需要的能力。
+
+### 推荐插件最小示例
+
+```kotlin
+class TodayWatchRemixPlugin : RecommendationPluginApi {
+    override val capabilityManifest = PluginCapabilityManifest(
+        pluginId = "dev.example.today_watch_remix",
+        displayName = "Today Watch Remix",
+        version = "1.0.0",
+        apiVersion = 1,
+        entryClassName = "dev.example.todaywatchremix.TodayWatchRemixPlugin",
+        capabilities = setOf(
+            PluginCapability.RECOMMENDATION_CANDIDATES,
+            PluginCapability.LOCAL_HISTORY_READ
+        )
+    )
+
+    override fun buildRecommendations(request: RecommendationRequest): RecommendationResult {
+        val ranked = request.candidateVideos
+            .filterNot { it.bvid in request.feedbackSignals.consumedBvids }
+            .sortedWith(compareByDescending<PluginVideoCandidate> { it.likeCount }.thenByDescending { it.playCount })
+            .take(request.queueLimit)
+            .mapIndexed { index, candidate ->
+                RecommendedVideo(
+                    video = candidate,
+                    score = 100.0 - index,
+                    confidence = 0.7f,
+                    explanation = "按点赞优先，其次按播放量排序"
+                )
+            }
+
+        return RecommendationResult(
+            sourcePluginId = capabilityManifest.pluginId,
+            mode = request.mode,
+            items = ranked,
+            historySampleCount = request.historyVideos.size,
+            sceneSignals = request.sceneSignals
+        )
+    }
+}
+```
+
+可直接运行的示例见：[Today Watch Remix](../plugins/samples/today-watch-remix/)。
+
+### 打包为 `.bpplugin`
+
+`.bpplugin` 本质是 ZIP 文件。最小包内容：
+
+```text
+today-watch-remix.bpplugin
+├── plugin-manifest.json
+└── classes.jar
+```
+
+Gradle 打包任务示例：
+
+```kotlin
+val packageBpPlugin by tasks.registering(Zip::class) {
+    dependsOn("assembleRelease")
+    archiveBaseName.set("today-watch-remix")
+    archiveExtension.set("bpplugin")
+    destinationDirectory.set(rootProject.layout.buildDirectory.dir("distributions"))
+
+    from(rootProject.layout.projectDirectory.file("plugin-manifest.json"))
+    from(layout.buildDirectory.file("intermediates/aar_main_jar/release/syncReleaseLibJars/classes.jar")) {
+        rename { "classes.jar" }
+    }
+}
+```
+
+构建后在 BiliPai 插件中心选择生成的 `.bpplugin`，确认插件名称、版本、SHA-256、签名状态和能力授权是否符合预期。
+
+---
+
+## 🔧 源码级原生 Kotlin 插件
 
 > ⚠️ 原生插件需要修改源码并重新编译，适合有 Android 开发经验的开发者
 

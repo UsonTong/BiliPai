@@ -38,7 +38,7 @@
 | --- | --- |
 | 开始使用 | [下载 Releases](https://github.com/jay3-yy/BiliPai/releases) · [更新日志](CHANGELOG.md) |
 | 文档导航 | [Wiki 首页](docs/wiki/README.md) · [AI / LLM 入口](llms.txt) · [AI 导航指南](docs/wiki/AI.md) |
-| 开发参考 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK](plugins/sdk/README.md) |
+| 开发参考 | [JSON / 外部插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK 中文文档](plugins/sdk/README.md) |
 | 插件生态 | [社区插件目录](plugins/community/README.md) · [插件示例](plugins/samples/) |
 
 > [!IMPORTANT]
@@ -105,7 +105,7 @@
 | --- | --- | --- |
 | **内置插件** | 已内置 5 个：空降助手、去广告、弹幕增强、夜间护眼、今日推荐单；由主应用一同编译和发布 | 参考 `app/src/main/java/com/android/purebilibili/feature/plugin/` 与插件中心实现 |
 | **JSON / `.bp` 规则插件** | 支持通过 URL 导入，适合推荐流过滤、弹幕过滤/高亮；`plugins/community/` 当前只有 1 个演示插件，兼容性样本仍有限 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [社区插件目录](plugins/community/README.md) |
-| **外部 `.bpplugin` Kotlin 包** | SDK 与包格式已提供，可解析 manifest、SHA-256、签名状态和能力申请，并保存授权记录；当前宿主不会执行外部 Dex | [Plugin SDK](plugins/sdk/README.md) · [Today Watch Remix 示例](plugins/samples/today-watch-remix/) |
+| **外部 `.bpplugin` Kotlin 包** | SDK 与包格式已提供，可解析 manifest、SHA-256、签名状态和能力申请，并保存授权记录；当前宿主不会执行外部 Dex | [Plugin SDK 中文文档](plugins/sdk/README.md) · [Today Watch Remix 示例](plugins/samples/today-watch-remix/) |
 | **源码级原生 Kotlin 插件** | 适合复杂播放器、推荐、弹幕或自定义 UI 能力；需要修改源码并重新编译 APK，接口仍以当前源码为准 | [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
 
 - 第三方插件接入前请审阅规则或包清单，尤其是 `NETWORK`、`LOCAL_HISTORY_READ`、`LOCAL_FEEDBACK_READ`、`PLAYER_CONTROL` 等敏感能力。
