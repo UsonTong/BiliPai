@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.android.purebilibili.core.theme.BottomBarColors
 import java.io.File
 import kotlin.test.Test
@@ -118,16 +119,43 @@ class BottomBarColorBindingPolicyTest {
     }
 
     @Test
-    fun `sliding content keeps selected hue instead of mixing with unselected black`() {
+    fun `sliding content color follows selection fraction continuously`() {
         val unselected = Color.Black
         val selected = Color(0xFFFF5F9A)
 
+        assertEquals(
+            lerp(unselected, selected, 0.35f),
+            resolveBottomBarSlidingContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0.35f,
+                isPending = false
+            )
+        )
+        assertEquals(
+            lerp(unselected, selected, 0.5f),
+            resolveBottomBarSlidingContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0.5f,
+                isPending = false
+            )
+        )
+        assertEquals(
+            lerp(unselected, selected, 0.75f),
+            resolveBottomBarSlidingContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0.75f,
+                isPending = false
+            )
+        )
         assertEquals(
             selected,
             resolveBottomBarSlidingContentColor(
                 unselectedColor = unselected,
                 selectedColor = selected,
-                selectionFraction = 0.35f,
+                selectionFraction = 1f,
                 isPending = false
             )
         )

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-30 · Synced to v8.0.0 RC (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-04-30 · Synced to v8.0.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0%20RC-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -430,13 +430,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.0 RC · 2026-04-30)
+### Latest (v8.0.0 · 2026-04-30)
 
-- 🖥️ Fixed tablet orientation after exiting fullscreen video/live playback, and unified video detail, live player, and tablet checks on stable device size classes.
-- ✨ Polished home UI presets, space pages, live categories, bottom liquid segmented controls, and settings structure.
-- 💬 Expanded command danmaku, realtime messages, audio mode, and reply component parsing, display behavior, and regression tests.
-- 🙌 Thanks to @chenx-dust for PR #253 and PR #260, and @jay3-yy for mainline integration and release notes.
-- 🔖 Bumped the app to `8.0.0 RC` with `versionCode` `172`.
+- 🔍 Moved search to WBI endpoints, added live-user/topic/photo search and topic detail pages, and tightened pagination, field cleanup, and navigation policy.
+- ✨ Aligned shared liquid segmented controls with the home bottom bar's Android-native liquid glass animation, including chromatic aberration, lens, shadows, and velocity deformation while avoiding idle ghosting.
+- 💬 Improved video comment back-to-top behavior, reply/fan-group decorations, video info layout, portrait detail behavior, and space content grids.
+- 🎨 Continued moving login, profile, settings, download, drawer, and selected home/live UI surfaces to theme tokens to reduce hardcoded color regressions.
+- 🔖 Bumped the app to `8.0.0` with `versionCode` `173`.
 
 ---
 

@@ -614,10 +614,10 @@ private fun DrawScope.drawLiquidSphereSurface(
         drawRect(
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    Color(0xFF3DA8FF).copy(alpha = fringe),
+                    lerp(baseColor, Color.White, 0.45f).copy(alpha = fringe),
                     Color.Transparent,
                     Color.Transparent,
-                    Color(0xFFFF4F8F).copy(alpha = fringe)
+                    lerp(baseColor, Color.Black, 0.18f).copy(alpha = fringe)
                 )
             )
         )

@@ -4,6 +4,9 @@ import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.data.model.response.ReplyContent
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.ReplyMember
+import com.android.purebilibili.data.model.response.ReplySailingCardBg
+import com.android.purebilibili.data.model.response.ReplySailingFan
+import com.android.purebilibili.data.model.response.ReplyUserSailing
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -127,7 +130,7 @@ class SubReplyDetailPresentationPolicyTest {
     @Test
     fun `auxiliary label should prefer garb card number when available`() {
         assertEquals(
-            "NO.013992",
+            "CO.013992",
             resolveSubReplyAuxiliaryLabel(
                 item = buildReply(
                     message = "test",
@@ -143,6 +146,30 @@ class SubReplyDetailPresentationPolicyTest {
             null,
             resolveSubReplyAuxiliaryLabel(
                 item = buildReply(message = "test")
+            )
+        )
+    }
+
+    @Test
+    fun `auxiliary label should read user sailing fan number when legacy garb field is missing`() {
+        assertEquals(
+            "CO.008502",
+            resolveSubReplyAuxiliaryLabel(
+                item = buildReply(
+                    message = "test",
+                    userSailingV2 = ReplyUserSailing(
+                        cardBg = ReplySailingCardBg(
+                            image = "https://example.com/fan.png",
+                            fan = ReplySailingFan(
+                                isFan = 1,
+                                number = 8502,
+                                color = "#7B7F88",
+                                name = "测试装扮",
+                                numDesc = "008502"
+                            )
+                        )
+                    )
+                )
             )
         )
     }
@@ -203,6 +230,7 @@ class SubReplyDetailPresentationPolicyTest {
         rpid: Long = 200L,
         message: String,
         garbCardNumber: String = "",
+        userSailingV2: ReplyUserSailing? = null,
         parent: Long = 0L,
         dialog: Long = 0L
     ): ReplyItem {
@@ -213,7 +241,8 @@ class SubReplyDetailPresentationPolicyTest {
             member = ReplyMember(
                 mid = "12",
                 uname = "ReplyUser",
-                garbCardNumber = garbCardNumber
+                garbCardNumber = garbCardNumber,
+                userSailingV2 = userSailingV2
             ),
             content = ReplyContent(message = message)
         )

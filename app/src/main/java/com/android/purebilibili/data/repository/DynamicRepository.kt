@@ -237,6 +237,42 @@ object DynamicRepository {
     ): Boolean {
         return feedPagination.hasMore(scope, type)
     }
+
+    suspend fun getDynamicUpdateCount(
+        scope: DynamicFeedScope = DynamicFeedScope.DYNAMIC_SCREEN,
+        type: String = "all",
+        advanceBaseline: Boolean = true
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val updateBaseline = feedPagination.updateBaseline(scope, type)
+            val response = fetchDynamicFeedPageWithRetry {
+                NetworkModule.dynamicApi.getDynamicFeed(
+                    type = type,
+                    offset = "",
+                    updateBaseline = updateBaseline
+                )
+            }.getOrElse { error ->
+                return@withContext Result.failure(error)
+            }
+            val data = response.data ?: return@withContext Result.failure(Exception("动态更新数为空"))
+            val nextBaseline = resolveDynamicUpdateCountBaseline(
+                currentBaseline = updateBaseline,
+                responseBaseline = data.update_baseline,
+                advanceBaseline = advanceBaseline
+            )
+            if (nextBaseline.isNotBlank() && nextBaseline != updateBaseline) {
+                feedPagination.updateBaseline(
+                    scope = scope,
+                    type = type,
+                    updateBaseline = nextBaseline
+                )
+            }
+            Result.success(data.update_num.coerceAtLeast(0))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
     
     /**
      *  [新增] 用户动态是否还有更多
@@ -317,6 +353,16 @@ object DynamicRepository {
     }
 }
 
+internal fun resolveDynamicUpdateCountBaseline(
+    currentBaseline: String,
+    responseBaseline: String,
+    advanceBaseline: Boolean
+): String {
+    if (responseBaseline.isBlank()) return currentBaseline
+    if (advanceBaseline) return responseBaseline
+    return currentBaseline.ifBlank { responseBaseline }
+}
+
 enum class DynamicFeedScope {
     DYNAMIC_SCREEN,
     HOME_FOLLOW
@@ -361,6 +407,16 @@ internal class DynamicFeedPaginationRegistry {
 
     fun updateBaseline(scope: DynamicFeedScope, type: String = "all"): String {
         return stateByScope[DynamicFeedPaginationKey(scope = scope, type = type)]?.updateBaseline.orEmpty()
+    }
+
+    fun updateBaseline(
+        scope: DynamicFeedScope,
+        type: String = "all",
+        updateBaseline: String
+    ) {
+        val key = DynamicFeedPaginationKey(scope = scope, type = type)
+        val current = stateByScope[key] ?: DynamicPaginationState()
+        stateByScope[key] = current.copy(updateBaseline = updateBaseline)
     }
 
     fun hasMore(scope: DynamicFeedScope, type: String = "all"): Boolean {

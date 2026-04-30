@@ -2,7 +2,11 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.FullscreenMode
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackSettingsSelectionPolicyTest {
@@ -163,5 +167,31 @@ class PlaybackSettingsSelectionPolicyTest {
             ),
             ratios
         )
+    }
+
+    @Test
+    fun `resolvePortraitPlayerCollapseModeSegmentOptions should expose all scroll collapse modes`() {
+        val modes = resolvePortraitPlayerCollapseModeSegmentOptions().map { it.value }
+        assertEquals(
+            listOf(
+                PortraitPlayerCollapseMode.OFF,
+                PortraitPlayerCollapseMode.INTRO_ONLY,
+                PortraitPlayerCollapseMode.COMMENT_ONLY,
+                PortraitPlayerCollapseMode.BOTH
+            ),
+            modes
+        )
+    }
+
+    @Test
+    fun `fullscreen swipe seek setting should use adaptive switch style`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
+            .readText()
+        val block = source
+            .substringAfter("text = \"横屏滑动快进/快退步长\"")
+            .substringBefore("val seekStepOptions = listOf(")
+
+        assertTrue(block.contains("AppAdaptiveSwitch("))
+        assertFalse(Regex("""(?m)^\s*Switch\(""").containsMatchIn(block))
     }
 }

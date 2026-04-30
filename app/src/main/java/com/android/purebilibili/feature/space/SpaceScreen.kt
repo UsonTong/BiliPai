@@ -129,7 +129,7 @@ fun SpaceScreen(
     onPlayAllAudioClick: ((String) -> Unit)? = null,
     onDynamicDetailClick: (String) -> Unit = {},
     onArticleClick: (Long, String) -> Unit = { _, _ -> },
-    onViewAllClick: (String, Long, Long, String) -> Unit = { _, _, _, _ -> },
+    onViewAllClick: (String, Long, Long, String, String) -> Unit = { _, _, _, _, _ -> },
     viewModel: SpaceViewModel = viewModel(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
@@ -544,7 +544,7 @@ private fun SpaceContent(
     onPlayAllAudioClick: ((String) -> Unit)?,
     onDynamicDetailClick: (String) -> Unit,
     onArticleClick: (Long, String) -> Unit,
-    onViewAllClick: (String, Long, Long, String) -> Unit,
+    onViewAllClick: (String, Long, Long, String, String) -> Unit,
     onMainTabSelected: (SpaceMainTab) -> Unit,
     onContributionTabSelected: (String) -> Unit,
     onCategorySelected: (Int) -> Unit,
@@ -680,7 +680,11 @@ private fun SpaceContent(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 168.dp),
+        columns = GridCells.Fixed(
+            resolveSpaceContentGridColumnCount(
+                widthDp = LocalConfiguration.current.screenWidthDp
+            )
+        ),
         state = gridState,
         modifier = Modifier
             .fillMaxSize()
@@ -766,7 +770,13 @@ private fun SpaceContent(
                         SpaceFavoriteFolderRow(
                             folder = folder,
                             onClick = {
-                                onViewAllClick("favorite", folder.id, state.userInfo.mid, folder.title)
+                                onViewAllClick(
+                                    "favorite",
+                                    folder.id,
+                                    state.userInfo.mid,
+                                    folder.title,
+                                    state.userInfo.name
+                                )
                             }
                         )
                     }
@@ -1075,14 +1085,11 @@ private fun SpaceContent(
 
                         items(
                             items = state.videos,
-                            key = { "space_video_${it.bvid}_${it.aid}" },
-                            span = { GridItemSpan(maxLineSpan) }
+                            key = { "space_video_${it.bvid}_${it.aid}" }
                         ) { video ->
-                            SpaceVideoListItemRow(
+                            SpaceHomeVideoCard(
                                 video = video,
-                                onClick = { playVideoFromSpace(video.bvid) },
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope
+                                onClick = { playVideoFromSpace(video.bvid) }
                             )
                         }
 
@@ -1173,7 +1180,8 @@ private fun SpaceContent(
                                         "season",
                                         selectedContributionTab.seasonId,
                                         state.userInfo.mid,
-                                        selectedContributionTab.title
+                                        selectedContributionTab.title,
+                                        state.userInfo.name
                                     )
                                 }
                             )
@@ -1220,7 +1228,8 @@ private fun SpaceContent(
                                         "series",
                                         selectedContributionTab.seriesId,
                                         state.userInfo.mid,
-                                        selectedContributionTab.title
+                                        selectedContributionTab.title,
+                                        state.userInfo.name
                                     )
                                 }
                             )
@@ -1290,7 +1299,13 @@ private fun SpaceContent(
                         SpaceFavoriteFolderRow(
                             folder = folder,
                             onClick = {
-                                onViewAllClick("favorite", folder.id, state.userInfo.mid, folder.title)
+                                onViewAllClick(
+                                    "favorite",
+                                    folder.id,
+                                    state.userInfo.mid,
+                                    folder.title,
+                                    state.userInfo.name
+                                )
                             }
                         )
                     }
@@ -1312,7 +1327,13 @@ private fun SpaceContent(
                         SpaceFavoriteFolderRow(
                             folder = folder,
                             onClick = {
-                                onViewAllClick("favorite", folder.id, state.userInfo.mid, folder.title)
+                                onViewAllClick(
+                                    "favorite",
+                                    folder.id,
+                                    state.userInfo.mid,
+                                    folder.title,
+                                    state.userInfo.name
+                                )
                             }
                         )
                     }
@@ -1388,7 +1409,8 @@ private fun SpaceContent(
                                     "season",
                                     season.meta.season_id,
                                     state.userInfo.mid,
-                                    season.meta.name
+                                    season.meta.name,
+                                    state.userInfo.name
                                 )
                             }
                         )
@@ -1422,7 +1444,8 @@ private fun SpaceContent(
                                     "series",
                                     series.meta.series_id,
                                     state.userInfo.mid,
-                                    series.meta.name
+                                    series.meta.name,
+                                    state.userInfo.name
                                 )
                             }
                         )
@@ -1445,7 +1468,13 @@ private fun SpaceContent(
                         SpaceFavoriteFolderRow(
                             folder = folder,
                             onClick = {
-                                onViewAllClick("favorite", folder.id, state.userInfo.mid, folder.title)
+                                onViewAllClick(
+                                    "favorite",
+                                    folder.id,
+                                    state.userInfo.mid,
+                                    folder.title,
+                                    state.userInfo.name
+                                )
                             }
                         )
                     }
@@ -1467,7 +1496,13 @@ private fun SpaceContent(
                         SpaceFavoriteFolderRow(
                             folder = folder,
                             onClick = {
-                                onViewAllClick("favorite", folder.id, state.userInfo.mid, folder.title)
+                                onViewAllClick(
+                                    "favorite",
+                                    folder.id,
+                                    state.userInfo.mid,
+                                    folder.title,
+                                    state.userInfo.name
+                                )
                             }
                         )
                     }
@@ -1811,8 +1846,6 @@ private fun SpaceMainTabRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = spec.horizontalPaddingDp.dp),
-            height = spec.heightDp.dp,
-            indicatorHeight = spec.indicatorHeightDp.dp,
             labelFontSize = 14.sp,
             liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled
         )
@@ -1874,8 +1907,6 @@ private fun SpaceContributionTabRow(
                 },
                 modifier = if (spec.scrollable) Modifier else Modifier.fillMaxWidth(),
                 itemWidth = spec.itemWidthDp?.dp,
-                height = spec.heightDp.dp,
-                indicatorHeight = spec.indicatorHeightDp.dp,
                 labelFontSize = 14.sp,
                 liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled,
                 dragSelectionEnabled = spec.dragSelectionEnabled
@@ -2253,28 +2284,6 @@ private fun SpaceNoticeCard(notice: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-}
-
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-private fun SpaceVideoListItemRow(
-    video: SpaceVideoItem,
-    onClick: () -> Unit,
-    sharedTransitionScope: SharedTransitionScope?,
-    animatedVisibilityScope: AnimatedVisibilityScope?
-) {
-    SpaceArchiveListItemRow(
-        title = video.title,
-        cover = video.pic,
-        duration = video.length,
-        publishTime = FormatUtils.formatPublishTime(video.created),
-        play = video.play.toLong(),
-        secondaryCount = video.comment.toLong(),
-        onClick = onClick,
-        sharedTransitionKey = video.bvid,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope
-    )
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)

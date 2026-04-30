@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -95,8 +96,8 @@ class PortraitDetailPresentationPolicyTest {
     fun inlinePortraitScrollTransform_respectsSettingEvenForOfficialMode() {
         assertFalse(
             shouldEnableInlinePortraitScrollTransform(
-                swipeHidePlayerEnabled = false,
-                useOfficialInlinePortraitDetailExperience = true
+                collapseMode = PortraitPlayerCollapseMode.OFF,
+                selectedTabIndex = 0
             )
         )
     }
@@ -122,26 +123,45 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayer_keepsExpandedWhenCommentTabSelectedForVerticalVideo() {
+    fun inlinePortraitPlayer_keepsExpandedAtCommentTopThenCompactsWhenCommentScrollsDown() {
         assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
-                isPortraitFullscreen = false
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 0,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
+            )
+        )
+        assertTrue(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 0,
+                firstVisibleItemScrollOffset = 80,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
         assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 0,
-                isPortraitFullscreen = false
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
         assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
-                isPortraitFullscreen = true
+                isPortraitFullscreen = true,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
     }
@@ -153,7 +173,8 @@ class PortraitDetailPresentationPolicyTest {
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 0,
                 isPortraitFullscreen = false,
-                isCommentThreadVisible = true
+                isCommentThreadVisible = true,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
         assertFalse(
@@ -161,7 +182,8 @@ class PortraitDetailPresentationPolicyTest {
                 useOfficialInlinePortraitDetailExperience = false,
                 selectedTabIndex = 0,
                 isPortraitFullscreen = false,
-                isCommentThreadVisible = true
+                isCommentThreadVisible = true,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
     }
@@ -174,7 +196,8 @@ class PortraitDetailPresentationPolicyTest {
                 selectedTabIndex = 0,
                 isPortraitFullscreen = false,
                 firstVisibleItemIndex = 0,
-                firstVisibleItemScrollOffset = 80
+                firstVisibleItemScrollOffset = 80,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
         assertFalse(
@@ -183,7 +206,52 @@ class PortraitDetailPresentationPolicyTest {
                 selectedTabIndex = 0,
                 isPortraitFullscreen = false,
                 firstVisibleItemIndex = 0,
-                firstVisibleItemScrollOffset = 20
+                firstVisibleItemScrollOffset = 20,
+                collapseMode = PortraitPlayerCollapseMode.BOTH
+            )
+        )
+    }
+
+    @Test
+    fun inlinePortraitPlayerCollapseMode_limitsIntroAndCommentTriggers() {
+        assertTrue(
+            shouldUseCompactInlinePortraitPlayerForIntroScroll(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 0,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY
+            )
+        )
+        assertFalse(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY
+            )
+        )
+        assertFalse(
+            shouldUseCompactInlinePortraitPlayerForIntroScroll(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 0,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY
+            )
+        )
+        assertTrue(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY
             )
         )
     }

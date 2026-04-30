@@ -251,8 +251,6 @@ private fun <T> IOSSlidingSegmentedControlImpl(
         },
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        height = 46.dp,
-        indicatorHeight = 40.dp,
         labelFontSize = 12.sp
     )
 }

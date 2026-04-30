@@ -4,7 +4,9 @@ package com.android.purebilibili.feature.video.ui.section
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -27,6 +29,7 @@ import coil.request.ImageRequest
 //  已改用 MaterialTheme.colorScheme.primary
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.UgcSeason
+import com.android.purebilibili.data.model.response.VideoStaff
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.data.model.response.VideoTag
 import com.android.purebilibili.core.ui.common.copyOnLongPress
@@ -192,6 +195,9 @@ fun VideoTitleWithDesc(
             onlineCount = onlineCount
         )
     }
+    val videoBadges = remember(info.isUpowerExclusive, info.isUpowerPreview, info.isCooperation) {
+        resolveVideoDetailBadges(info)
+    }
     
     //  尝试获取共享元素作用域
     val sharedTransitionScope = com.android.purebilibili.core.ui.LocalSharedTransitionScope.current
@@ -334,6 +340,21 @@ fun VideoTitleWithDesc(
             )
         }
 
+        if (videoBadges.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                videoBadges.forEach { badge ->
+                    VideoDetailBadgeChip(
+                        text = badge,
+                        emphasized = badge.startsWith("充电专属")
+                    )
+                }
+            }
+        }
+
         if (publishTimeRowText.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
             if (emphasizePublishTime) {
@@ -440,6 +461,37 @@ fun VideoTitleWithDesc(
     }
 }
 
+@Composable
+private fun VideoDetailBadgeChip(
+    text: String,
+    emphasized: Boolean
+) {
+    val containerColor = if (emphasized) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
+    }
+    val contentColor = if (emphasized) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
 /**
  * UP Owner Info Section (Bilibili official style: blue UP tag)
  */
@@ -472,174 +524,280 @@ fun UpInfoSection(
         videoCount = videoCount
     )
     val showInlineOwnerIdentity = shouldShowInlineOwnerIdentity(showOwnerAvatar = showOwnerAvatar)
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .clickable { onUpClick(info.owner.mid) }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        if (showOwnerAvatar) {
-            var avatarModifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onUpClick(info.owner.mid) }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showOwnerAvatar) {
+                var avatarModifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
 
+                if (metadataSharedEnabled) {
+                    with(requireNotNull(sharedTransitionScope)) {
+                        avatarModifier = avatarModifier.sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "video_avatar_${info.bvid}"),
+                            animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                            boundsTransform = { _, _ ->
+                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
+                            },
+                            clipInOverlayDuringTransition = OverlayClip(CircleShape)
+                        )
+                    }
+                }
+
+                if (info.owner.face.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(FormatUtils.fixImageUrl(info.owner.face))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "UP主头像",
+                        modifier = avatarModifier,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = avatarModifier,
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.PersonCropCircle,
+                            contentDescription = "UP主标识",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            } else {
+                UserUpBadge()
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // UP owner name row
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    //  共享元素过渡 - UP主名称
+                    //  [调整] 确保 sharedBounds 在交互修饰符之前应用
+                    var upNameModifier: Modifier = Modifier
+
+                    if (metadataSharedEnabled) {
+                        with(requireNotNull(sharedTransitionScope)) {
+                            upNameModifier = upNameModifier.sharedBounds(
+                                sharedContentState = rememberSharedContentState(key = "video_up_${info.bvid}"),
+                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                                boundsTransform = { _, _ ->
+                                    androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
+                                }
+                            )
+                        }
+                    }
+
+                    //  添加交互修饰符 (放在 sharedBounds 之后，使其包含在 sharedBounds 内部)
+                    upNameModifier = upNameModifier.copyOnLongPress(info.owner.name, "UP主名称")
+
+                    if (showInlineOwnerIdentity) {
+                        if (info.owner.face.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(FormatUtils.fixImageUrl(info.owner.face))
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "UP主头像",
+                                modifier = Modifier
+                                    .padding(horizontal = 2.dp)
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            UserUpBadge(modifier = Modifier.padding(horizontal = 2.dp))
+                        }
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = info.owner.name,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = upNameModifier
+                    )
+                }
+                if (!upStatsText.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = upStatsText,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            var followActionModifier = Modifier.height(36.dp)
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
-                    avatarModifier = avatarModifier.sharedBounds(
-                        sharedContentState = rememberSharedContentState(key = "video_avatar_${info.bvid}"),
+                    followActionModifier = followActionModifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "video_up_action_${info.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
                             androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
                         },
-                        clipInOverlayDuringTransition = OverlayClip(CircleShape)
+                        clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(16.dp))
                     )
                 }
             }
 
-            if (info.owner.face.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(FormatUtils.fixImageUrl(info.owner.face))
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "UP主头像",
-                    modifier = avatarModifier,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = avatarModifier,
-                    contentAlignment = Alignment.Center
+            // Follow button
+            val followVisualPolicy = remember(isFollowing) {
+                resolveVideoFollowVisualPolicy(isFollowing = isFollowing)
+            }
+            Surface(
+                onClick = onFollowClick,
+                color = when (followVisualPolicy.detailButtonTone) {
+                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
+                },
+                shape = RoundedCornerShape(18.dp),
+                modifier = followActionModifier
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
-                    Icon(
-                        imageVector = CupertinoIcons.Default.PersonCropCircle,
-                        contentDescription = "UP主标识",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                    if (!isFollowing) {
+                        Icon(
+                            CupertinoIcons.Default.Plus,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(2.dp))
+                    }
+                    Text(
+                        text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
+                        fontSize = 13.sp,
+                        color = when (followVisualPolicy.detailTextTone) {
+                            FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
+                            FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
-        } else {
-            UserUpBadge()
         }
-        
-        Spacer(Modifier.width(10.dp))
-        
-        // UP owner name row
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                //  共享元素过渡 - UP主名称
-                //  [调整] 确保 sharedBounds 在交互修饰符之前应用
-                var upNameModifier: Modifier = Modifier
-                
-                if (metadataSharedEnabled) {
-                    with(requireNotNull(sharedTransitionScope)) {
-                        upNameModifier = upNameModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "video_up_${info.bvid}"),
-                            animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            }
-                        )
-                    }
-                }
-                
-                //  添加交互修饰符 (放在 sharedBounds 之后，使其包含在 sharedBounds 内部)
-                upNameModifier = upNameModifier.copyOnLongPress(info.owner.name, "UP主名称")
+        if (shouldShowCreatorTeamSection(info)) {
+            CreatorTeamSection(
+                staff = info.staff,
+                onMemberClick = onUpClick
+            )
+        }
+    }
+}
 
-                if (showInlineOwnerIdentity) {
-                    if (info.owner.face.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(FormatUtils.fixImageUrl(info.owner.face))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "UP主头像",
-                            modifier = Modifier
-                                .padding(horizontal = 2.dp)
-                                .size(18.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        UserUpBadge(modifier = Modifier.padding(horizontal = 2.dp))
-                    }
-                    Spacer(Modifier.width(4.dp))
-                }
-                Text(
-                    text = info.owner.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = upNameModifier
+@Composable
+private fun CreatorTeamSection(
+    staff: List<VideoStaff>,
+    onMemberClick: (Long) -> Unit
+) {
+    if (staff.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "创作团队",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "共 ${staff.size} 位",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            staff.forEach { member ->
+                CreatorTeamMemberChip(
+                    member = member,
+                    onClick = { onMemberClick(member.mid) }
                 )
             }
-            if (!upStatsText.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
+        }
+    }
+}
+
+@Composable
+private fun CreatorTeamMemberChip(
+    member: VideoStaff,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = member.mid > 0L, onClick = onClick)
+            .padding(end = 4.dp)
+            .heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(FormatUtils.fixImageUrl(member.face))
+                .crossfade(true)
+                .build(),
+            contentDescription = "${member.name} 头像",
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier = Modifier.widthIn(min = 64.dp, max = 112.dp)
+        ) {
+            Text(
+                text = member.name,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (member.title.isNotBlank()) {
                 Text(
-                    text = upStatsText,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                    text = member.title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        
-        var followActionModifier = Modifier.height(36.dp)
-        if (metadataSharedEnabled) {
-            with(requireNotNull(sharedTransitionScope)) {
-                followActionModifier = followActionModifier.sharedBounds(
-                    sharedContentState = rememberSharedContentState(key = "video_up_action_${info.bvid}"),
-                    animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                    boundsTransform = { _, _ ->
-                        androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                    },
-                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(16.dp))
-                )
-            }
-        }
-
-        // Follow button
-        val followVisualPolicy = remember(isFollowing) {
-            resolveVideoFollowVisualPolicy(isFollowing = isFollowing)
-        }
-        Surface(
-            onClick = onFollowClick,
-            color = when (followVisualPolicy.detailButtonTone) {
-                FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
-                FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
-            },
-            shape = RoundedCornerShape(18.dp),
-            modifier = followActionModifier
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                if (!isFollowing) {
-                    Icon(
-                        CupertinoIcons.Default.Plus,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(2.dp))
-                }
-                Text(
-                    text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
-                    fontSize = 13.sp,
-                    color = when (followVisualPolicy.detailTextTone) {
-                        FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
-                        FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
-                    },
-                    fontWeight = FontWeight.Medium
                 )
             }
         }

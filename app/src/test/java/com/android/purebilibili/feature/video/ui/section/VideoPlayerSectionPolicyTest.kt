@@ -551,13 +551,23 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun longPressSpeed_clampsHiResToCompatibilityLimit() {
+    fun longPressSpeed_keepsHiResAtConfiguredSpeed() {
         val effective = resolveEffectiveLongPressSpeed(
             requestedSpeed = 3.0f,
             currentAudioQuality = 30251
         )
 
-        assertTrue(effective == 1.5f)
+        assertTrue(effective == 3.0f)
+    }
+
+    @Test
+    fun longPressSpeed_honorsConfiguredSpeedForHiResAudio() {
+        val effective = resolveEffectiveLongPressSpeed(
+            requestedSpeed = 2.5f,
+            currentAudioQuality = 30251
+        )
+
+        assertEquals(2.5f, effective)
     }
 
     @Test
@@ -571,7 +581,7 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun longPressSpeed_keepsRequestedSpeedWithinCompatibilityLimit() {
+    fun longPressSpeed_keepsRequestedLowSpeed() {
         val effective = resolveEffectiveLongPressSpeed(
             requestedSpeed = 1.25f,
             currentAudioQuality = 30280
@@ -592,13 +602,13 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun longPressPlaybackParameters_clampHiResSpeedBeforeApplyingPitchSafePlayback() {
+    fun longPressPlaybackParameters_keepHiResConfiguredSpeedWithNaturalPitch() {
         val parameters = resolveLongPressPlaybackParameters(
             requestedSpeed = 3.0f,
             currentAudioQuality = 30251
         )
 
-        assertEquals(PlaybackParameters(1.5f, 1.0f), parameters)
+        assertEquals(PlaybackParameters(3.0f, 1.0f), parameters)
     }
 
     @Test
@@ -642,7 +652,7 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun hiResLongPressCompatHint_showsOnlyWhenClampHappensFirstTime() {
+    fun longPressCompatHint_showsOnlyWhenRuntimeSpeedIsReducedFirstTime() {
         assertTrue(
             shouldShowHiResLongPressCompatHint(
                 requestedSpeed = 3.0f,
@@ -653,7 +663,7 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun hiResLongPressCompatHint_staysSilentAfterFirstReminderOrWithoutClamp() {
+    fun longPressCompatHint_staysSilentAfterFirstReminderOrWithoutRuntimeReduction() {
         assertFalse(
             shouldShowHiResLongPressCompatHint(
                 requestedSpeed = 3.0f,

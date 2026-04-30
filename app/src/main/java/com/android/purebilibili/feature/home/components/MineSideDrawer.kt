@@ -138,6 +138,7 @@ fun MineSideDrawer(
         )
     }
     val palette = resolveDrawerGlassPalette(isDark = isDark, blurEnabled = effectiveBlurActive)
+    val colorScheme = MaterialTheme.colorScheme
     val downloadIcon = rememberAppDownloadIcon()
     val historyIcon = rememberAppHistoryIcon()
     val tvIcon = rememberAppTvIcon()
@@ -147,26 +148,26 @@ fun MineSideDrawer(
     val chevronForwardIcon = rememberAppChevronForwardIcon()
 
     // 动态文字颜色
-    val activeContentColor = if (isDark) Color(0xFFF8FAFF) else Color(0xFF101114)
+    val activeContentColor = colorScheme.onSurface
     // 动态次级文字/图标颜色
-    val secondaryContentColor = if (isDark) Color(0xFFC4C8D1) else Color(0xFF2E2F33).copy(alpha = 0.86f)
+    val secondaryContentColor = colorScheme.onSurfaceVariant.copy(alpha = if (isDark) 0.92f else 0.86f)
     // 动态分割线颜色
-    val dividerColor = if (isDark) Color.White.copy(alpha = palette.dividerAlpha) else Color.Black.copy(alpha = palette.dividerAlpha)
+    val dividerColor = colorScheme.outlineVariant.copy(alpha = palette.dividerAlpha)
     val drawerBaseColor = if (chromeSpec.preferOpaqueMd3Container) {
-        MaterialTheme.colorScheme.surfaceContainer
+        colorScheme.surfaceContainer
     } else if (isDark) {
-        Color(0xFF0B0D12).copy(alpha = palette.drawerBaseAlpha)
+        colorScheme.surface.copy(alpha = palette.drawerBaseAlpha)
     } else {
-        Color.White.copy(alpha = palette.drawerBaseAlpha)
+        colorScheme.surface.copy(alpha = palette.drawerBaseAlpha)
     }
     val itemSurfaceColor = if (chromeSpec.preferOpaqueMd3Container) {
-        MaterialTheme.colorScheme.surfaceContainerHigh
+        colorScheme.surfaceContainerHigh
     } else if (isDark) {
-        Color.White.copy(alpha = palette.itemSurfaceAlpha)
+        colorScheme.surfaceContainerHigh.copy(alpha = palette.itemSurfaceAlpha)
     } else {
-        Color(0xFFFDFEFF).copy(alpha = palette.itemSurfaceAlpha)
+        colorScheme.surfaceContainerHigh.copy(alpha = palette.itemSurfaceAlpha)
     }
-    val itemBorderColor = if (isDark) Color.White.copy(alpha = palette.itemBorderAlpha) else Color.Black.copy(alpha = palette.itemBorderAlpha)
+    val itemBorderColor = colorScheme.outlineVariant.copy(alpha = palette.itemBorderAlpha)
     val chevronColor = secondaryContentColor.copy(alpha = if (isDark) 0.92f else 0.84f)
 
     // 使用 Surface 替代 ModalDrawerSheet 以绕过最小宽度限制 (240dp)
@@ -200,14 +201,14 @@ fun MineSideDrawer(
                     brush = Brush.verticalGradient(
                         colors = if (isDark) {
                             listOf(
-                                Color.White.copy(alpha = 0.05f),
+                                colorScheme.onSurface.copy(alpha = 0.05f),
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.08f)
+                                colorScheme.scrim.copy(alpha = 0.08f)
                             )
                         } else {
                             listOf(
-                                Color.White.copy(alpha = 0.18f),
-                                Color.White.copy(alpha = 0.06f),
+                                colorScheme.onSurface.copy(alpha = 0.18f),
+                                colorScheme.onSurface.copy(alpha = 0.06f),
                                 Color.Transparent
                             )
                         }
@@ -279,12 +280,12 @@ fun MineSideDrawer(
                                 // VIP 徽章
                                 if (user.isVip) {
                                     Surface(
-                                        color = Color(0xFFFB7299),
+                                        color = colorScheme.primary,
                                         shape = RoundedCornerShape(4.dp)
                                     ) {
                                         Text(
                                             text = "大会员",
-                                            color = Color.White,
+                                            color = colorScheme.onPrimary,
                                             fontSize = layoutPolicy.badgeFontSp.sp,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -416,8 +417,8 @@ fun MineSideDrawer(
                         icon = logoutIcon,
                         title = "退出登录",
                         onClick = { closeAndRun(onLogout) },
-                        iconTint = Color(0xFFFF453A), // iOS 红色
-                        textColor = Color(0xFFFF453A),
+                        iconTint = colorScheme.error,
+                        textColor = colorScheme.error,
                         valueColor = secondaryContentColor,
                         chevronTint = chevronColor
                     )

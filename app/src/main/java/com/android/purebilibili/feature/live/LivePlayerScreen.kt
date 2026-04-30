@@ -1482,8 +1482,6 @@ private fun LivePrimaryInteractionPanel(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                height = segmentedSpec.heightDp.dp,
-                indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
                 labelFontSize = segmentedSpec.labelFontSizeSp.sp
             )
         }

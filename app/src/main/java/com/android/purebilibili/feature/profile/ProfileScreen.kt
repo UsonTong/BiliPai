@@ -1546,21 +1546,47 @@ fun StatItem(
 
 @Composable
 fun VipBannerSection(user: UserState) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .height(60.dp)
             .clip(RoundedCornerShape(8.dp))
-            //  保持 VIP 金色，因为这是品牌色，不需要随深色模式变黑
-            .background(Brush.horizontalGradient(colors = listOf(Color(0xFFFFEECC), Color(0xFFFFCC99))))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        colorScheme.tertiaryContainer,
+                        colorScheme.primaryContainer
+                    )
+                )
+            )
     ) {
-        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Column {
-                Text(if (user.isVip) "尊贵的大会员" else "成为大会员", color = Color(0xFF8B5A2B), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("硬币: ${user.coin}   B币: ${user.bcoin}", color = Color(0xFF8B5A2B).copy(alpha = 0.8f), fontSize = 11.sp)
+                Text(
+                    text = if (user.isVip) "尊贵的大会员" else "成为大会员",
+                    color = colorScheme.onTertiaryContainer,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "硬币: ${user.coin}   B币: ${user.bcoin}",
+                    color = colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                    fontSize = 11.sp
+                )
             }
-            Text(if (user.isVip) "续费 >" else "开通 >", color = Color(0xFF8B5A2B), fontSize = 12.sp)
+            Text(
+                text = if (user.isVip) "续费 >" else "开通 >",
+                color = colorScheme.onTertiaryContainer,
+                fontSize = 12.sp
+            )
         }
     }
 }

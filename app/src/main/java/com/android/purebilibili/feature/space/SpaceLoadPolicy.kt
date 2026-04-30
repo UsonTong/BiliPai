@@ -100,13 +100,17 @@ internal fun applySpaceSupplementalData(
 
 internal fun mapSeasonArchiveToVideoItem(
     item: SeasonArchiveItem,
-    mid: Long
+    mid: Long,
+    ownerName: String = ""
 ): VideoItem {
     return VideoItem(
         bvid = item.bvid,
         title = item.title,
         pic = item.pic,
-        owner = com.android.purebilibili.data.model.response.Owner(mid = mid),
+        owner = com.android.purebilibili.data.model.response.Owner(
+            mid = mid,
+            name = item.author.ifBlank { ownerName }
+        ),
         stat = Stat(
             view = item.stat.view.toInt(),
             danmaku = item.stat.danmaku.toInt(),
@@ -119,13 +123,17 @@ internal fun mapSeasonArchiveToVideoItem(
 
 internal fun mapSeriesArchiveToVideoItem(
     item: SeriesArchiveItem,
-    mid: Long
+    mid: Long,
+    ownerName: String = ""
 ): VideoItem {
     return VideoItem(
         bvid = item.bvid,
         title = item.title,
         pic = item.pic,
-        owner = com.android.purebilibili.data.model.response.Owner(mid = mid),
+        owner = com.android.purebilibili.data.model.response.Owner(
+            mid = mid,
+            name = item.author.ifBlank { ownerName }
+        ),
         stat = Stat(
             view = item.stat.view.toInt(),
             danmaku = item.stat.danmaku.toInt(),
@@ -168,6 +176,14 @@ internal fun normalizeSpaceVideoPage(
     videos: List<SpaceVideoItem>
 ): List<SpaceVideoItem> {
     return if (order == VideoSortOrder.OLDEST_PUBDATE) videos.asReversed() else videos
+}
+
+internal fun resolveSpaceContentGridColumnCount(widthDp: Int): Int {
+    return when {
+        widthDp >= 900 -> 4
+        widthDp >= 600 -> 3
+        else -> 2
+    }
 }
 
 internal data class SpaceInitialSeed(

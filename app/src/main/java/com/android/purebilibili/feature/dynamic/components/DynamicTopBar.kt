@@ -118,8 +118,6 @@ fun DynamicTopBarWithTabs(
                     selectedIndex = selectedTab,
                     onSelected = onTabSelected,
                     modifier = Modifier.fillMaxWidth(),
-                    height = liquidTabSpec.heightDp.dp,
-                    indicatorHeight = liquidTabSpec.indicatorHeightDp.dp,
                     labelFontSize = liquidTabSpec.labelFontSizeSp.sp
                 )
             }

@@ -866,7 +866,7 @@ fun VideoPlayerSection(
             hasShownHiResCompatHintLocally = true
             Toast.makeText(
                 context,
-                "Hi-Res 音源长按倍速最高 1.5x，以降低失真",
+                "当前音源已降低长按倍速，以降低失真",
                 Toast.LENGTH_SHORT
             ).show()
             settingsScope.launch {

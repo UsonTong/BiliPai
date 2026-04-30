@@ -66,8 +66,8 @@ class HomeChromeLiquidSurfaceStructureTest {
             topBar.readText().contains(".kernelSuFloatingDockSurface(")
         )
         assertTrue(
-            "top tab floating indicator should feed bottom-bar style panel offset into LiquidIndicator viewport shift",
-            topBar.readText().contains("viewportShiftPx = scrollOffset - indicatorPanelOffsetPx")
+            "top tab floating indicator should keep manual row scroll out of LiquidIndicator viewport clamp",
+            topBar.readText().contains("resolveTopTabIndicatorViewportClampShiftPx(")
         )
         assertTrue(
             "top tab indicator should follow pager drag offset while using a static neutral visual policy",

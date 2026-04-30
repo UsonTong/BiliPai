@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-30 · 文档已同步至 v8.0.0 RC（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-04-30 · 文档已同步至 v8.0.0（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0%20RC-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -572,13 +572,13 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0 RC · 2026-04-30)
+### 最近更新 (v8.0.0 · 2026-04-30)
 
-- 🖥️ 修复平板视频与直播全屏退出方向问题，并把视频详情、直播播放器和平板判断统一到稳定设备尺寸分类。
-- ✨ 打磨首页 UI 预设、空间页、直播分区、底栏液态分段控件和设置页结构。
-- 💬 补齐命令弹幕、实时消息、听视频模式和回复组件的解析、展示与回归测试。
-- 🙌 感谢 @chenx-dust 的 PR #253、PR #260，以及 @jay3-yy 的主线整合与发布整理。
-- 🔖 版本号升级到 `8.0.0 RC`，`versionCode` 升级到 `172`。
+- 🔍 搜索迁移到 WBI 路径，新增直播用户、话题、图片搜索和话题详情页，补齐搜索分页、字段清洗和跳转策略。
+- ✨ 底栏与通用液态分段控件对齐首页 Android 原生液态玻璃动画，保留色散、lens、阴影和速度形变，同时修复静止残影。
+- 💬 优化视频评论回到顶部、回复/粉丝团装扮、视频信息区、竖屏详情和空间内容网格。
+- 🎨 登录、个人页、设置、下载、抽屉和部分首页/直播组件继续迁移主题 token，减少硬编码颜色对深色模式和动态配色的影响。
+- 🔖 版本号升级到 `8.0.0`，`versionCode` 升级到 `173`。
 
 ### 历史版本
 

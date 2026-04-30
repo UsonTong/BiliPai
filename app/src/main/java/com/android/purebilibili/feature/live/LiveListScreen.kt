@@ -701,8 +701,6 @@ private fun LiveAreaHomeChipRow(
                 categoryItems.getOrNull(index)?.let { onAreaSelected(it.first) }
             },
             itemWidth = segmentedSpec.itemWidthDp?.dp,
-            height = segmentedSpec.heightDp.dp,
-            indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
             labelFontSize = segmentedSpec.labelFontSizeSp.sp,
             containerHorizontalPadding = segmentedSpec.containerHorizontalPaddingDp.dp,
             containerVerticalPadding = segmentedSpec.containerVerticalPaddingDp.dp,

@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +45,8 @@ fun ActionButton(
     label: String,
     isActive: Boolean = false,
     onClick: () -> Unit = {},
-    activeColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f)
+    activeColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
+    modifier: Modifier = Modifier
 ) {
     val isLike = label == "点赞"
     val isForward = label == "转发"
@@ -86,7 +88,7 @@ fun ActionButton(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
-        modifier = Modifier
+        modifier = modifier
             .scale(scale)
             .clip(RoundedCornerShape(24.dp))
             .background(
@@ -113,7 +115,10 @@ fun ActionButton(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = buttonColor,
-                letterSpacing = 0.sp
+                letterSpacing = 0.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
