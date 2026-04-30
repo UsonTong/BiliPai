@@ -233,13 +233,6 @@ fun LivePlayerScreen(
     // 强制横屏切换
     fun toggleFullscreen() {
         isFullscreen = !isFullscreen
-        activity?.requestedOrientation = if (isFullscreen) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else if (isTablet) {
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
     }
 
     fun exitLiveRoom() {
@@ -616,6 +609,20 @@ fun LivePlayerScreen(
         } else {
             // 恢复显示
             windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    LaunchedEffect(isTablet, isFullscreen) {
+        val requestedOrientation = if (isTablet) {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else if (isFullscreen) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+
+        if (activity?.requestedOrientation != requestedOrientation) {
+            activity?.requestedOrientation = requestedOrientation
         }
     }
 

@@ -40,18 +40,24 @@ fun resolveLiveRoomLayoutMode(
     isFullscreen: Boolean,
     isPortraitLive: Boolean
 ): LiveRoomLayoutMode {
-    if (isLandscape) {
-        return if (isTablet && !isFullscreen) {
-            LiveRoomLayoutMode.LandscapeSplit
-        } else {
+    return if (isTablet) {
+        if (isFullscreen) {
             LiveRoomLayoutMode.LandscapeOverlay
+        } else if (isLandscape) {
+            LiveRoomLayoutMode.LandscapeSplit
+        } else if (isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else {
+            LiveRoomLayoutMode.PortraitPanel
         }
-    }
-
-    return if (isPortraitLive && !isFullscreen) {
-        LiveRoomLayoutMode.PortraitVerticalOverlay
     } else {
-        LiveRoomLayoutMode.PortraitPanel
+        if (isLandscape || isFullscreen) {
+            LiveRoomLayoutMode.LandscapeOverlay
+        } else if (isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else {
+            LiveRoomLayoutMode.PortraitPanel
+        }
     }
 }
 

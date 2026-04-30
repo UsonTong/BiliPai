@@ -1498,6 +1498,7 @@ fun VideoDetailScreen(
         useTabletLayout,
         isOrientationDrivenFullscreen,
         isFullscreenMode,
+        windowSizeClass.isCompactDevice,
         userRequestedFullscreen,
         manualPortraitHoldActive,
         isVerticalVideo
@@ -1519,7 +1520,7 @@ fun VideoDetailScreen(
         }
         com.android.purebilibili.core.util.Logger.d(
             "VideoDetailScreen",
-            "🔄 Auto-rotate: enabled=$autoRotateEnabled, system=$systemAutoRotateEnabled, hold=$manualPortraitHoldActive, mode=$fullscreenMode, horizontal=$horizontalAdaptationEnabled, requested=$requestedOrientation, fullscreen=$isFullscreenMode, verticalVideo=$isVerticalVideo"
+            "🔄 Auto-rotate: enabled=$autoRotateEnabled, system=$systemAutoRotateEnabled, hold=$manualPortraitHoldActive, mode=$fullscreenMode, horizontal=$horizontalAdaptationEnabled, requested=$requestedOrientation, fullscreen=$isFullscreenMode, verticalVideo=$isVerticalVideo, isCompactDevice=${windowSizeClass.isCompactDevice}"
         )
     }
     DisposableEffect(
@@ -4301,7 +4302,9 @@ internal fun resolvePhoneVideoRequestedOrientation(
     manualPortraitHoldActive: Boolean = false,
     isVerticalVideo: Boolean = false
 ): Int? {
-    if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) return null
+    if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) {
+        return ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
     if (fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.NONE) {
         return null
     }

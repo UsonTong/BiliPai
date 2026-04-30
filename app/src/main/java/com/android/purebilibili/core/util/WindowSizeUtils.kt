@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.window.layout.WindowMetrics
+import kotlin.math.min
 
 /**
  * 🖥️ 窗口宽度尺寸类型
@@ -124,7 +125,7 @@ fun calculateWindowSizeClass(
     val widthDp = (configuration.screenWidthDp / densityMultiplier).dp
     val heightDp = (configuration.screenHeightDp / densityMultiplier).dp
     val deviceWidthSizeClass = resolveStableDeviceWidthSizeClass(
-        metrics.widthDp.toInt()
+        min(metrics.widthDp, metrics.heightDp).toInt()
     )
     
     val widthSizeClass = resolveWindowWidthSizeClass(widthDp)
