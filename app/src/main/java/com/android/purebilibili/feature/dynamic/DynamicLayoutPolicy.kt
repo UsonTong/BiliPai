@@ -34,8 +34,8 @@ internal fun resolveDynamicTopBarLiquidTabSpec(): DynamicTopBarLiquidTabSpec {
     return DynamicTopBarLiquidTabSpec(
         topPaddingDp = 2,
         bottomPaddingDp = 8,
-        heightDp = 42,
-        indicatorHeightDp = 34,
+        heightDp = 58,
+        indicatorHeightDp = 56,
         labelFontSizeSp = 14
     )
 }
@@ -51,6 +51,10 @@ internal fun resolveDynamicUserLiveBadgeLabel(): String = "直播"
 internal fun resolveDynamicCardOuterPadding(): Dp = 0.dp
 
 internal fun resolveDynamicCardContentPadding(): Dp = 12.dp
+
+internal fun resolveDynamicActionButtonSlotWeight(): Float = 1f
+
+internal fun resolveDynamicActionButtonSpacing(): Dp = 12.dp
 
 internal fun resolveDynamicActionButtonText(label: String, count: Int): String? {
     val countText = if (count > 0) formatDynamicActionCount(count) else null

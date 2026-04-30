@@ -14,8 +14,6 @@ import kotlin.math.abs
 
 enum class VideoGestureMode { None, Brightness, Volume, Seek, SwipeToFullscreen }
 
-private const val HI_RES_AUDIO_QUALITY_ID = 30251
-private const val HI_RES_LONG_PRESS_SPEED_LIMIT = 1.5f
 private const val PLAYER_DRAG_GESTURE_BOTTOM_EXCLUSION_BUFFER_DP = 12
 private const val PLAYBACK_STALL_LOG_THRESHOLD_MS = 700L
 private const val VIDEO_PLAYER_COVER_FADE_ENTER_DURATION_MILLIS = 200
@@ -108,17 +106,12 @@ internal fun shouldIgnoreVideoPlayerDragStart(
     return inEdgeSafeZone || inBottomGestureExclusionZone
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun resolveEffectiveLongPressSpeed(
     requestedSpeed: Float,
-    currentAudioQuality: Int,
-    hiResSpeedLimit: Float = HI_RES_LONG_PRESS_SPEED_LIMIT
+    currentAudioQuality: Int
 ): Float {
-    val normalized = requestedSpeed.coerceAtLeast(0.1f)
-    return if (currentAudioQuality == HI_RES_AUDIO_QUALITY_ID) {
-        normalized.coerceAtMost(hiResSpeedLimit)
-    } else {
-        normalized
-    }
+    return requestedSpeed.coerceAtLeast(0.1f)
 }
 
 internal fun resolveLongPressPlaybackParameters(

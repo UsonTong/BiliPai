@@ -3,6 +3,9 @@ package com.android.purebilibili.feature.video.ui.section
 import com.android.purebilibili.data.model.response.AiModelResult
 import com.android.purebilibili.data.model.response.AiOutline
 import com.android.purebilibili.data.model.response.AiSummaryData
+import com.android.purebilibili.data.model.response.VideoDetailRights
+import com.android.purebilibili.data.model.response.VideoStaff
+import com.android.purebilibili.data.model.response.ViewInfo
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.test.Test
@@ -41,6 +44,34 @@ class VideoInfoDisplayPolicyTest {
     fun inlineOwnerIdentityShownOnlyWhenLeadingAvatarHidden() {
         assertTrue(shouldShowInlineOwnerIdentity(showOwnerAvatar = false))
         assertFalse(shouldShowInlineOwnerIdentity(showOwnerAvatar = true))
+    }
+
+    @Test
+    fun videoBadgesPrioritizeUpowerExclusiveAndIncludePreviewState() {
+        val info = ViewInfo(
+            isUpowerExclusive = true,
+            isUpowerPreview = true,
+            rights = VideoDetailRights(isCooperation = 1)
+        )
+
+        assertEquals(
+            listOf("充电专属 · 可试看", "联合投稿"),
+            resolveVideoDetailBadges(info)
+        )
+    }
+
+    @Test
+    fun creatorTeamShownOnlyWhenStaffListExists() {
+        assertTrue(
+            shouldShowCreatorTeamSection(
+                ViewInfo(staff = listOf(VideoStaff(mid = 101L, name = "Lucky-101")))
+            )
+        )
+        assertFalse(
+            shouldShowCreatorTeamSection(
+                ViewInfo(rights = VideoDetailRights(isCooperation = 1))
+            )
+        )
     }
 
     @Test

@@ -21,8 +21,8 @@ internal fun resolveLiveHomeCategorySelectedIndex(
 internal fun resolveLiveHomeCategorySegmentedControlSpec(): LiveCategorySegmentedControlSpec {
     return LiveCategorySegmentedControlSpec(
         itemWidthDp = 82,
-        heightDp = 48,
-        indicatorHeightDp = 36,
+        heightDp = 58,
+        indicatorHeightDp = 56,
         labelFontSizeSp = 14,
         containerHorizontalPaddingDp = 4,
         containerVerticalPaddingDp = 4
@@ -58,8 +58,8 @@ internal fun resolveLiveHomeCategoryFollowScrollTarget(
 internal fun resolveLiveAreaParentSegmentedControlSpec(): LiveCategorySegmentedControlSpec {
     return LiveCategorySegmentedControlSpec(
         itemWidthDp = 112,
-        heightDp = 52,
-        indicatorHeightDp = 44,
+        heightDp = 58,
+        indicatorHeightDp = 56,
         labelFontSizeSp = 16,
         containerHorizontalPaddingDp = 4,
         containerVerticalPaddingDp = 4

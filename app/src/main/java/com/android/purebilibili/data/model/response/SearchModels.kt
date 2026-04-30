@@ -89,11 +89,17 @@ data class SearchDefaultData(
 // --- 2. 搜索结果模型 ---
 @Serializable
 data class SearchResponse(
+    val code: Int = 0,
+    val message: String = "",
     val data: SearchData? = null
 )
 
 @Serializable
 data class SearchData(
+    val page: Int = 1,
+    val pagesize: Int = 20,
+    val numResults: Int = 0,
+    val numPages: Int = 0,
     val result: List<SearchResultCategory>? = null
 )
 
@@ -171,6 +177,24 @@ data class SearchVideoItem(
             3 -> (parts[0].toIntOrNull() ?: 0) * 3600 + (parts[1].toIntOrNull() ?: 0) * 60 + (parts[2].toIntOrNull() ?: 0)
             else -> 0
         }
+    }
+}
+
+internal fun cleanSearchText(raw: String): String {
+    return raw.replace(Regex("<.*?>"), "")
+        .replace("&quot;", "\"")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .trim()
+}
+
+internal fun normalizeSearchImageUrl(raw: String): String {
+    val text = raw.trim()
+    return when {
+        text.startsWith("//") -> "https:$text"
+        text.startsWith("http://") -> text.replace("http://", "https://")
+        else -> text
     }
 }
 
@@ -345,14 +369,10 @@ data class SearchArticleItem(
 ) {
     fun cleanupFields(): SearchArticleItem {
         return copy(
-            title = title.replace(Regex("<.*?>"), ""),
+            title = cleanSearchText(title),
             imageUrls = imageUrls.mapNotNull { url ->
                 normalizeImageUrlCandidate(url)?.let { normalized ->
-                    when {
-                        normalized.startsWith("//") -> "https:$normalized"
-                        normalized.startsWith("http://") -> normalized.replace("http://", "https://")
-                        else -> normalized
-                    }
+                    normalizeSearchImageUrl(normalized)
                 }
             }
         )
@@ -383,9 +403,134 @@ data class SearchUpItem(
 ) {
     fun cleanupFields(): SearchUpItem {
         return this.copy(
-            uname = uname.replace(Regex("<.*?>"), ""),
-            usign = usign.replace(Regex("<.*?>"), ""),
-            upic = if (upic.startsWith("//")) "https:$upic" else upic
+            uname = cleanSearchText(uname),
+            usign = cleanSearchText(usign),
+            upic = normalizeSearchImageUrl(upic)
+        )
+    }
+}
+
+@Serializable
+data class SearchTopicResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SearchTopicData? = null
+)
+
+@Serializable
+data class SearchTopicData(
+    val page: Int = 1,
+    val pagesize: Int = 20,
+    val numResults: Int = 0,
+    val numPages: Int = 0,
+    val result: List<SearchTopicItem>? = null
+)
+
+@Serializable
+data class SearchTopicItem(
+    @SerialName("tp_id")
+    @Serializable(with = FlexibleLongSerializer::class)
+    val topicId: Long = 0,
+    val title: String = "",
+    val description: String = "",
+    val cover: String = "",
+    val author: String = "",
+    @SerialName("click")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val view: Int = 0,
+    @Serializable(with = FlexibleLongSerializer::class)
+    val pubdate: Long = 0
+) {
+    fun cleanupFields(): SearchTopicItem {
+        return copy(
+            title = cleanSearchText(title),
+            description = cleanSearchText(description),
+            cover = normalizeSearchImageUrl(cover),
+            author = cleanSearchText(author)
+        )
+    }
+}
+
+@Serializable
+data class SearchPhotoResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SearchPhotoData? = null
+)
+
+@Serializable
+data class SearchPhotoData(
+    val page: Int = 1,
+    val pagesize: Int = 20,
+    val numResults: Int = 0,
+    val numPages: Int = 0,
+    val result: List<SearchPhotoItem>? = null
+)
+
+@Serializable
+data class SearchPhotoItem(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val id: Long = 0,
+    @Serializable(with = FlexibleLongSerializer::class)
+    val mid: Long = 0,
+    val title: String = "",
+    val cover: String = "",
+    val uname: String = "",
+    @Serializable(with = FlexibleIntSerializer::class)
+    val count: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val view: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val like: Int = 0
+) {
+    fun cleanupFields(): SearchPhotoItem {
+        return copy(
+            title = cleanSearchText(title),
+            cover = normalizeSearchImageUrl(cover),
+            uname = cleanSearchText(uname)
+        )
+    }
+}
+
+@Serializable
+data class SearchLiveUserResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SearchLiveUserData? = null
+)
+
+@Serializable
+data class SearchLiveUserData(
+    val page: Int = 1,
+    val pagesize: Int = 20,
+    val numResults: Int = 0,
+    val numPages: Int = 0,
+    val result: List<SearchLiveUserItem>? = null
+)
+
+@Serializable
+data class SearchLiveUserItem(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val uid: Long = 0,
+    @Serializable(with = FlexibleLongSerializer::class)
+    val roomid: Long = 0,
+    val uname: String = "",
+    val uface: String = "",
+    @SerialName("live_status")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val liveStatus: Int = 0,
+    @SerialName("is_live")
+    val isLive: Boolean = false,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val attentions: Int = 0,
+    val live_time: String = "",
+    val tags: String = ""
+) {
+    fun cleanupFields(): SearchLiveUserItem {
+        return copy(
+            uname = cleanSearchText(uname),
+            uface = normalizeSearchImageUrl(uface),
+            tags = cleanSearchText(tags)
         )
     }
 }
@@ -402,8 +547,11 @@ enum class SearchType(val value: String, val displayName: String) {
     UP("bili_user", "UP主"),
     BANGUMI("media_bangumi", "番剧"),
     MEDIA_FT("media_ft", "影视"),
-    LIVE("live_room", "直播"),
-    ARTICLE("article", "专栏");
+    LIVE("live_room", "直播间"),
+    LIVE_USER("live_user", "主播"),
+    ARTICLE("article", "专栏"),
+    TOPIC("topic", "话题"),
+    PHOTO("photo", "相簿");
     
     companion object {
         fun fromValue(value: String): SearchType {
@@ -458,6 +606,7 @@ data class LiveRoomSearchItem(
     val uname: String = "",         // 主播名
     val uface: String = "",         // 主播头像
     val cover: String = "",         // 直播封面 (user_cover)
+    val user_cover: String = "",
     val online: Int = 0,            // 在线人数
     val live_status: Int = 0,       // 直播状态 0=未开播 1=直播中 2=轮播
     val short_id: Int = 0,          // 短号
@@ -469,10 +618,11 @@ data class LiveRoomSearchItem(
 ) {
     fun cleanupFields(): LiveRoomSearchItem {
         return this.copy(
-            title = title.replace(Regex("<.*?>"), ""),
-            uname = uname.replace(Regex("<.*?>"), ""),
-            uface = if (uface.startsWith("//")) "https:$uface" else uface,
-            cover = if (cover.startsWith("//")) "https:$cover" else cover
+            title = cleanSearchText(title),
+            uname = cleanSearchText(uname),
+            uface = normalizeSearchImageUrl(uface),
+            cover = normalizeSearchImageUrl(cover.ifBlank { user_cover }),
+            user_cover = normalizeSearchImageUrl(user_cover)
         )
     }
 }

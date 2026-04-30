@@ -13,8 +13,8 @@ internal data class SpaceSegmentedTabChromeSpec(
     val dragSelectionEnabled: Boolean
 )
 
-private const val SPACE_SEGMENTED_TAB_HEIGHT_DP = 50
-private const val SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP = 40
+private const val SPACE_SEGMENTED_TAB_HEIGHT_DP = 58
+private const val SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP = 56
 private const val SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP = 16
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_MIN_WIDTH_DP = 104
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_TEXT_PADDING_DP = 44

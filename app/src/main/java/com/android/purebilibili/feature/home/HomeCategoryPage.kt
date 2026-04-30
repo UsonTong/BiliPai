@@ -431,8 +431,6 @@ private fun PopularSubCategorySegmentedControl(
             subCategories.getOrNull(index)?.let(onSubCategoryChange)
         },
         modifier = modifier,
-        height = 44.dp,
-        indicatorHeight = 36.dp,
         labelFontSize = 14.sp,
         containerHorizontalPadding = 3.dp,
         containerVerticalPadding = 3.dp,

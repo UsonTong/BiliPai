@@ -76,8 +76,8 @@ class LivePiliPlusVisualPolicyTest {
 
         assertEquals(14, spec.horizontalPaddingDp)
         assertEquals(8, spec.verticalPaddingDp)
-        assertEquals(44, spec.heightDp)
-        assertEquals(36, spec.indicatorHeightDp)
+        assertEquals(58, spec.heightDp)
+        assertEquals(56, spec.indicatorHeightDp)
         assertEquals(14, spec.labelFontSizeSp)
     }
 

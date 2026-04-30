@@ -200,37 +200,55 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
-    fun `settled segmented indicator keeps only theme tint`() {
-        val themeColor = Color(0xFF4F7CFF)
-        val neutralColor = Color.White.copy(alpha = 0.1f)
-
-        val color = resolveLiquidSegmentedIndicatorColor(
-            themeColor = themeColor,
-            neutralColor = neutralColor,
-            motionProgress = 0f,
-            darkTheme = true
+    fun `settled segmented indicator uses bottom bar surface tint`() {
+        val color = resolveIosFloatingBottomIndicatorColor(
+            isDarkTheme = true,
+            visualPolicy = BottomBarIndicatorVisualPolicy(
+                isInMotion = false,
+                shouldRefract = false,
+                useNeutralTint = false
+            ),
+            liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.5f)
         )
 
-        assertEquals(themeColor.red, color.red, 0.001f)
-        assertEquals(themeColor.green, color.green, 0.001f)
-        assertEquals(themeColor.blue, color.blue, 0.001f)
-        assertTrue(color.alpha > neutralColor.alpha)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).red, color.red, 0.001f)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).green, color.green, 0.001f)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).blue, color.blue, 0.001f)
         assertTrue(color.alpha < 1f)
     }
 
     @Test
-    fun `moving segmented indicator uses neutral glass tint`() {
-        val themeColor = Color(0xFF4F7CFF)
-        val neutralColor = Color.White.copy(alpha = 0.1f)
-
-        val color = resolveLiquidSegmentedIndicatorColor(
-            themeColor = themeColor,
-            neutralColor = neutralColor,
-            motionProgress = 0.35f,
-            darkTheme = true
+    fun `light segmented indicator uses gray white bottom bar surface tint`() {
+        val color = resolveIosFloatingBottomIndicatorColor(
+            isDarkTheme = false,
+            visualPolicy = BottomBarIndicatorVisualPolicy(
+                isInMotion = false,
+                shouldRefract = false,
+                useNeutralTint = false
+            ),
+            liquidGlassTuning = resolveLiquidGlassTuning(progress = 0.5f)
         )
 
-        assertEquals(neutralColor, color)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).red, color.red, 0.001f)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).green, color.green, 0.001f)
+        assertEquals(resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `moving segmented indicator uses bottom bar moving alpha floor`() {
+        val visualPolicy = BottomBarIndicatorVisualPolicy(
+            isInMotion = true,
+            shouldRefract = true,
+            useNeutralTint = true
+        )
+        val alpha = resolveIosFloatingBottomIndicatorTintAlpha(
+            visualPolicy = visualPolicy,
+            isDarkTheme = false,
+            liquidGlassProgress = 0.5f,
+            configuredAlpha = 0.12f
+        )
+
+        assertTrue(alpha >= 0.4f)
     }
 
     @Test

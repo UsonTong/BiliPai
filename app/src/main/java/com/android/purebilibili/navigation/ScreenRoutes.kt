@@ -4,6 +4,11 @@ sealed class ScreenRoutes(val route: String) {
     object Home : ScreenRoutes("home")
     object Search : ScreenRoutes("search")
     object SearchTrending : ScreenRoutes("search_trending")
+    object TopicDetail : ScreenRoutes("topic/{topicId}") {
+        fun createRoute(topicId: Long): String {
+            return "topic/$topicId"
+        }
+    }
     object Settings : ScreenRoutes("settings")
     object Login : ScreenRoutes("login")
     object Profile : ScreenRoutes("profile")
@@ -101,11 +106,12 @@ sealed class ScreenRoutes(val route: String) {
     }
 
     //  [新增] 合集/系列详情页面
-    object SeasonSeriesDetail : ScreenRoutes("season_series_detail/{type}/{id}?mid={mid}&title={title}") {
-        fun createRoute(type: String, id: Long, mid: Long, title: String): String {
+    object SeasonSeriesDetail : ScreenRoutes("season_series_detail/{type}/{id}?mid={mid}&title={title}&ownerName={ownerName}") {
+        fun createRoute(type: String, id: Long, mid: Long, title: String, ownerName: String = ""): String {
             // Encode title to handle special characters
             val encodedTitle = android.net.Uri.encode(title)
-            return "season_series_detail/$type/$id?mid=$mid&title=$encodedTitle"
+            val encodedOwnerName = android.net.Uri.encode(ownerName)
+            return "season_series_detail/$type/$id?mid=$mid&title=$encodedTitle&ownerName=$encodedOwnerName"
         }
     }
     

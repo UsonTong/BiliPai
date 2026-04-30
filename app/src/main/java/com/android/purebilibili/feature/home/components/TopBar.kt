@@ -933,7 +933,10 @@ fun CategoryTabRow(
                             isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
                             clampToBounds = true,
                             edgeInset = floatingIndicatorEdgeInset,
-                            viewportShiftPx = scrollOffset - indicatorPanelOffsetPx,
+                            viewportShiftPx = resolveTopTabIndicatorViewportClampShiftPx(
+                                rowScrollOffsetPx = scrollOffset,
+                                indicatorPanelOffsetPx = indicatorPanelOffsetPx
+                            ),
                             indicatorWidthMultiplier = floatingLiquidWidthMultiplier,
                             indicatorMinWidth = floatingLiquidMinWidth,
                             indicatorMaxWidth = floatingLiquidMaxWidth,
@@ -1686,6 +1689,12 @@ internal fun resolveTopTabIndicatorViewportShiftPx(
     return firstVisibleItemIndex * tabWidthPx + clampedScrollOffsetPx.toFloat()
 }
 
+internal fun resolveTopTabIndicatorViewportClampShiftPx(
+    rowScrollOffsetPx: Float,
+    indicatorPanelOffsetPx: Float
+): Float {
+    return -indicatorPanelOffsetPx
+}
 
 @Composable
 fun CategoryTabItem(

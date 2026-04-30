@@ -47,8 +47,8 @@ class DynamicLayoutPolicyTest {
 
         assertEquals(2, spec.topPaddingDp)
         assertEquals(8, spec.bottomPaddingDp)
-        assertEquals(42, spec.heightDp)
-        assertEquals(34, spec.indicatorHeightDp)
+        assertEquals(58, spec.heightDp)
+        assertEquals(56, spec.indicatorHeightDp)
         assertEquals(14, spec.labelFontSizeSp)
     }
 
@@ -73,5 +73,11 @@ class DynamicLayoutPolicyTest {
         assertEquals("评论 1.2k", resolveDynamicActionButtonText(label = "评论", count = 1200))
         assertEquals("85", resolveDynamicActionButtonText(label = "点赞", count = 85))
         assertNull(resolveDynamicActionButtonText(label = "点赞", count = 0))
+    }
+
+    @Test
+    fun `dynamic action row uses equal slots so like button is not starved by earlier labels`() {
+        assertEquals(1f, resolveDynamicActionButtonSlotWeight(), 0f)
+        assertEquals(12.dp, resolveDynamicActionButtonSpacing())
     }
 }

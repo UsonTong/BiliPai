@@ -1167,8 +1167,6 @@ private fun AudioPlayModeSelector(
                     playModes.getOrNull(index)?.let(onSelectPlayMode)
                 },
                 itemWidth = 86.dp,
-                height = 44.dp,
-                indicatorHeight = 36.dp,
                 labelFontSize = 13.sp,
                 containerHorizontalPadding = 3.dp,
                 containerVerticalPadding = 3.dp,

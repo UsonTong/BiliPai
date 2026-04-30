@@ -319,7 +319,7 @@ private fun DownloadTaskItem(
                     text = statusText,
                     fontSize = 11.sp,
                     color = when (task.status) {
-                        DownloadStatus.COMPLETED -> Color(0xFF4CAF50)
+                        DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.secondary
                         DownloadStatus.FAILED -> com.android.purebilibili.core.theme.iOSRed
                         else -> MaterialTheme.colorScheme.primary
                     }

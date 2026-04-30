@@ -88,4 +88,54 @@ class DynamicFeedPaginationRegistryTest {
         assertEquals("all_baseline", registry.updateBaseline(DynamicFeedScope.DYNAMIC_SCREEN, type = "all"))
         assertTrue(registry.hasMore(DynamicFeedScope.DYNAMIC_SCREEN, type = "all"))
     }
+
+    @Test
+    fun updateBaseline_preservesPaginationState() {
+        val registry = DynamicFeedPaginationRegistry()
+        registry.update(
+            scope = DynamicFeedScope.DYNAMIC_SCREEN,
+            type = "all",
+            offset = "offset",
+            updateBaseline = "old_baseline",
+            hasMore = false
+        )
+
+        registry.updateBaseline(
+            scope = DynamicFeedScope.DYNAMIC_SCREEN,
+            type = "all",
+            updateBaseline = "new_baseline"
+        )
+
+        assertEquals("offset", registry.offset(DynamicFeedScope.DYNAMIC_SCREEN, type = "all"))
+        assertEquals("new_baseline", registry.updateBaseline(DynamicFeedScope.DYNAMIC_SCREEN, type = "all"))
+        assertFalse(registry.hasMore(DynamicFeedScope.DYNAMIC_SCREEN, type = "all"))
+    }
+
+    @Test
+    fun update_count_polling_doesNotAdvanceExistingBaselineUntilFeedIsRead() {
+        assertEquals(
+            "old_baseline",
+            resolveDynamicUpdateCountBaseline(
+                currentBaseline = "old_baseline",
+                responseBaseline = "new_baseline",
+                advanceBaseline = false
+            )
+        )
+        assertEquals(
+            "new_baseline",
+            resolveDynamicUpdateCountBaseline(
+                currentBaseline = "",
+                responseBaseline = "new_baseline",
+                advanceBaseline = false
+            )
+        )
+        assertEquals(
+            "new_baseline",
+            resolveDynamicUpdateCountBaseline(
+                currentBaseline = "old_baseline",
+                responseBaseline = "new_baseline",
+                advanceBaseline = true
+            )
+        )
+    }
 }

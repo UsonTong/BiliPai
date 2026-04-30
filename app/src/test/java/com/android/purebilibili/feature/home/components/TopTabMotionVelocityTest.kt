@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.home.components
 
-import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -98,6 +97,16 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
+    fun `indicator clamp shift ignores manual top tab row scroll`() {
+        val shift = resolveTopTabIndicatorViewportClampShiftPx(
+            rowScrollOffsetPx = 240f,
+            indicatorPanelOffsetPx = 8f
+        )
+
+        assertEquals(-8f, shift, 0.0001f)
+    }
+
+    @Test
     fun `static top tab indicator policy keeps neutral color without motion effects`() {
         val policy = resolveTopTabStaticIndicatorVisualPolicy(useNeutralIndicatorTint = true)
 
@@ -109,11 +118,11 @@ class TopTabMotionVelocityTest {
     @Test
     fun `top tab neutral indicator color matches bottom bar moving surface`() {
         assertEquals(
-            Color(0xFFFDFEFF).copy(alpha = 0.5f),
+            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).copy(alpha = 0.5f),
             resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.5f)
         )
         assertEquals(
-            Color(0xFFF6F8FB).copy(alpha = 0.5f),
+            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).copy(alpha = 0.5f),
             resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.5f)
         )
     }

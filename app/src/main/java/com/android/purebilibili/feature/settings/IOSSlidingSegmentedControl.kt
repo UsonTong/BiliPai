@@ -13,15 +13,19 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.store.HomeSettings
+import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.AndroidNativeVariant
@@ -48,6 +52,22 @@ internal data class Md3SegmentedControlColorTokens(
     val activeContentColor: Color,
     val inactiveContentColor: Color
 )
+
+internal enum class IosSlidingSegmentedControlChrome {
+    LIQUID_INDICATOR,
+    MD3_SEGMENTED
+}
+
+internal fun resolveIosSlidingSegmentedControlChrome(
+    uiPreset: UiPreset,
+    androidNativeLiquidGlassEnabled: Boolean
+): IosSlidingSegmentedControlChrome {
+    return if (uiPreset == UiPreset.MD3 && !androidNativeLiquidGlassEnabled) {
+        IosSlidingSegmentedControlChrome.MD3_SEGMENTED
+    } else {
+        IosSlidingSegmentedControlChrome.LIQUID_INDICATOR
+    }
+}
 
 internal fun resolveMd3SegmentedControlColorTokens(
     androidNativeVariant: AndroidNativeVariant,
@@ -133,11 +153,24 @@ internal fun <T> IOSSlidingSegmentedControl(
     selectedValue: T,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    forceLiquidIndicator: Boolean = false,
     onSelectionChange: (T) -> Unit
 ) {
     if (options.isEmpty()) return
     val uiPreset = LocalUiPreset.current
-    if (uiPreset == UiPreset.MD3) {
+    val context = LocalContext.current
+    val homeSettings by SettingsManager
+        .getHomeSettings(context)
+        .collectAsState(initial = HomeSettings())
+    val effectiveAndroidNativeLiquidGlassEnabled =
+        forceLiquidIndicator || homeSettings.androidNativeLiquidGlassEnabled
+    val chrome = remember(uiPreset, effectiveAndroidNativeLiquidGlassEnabled) {
+        resolveIosSlidingSegmentedControlChrome(
+            uiPreset = uiPreset,
+            androidNativeLiquidGlassEnabled = effectiveAndroidNativeLiquidGlassEnabled
+        )
+    }
+    if (chrome == IosSlidingSegmentedControlChrome.MD3_SEGMENTED) {
         Md3SegmentedControl(
             options = options,
             selectedValue = selectedValue,
@@ -152,6 +185,7 @@ internal fun <T> IOSSlidingSegmentedControl(
         selectedValue = selectedValue,
         modifier = modifier,
         enabled = enabled,
+        forceLiquidIndicator = forceLiquidIndicator,
         onSelectionChange = onSelectionChange
     )
 }
@@ -238,6 +272,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
     selectedValue: T,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    forceLiquidIndicator: Boolean = false,
     onSelectionChange: (T) -> Unit
 ) {
     val selectedIndex = resolveSelectionIndex(options = options, selectedValue = selectedValue)
@@ -251,8 +286,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
         },
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        height = 46.dp,
-        indicatorHeight = 40.dp,
-        labelFontSize = 12.sp
+        labelFontSize = 12.sp,
+        forceLiquidChrome = forceLiquidIndicator
     )
 }
