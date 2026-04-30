@@ -197,6 +197,41 @@ class TodayWatchPolicyTest {
     }
 
     @Test
+    fun `plan excludes explicitly disliked bvid even when candidate is very hot`() {
+        val candidates = listOf(
+            VideoItem(
+                bvid = "disliked_hot",
+                owner = Owner(mid = 1, name = "UP-Hot"),
+                duration = 480,
+                stat = Stat(view = 1_000_000_000, danmaku = 50),
+                title = "超热门但不感兴趣"
+            ),
+            VideoItem(
+                bvid = "normal",
+                owner = Owner(mid = 2, name = "UP-Normal"),
+                duration = 480,
+                stat = Stat(view = 1_000, danmaku = 20),
+                title = "普通推荐"
+            )
+        )
+
+        val plan = buildTodayWatchPlan(
+            historyVideos = emptyList(),
+            candidateVideos = candidates,
+            mode = TodayWatchMode.RELAX,
+            eyeCareNightActive = false,
+            nowEpochSec = 1_700_010_000,
+            queueLimit = 1,
+            penaltySignals = TodayWatchPenaltySignals(
+                dislikedBvids = setOf("disliked_hot")
+            )
+        )
+
+        assertEquals("normal", plan.videoQueue.firstOrNull()?.bvid)
+        assertFalse(plan.videoQueue.any { it.bvid == "disliked_hot" })
+    }
+
+    @Test
     fun `plan includes readable explanation per queued video`() {
         val history = listOf(
             VideoItem(bvid = "h1", owner = Owner(mid = 1, name = "UP-A"), duration = 600, progress = 520, view_at = 1_700_000_000)
@@ -223,6 +258,7 @@ class TodayWatchPolicyTest {
         val explanation = plan.explanationByBvid["explain1"].orEmpty()
         assertTrue(explanation.isNotBlank())
         assertTrue(explanation.contains("学习"))
+        assertTrue(explanation.contains("近期更新"))
     }
 
     @Test

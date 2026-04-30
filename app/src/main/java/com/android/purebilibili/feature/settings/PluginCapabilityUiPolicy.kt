@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
 
 data class PluginCapabilityUiModel(
     val capability: PluginCapability,
@@ -16,6 +17,15 @@ data class ExternalPluginInstallPreviewUiModel(
     val packageHashText: String,
     val signerText: String,
     val sensitiveCapabilityLabels: List<String>
+)
+
+data class InstalledExternalPluginPackageUiModel(
+    val title: String,
+    val subtitle: String,
+    val stateText: String,
+    val packageHashText: String,
+    val signerText: String,
+    val grantedCapabilityLabels: List<String>
 )
 
 private val capabilityOrder = listOf(
@@ -85,6 +95,24 @@ fun buildExternalPluginInstallPreview(
             sensitiveCapabilityLabels = emptyList()
         )
     }
+}
+
+fun buildInstalledExternalPluginUiModels(
+    installedPackages: List<InstalledExternalPluginPackage>
+): List<InstalledExternalPluginPackageUiModel> {
+    return installedPackages
+        .sortedBy { it.manifest.displayName }
+        .map { installed ->
+            InstalledExternalPluginPackageUiModel(
+                title = installed.manifest.displayName,
+                subtitle = "${installed.manifest.pluginId} · v${installed.manifest.version}",
+                stateText = if (installed.enabled) "已启用" else "已保存，暂不运行",
+                packageHashText = "SHA-256: ${installed.packageSha256}",
+                signerText = if (installed.signerSha256.isNullOrBlank()) "签名未信任" else "签名可信",
+                grantedCapabilityLabels = resolvePluginCapabilityUiModels(installed.grantedCapabilities)
+                    .map { it.label }
+            )
+        }
 }
 
 private val PluginCapability.label: String

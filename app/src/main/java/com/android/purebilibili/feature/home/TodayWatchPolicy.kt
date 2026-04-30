@@ -88,6 +88,7 @@ internal fun buildTodayWatchPlan(
         .asSequence()
         .filter { it.bvid.isNotBlank() && it.title.isNotBlank() }
         .filter { it.bvid !in penaltySignals.consumedBvids }
+        .filter { it.bvid !in penaltySignals.dislikedBvids }
         .distinctBy { it.bvid }
         .toList()
 
@@ -108,7 +109,8 @@ internal fun buildTodayWatchPlan(
                 video = video,
                 mode = mode,
                 eyeCareNightActive = eyeCareNightActive,
-                creatorAffinity = affinity
+                creatorAffinity = affinity,
+                nowEpochSec = nowEpochSec
             )
             ScoredCandidate(video = video, score = score, explanation = explanation)
         }
@@ -294,7 +296,8 @@ private fun buildRecommendationExplanation(
     video: VideoItem,
     mode: TodayWatchMode,
     eyeCareNightActive: Boolean,
-    creatorAffinity: Double
+    creatorAffinity: Double,
+    nowEpochSec: Long
 ): String {
     val parts = mutableListOf<String>()
     parts += when (mode) {
@@ -320,6 +323,10 @@ private fun buildRecommendationExplanation(
 
     if (creatorAffinity > 0.8) {
         parts += "偏好UP"
+    }
+
+    if (freshnessScore(video.pubdate, nowEpochSec) >= 0.55) {
+        parts += "近期更新"
     }
 
     return parts.distinct().joinToString(" · ")

@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.settings
 import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.PluginCapabilityManifest
+import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -92,5 +93,36 @@ class PluginsScreenPolicyTest {
             setOf(PluginCapability.DANMAKU_STREAM, PluginCapability.DANMAKU_MUTATION),
             resolveJsonRulePluginCapabilities("danmaku")
         )
+    }
+
+    @Test
+    fun installedExternalPackageUi_exposesDisabledNonExecutingStateAndAuthorizationHash() {
+        val installed = InstalledExternalPluginPackage(
+            manifest = PluginCapabilityManifest(
+                pluginId = "dev.example.cloud",
+                displayName = "云推荐",
+                version = "1.0.0",
+                apiVersion = 1,
+                entryClassName = "dev.example.CloudPlugin",
+                capabilities = setOf(
+                    PluginCapability.RECOMMENDATION_CANDIDATES,
+                    PluginCapability.NETWORK
+                )
+            ),
+            packageSha256 = "abcdef123456",
+            signerSha256 = "trusted",
+            grantedCapabilities = setOf(PluginCapability.RECOMMENDATION_CANDIDATES),
+            packagePath = "/tmp/cloud.bpplugin",
+            installedAtMillis = 1234L,
+            enabled = false
+        )
+
+        val uiModel = buildInstalledExternalPluginUiModels(listOf(installed)).single()
+
+        assertEquals("云推荐", uiModel.title)
+        assertEquals("dev.example.cloud · v1.0.0", uiModel.subtitle)
+        assertEquals("已保存，暂不运行", uiModel.stateText)
+        assertEquals("SHA-256: abcdef123456", uiModel.packageHashText)
+        assertEquals(listOf("推荐候选"), uiModel.grantedCapabilityLabels)
     }
 }
