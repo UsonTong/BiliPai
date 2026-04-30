@@ -1,16 +1,26 @@
 // 文件路径: app/src/main/java/com/android/purebilibili/MainActivity.kt
 package com.android.purebilibili
 
+import android.animation.ValueAnimator
 import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
+import android.view.Gravity
+import android.view.View
+import android.view.animation.PathInterpolator
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -41,13 +51,26 @@ import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import androidx.window.layout.WindowMetrics
+import androidx.window.layout.WindowMetricsCalculator
 import coil.compose.AsyncImagePainter
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.coroutines.AppScope
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+import com.android.purebilibili.core.theme.AppFontSizePreset
+import com.android.purebilibili.core.theme.AppUiScalePreset
 import com.android.purebilibili.core.theme.BiliPink
+import com.android.purebilibili.core.theme.LocalDisplayMetricsSnapshot
 import com.android.purebilibili.core.theme.PureBiliBiliTheme
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
@@ -71,6 +94,16 @@ import com.android.purebilibili.feature.settings.DarkThemeStyle
 import com.android.purebilibili.feature.settings.applyAppLanguage
 import com.android.purebilibili.core.theme.resolveEffectiveDynamicColorEnabled
 import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.theme.buildDisplayMetricsSnapshot
+import com.android.purebilibili.core.ui.IOSAlertDialog
+import com.android.purebilibili.core.ui.IOSDialogAction
+import com.android.purebilibili.core.ui.blur.ProvideUnifiedBlurIntensity
+import com.android.purebilibili.core.util.BilibiliUrlParser
+import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.util.calculateWindowSizeClass
+import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.feature.cast.DlnaManager
+import com.android.purebilibili.feature.cast.LocalProxyServer
 import com.android.purebilibili.feature.settings.RELEASE_DISCLAIMER_ACK_KEY
 import com.android.purebilibili.feature.settings.completeAppUpdateDownload
 import com.android.purebilibili.feature.settings.downloadAppUpdateApk
@@ -87,11 +120,17 @@ import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.overlay.FullscreenPlayerOverlay
 import com.android.purebilibili.feature.video.ui.overlay.MiniPlayerOverlay
 import com.android.purebilibili.navigation.AppNavigation
+import com.android.purebilibili.navigation.ScreenRoutes
+import com.android.purebilibili.navigation.VideoRoute
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec
 import dev.chrisbanes.haze.haze
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.net.URI
 import java.net.URLEncoder
 import java.net.URLDecoder
@@ -116,13 +155,13 @@ internal fun resolveDrawableAspectRatio(width: Int, height: Int): Float? {
 
 internal fun resolveShortcutRoute(host: String): String? {
     return when (host) {
-        "search" -> com.android.purebilibili.navigation.ScreenRoutes.Search.route
-        "dynamic" -> com.android.purebilibili.navigation.ScreenRoutes.Dynamic.route
-        "favorite" -> com.android.purebilibili.navigation.ScreenRoutes.Favorite.route
-        "history" -> com.android.purebilibili.navigation.ScreenRoutes.History.route
-        "login" -> com.android.purebilibili.navigation.ScreenRoutes.Login.route
-        "playback" -> com.android.purebilibili.navigation.ScreenRoutes.PlaybackSettings.route
-        "plugins" -> com.android.purebilibili.navigation.ScreenRoutes.PluginsSettings.createRoute()
+        "search" -> ScreenRoutes.Search.route
+        "dynamic" -> ScreenRoutes.Dynamic.route
+        "favorite" -> ScreenRoutes.Favorite.route
+        "history" -> ScreenRoutes.History.route
+        "login" -> ScreenRoutes.Login.route
+        "playback" -> ScreenRoutes.PlaybackSettings.route
+        "plugins" -> ScreenRoutes.PluginsSettings.createRoute()
         else -> null
     }
 }
@@ -173,7 +212,7 @@ internal fun shouldNavigateToVideoFromNotification(
     currentBvid: String?,
     targetBvid: String
 ): Boolean {
-    val isInVideoRoute = currentRoute?.substringBefore("/") == com.android.purebilibili.navigation.VideoRoute.base
+    val isInVideoRoute = currentRoute?.substringBefore("/") == VideoRoute.base
     return !(isInVideoRoute && currentBvid == targetBvid)
 }
 
@@ -182,7 +221,7 @@ internal fun resolveMainActivityVideoRoute(
     cid: Long,
     startFullscreen: Boolean = false
 ): String {
-    return com.android.purebilibili.navigation.VideoRoute.resolveVideoRoutePath(
+    return VideoRoute.resolveVideoRoutePath(
         bvid = bvid,
         cid = cid,
         encodedCover = "",
@@ -200,19 +239,19 @@ internal fun resolveMainActivityDynamicRoute(dynamicId: String): String {
 
 internal fun resolveIntentLinkFallbackRoute(rawInput: String): String? {
     val fallbackUrl = resolveIntentLinkFallbackUrl(rawInput) ?: return null
-    return com.android.purebilibili.navigation.ScreenRoutes.Web.createRoute(fallbackUrl)
+    return ScreenRoutes.Web.createRoute(fallbackUrl)
 }
 
 internal fun resolveIntentLinkFallbackUrl(rawInput: String): String? {
     val directCandidate = normalizeIntentLinkWebCandidate(rawInput)
     if (directCandidate != null) return directCandidate
 
-    return com.android.purebilibili.core.util.BilibiliUrlParser.extractUrls(rawInput)
+    return BilibiliUrlParser.extractUrls(rawInput)
         .firstNotNullOfOrNull(::normalizeIntentLinkWebCandidate)
 }
 
 private suspend fun awaitNavControllerReady(
-    navController: androidx.navigation.NavHostController
+    navController: NavHostController
 ) {
     if (navController.currentDestination != null) return
     snapshotFlow { navController.currentDestination != null }
@@ -232,7 +271,7 @@ private fun normalizeIntentLinkWebCandidate(rawInput: String): String? {
         trimmed.startsWith("bilibili.com/", ignoreCase = true) -> "https://$trimmed"
         else -> return null
     }
-    val uri = runCatching { java.net.URI(candidate) }.getOrNull() ?: return null
+    val uri = runCatching { URI(candidate) }.getOrNull() ?: return null
     val scheme = uri.scheme?.lowercase().orEmpty()
     if (scheme !in setOf("http", "https")) return null
     val host = uri.host?.lowercase().orEmpty()
@@ -259,16 +298,16 @@ internal fun resolveMainActivityLinkNavigation(
         )
 
         is BilibiliNavigationTarget.Search -> MainActivityLinkNavigation(
-            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.Search.route,
+            pendingNavigationRoute = ScreenRoutes.Search.route,
             pendingSearchKeyword = target.keyword
         )
 
         is BilibiliNavigationTarget.Space -> MainActivityLinkNavigation(
-            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.Space.createRoute(target.mid)
+            pendingNavigationRoute = ScreenRoutes.Space.createRoute(target.mid)
         )
 
         is BilibiliNavigationTarget.Live -> MainActivityLinkNavigation(
-            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.Live.createRoute(
+            pendingNavigationRoute = ScreenRoutes.Live.createRoute(
                 roomId = target.roomId,
                 title = "",
                 uname = ""
@@ -276,13 +315,13 @@ internal fun resolveMainActivityLinkNavigation(
         )
 
         is BilibiliNavigationTarget.BangumiSeason -> MainActivityLinkNavigation(
-            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.BangumiDetail.createRoute(
+            pendingNavigationRoute = ScreenRoutes.BangumiDetail.createRoute(
                 seasonId = target.seasonId
             )
         )
 
         is BilibiliNavigationTarget.BangumiEpisode -> MainActivityLinkNavigation(
-            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.BangumiDetail.createRoute(
+            pendingNavigationRoute = ScreenRoutes.BangumiDetail.createRoute(
                 seasonId = 0,
                 epId = target.epId
             )
@@ -291,7 +330,7 @@ internal fun resolveMainActivityLinkNavigation(
         is BilibiliNavigationTarget.Music -> {
             val auSid = target.musicId.removePrefix("au").removePrefix("AU").toLongOrNull() ?: return null
             MainActivityLinkNavigation(
-                pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.MusicDetail.createRoute(auSid)
+                pendingNavigationRoute = ScreenRoutes.MusicDetail.createRoute(auSid)
             )
         }
     }
@@ -395,7 +434,7 @@ internal fun resolveSplashIconResIdForComponentClassName(className: String?): In
 }
 
 @Suppress("DEPRECATION")
-internal fun resolveLaunchIconResId(context: Context, launchIntent: android.content.Intent?): Int {
+internal fun resolveLaunchIconResId(context: Context, launchIntent: Intent?): Int {
     resolveSplashIconResIdForComponentClassName(context::class.java.name)
         .takeIf { it != 0 }
         ?.let { return it }
@@ -549,48 +588,48 @@ internal fun splashTrailSecondaryAlpha(progress: Float): Float {
 
 @RequiresApi(Build.VERSION_CODES.S)
 private fun applySplashRealtimeBlur(
-    splashView: android.view.View,
-    animatedTarget: android.view.View,
-    primaryTrailView: android.view.View?,
-    secondaryTrailView: android.view.View?,
+    splashView: View,
+    animatedTarget: View,
+    primaryTrailView: View?,
+    secondaryTrailView: View?,
     radius: Float
 ) {
     splashView.setRenderEffect(
-        android.graphics.RenderEffect.createBlurEffect(
+        RenderEffect.createBlurEffect(
             radius * 0.55f,
             radius * 0.55f,
-            android.graphics.Shader.TileMode.CLAMP
+            Shader.TileMode.CLAMP
         )
     )
     animatedTarget.setRenderEffect(
-        android.graphics.RenderEffect.createBlurEffect(
+        RenderEffect.createBlurEffect(
             radius,
             radius,
-            android.graphics.Shader.TileMode.CLAMP
+            Shader.TileMode.CLAMP
         )
     )
     primaryTrailView?.setRenderEffect(
-        android.graphics.RenderEffect.createBlurEffect(
+        RenderEffect.createBlurEffect(
             radius * 1.2f,
             radius * 1.2f,
-            android.graphics.Shader.TileMode.CLAMP
+            Shader.TileMode.CLAMP
         )
     )
     secondaryTrailView?.setRenderEffect(
-        android.graphics.RenderEffect.createBlurEffect(
+        RenderEffect.createBlurEffect(
             radius * 1.45f,
             radius * 1.45f,
-            android.graphics.Shader.TileMode.CLAMP
+            Shader.TileMode.CLAMP
         )
     )
 }
 
 @RequiresApi(Build.VERSION_CODES.S)
 private fun clearSplashRealtimeBlur(
-    splashView: android.view.View,
-    animatedTarget: android.view.View,
-    primaryTrailView: android.view.View?,
-    secondaryTrailView: android.view.View?
+    splashView: View,
+    animatedTarget: View,
+    primaryTrailView: View?,
+    secondaryTrailView: View?
 ) {
     splashView.setRenderEffect(null)
     animatedTarget.setRenderEffect(null)
@@ -622,7 +661,7 @@ internal fun shouldLogWarmResume(
     return hasCompletedInitialResume && !isChangingConfigurations
 }
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) // 解决 UnsafeOptInUsageError，因为 AppNavigation 内部使用了不稳定的 API
+@OptIn(UnstableApi::class) // 解决 UnsafeOptInUsageError，因为 AppNavigation 内部使用了不稳定的 API
 open class MainActivity : AppCompatActivity() {
     
     //  PiP 状态
@@ -638,13 +677,15 @@ open class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialResume = false
     private var splashFlyoutEnabledAtCreate = false
     private var splashExitCallbackTriggered = false
-    
+
+    var windowMetrics: WindowMetrics? by mutableStateOf(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppLanguage(SettingsManager.getAppLanguageSync(this))
         //  安装 SplashScreen
         val splashScreen = installSplashScreen()
         val runColdStartSplash = shouldRunColdStartSplash(savedInstanceStatePresent = savedInstanceState != null)
-        val welcomePrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val welcomePrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val splashFlyoutEnabled = runColdStartSplash && shouldEnableSplashFlyoutAnimation(
             sdkInt = Build.VERSION.SDK_INT,
             hasCompletedOnboarding = welcomePrefs.getBoolean(KEY_FIRST_LAUNCH, false),
@@ -660,7 +701,7 @@ open class MainActivity : AppCompatActivity() {
         
         //  🚀 [启动优化] 立即开始预加载首页数据
         // 这个必须尽早调用，利用开屏动画的时间并行加载数据
-        com.android.purebilibili.data.repository.VideoRepository.preloadHomeData()
+        VideoRepository.preloadHomeData()
         
         super.onCreate(savedInstanceState)
         //  初始调用，后续会根据主题动态更新
@@ -672,14 +713,16 @@ open class MainActivity : AppCompatActivity() {
         //  🚀 [启动优化] 保持 Splash 直到数据加载完成或超时
         var isDataReady = false
         val startTime = System.currentTimeMillis()
-        
+
+        windowMetrics = WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this)
+
         splashScreen.setKeepOnScreenCondition {
             if (!runColdStartSplash) {
                 return@setKeepOnScreenCondition false
             }
 
             // 检查数据是否就绪
-            if (com.android.purebilibili.data.repository.VideoRepository.isHomeDataReady()) {
+            if (VideoRepository.isHomeDataReady()) {
                 isDataReady = true
             }
             
@@ -718,7 +761,7 @@ open class MainActivity : AppCompatActivity() {
                             "⚠️ Splash flyout degraded to splash root animation (icon target unavailable)"
                         )
                     }
-                    val frameContainer = splashView as? android.widget.FrameLayout
+                    val frameContainer = splashView as? FrameLayout
                     val targetDrawableState = (animatedTarget as? ImageView)
                         ?.drawable
                         ?.constantState
@@ -748,10 +791,10 @@ open class MainActivity : AppCompatActivity() {
                             container.addView(
                                 this,
                                 anchorIndex,
-                                android.widget.FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams(
                                     targetSizePx,
                                     targetSizePx,
-                                    android.view.Gravity.CENTER
+                                    Gravity.CENTER
                                 )
                             )
                         }
@@ -766,9 +809,9 @@ open class MainActivity : AppCompatActivity() {
                     )
                     val supportsRealtimeBlur = shouldUseRealtimeSplashBlur(Build.VERSION.SDK_INT)
                     var blurEffectEnabled = supportsRealtimeBlur
-                    val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                    val animator = ValueAnimator.ofFloat(0f, 1f).apply {
                         duration = splashExitDurationMs()
-                        interpolator = android.view.animation.PathInterpolator(0.12f, 0.98f, 0.2f, 1.0f)
+                        interpolator = PathInterpolator(0.12f, 0.98f, 0.2f, 1.0f)
                         addUpdateListener { valueAnimator ->
                             val progress = valueAnimator.animatedValue as Float
                             val trailProgressPrimary = ((progress - 0.08f) / 0.92f).coerceIn(0f, 1f)
@@ -855,14 +898,14 @@ open class MainActivity : AppCompatActivity() {
             // Optional warmup path; default keeps proxy off cold-start critical path.
             AppScope.ioScope.launch {
                 try {
-                    val started = com.android.purebilibili.feature.cast.LocalProxyServer.ensureStarted()
+                    val started = LocalProxyServer.ensureStarted()
                     if (started) {
-                        com.android.purebilibili.core.util.Logger.d(TAG, "📺 Local Proxy Server started on port 8901")
+                        Logger.d(TAG, "📺 Local Proxy Server started on port 8901")
                     } else {
-                        com.android.purebilibili.core.util.Logger.d(TAG, "📺 Local Proxy Server already running")
+                        Logger.d(TAG, "📺 Local Proxy Server already running")
                     }
                 } catch (e: Exception) {
-                    com.android.purebilibili.core.util.Logger.e(TAG, "❌ Failed to start Local Proxy Server", e)
+                    Logger.e(TAG, "❌ Failed to start Local Proxy Server", e)
                 }
             }
         }
@@ -871,7 +914,7 @@ open class MainActivity : AppCompatActivity() {
             val context = LocalContext.current
             val uriHandler = LocalUriHandler.current
             val scope = rememberCoroutineScope()
-            val navController = androidx.navigation.compose.rememberNavController()
+            val navController = rememberNavController()
             var startupUpdateCheckResult by remember { mutableStateOf<AppUpdateCheckResult?>(null) }
             var startupUpdateDownloadState by remember { mutableStateOf(AppUpdateDownloadState()) }
             var pendingCrashSnapshotPath by remember {
@@ -946,7 +989,7 @@ open class MainActivity : AppCompatActivity() {
             // 1. 获取存储的模式 (默认为跟随系统)
             val uiPreset by SettingsManager.getUiPreset(context).collectAsState(initial = UiPreset.IOS)
             val androidNativeVariant by SettingsManager.getAndroidNativeVariant(context).collectAsState(
-                initial = com.android.purebilibili.core.theme.AndroidNativeVariant.MATERIAL3
+                initial = AndroidNativeVariant.MATERIAL3
             )
             val themeMode by SettingsManager.getThemeMode(context).collectAsState(initial = AppThemeMode.FOLLOW_SYSTEM)
             val darkThemeStyle by SettingsManager.getDarkThemeStyle(context).collectAsState(initial = DarkThemeStyle.DEFAULT)
@@ -961,19 +1004,19 @@ open class MainActivity : AppCompatActivity() {
             //  2. [新增] 获取动态取色设置 (默认为 true)
             val dynamicColor by SettingsManager.getDynamicColor(context).collectAsState(initial = true)
             val colorStyle by SettingsManager.getThemeColorStyle(context).collectAsState(
-                initial = com.materialkolor.PaletteStyle.TonalSpot
+                initial = PaletteStyle.TonalSpot
             )
             val colorSpec by SettingsManager.getThemeColorSpec(context).collectAsState(
-                initial = com.materialkolor.dynamiccolor.ColorSpec.SpecVersion.SPEC_2021
+                initial = ColorSpec.SpecVersion.SPEC_2021
             )
             
             //  3. [新增] 获取主题色索引
             val themeColorIndex by SettingsManager.getThemeColorIndex(context).collectAsState(initial = 0)
             val appFontSizePreset by SettingsManager.getAppFontSizePreset(context).collectAsState(
-                initial = com.android.purebilibili.core.theme.AppFontSizePreset.DEFAULT
+                initial = AppFontSizePreset.DEFAULT
             )
             val appUiScalePreset by SettingsManager.getAppUiScalePreset(context).collectAsState(
-                initial = com.android.purebilibili.core.theme.AppUiScalePreset.STANDARD
+                initial = AppUiScalePreset.STANDARD
             )
             val appDpiOverridePercent by SettingsManager.getAppDpiOverridePercent(context).collectAsState(initial = 0)
             
@@ -998,9 +1041,9 @@ open class MainActivity : AppCompatActivity() {
             LaunchedEffect(useDarkTheme) {
                 enableEdgeToEdge(
                     statusBarStyle = if (useDarkTheme) {
-                        androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
                     } else {
-                        androidx.activity.SystemBarStyle.light(
+                        SystemBarStyle.light(
                             android.graphics.Color.TRANSPARENT,
                             android.graphics.Color.TRANSPARENT
                         )
@@ -1011,8 +1054,8 @@ open class MainActivity : AppCompatActivity() {
             //  全局 Haze 状态，用于实现毛玻璃效果
             // 强制启用 blur，避免部分设备（如 Android 12）默认降级为仅半透明遮罩
             val mainHazeState = rememberRecoverableHazeState(initialBlurEnabled = true)
-            val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-            val systemDensity = androidx.compose.ui.platform.LocalDensity.current
+            val configuration = LocalConfiguration.current
+            val systemDensity = LocalDensity.current
             val displayMetricsSnapshot = remember(
                 configuration.densityDpi,
                 configuration.smallestScreenWidthDp,
@@ -1020,7 +1063,7 @@ open class MainActivity : AppCompatActivity() {
                 appUiScalePreset,
                 appDpiOverridePercent
             ) {
-                com.android.purebilibili.core.theme.buildDisplayMetricsSnapshot(
+                buildDisplayMetricsSnapshot(
                     systemDensityDpi = configuration.densityDpi,
                     smallestScreenWidthDp = configuration.smallestScreenWidthDp,
                     uiScalePreset = appUiScalePreset,
@@ -1029,15 +1072,16 @@ open class MainActivity : AppCompatActivity() {
                 )
             }
             val effectiveDensity = remember(systemDensity, displayMetricsSnapshot.effectiveDensityMultiplier) {
-                androidx.compose.ui.unit.Density(
+                Density(
                     density = systemDensity.density * displayMetricsSnapshot.effectiveDensityMultiplier,
                     fontScale = systemDensity.fontScale
                 )
             }
-            
+
             //  📐 [平板适配] 计算窗口尺寸类
-            val windowSizeClass = com.android.purebilibili.core.util.calculateWindowSizeClass(
-                densityMultiplier = displayMetricsSnapshot.effectiveDensityMultiplier
+            val windowSizeClass = calculateWindowSizeClass(
+                densityMultiplier = displayMetricsSnapshot.effectiveDensityMultiplier,
+                metrics = windowMetrics!!
             )
 
             // 6. 传入参数
@@ -1054,12 +1098,12 @@ open class MainActivity : AppCompatActivity() {
                 fontSizePreset = appFontSizePreset,
 
             ) {
-                com.android.purebilibili.core.ui.blur.ProvideUnifiedBlurIntensity {
+                ProvideUnifiedBlurIntensity {
                     //  📐 [平板适配] 提供全局 WindowSizeClass
-                    androidx.compose.runtime.CompositionLocalProvider(
-                        androidx.compose.ui.platform.LocalDensity provides effectiveDensity,
-                        com.android.purebilibili.core.util.LocalWindowSizeClass provides windowSizeClass,
-                        com.android.purebilibili.core.theme.LocalDisplayMetricsSnapshot provides displayMetricsSnapshot
+                    CompositionLocalProvider(
+                        LocalDensity provides effectiveDensity,
+                        LocalWindowSizeClass provides windowSizeClass,
+                        LocalDisplayMetricsSnapshot provides displayMetricsSnapshot
                     ) {
                     Box(
                         modifier = Modifier
@@ -1130,7 +1174,7 @@ open class MainActivity : AppCompatActivity() {
                                     val liveUname = miniPlayerManager.currentLiveUname
                                     miniPlayerManager.exitMiniMode(animate = false)
                                     navController.navigate(
-                                        com.android.purebilibili.navigation.ScreenRoutes.Live.createRoute(roomId, liveTitle, liveUname)
+                                        ScreenRoutes.Live.createRoute(roomId, liveTitle, liveUname)
                                     ) {
                                         launchSingleTop = true
                                     }
@@ -1216,7 +1260,7 @@ open class MainActivity : AppCompatActivity() {
                     LaunchedEffect(showCustomSplashInitially) {
                         if (showCustomSplashInitially) {
                             showSplash = true
-                            kotlinx.coroutines.delay(customSplashHoldDurationMs())
+                            delay(customSplashHoldDurationMs())
                             showSplash = false
                         } else {
                             showSplash = false
@@ -1265,7 +1309,7 @@ open class MainActivity : AppCompatActivity() {
                                     AsyncImage(
                                         model = splashUri,
                                         contentDescription = "Splash Wallpaper",
-                                        alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                        alignment = BiasAlignment(0f, splashAlignmentBias),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1281,7 +1325,7 @@ open class MainActivity : AppCompatActivity() {
                                     AsyncImage(
                                         model = splashUri,
                                         contentDescription = null,
-                                        alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                        alignment = BiasAlignment(0f, splashAlignmentBias),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1310,7 +1354,7 @@ open class MainActivity : AppCompatActivity() {
                                                 scaleY = 1f + (splashFadeProgress * 0.015f)
                                             )
                                             .fillMaxWidth(
-                                                if (windowSizeClass.widthSizeClass == com.android.purebilibili.core.util.WindowWidthSizeClass.Expanded) {
+                                                if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) {
                                                     0.34f
                                                 } else {
                                                     0.48f
@@ -1322,7 +1366,7 @@ open class MainActivity : AppCompatActivity() {
                                         AsyncImage(
                                             model = splashUri,
                                             contentDescription = "Splash Wallpaper Poster",
-                                            alignment = androidx.compose.ui.BiasAlignment(0f, splashAlignmentBias),
+                                            alignment = BiasAlignment(0f, splashAlignmentBias),
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -1374,7 +1418,7 @@ open class MainActivity : AppCompatActivity() {
                             )
                         }
                         val releaseNotesScrollState = rememberScrollState()
-                        com.android.purebilibili.core.ui.IOSAlertDialog(
+                        IOSAlertDialog(
                             onDismissRequest = { startupUpdateCheckResult = null },
                             title = {
                                 Text(
@@ -1446,10 +1490,10 @@ open class MainActivity : AppCompatActivity() {
                                 }
                             },
                             confirmButton = {
-                                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                                IOSDialogAction(onClick = {
                                     val downloadedFile = startupUpdateDownloadState.filePath
                                         ?.takeIf { startupUpdateDownloadState.status == AppUpdateDownloadStatus.COMPLETED }
-                                        ?.let { path -> java.io.File(path) }
+                                        ?.let { path -> File(path) }
                                         ?.takeIf { it.exists() }
 
                                     if (downloadedFile != null) {
@@ -1503,7 +1547,7 @@ open class MainActivity : AppCompatActivity() {
                                 }
                             },
                             dismissButton = {
-                                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                                IOSDialogAction(onClick = {
                                     startupUpdateCheckResult = null
                                     startupUpdateDownloadState = AppUpdateDownloadState()
                                 }) { Text("稍后") }
@@ -1517,7 +1561,7 @@ open class MainActivity : AppCompatActivity() {
                             hasPromptBeenHandled = hasHandledCrashPrompt
                         )
                     ) {
-                        com.android.purebilibili.core.ui.IOSAlertDialog(
+                        IOSAlertDialog(
                             onDismissRequest = {
                                 hasHandledCrashPrompt = true
                                 if (shouldClearPendingCrashLogAfterAction(CrashLogPromptAction.DISMISS)) {
@@ -1534,7 +1578,7 @@ open class MainActivity : AppCompatActivity() {
                                 )
                             },
                             confirmButton = {
-                                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                                IOSDialogAction(onClick = {
                                     hasHandledCrashPrompt = true
                                     Logger.sharePendingCrashSnapshot(context)
                                     if (shouldClearPendingCrashLogAfterAction(CrashLogPromptAction.SHARE)) {
@@ -1544,7 +1588,7 @@ open class MainActivity : AppCompatActivity() {
                                 }) { Text("分享") }
                             },
                             dismissButton = {
-                                com.android.purebilibili.core.ui.IOSDialogAction(onClick = {
+                                IOSDialogAction(onClick = {
                                     hasHandledCrashPrompt = true
                                     if (shouldClearPendingCrashLogAfterAction(CrashLogPromptAction.DISMISS)) {
                                         Logger.clearPendingCrashSnapshot(context)
@@ -1560,6 +1604,11 @@ open class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        windowMetrics = WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this)
     }
 
     override fun onStart() {
@@ -1649,7 +1698,7 @@ open class MainActivity : AppCompatActivity() {
                 Logger.d(TAG, " 成功进入 PiP 模式")
             } catch (e: Exception) {
                 miniPlayerManager.updatePlaybackRoutePipRequest(false)
-                com.android.purebilibili.core.util.Logger.e(TAG, " 进入 PiP 失败", e)
+                Logger.e(TAG, " 进入 PiP 失败", e)
             }
         } else {
             Logger.d(TAG, "⏳ 未满足 PiP 条件: API>=${Build.VERSION_CODES.O}=${Build.VERSION.SDK_INT >= Build.VERSION_CODES.O}, shouldTriggerPip=$shouldTriggerPip")
@@ -1665,7 +1714,7 @@ open class MainActivity : AppCompatActivity() {
     }
     
     //  [新增] 处理 singleTop 模式下的新 Intent
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
@@ -1686,7 +1735,7 @@ open class MainActivity : AppCompatActivity() {
     /**
      *  [新增] 处理 Deep Link 和分享意图
      */
-    private fun handleIntent(intent: android.content.Intent?) {
+    private fun handleIntent(intent: Intent?) {
         if (intent == null) return
 
         intent.getStringExtra(EXTRA_PENDING_NAVIGATION_ROUTE)
@@ -1700,7 +1749,7 @@ open class MainActivity : AppCompatActivity() {
         Logger.d(TAG, "🔗 handleIntent: action=${intent.action}, data=${intent.data}")
         
         when (intent.action) {
-            android.content.Intent.ACTION_VIEW -> {
+            Intent.ACTION_VIEW -> {
                 // 点击链接打开
                 val uri = intent.data
                 if (uri != null) {
@@ -1709,7 +1758,7 @@ open class MainActivity : AppCompatActivity() {
 
                     val pluginInstallRequest = resolvePluginInstallDeepLink(uri.toString())
                     if (pluginInstallRequest != null) {
-                        pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.PluginsSettings
+                        pendingNavigationRoute = ScreenRoutes.PluginsSettings
                             .createRoute(importUrl = pluginInstallRequest.pluginUrl)
                         Logger.d(TAG, "🚀 Plugin install deep link detected: ${pluginInstallRequest.pluginUrl}")
                         return
@@ -1724,19 +1773,19 @@ open class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            android.content.Intent.ACTION_SEND -> {
+            Intent.ACTION_SEND -> {
                 // 分享文本到 app
-                val text = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                 if (text != null) {
                     Logger.d(TAG, "📤 收到分享文本: $text")
                     
-                    val urls = com.android.purebilibili.core.util.BilibiliUrlParser.extractUrls(text)
+                    val urls = BilibiliUrlParser.extractUrls(text)
                     val pluginInstallLink = urls.firstOrNull { resolvePluginInstallDeepLink(it) != null }
 
                     if (pluginInstallLink != null) {
                         val pluginInstallRequest = resolvePluginInstallDeepLink(pluginInstallLink)
                         if (pluginInstallRequest != null) {
-                            pendingNavigationRoute = com.android.purebilibili.navigation.ScreenRoutes.PluginsSettings
+                            pendingNavigationRoute = ScreenRoutes.PluginsSettings
                                 .createRoute(importUrl = pluginInstallRequest.pluginUrl)
                             Logger.d(TAG, "🚀 Plugin install shared link detected: ${pluginInstallRequest.pluginUrl}")
                             return
@@ -1801,7 +1850,7 @@ open class MainActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        com.android.purebilibili.feature.cast.DlnaManager.unbindService(this)
+        DlnaManager.unbindService(this)
     }
 }
 
