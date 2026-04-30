@@ -153,6 +153,7 @@ internal fun <T> IOSSlidingSegmentedControl(
     selectedValue: T,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    forceLiquidIndicator: Boolean = false,
     onSelectionChange: (T) -> Unit
 ) {
     if (options.isEmpty()) return
@@ -161,10 +162,12 @@ internal fun <T> IOSSlidingSegmentedControl(
     val homeSettings by SettingsManager
         .getHomeSettings(context)
         .collectAsState(initial = HomeSettings())
-    val chrome = remember(uiPreset, homeSettings.androidNativeLiquidGlassEnabled) {
+    val effectiveAndroidNativeLiquidGlassEnabled =
+        forceLiquidIndicator || homeSettings.androidNativeLiquidGlassEnabled
+    val chrome = remember(uiPreset, effectiveAndroidNativeLiquidGlassEnabled) {
         resolveIosSlidingSegmentedControlChrome(
             uiPreset = uiPreset,
-            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+            androidNativeLiquidGlassEnabled = effectiveAndroidNativeLiquidGlassEnabled
         )
     }
     if (chrome == IosSlidingSegmentedControlChrome.MD3_SEGMENTED) {
@@ -182,6 +185,7 @@ internal fun <T> IOSSlidingSegmentedControl(
         selectedValue = selectedValue,
         modifier = modifier,
         enabled = enabled,
+        forceLiquidIndicator = forceLiquidIndicator,
         onSelectionChange = onSelectionChange
     )
 }
@@ -268,6 +272,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
     selectedValue: T,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    forceLiquidIndicator: Boolean = false,
     onSelectionChange: (T) -> Unit
 ) {
     val selectedIndex = resolveSelectionIndex(options = options, selectedValue = selectedValue)
@@ -281,6 +286,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
         },
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        labelFontSize = 12.sp
+        labelFontSize = 12.sp,
+        forceLiquidChrome = forceLiquidIndicator
     )
 }

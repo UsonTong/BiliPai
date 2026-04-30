@@ -156,6 +156,7 @@ fun BottomBarLiquidSegmentedControl(
     liquidGlassEffectsEnabled: Boolean = true,
     dragSelectionEnabled: Boolean = true,
     preferInlineContentStyle: Boolean = false,
+    forceLiquidChrome: Boolean = false,
     backdrop: Backdrop? = null,
     onIndicatorPositionChanged: ((Float) -> Unit)? = null
 ) {
@@ -166,9 +167,11 @@ fun BottomBarLiquidSegmentedControl(
     val homeSettings by SettingsManager
         .getHomeSettings(context)
         .collectAsState(initial = HomeSettings())
+    val effectiveAndroidNativeLiquidGlassEnabled =
+        forceLiquidChrome || homeSettings.androidNativeLiquidGlassEnabled
     val chromeStyle = resolveSegmentedControlChromeStyle(
         uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled,
+        androidNativeLiquidGlassEnabled = effectiveAndroidNativeLiquidGlassEnabled,
         preferInlineContentStyle = preferInlineContentStyle
     )
     if (chromeStyle == SegmentedControlChromeStyle.ANDROID_NATIVE_UNDERLINE) {
@@ -191,7 +194,7 @@ fun BottomBarLiquidSegmentedControl(
         storedLiquidGlassEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
         liquidGlassEffectsEnabled = liquidGlassEffectsEnabled,
         uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
+        androidNativeLiquidGlassEnabled = effectiveAndroidNativeLiquidGlassEnabled
     )
     val blurIntensity = currentUnifiedBlurIntensity()
     val density = LocalDensity.current
