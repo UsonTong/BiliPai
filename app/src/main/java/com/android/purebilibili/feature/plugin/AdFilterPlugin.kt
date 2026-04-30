@@ -57,7 +57,7 @@ class AdFilterPlugin : FeedPlugin {
     override val name = "去广告增强"
     override val description = "过滤广告、拉黑UP主、屏蔽关键词"
     override val version = "2.0.0"
-    override val author = "YangY"
+    override val author = "BiliPai项目组"
     override val icon: ImageVector = CupertinoIcons.Default.Xmark
     override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
         pluginId = id,

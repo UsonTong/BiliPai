@@ -95,7 +95,7 @@ class TodayWatchPlugin : RecommendationPluginApi {
     override val name: String = "今日推荐单"
     override val description: String = "本地分析观看历史，生成可定制推荐队列"
     override val version: String = "1.0.0"
-    override val author: String = "YangY"
+    override val author: String = "BiliPai项目组"
     override val icon: ImageVector = CupertinoIcons.Default.ListBullet
     override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
         pluginId = id,

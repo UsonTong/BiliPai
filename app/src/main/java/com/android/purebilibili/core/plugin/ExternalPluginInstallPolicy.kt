@@ -21,6 +21,7 @@ sealed interface ExternalPluginInstallDecision {
 
 private val SENSITIVE_PLUGIN_CAPABILITIES = setOf(
     PluginCapability.PLAYER_CONTROL,
+    PluginCapability.PLAYBACK_CDN,
     PluginCapability.DANMAKU_MUTATION,
     PluginCapability.LOCAL_HISTORY_READ,
     PluginCapability.LOCAL_FEEDBACK_READ,

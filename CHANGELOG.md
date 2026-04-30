@@ -1,5 +1,41 @@
 # Changelog
 
+## v8.0.1 (2026-05-01)
+
+### 版本信息
+- 版本号从 `8.0.0` 升级到 `8.0.1`，`versionCode` 升级到 `174`。
+- 本次为插件系统与推荐体验维护版本，重点补齐今日推荐算法优化、内置 CDN 属地优选插件、外部插件开发文档和插件中心展示细节。
+
+### 今日推荐单与推荐算法
+- 今日推荐单升级为推荐插件接口实现，补齐 `RECOMMENDATION_CANDIDATES`、`LOCAL_HISTORY_READ`、`LOCAL_FEEDBACK_READ` 能力声明，并可从统一推荐请求输出候选队列、推荐解释和偏好 UP 分组。
+- 推荐评分新增模式聚焦信号：「今晚轻松看」更偏向短时长、低刺激、轻松/治愈内容，并降低高热度学习内容权重；「深度学习看」更偏向教程、科普、技术、复盘和中长时长内容，并降低短平快娱乐内容权重。
+- 队列多样性从“避免同一 UP 连续出现”扩展到“避免同一主题连续堆叠”，对音乐、学习、游戏、美食、旅行、日常等主题做去重与新鲜度调节。
+- “不感兴趣”反馈会记录最近视频标题、UP 主、时间和关键词，后续推荐同时降权已反馈视频、UP 主和负向关键词。
+- 今日推荐单设置页新增“推荐依据”，展示当前模式侧重点、近期偏好 UP、最近不感兴趣样本和已降权信号；模式切换改用液态分段控件。
+
+### CDN 属地优选插件
+- 新增内置插件「CDN 属地优选」，默认关闭，面向默认 B 站 CDN 线路不稳定、跨地区网络或海外出口用户。
+- 插件启用后会后台请求 B 站 IP 属地接口并缓存地区信息，再把匹配地区的 CDN host 改写候选排到普通视频播放线路前面。
+- 插件只改写普通视频 `bilivideo.com` 播放 URL 的 host，保留 scheme、path、query，并始终保留 B 站原始 `baseUrl / backupUrl`，播放失败仍可走现有 CDN 切换与错误恢复。
+- 内置 CDN catalog 改为使用项目提供的 `cdn.json`，并修复海外地区错误优先 `gotcha` host 导致开启插件后播放异常的问题；旧缓存 host 不属于当前 catalog 时会自动回退到新 catalog。
+
+### 插件中心与开发文档
+- 插件中心新增「播放 CDN」能力展示，内置插件能力不再显示外部插件的“需授权 / 安装前确认”文案，避免把内置插件误导为需要额外授权。
+- CDN 属地优选图标改为服务器节点语义，所有官方内置插件作者统一为 `BiliPai项目组`。
+- 外部插件开发文档已同步：JSON / `.bpplugin` 指南见 [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md)，源码级原生插件见 [docs/NATIVE_PLUGIN_DEVELOPMENT.md](docs/NATIVE_PLUGIN_DEVELOPMENT.md)，Plugin SDK 中文文档见 [plugins/sdk/README.md](plugins/sdk/README.md)。
+- `.bpplugin` 仍处于预览阶段：当前支持 manifest 解析、SHA-256 / 签名状态展示和能力授权记录，宿主暂不执行外部 Dex。
+
+### 主题与资源守卫
+- 迁移启动、通知、快捷方式和深色主题资源中的硬编码颜色引用，改用命名颜色资源，降低深色模式和动态配色回归风险。
+- 新增硬编码颜色迁移守卫测试，防止已迁移 UI 与 XML 资源重新引入裸色值。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests '*TodayWatch*'`
+- `./gradlew :app:testDebugUnitTest --tests '*Cdn*' --tests '*PlayerErrorRecoveryPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests '*PluginsScreenPolicyTest' --tests '*Cdn*'`
+- `./gradlew :plugin-sdk:testDebugUnitTest`
+- `./gradlew :app:assembleDebug`
+
 ## v8.0.0 (2026-04-30)
 
 ### 版本信息

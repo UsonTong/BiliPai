@@ -36,6 +36,7 @@ import com.android.purebilibili.feature.settings.applyAppLanguage
 import com.android.purebilibili.feature.settings.AppThemeMode
 import com.android.purebilibili.feature.settings.resolveThemeModePreference
 import com.android.purebilibili.feature.plugin.AdFilterPlugin
+import com.android.purebilibili.feature.plugin.CdnRegionPlugin
 import com.android.purebilibili.feature.plugin.DanmakuEnhancePlugin
 import com.android.purebilibili.feature.plugin.EyeProtectionPlugin
 import com.android.purebilibili.feature.plugin.SponsorBlockPlugin
@@ -151,7 +152,8 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
         PluginManager.register(DanmakuEnhancePlugin())
         PluginManager.register(EyeProtectionPlugin())
         PluginManager.register(TodayWatchPlugin())
-            Logger.d(PureApplicationRuntimeConfig.TAG, " Plugin system initialized with 5 built-in plugins")
+        PluginManager.register(CdnRegionPlugin())
+        Logger.d(PureApplicationRuntimeConfig.TAG, " Plugin system initialized with 6 built-in plugins")
 
         com.android.purebilibili.core.plugin.json.JsonPluginManager.initialize(this)
         Logger.d(PureApplicationRuntimeConfig.TAG, " JSON plugin system initialized")

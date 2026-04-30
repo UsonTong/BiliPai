@@ -25,6 +25,7 @@ import com.android.purebilibili.core.util.NetworkUtils
 import com.android.purebilibili.data.model.VideoLoadError
 import com.android.purebilibili.data.model.response.*
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
 import com.android.purebilibili.feature.video.usecase.*
@@ -2193,12 +2194,21 @@ class PlayerViewModel : ViewModel() {
                              startPos = 0
                         }
 
+                        val cdnSelection = resolvePlaybackCdnCandidateSelection(
+                            videoUrl = result.playUrl,
+                            audioUrl = result.audioUrl,
+                            quality = result.quality,
+                            cachedDashVideos = result.cachedDashVideos,
+                            cachedDashAudios = result.cachedDashAudios,
+                            adaptiveDashSource = result.adaptiveDashSource
+                        )
+
                         // Play video
                         if (!shouldSkipPlayerPrepare) {
                             playResolvedPlayback(
-                                videoUrl = result.playUrl,
-                                audioUrl = result.audioUrl,
-                                adaptiveDashSource = result.adaptiveDashSource,
+                                videoUrl = cdnSelection.playUrl,
+                                audioUrl = cdnSelection.audioUrl,
+                                adaptiveDashSource = cdnSelection.adaptiveDashSource,
                                 startPositionMs = startPos,
                                 playWhenReady = shouldAutoPlay
                             )
@@ -2211,36 +2221,20 @@ class PlayerViewModel : ViewModel() {
                              }
                         }
                         
-                        //  收集所有 CDN URL (主+备用)
-                        val allVideoUrls = buildList {
-                            add(result.playUrl)
-                            result.cachedDashVideos
-                                .find { it.id == result.quality }
-                                ?.backupUrl
-                                ?.filterNotNull()
-                                ?.filter { it.isNotEmpty() }
-                                ?.let { addAll(it) }
-                        }.distinct()
-                        
-                        val allAudioUrls = buildList {
-                            result.audioUrl?.let { add(it) }
-                            result.cachedDashAudios.firstOrNull()
-                                ?.backupUrl
-                                ?.filterNotNull()
-                                ?.filter { it.isNotEmpty() }
-                                ?.let { addAll(it) }
-                        }.distinct()
-                        
-                        Logger.d("PlayerVM", "📡 CDN 线路: 视频${allVideoUrls.size}个, 音频${allAudioUrls.size}个")
+                        Logger.d(
+                            "PlayerVM",
+                            "📡 CDN 线路: 视频${cdnSelection.allVideoUrls.size}个, 音频${cdnSelection.allAudioUrls.size}个" +
+                                (cdnSelection.regionLabel?.let { ", 属地优选=$it" } ?: "")
+                        )
                         
                         _uiState.value = PlayerUiState.Success(
                             info = result.info,
-                            playUrl = result.playUrl,
-                            audioUrl = result.audioUrl,
+                            playUrl = cdnSelection.playUrl,
+                            audioUrl = cdnSelection.audioUrl,
                             related = result.related,
                             currentQuality = result.quality,
                             playbackQualityMode = resolveInitialPlaybackQualityMode(),
-                            adaptiveDashSource = result.adaptiveDashSource,
+                            adaptiveDashSource = cdnSelection.adaptiveDashSource,
                             qualityIds = result.qualityIds,
                             qualityLabels = result.qualityLabels,
                             switchableQualityIds = result.switchableQualityIds,
@@ -2255,9 +2249,9 @@ class PlayerViewModel : ViewModel() {
                             coinCount = result.coinCount,
                             //  CDN 线路
                             currentCdnIndex = 0,
-                            allVideoUrls = allVideoUrls,
+                            allVideoUrls = cdnSelection.allVideoUrls,
 
-                            allAudioUrls = allAudioUrls,
+                            allAudioUrls = cdnSelection.allAudioUrls,
 
                             // [New] Codec/Audio info
                             videoCodecId = result.videoCodecId,
@@ -5067,19 +5061,41 @@ class PlayerViewModel : ViewModel() {
                 )
                 
                 if (result != null) {
+                    val nextCachedDashVideos = result.cachedDashVideos.ifEmpty { current.cachedDashVideos }
+                    val nextCachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
+                    val cdnSelection = resolvePlaybackCdnCandidateSelection(
+                        videoUrl = result.videoUrl,
+                        audioUrl = result.audioUrl,
+                        quality = result.actualQuality,
+                        cachedDashVideos = nextCachedDashVideos,
+                        cachedDashAudios = nextCachedDashAudios,
+                        adaptiveDashSource = result.adaptiveDashSource
+                    )
+                    if (cdnSelection.playUrl != result.videoUrl || cdnSelection.audioUrl != result.audioUrl) {
+                        playResolvedPlayback(
+                            videoUrl = cdnSelection.playUrl,
+                            audioUrl = cdnSelection.audioUrl,
+                            adaptiveDashSource = cdnSelection.adaptiveDashSource,
+                            startPositionMs = currentPos,
+                            playWhenReady = playWhenReadyAfterSwitch
+                        )
+                    }
                     _qualitySwitchFailureDialog.value = null
                     _uiState.value = current.copy(
-                        playUrl = result.videoUrl, audioUrl = result.audioUrl,
+                        playUrl = cdnSelection.playUrl, audioUrl = cdnSelection.audioUrl,
                         currentQuality = result.actualQuality, isQualitySwitching = false, requestedQuality = null,
                         playbackQualityMode = playbackQualityMode,
-                        adaptiveDashSource = result.adaptiveDashSource,
+                        adaptiveDashSource = cdnSelection.adaptiveDashSource,
                         pendingPlaybackTransitionPositionMs = transitionPositionMs,
                         qualityIds = result.qualityIds.ifEmpty { current.qualityIds },
                         qualityLabels = result.qualityLabels.ifEmpty { current.qualityLabels },
                         switchableQualityIds = result.switchableQualityIds.ifEmpty { current.switchableQualityIds },
                         //  [修复] 更新缓存的DASH流，否则后续画质切换可能失败
-                        cachedDashVideos = result.cachedDashVideos.ifEmpty { current.cachedDashVideos },
-                        cachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
+                        cachedDashVideos = nextCachedDashVideos,
+                        cachedDashAudios = nextCachedDashAudios,
+                        currentCdnIndex = 0,
+                        allVideoUrls = cdnSelection.allVideoUrls,
+                        allAudioUrls = cdnSelection.allAudioUrls
                     )
                     monitorPlaybackTransitionPosition(transitionPositionMs)
                     val label = current.qualityLabels.getOrNull(
@@ -5185,23 +5201,34 @@ class PlayerViewModel : ViewModel() {
                     }
                     
                     if (selection != null) {
-                        playResolvedPlayback(
+                        val cdnSelection = resolvePlaybackCdnCandidateSelection(
                             videoUrl = selection.videoUrl,
                             audioUrl = selection.audioUrl,
-                            adaptiveDashSource = selection.adaptiveDashSource,
+                            quality = selection.actualQuality,
+                            cachedDashVideos = selection.cachedDashVideos,
+                            cachedDashAudios = selection.cachedDashAudios,
+                            adaptiveDashSource = selection.adaptiveDashSource
+                        )
+                        playResolvedPlayback(
+                            videoUrl = cdnSelection.playUrl,
+                            audioUrl = cdnSelection.audioUrl,
+                            adaptiveDashSource = cdnSelection.adaptiveDashSource,
                             startPositionMs = restoredPosition
                         )
                         
                         _uiState.value = subtitleClearedState.copy(
-                            info = current.info.copy(cid = page.cid), playUrl = selection.videoUrl, audioUrl = selection.audioUrl,
+                            info = current.info.copy(cid = page.cid), playUrl = cdnSelection.playUrl, audioUrl = cdnSelection.audioUrl,
                             startPosition = restoredPosition, isQualitySwitching = false,
                             pendingPlaybackTransitionPositionMs = restoredPosition.coerceAtLeast(0L),
-                            adaptiveDashSource = selection.adaptiveDashSource,
+                            adaptiveDashSource = cdnSelection.adaptiveDashSource,
                             qualityIds = selection.qualityIds,
                             qualityLabels = selection.qualityLabels,
                             switchableQualityIds = selection.switchableQualityIds,
                             cachedDashVideos = selection.cachedDashVideos,
-                            cachedDashAudios = selection.cachedDashAudios
+                            cachedDashAudios = selection.cachedDashAudios,
+                            currentCdnIndex = 0,
+                            allVideoUrls = cdnSelection.allVideoUrls,
+                            allAudioUrls = cdnSelection.allAudioUrls
                         )
                         monitorPlaybackTransitionPosition(restoredPosition.coerceAtLeast(0L))
                         startHeartbeat()
@@ -5355,10 +5382,18 @@ class PlayerViewModel : ViewModel() {
                 isAv1Supported = isAv1Supported
             ) ?: return false
 
-            playResolvedPlayback(
+            val cdnSelection = resolvePlaybackCdnCandidateSelection(
                 videoUrl = selection.videoUrl,
                 audioUrl = selection.audioUrl,
-                adaptiveDashSource = selection.adaptiveDashSource,
+                quality = selection.actualQuality,
+                cachedDashVideos = selection.cachedDashVideos,
+                cachedDashAudios = selection.cachedDashAudios,
+                adaptiveDashSource = selection.adaptiveDashSource
+            )
+            playResolvedPlayback(
+                videoUrl = cdnSelection.playUrl,
+                audioUrl = cdnSelection.audioUrl,
+                adaptiveDashSource = cdnSelection.adaptiveDashSource,
                 startPositionMs = 0L
             )
 
@@ -5366,16 +5401,19 @@ class PlayerViewModel : ViewModel() {
             subtitleLoadToken += 1
             _uiState.value = clearTransientPlaybackPreviewData(clearSubtitleFields(current)).copy(
                 info = current.info.copy(cid = targetCid),
-                playUrl = selection.videoUrl,
-                audioUrl = selection.audioUrl,
+                playUrl = cdnSelection.playUrl,
+                audioUrl = cdnSelection.audioUrl,
                 startPosition = 0L,
-                adaptiveDashSource = selection.adaptiveDashSource,
+                adaptiveDashSource = cdnSelection.adaptiveDashSource,
                 videoDurationMs = playUrlData.timelength.coerceAtLeast(0L),
                 qualityIds = selection.qualityIds,
                 qualityLabels = selection.qualityLabels,
                 switchableQualityIds = selection.switchableQualityIds,
                 cachedDashVideos = selection.cachedDashVideos,
-                cachedDashAudios = selection.cachedDashAudios
+                cachedDashAudios = selection.cachedDashAudios,
+                currentCdnIndex = 0,
+                allVideoUrls = cdnSelection.allVideoUrls,
+                allAudioUrls = cdnSelection.allAudioUrls
             )
             loadPlayerInfo(
                 currentBvid,
@@ -5705,6 +5743,68 @@ class PlayerViewModel : ViewModel() {
             Logger.d("PlayerVM", " Heartbeat snapshot failed($reason): ${e.message}")
             return false
         }
+    }
+
+    private data class PlaybackCdnCandidateSelection(
+        val playUrl: String,
+        val audioUrl: String?,
+        val adaptiveDashSource: AdaptiveDashPlaybackSource?,
+        val allVideoUrls: List<String>,
+        val allAudioUrls: List<String>,
+        val regionLabel: String?
+    )
+
+    private fun resolvePlaybackCdnCandidateSelection(
+        videoUrl: String,
+        audioUrl: String?,
+        quality: Int,
+        cachedDashVideos: List<DashVideo>,
+        cachedDashAudios: List<DashAudio>,
+        adaptiveDashSource: AdaptiveDashPlaybackSource?
+    ): PlaybackCdnCandidateSelection {
+        val rawVideoUrls = buildList {
+            if (videoUrl.isNotEmpty()) add(videoUrl)
+            cachedDashVideos
+                .find { it.id == quality }
+                ?.backupUrl
+                ?.filterNotNull()
+                ?.filter { it.isNotEmpty() }
+                ?.let { addAll(it) }
+        }.distinct()
+
+        val rawAudioUrls = buildList {
+            audioUrl?.let { add(it) }
+            cachedDashAudios.firstOrNull()
+                ?.backupUrl
+                ?.filterNotNull()
+                ?.filter { it.isNotEmpty() }
+                ?.let { addAll(it) }
+        }.distinct()
+
+        val cdnRewrite = PluginManager
+            .getEnabledPlugins(PlaybackCdnPlugin::class)
+            .firstOrNull()
+            ?.rewritePlaybackCandidates(rawVideoUrls, rawAudioUrls)
+
+        val allVideoUrls = cdnRewrite?.videoUrls ?: rawVideoUrls
+        val allAudioUrls = cdnRewrite?.audioUrls ?: rawAudioUrls
+        val selectedVideoUrl = allVideoUrls.firstOrNull() ?: videoUrl
+        val selectedAudioUrl = allAudioUrls.firstOrNull() ?: audioUrl
+        val selectedAdaptiveDashSource =
+            if (selectedVideoUrl == videoUrl && selectedAudioUrl == audioUrl) {
+                adaptiveDashSource
+            } else {
+                null
+            }
+
+        return PlaybackCdnCandidateSelection(
+            playUrl = selectedVideoUrl,
+            audioUrl = selectedAudioUrl,
+            adaptiveDashSource = selectedAdaptiveDashSource,
+            allVideoUrls = allVideoUrls,
+            allAudioUrls = allAudioUrls,
+            regionLabel = cdnRewrite?.regionLabel
+        )
     }
 
     private fun playResolvedPlayback(

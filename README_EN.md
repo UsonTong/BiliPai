@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-04-30 · Synced to v8.0.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-01 · Synced to v8.0.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026)-brightgreen?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/APK-Varies-orange?style=flat-square" alt="Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Plugins-5%20Built--in-blueviolet?style=flat-square" alt="Plugins">
+  <img src="https://img.shields.io/badge/Plugins-6%20Built--in-blueviolet?style=flat-square" alt="Plugins">
 </p>
 
 <p align="center">
@@ -70,7 +70,7 @@
 | **Comment Copy UX** | Long-press opens selectable-copy panel so users can drag-select exact comment text (including rich text scenarios) |
 | **Playback History** | Automatically resume playback, with a toggle and one-time prompt per target |
 | **TV Login** | Scan QR code to login as TV client to unlock high quality |
-| **Plugin System** | Built-in SponsorBlock, AdBlock, Danmaku Enhancement, Eye Protection, and Today Watch plugins |
+| **Plugin System** | Built-in SponsorBlock, AdBlock, Danmaku Enhancement, Eye Protection, Today Watch, and CDN Region plugins |
 
 ### 🔌 Plugin System
 
@@ -81,6 +81,7 @@
 | **Danmaku Plus** | Keyword blocking and highlighting for personalized danmaku experience |
 | **Eye Protection** | Scheduled eye care, 3 presets + DIY tuning, real-time preview, warm filter, humane reminders with snooze |
 | **🆕 Today Watch** | Local recommendation plugin with Relax/Learn modes, collapse/expand, independent refresh, UP ranking, and reason tags |
+| **🆕 CDN Region** | Off by default; prioritizes same-region CDN candidates for normal video playback while preserving original URLs for fallback |
 | **Plugin Center** | Unified management for all plugins with independent configurations |
 | **🆕 External Plugins** | Support loading dynamic JSON rule plugins via URL |
 
@@ -430,13 +431,15 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.0 · 2026-04-30)
+### Latest (v8.0.1 · 2026-05-01)
 
-- 🔍 Moved search to WBI endpoints, added live-user/topic/photo search and topic detail pages, and tightened pagination, field cleanup, and navigation policy.
-- ✨ Aligned shared liquid segmented controls with the home bottom bar's Android-native liquid glass animation, including chromatic aberration, lens, shadows, and velocity deformation while avoiding idle ghosting.
-- 💬 Improved video comment back-to-top behavior, reply/fan-group decorations, video info layout, portrait detail behavior, and space content grids.
-- 🎨 Continued moving login, profile, settings, download, drawer, and selected home/live UI surfaces to theme tokens to reduce hardcoded color regressions.
-- 🔖 Bumped the app to `8.0.0` with `versionCode` `173`.
+- 🧠 Improved Today Watch recommendations with Relax/Learn mode focus scoring, topic diversification, preferred-creator groups, and negative-feedback penalties.
+- 📊 Added Today Watch taste insights showing mode focus, preferred creators, recent dislikes, and downgraded signals.
+- 🔌 Added the built-in CDN Region plugin, off by default, for users with unstable CDN routes, cross-region networks, or overseas exits.
+- 🛠️ Fixed the CDN plugin's overseas catalog and stale cached hosts so playback keeps original URLs as fallback.
+- 📚 Synced plugin developer docs: [JSON / external plugin guide](docs/PLUGIN_DEVELOPMENT.md), [native plugin guide](docs/NATIVE_PLUGIN_DEVELOPMENT.md), and [Plugin SDK docs](plugins/sdk/README.md).
+- 🧩 Plugin Center now separates built-in capabilities from external plugin authorization copy; official built-in plugin authors now show as `BiliPai项目组`.
+- 🔖 Bumped the app to `8.0.1` with `versionCode` `174`.
 
 ---
 

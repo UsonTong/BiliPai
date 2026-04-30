@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-04-30 · 文档已同步至 v8.0.0（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-01 · 文档已同步至 v8.0.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026)-brightgreen?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/APK-Varies-orange?style=flat-square" alt="Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Plugins-5%20Built--in-blueviolet?style=flat-square" alt="Plugins">
+  <img src="https://img.shields.io/badge/Plugins-6%20Built--in-blueviolet?style=flat-square" alt="Plugins">
 </p>
 
 <p align="center">
@@ -82,7 +82,7 @@
 | **横屏信息栏** | 全屏顶部新增时间显示，横屏交互信息更完整 |
 | **播放记忆** | 自动记录观看进度，续播提示支持开关与同目标仅提醒一次 |
 | **高画质扫码登录** | 支持扫码登录，解锁大会员专属高画质 |
-| **插件系统** | 内置空降助手、去广告、弹幕增强、夜间护眼、今日推荐单等插件，可扩展架构 |
+| **插件系统** | 内置空降助手、去广告、弹幕增强、夜间护眼、今日推荐单、CDN 属地优选等插件，可扩展架构 |
 
 ### 🔌 插件系统
 
@@ -93,6 +93,7 @@
 | **弹幕增强** | 支持关键词 + 用户 UID/hash 过滤与高亮，规则变更支持播放内热更新 |
 | **夜间护眼** | 定时护眼、三档预设可 DIY、实时预览、暖色滤镜、关怀提醒（支持稍后提醒） |
 | **🆕 今日推荐单** | 本地分析观看历史与反馈，生成“今晚轻松看 / 深度学习看”队列，支持收起/展开、单独刷新、UP 主榜与推荐解释 |
+| **🆕 CDN 属地优选** | 默认关闭；按 IP 属地把匹配地区 CDN 放进普通视频线路候选，并保留原始播放 URL 作为故障恢复 |
 | **插件中心** | 统一管理所有插件，支持独立配置 |
 | **🆕 外部插件** | 支持通过 URL 动态加载 JSON 规则插件 |
 
@@ -103,7 +104,7 @@
 
 | 形态 | 当前情况 | 开发者入口 |
 | --- | --- | --- |
-| **内置插件** | 已内置 5 个：空降助手、去广告、弹幕增强、夜间护眼、今日推荐单；由主应用一同编译和发布 | 参考 `app/src/main/java/com/android/purebilibili/feature/plugin/` 与插件中心实现 |
+| **内置插件** | 已内置 6 个：空降助手、去广告、弹幕增强、夜间护眼、今日推荐单、CDN 属地优选；由主应用一同编译和发布 | 参考 `app/src/main/java/com/android/purebilibili/feature/plugin/` 与插件中心实现 |
 | **JSON / `.bp` 规则插件** | 支持通过 URL 导入，适合推荐流过滤、弹幕过滤/高亮；`plugins/community/` 当前只有 1 个演示插件，兼容性样本仍有限 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [社区插件目录](plugins/community/README.md) |
 | **外部 `.bpplugin` Kotlin 包** | SDK 与包格式已提供，可解析 manifest、SHA-256、签名状态和能力申请，并保存授权记录；当前宿主不会执行外部 Dex | [Plugin SDK 中文文档](plugins/sdk/README.md) · [Today Watch Remix 示例](plugins/samples/today-watch-remix/) |
 | **源码级原生 Kotlin 插件** | 适合复杂播放器、推荐、弹幕或自定义 UI 能力；需要修改源码并重新编译 APK，接口仍以当前源码为准 | [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
@@ -609,13 +610,15 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.0 · 2026-04-30)
+### 最近更新 (v8.0.1 · 2026-05-01)
 
-- 🔍 搜索迁移到 WBI 路径，新增直播用户、话题、图片搜索和话题详情页，补齐搜索分页、字段清洗和跳转策略。
-- ✨ 底栏与通用液态分段控件对齐首页 Android 原生液态玻璃动画，保留色散、lens、阴影和速度形变，同时修复静止残影。
-- 💬 优化视频评论回到顶部、回复/粉丝团装扮、视频信息区、竖屏详情和空间内容网格。
-- 🎨 登录、个人页、设置、下载、抽屉和部分首页/直播组件继续迁移主题 token，减少硬编码颜色对深色模式和动态配色的影响。
-- 🔖 版本号升级到 `8.0.0`，`versionCode` 升级到 `173`。
+- 🧠 优化「今日推荐单」算法：新增轻松/学习模式聚焦评分、主题去重、偏好 UP 分组和“不感兴趣”负反馈降权。
+- 📊 今日推荐单设置页新增“推荐依据”，展示当前模式侧重点、近期偏好 UP、最近不感兴趣样本和已降权信号。
+- 🔌 新增内置「CDN 属地优选」插件，默认关闭，面向 CDN 线路不稳定、跨地区网络或海外出口用户。
+- 🛠️ 修复 CDN 插件海外 catalog 与旧缓存 host 导致播放异常的问题，始终保留原始播放 URL 作为回退线路。
+- 📚 同步插件开发入口：[JSON / 外部插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK 中文文档](plugins/sdk/README.md)。
+- 🧩 插件中心区分内置插件能力与外部插件授权文案，官方内置插件作者统一为 `BiliPai项目组`。
+- 🔖 版本号升级到 `8.0.1`，`versionCode` 升级到 `174`。
 
 ### 历史版本
 

@@ -124,6 +124,9 @@ private class AppSessionCookieJar : okhttp3.CookieJar {
  */
 interface BilibiliApi {
     // ==================== 用户信息模块 ====================
+    @GET("x/web-interface/zone")
+    suspend fun getIpZone(): IpLocationResponse
+
     @GET("x/web-interface/nav")
     suspend fun getNavInfo(): NavResponse
 

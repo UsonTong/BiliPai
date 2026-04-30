@@ -31,6 +31,7 @@ data class InstalledExternalPluginPackageUiModel(
 private val capabilityOrder = listOf(
     PluginCapability.PLAYER_STATE,
     PluginCapability.PLAYER_CONTROL,
+    PluginCapability.PLAYBACK_CDN,
     PluginCapability.DANMAKU_STREAM,
     PluginCapability.DANMAKU_MUTATION,
     PluginCapability.RECOMMENDATION_CANDIDATES,
@@ -42,6 +43,7 @@ private val capabilityOrder = listOf(
 
 private val explicitApprovalCapabilities = setOf(
     PluginCapability.PLAYER_CONTROL,
+    PluginCapability.PLAYBACK_CDN,
     PluginCapability.DANMAKU_MUTATION,
     PluginCapability.LOCAL_HISTORY_READ,
     PluginCapability.LOCAL_FEEDBACK_READ,
@@ -119,6 +121,7 @@ private val PluginCapability.label: String
     get() = when (this) {
         PluginCapability.PLAYER_STATE -> "播放器状态"
         PluginCapability.PLAYER_CONTROL -> "播放器控制"
+        PluginCapability.PLAYBACK_CDN -> "播放 CDN"
         PluginCapability.DANMAKU_STREAM -> "弹幕流"
         PluginCapability.DANMAKU_MUTATION -> "弹幕改写"
         PluginCapability.RECOMMENDATION_CANDIDATES -> "推荐候选"
@@ -132,6 +135,7 @@ private val PluginCapability.description: String
     get() = when (this) {
         PluginCapability.PLAYER_STATE -> "读取当前播放位置、视频标识与播放状态"
         PluginCapability.PLAYER_CONTROL -> "控制跳转、跳过片段或调整播放行为"
+        PluginCapability.PLAYBACK_CDN -> "读取和调整播放地址候选线路"
         PluginCapability.DANMAKU_STREAM -> "读取当前视频弹幕内容"
         PluginCapability.DANMAKU_MUTATION -> "过滤、高亮或改写弹幕显示"
         PluginCapability.RECOMMENDATION_CANDIDATES -> "读取首页候选内容用于排序或筛选"

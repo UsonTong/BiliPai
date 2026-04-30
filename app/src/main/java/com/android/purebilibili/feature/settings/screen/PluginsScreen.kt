@@ -1013,6 +1013,7 @@ private fun PluginItem(
                 }
                 PluginCapabilityChips(
                     capabilities = plugin.capabilityManifest.capabilities,
+                    showAuthorizationLabels = false,
                     modifier = Modifier.padding(top = 6.dp)
                 )
             }
@@ -1063,6 +1064,7 @@ private fun PluginItem(
                     Column {
                         PluginCapabilityDetailSection(
                             capabilities = plugin.capabilityManifest.capabilities,
+                            showAuthorizationLabels = false,
                             modifier = Modifier.padding(12.dp)
                         )
                         plugin.SettingsContent()
@@ -1076,6 +1078,7 @@ private fun PluginItem(
 @Composable
 private fun PluginCapabilityChips(
     capabilities: Set<com.android.purebilibili.core.plugin.PluginCapability>,
+    showAuthorizationLabels: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val models = remember(capabilities) { resolvePluginCapabilityUiModels(capabilities) }
@@ -1088,16 +1091,20 @@ private fun PluginCapabilityChips(
         models.forEach { model ->
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = if (model.requiresExplicitApproval) {
+                color = if (showAuthorizationLabels && model.requiresExplicitApproval) {
                     MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.62f)
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
                 }
             ) {
                 Text(
-                    text = if (model.requiresExplicitApproval) "${model.label} · 需授权" else model.label,
+                    text = if (showAuthorizationLabels && model.requiresExplicitApproval) {
+                        "${model.label} · 需授权"
+                    } else {
+                        model.label
+                    },
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (model.requiresExplicitApproval) {
+                    color = if (showAuthorizationLabels && model.requiresExplicitApproval) {
                         MaterialTheme.colorScheme.onTertiaryContainer
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -1112,6 +1119,7 @@ private fun PluginCapabilityChips(
 @Composable
 private fun PluginCapabilityDetailSection(
     capabilities: Set<com.android.purebilibili.core.plugin.PluginCapability>,
+    showAuthorizationLabels: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val models = remember(capabilities) { resolvePluginCapabilityUiModels(capabilities) }
@@ -1121,14 +1129,18 @@ private fun PluginCapabilityDetailSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "能力与授权",
+            text = if (showAuthorizationLabels) "能力与授权" else "能力",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary
         )
         models.forEach { model ->
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = if (model.requiresExplicitApproval) "${model.label} · 安装前确认" else model.label,
+                    text = if (showAuthorizationLabels && model.requiresExplicitApproval) {
+                        "${model.label} · 安装前确认"
+                    } else {
+                        model.label
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
