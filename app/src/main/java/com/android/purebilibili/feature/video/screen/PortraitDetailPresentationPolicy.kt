@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import kotlin.math.max
 
 internal data class PortraitInlinePlayerLayoutSpec(
@@ -55,10 +56,14 @@ internal fun resolveStandalonePortraitPagerMotionSpec(): StandalonePortraitPager
 }
 
 internal fun shouldEnableInlinePortraitScrollTransform(
-    swipeHidePlayerEnabled: Boolean,
-    useOfficialInlinePortraitDetailExperience: Boolean
+    collapseMode: PortraitPlayerCollapseMode,
+    selectedTabIndex: Int
 ): Boolean {
-    return swipeHidePlayerEnabled
+    return when (selectedTabIndex) {
+        0 -> collapseMode.enablesIntro
+        1 -> collapseMode.enablesComment
+        else -> collapseMode != PortraitPlayerCollapseMode.OFF
+    }
 }
 
 internal fun shouldAnimateStandalonePortraitPager(useSharedPlayer: Boolean): Boolean {
@@ -75,11 +80,18 @@ internal fun shouldUseCompactInlinePortraitPlayerForCommentTab(
     useOfficialInlinePortraitDetailExperience: Boolean,
     selectedTabIndex: Int,
     isPortraitFullscreen: Boolean,
-    isCommentThreadVisible: Boolean = false
+    isCommentThreadVisible: Boolean = false,
+    firstVisibleItemIndex: Int = 0,
+    firstVisibleItemScrollOffset: Int = 0,
+    collapseMode: PortraitPlayerCollapseMode = PortraitPlayerCollapseMode.BOTH,
+    commentScrollThresholdPx: Int = 56
 ): Boolean {
-    return useOfficialInlinePortraitDetailExperience &&
-        isCommentThreadVisible &&
-        !isPortraitFullscreen
+    if (!useOfficialInlinePortraitDetailExperience || isPortraitFullscreen) return false
+    if (!collapseMode.enablesComment) return false
+    if (isCommentThreadVisible) return true
+    if (selectedTabIndex != 1) return false
+    if (firstVisibleItemIndex > 0) return true
+    return firstVisibleItemScrollOffset >= commentScrollThresholdPx
 }
 
 internal fun shouldUseCompactInlinePortraitPlayerForIntroScroll(
@@ -88,9 +100,11 @@ internal fun shouldUseCompactInlinePortraitPlayerForIntroScroll(
     isPortraitFullscreen: Boolean,
     firstVisibleItemIndex: Int,
     firstVisibleItemScrollOffset: Int,
+    collapseMode: PortraitPlayerCollapseMode = PortraitPlayerCollapseMode.BOTH,
     introScrollThresholdPx: Int = 56
 ): Boolean {
     if (!useOfficialInlinePortraitDetailExperience || isPortraitFullscreen) return false
+    if (!collapseMode.enablesIntro) return false
     if (selectedTabIndex != 0) return false
     if (firstVisibleItemIndex > 0) return true
     return firstVisibleItemScrollOffset >= introScrollThresholdPx

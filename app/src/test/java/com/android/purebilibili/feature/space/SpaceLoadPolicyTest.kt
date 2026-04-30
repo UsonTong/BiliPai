@@ -226,6 +226,36 @@ class SpaceLoadPolicyTest {
     }
 
     @Test
+    fun `mapSeasonArchiveToVideoItem uses space owner name when archive author is blank`() {
+        val item = mapSeasonArchiveToVideoItem(
+            item = SeasonArchiveItem(
+                bvid = "BVSEASON",
+                title = "合集视频"
+            ),
+            mid = 42L,
+            ownerName = "影视飓风"
+        )
+
+        assertEquals(42L, item.owner.mid)
+        assertEquals("影视飓风", item.owner.name)
+    }
+
+    @Test
+    fun `mapSeasonArchiveToVideoItem keeps archive author for collaborative videos`() {
+        val item = mapSeasonArchiveToVideoItem(
+            item = SeasonArchiveItem(
+                bvid = "BVCOOP",
+                title = "联合投稿",
+                author = "联合投稿UP"
+            ),
+            mid = 42L,
+            ownerName = "影视飓风"
+        )
+
+        assertEquals("联合投稿UP", item.owner.name)
+    }
+
+    @Test
     fun `mapSeriesArchiveToVideoItem preserves danmaku count`() {
         val item = mapSeriesArchiveToVideoItem(
             item = SeriesArchiveItem(
@@ -239,6 +269,29 @@ class SpaceLoadPolicyTest {
         assertEquals(200, item.stat.view)
         assertEquals(34, item.stat.danmaku)
         assertEquals(8, item.stat.reply)
+    }
+
+    @Test
+    fun `mapSeriesArchiveToVideoItem uses space owner name when archive author is blank`() {
+        val item = mapSeriesArchiveToVideoItem(
+            item = SeriesArchiveItem(
+                bvid = "BVSERIES",
+                title = "系列视频"
+            ),
+            mid = 42L,
+            ownerName = "影视飓风"
+        )
+
+        assertEquals(42L, item.owner.mid)
+        assertEquals("影视飓风", item.owner.name)
+    }
+
+    @Test
+    fun `resolveSpaceContentGridColumnCount keeps at least two columns on phones`() {
+        assertEquals(2, resolveSpaceContentGridColumnCount(widthDp = 360))
+        assertEquals(2, resolveSpaceContentGridColumnCount(widthDp = 412))
+        assertEquals(3, resolveSpaceContentGridColumnCount(widthDp = 700))
+        assertEquals(4, resolveSpaceContentGridColumnCount(widthDp = 960))
     }
 
     @Test

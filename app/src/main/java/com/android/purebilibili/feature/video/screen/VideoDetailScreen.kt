@@ -88,6 +88,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 //  已改用 MaterialTheme.colorScheme.primary
 
 import com.android.purebilibili.data.model.response.RelatedVideo
@@ -2188,29 +2189,36 @@ fun VideoDetailScreen(
                     val screenHeightDp = configuration.screenHeightDp.dp
                     val videoHeight = screenWidthDp * 9f / 16f  // 16:9 比例
 
-                    //  读取上滑隐藏播放器设置
-                    val swipeHidePlayerEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSwipeHidePlayerEnabled(context).collectAsState(initial = false)
+                    //  读取竖屏播放器滚动缩小模式
+                    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
+                        .getPortraitPlayerCollapseMode(context)
+                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
                     val inlinePortraitScrollEnabled = shouldEnableInlinePortraitScrollTransform(
-                        swipeHidePlayerEnabled = swipeHidePlayerEnabled,
-                        useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience
+                        collapseMode = portraitPlayerCollapseMode,
+                        selectedTabIndex = selectedVideoContentTabIndex
                     )
+                    var introFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+                    var introFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
+                    var commentFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+                    var commentFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
                     val compactInlinePlayerForCommentTab =
                         shouldUseCompactInlinePortraitPlayerForCommentTab(
                             useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience,
                             selectedTabIndex = selectedVideoContentTabIndex,
                             isPortraitFullscreen = isPortraitFullscreen,
-                            isCommentThreadVisible = subReplyState.visible
+                            isCommentThreadVisible = subReplyState.visible,
+                            firstVisibleItemIndex = commentFirstVisibleItemIndex,
+                            firstVisibleItemScrollOffset = commentFirstVisibleItemScrollOffset,
+                            collapseMode = portraitPlayerCollapseMode
                         )
-                    var introFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
-                    var introFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
                     val compactInlinePlayerForIntroScroll =
                         shouldUseCompactInlinePortraitPlayerForIntroScroll(
                             useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience,
                             selectedTabIndex = selectedVideoContentTabIndex,
                             isPortraitFullscreen = isPortraitFullscreen,
                             firstVisibleItemIndex = introFirstVisibleItemIndex,
-                            firstVisibleItemScrollOffset = introFirstVisibleItemScrollOffset
+                            firstVisibleItemScrollOffset = introFirstVisibleItemScrollOffset,
+                            collapseMode = portraitPlayerCollapseMode
                         )
                     
                     // 📏 [Collapsing Player] 上滑隐藏播放器逻辑
@@ -2238,6 +2246,16 @@ fun VideoDetailScreen(
                         }
                     }
                     var playerHeightOffsetPx by remember { mutableFloatStateOf(0f) }
+                    LaunchedEffect(
+                        selectedVideoContentTabIndex,
+                        compactInlinePlayerForCommentTab,
+                        compactInlinePlayerForIntroScroll,
+                        portraitPlayerCollapseMode
+                    ) {
+                        if (!compactInlinePlayerForCommentTab && !compactInlinePlayerForIntroScroll) {
+                            playerHeightOffsetPx = 0f
+                        }
+                    }
                     TrackJankStateFlag(
                         stateName = "video_detail:player_swipe_collapse",
                         isActive = inlinePortraitScrollEnabled && abs(playerHeightOffsetPx) > 0.5f
@@ -2722,6 +2740,10 @@ fun VideoDetailScreen(
                                                         onIntroScrollStateChange = { index, offset ->
                                                             introFirstVisibleItemIndex = index
                                                             introFirstVisibleItemScrollOffset = offset
+                                                        },
+                                                        onCommentScrollStateChange = { index, offset ->
+                                                            commentFirstVisibleItemIndex = index
+                                                            commentFirstVisibleItemScrollOffset = offset
                                                         }
                                                     )
 

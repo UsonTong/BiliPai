@@ -416,6 +416,7 @@ data class SeasonArchiveItem(
     val bvid: String = "",
     val title: String = "",
     val pic: String = "",
+    val author: String = "",
     val duration: Int = 0,
     val pubdate: Long = 0,
     val stat: SeasonArchiveStat = SeasonArchiveStat()
@@ -456,6 +457,7 @@ data class SeriesArchiveItem(
     val bvid: String = "",
     val title: String = "",
     val pic: String = "",
+    val author: String = "",
     val duration: Int = 0,
     val pubdate: Long = 0,
     val stat: SeriesArchiveStat = SeriesArchiveStat()

@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuOpen
@@ -84,6 +85,9 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import com.android.purebilibili.core.util.HapticType
 import com.android.purebilibili.core.util.rememberHapticFeedback
 import com.android.purebilibili.core.theme.iOSSystemGray
+import com.android.purebilibili.core.theme.iOSSystemGray3
+import com.android.purebilibili.core.theme.iOSSystemGray6
+import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.BottomBarColors  // 统一底栏颜色配置
 import com.android.purebilibili.core.theme.BottomBarColorPalette  // 调色板
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
@@ -577,6 +581,19 @@ internal fun shouldShowBottomBarIcon(labelMode: Int): Boolean {
     }
 }
 
+internal fun shouldShowBottomBarDynamicReminderBadge(
+    item: BottomNavItem?,
+    unreadCount: Int
+): Boolean = item == BottomNavItem.DYNAMIC && unreadCount > 0
+
+internal fun formatBottomBarDynamicReminderBadge(unreadCount: Int): String? {
+    return when {
+        unreadCount <= 0 -> null
+        unreadCount > 999 -> "999+"
+        else -> unreadCount.toString()
+    }
+}
+
 internal fun shouldShowBottomBarText(labelMode: Int): Boolean {
     return when (normalizeBottomBarLabelMode(labelMode)) {
         1 -> false
@@ -646,6 +663,17 @@ internal data class BottomBarItemMotionVisual(
     val selectedIconAlpha: Float
 )
 
+internal fun resolveBottomBarMotionThemeWeight(
+    itemIndex: Int,
+    indicatorWeight: Float,
+    currentSelectedIndex: Int,
+    isIdle: Boolean
+): Float {
+    val clampedWeight = indicatorWeight.coerceIn(0f, 1f)
+    if (!isIdle) return clampedWeight
+    return if (itemIndex == currentSelectedIndex) 1f else 0f
+}
+
 internal fun resolveBottomBarItemMotionVisual(
     itemIndex: Int,
     indicatorPosition: Float,
@@ -658,11 +686,12 @@ internal fun resolveBottomBarItemMotionVisual(
     val indicatorWeight = (1f - abs(itemIndex.toFloat() - indicatorPosition)).coerceIn(0f, 1f)
     val isIdle = normalizedMotionProgress <= 0f
     val idleSelected = itemIndex == currentSelectedIndex
-    val themeWeight = if (isIdle) {
-        if (idleSelected) 1f else 0f
-    } else {
-        indicatorWeight
-    }
+    val themeWeight = resolveBottomBarMotionThemeWeight(
+        itemIndex = itemIndex,
+        indicatorWeight = indicatorWeight,
+        currentSelectedIndex = currentSelectedIndex,
+        isIdle = isIdle
+    )
     val scale = if (isIdle) {
         1f
     } else {
@@ -771,9 +800,9 @@ internal fun resolveBottomBarRefractionMotionProfile(
 
 internal fun resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme: Boolean): Color {
     return if (isDarkTheme) {
-        Color(0xFFF6F8FB)
+        iOSSystemGray6
     } else {
-        Color(0xFFFDFEFF)
+        Color.White
     }
 }
 
@@ -971,6 +1000,7 @@ fun FrostedBottomBar(
     onDynamicDoubleTap: () -> Unit = {},
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
     itemColorIndices: Map<String, Int> = emptyMap(),
+    dynamicUnreadCount: Int = 0,
     onToggleSidebar: (() -> Unit)? = null,
     // [NEW] Scroll offset for liquid glass refraction effect
     scrollOffset: Float = 0f,
@@ -989,6 +1019,7 @@ fun FrostedBottomBar(
                 modifier = modifier,
                 visibleItems = visibleItems,
                 onToggleSidebar = onToggleSidebar,
+                dynamicUnreadCount = dynamicUnreadCount,
                 isFloating = isFloating,
                 isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet,
                 labelMode = labelMode,
@@ -1007,6 +1038,7 @@ fun FrostedBottomBar(
                 modifier = modifier,
                 visibleItems = visibleItems,
                 onToggleSidebar = onToggleSidebar,
+                dynamicUnreadCount = dynamicUnreadCount,
                 isFloating = isFloating,
                 isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet,
                 labelMode = labelMode,
@@ -1040,6 +1072,7 @@ fun FrostedBottomBar(
             modifier = modifier,
             visibleItems = visibleItems,
             itemColorIndices = itemColorIndices,
+            dynamicUnreadCount = dynamicUnreadCount,
             onToggleSidebar = onToggleSidebar,
             isTablet = isTablet,
             showIcon = showIcon,
@@ -1443,6 +1476,7 @@ fun FrostedBottomBar(
                                     visibleItems = visibleItems,
                                     selectedIndex = selectedIndex,
                                     itemColorIndices = itemColorIndices,
+                                    dynamicUnreadCount = dynamicUnreadCount,
                                     onItemClick = onItemClick,
                                     onToggleSidebar = onToggleSidebar,
                                     isTablet = isTablet,
@@ -1474,6 +1508,7 @@ fun FrostedBottomBar(
                                 visibleItems = visibleItems,
                                 selectedIndex = selectedIndex,
                                 itemColorIndices = itemColorIndices,
+                                dynamicUnreadCount = dynamicUnreadCount,
                                 onItemClick = onItemClick,
                                 onToggleSidebar = onToggleSidebar,
                                 isTablet = isTablet,
@@ -1518,6 +1553,7 @@ private fun MaterialBottomBar(
     modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     onToggleSidebar: (() -> Unit)?,
+    dynamicUnreadCount: Int,
     isFloating: Boolean,
     isTablet: Boolean,
     labelMode: Int,
@@ -1575,6 +1611,7 @@ private fun MaterialBottomBar(
             modifier = modifier,
             visibleItems = visibleItems,
             onToggleSidebar = onToggleSidebar,
+            dynamicUnreadCount = dynamicUnreadCount,
             isTablet = isTablet,
             showIcon = showIcon,
             showText = showText,
@@ -1627,10 +1664,15 @@ private fun MaterialBottomBar(
                     },
                     icon = {
                         if (showIcon) {
-                            Icon(
-                                imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
-                                contentDescription = itemContentDescription
-                            )
+                            BottomBarReminderBadgeAnchor(
+                                item = item,
+                                unreadCount = dynamicUnreadCount
+                            ) {
+                                Icon(
+                                    imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
+                                    contentDescription = itemContentDescription
+                                )
+                            }
                         } else {
                             Spacer(modifier = Modifier.size(0.dp))
                         }
@@ -1697,6 +1739,7 @@ private fun MiuixBottomBar(
     modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     onToggleSidebar: (() -> Unit)?,
+    dynamicUnreadCount: Int,
     isFloating: Boolean,
     isTablet: Boolean,
     labelMode: Int,
@@ -1749,6 +1792,7 @@ private fun MiuixBottomBar(
             modifier = modifier,
             visibleItems = visibleItems,
             onToggleSidebar = onToggleSidebar,
+            dynamicUnreadCount = dynamicUnreadCount,
             isTablet = isTablet,
             showIcon = showIcon,
             showText = showText,
@@ -1809,7 +1853,14 @@ private fun MiuixBottomBar(
                 showIcon = showIcon,
                 showText = showText,
                 selectedColor = selectedItemColor,
-                unselectedColor = unselectedItemColor
+                unselectedColor = unselectedItemColor,
+                reminderBadgeText = formatBottomBarDynamicReminderBadge(
+                    if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
+                        dynamicUnreadCount
+                    } else {
+                        0
+                    }
+                )
             )
         }
 
@@ -1843,7 +1894,8 @@ private fun RowScope.MiuixDockedBottomBarItem(
     showIcon: Boolean,
     showText: Boolean,
     selectedColor: Color,
-    unselectedColor: Color
+    unselectedColor: Color,
+    reminderBadgeText: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentOnClick by rememberUpdatedState(onClick)
@@ -1884,14 +1936,17 @@ private fun RowScope.MiuixDockedBottomBarItem(
         verticalArrangement = if (iconAndText) Arrangement.Top else Arrangement.Center
     ) {
         if (showIcon) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier
-                    .then(if (iconAndText) Modifier.padding(top = 8.dp) else Modifier)
-                    .size(26.dp)
-            )
+            BottomBarReminderBadgeAnchor(
+                badgeText = reminderBadgeText,
+                modifier = Modifier.then(if (iconAndText) Modifier.padding(top = 8.dp) else Modifier)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = contentColor,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
         if (showText) {
             Text(
@@ -1920,6 +1975,7 @@ private fun MiuixFloatingCapsuleBottomBar(
     modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     onToggleSidebar: (() -> Unit)?,
+    dynamicUnreadCount: Int = 0,
     isTablet: Boolean,
     showIcon: Boolean,
     showText: Boolean,
@@ -2060,6 +2116,7 @@ private fun MiuixFloatingCapsuleBottomBar(
                     visibleItems.forEach { item ->
                         MiuixFloatingBottomBarItem(
                             item = item,
+                            dynamicUnreadCount = dynamicUnreadCount,
                             selected = currentItem == item,
                             showIcon = showIcon,
                             showText = showText,
@@ -2079,6 +2136,7 @@ private fun MiuixFloatingCapsuleBottomBar(
                     if (isTablet && onToggleSidebar != null) {
                         MiuixFloatingBottomBarItem(
                             item = null,
+                            dynamicUnreadCount = dynamicUnreadCount,
                             labelOverride = stringResource(R.string.sidebar_toggle),
                             selected = false,
                             showIcon = showIcon,
@@ -2108,6 +2166,7 @@ private fun KernelSuAlignedBottomBar(
     modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     itemColorIndices: Map<String, Int> = emptyMap(),
+    dynamicUnreadCount: Int = 0,
     onToggleSidebar: (() -> Unit)?,
     isTablet: Boolean,
     showIcon: Boolean,
@@ -2315,6 +2374,7 @@ private fun KernelSuAlignedBottomBar(
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
+                            dynamicUnreadCount = dynamicUnreadCount,
                             selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
@@ -2338,6 +2398,7 @@ private fun KernelSuAlignedBottomBar(
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
+                            dynamicUnreadCount = dynamicUnreadCount,
                             selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
@@ -2404,6 +2465,7 @@ private fun KernelSuAlignedBottomBar(
                             AndroidNativeBottomBarItem(
                                 item = item,
                                 label = resolveBottomNavItemLabel(item),
+                                dynamicUnreadCount = dynamicUnreadCount,
                                 selected = visual.useSelectedIcon,
                                 showIcon = showIcon,
                                 showText = showText,
@@ -2427,6 +2489,7 @@ private fun KernelSuAlignedBottomBar(
                             AndroidNativeBottomBarItem(
                                 item = null,
                                 label = stringResource(R.string.sidebar_toggle),
+                                dynamicUnreadCount = dynamicUnreadCount,
                                 selected = visual.useSelectedIcon,
                                 showIcon = showIcon,
                                 showText = showText,
@@ -2541,6 +2604,7 @@ private fun KernelSuAlignedBottomBar(
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
+                            dynamicUnreadCount = dynamicUnreadCount,
                             selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
@@ -2570,6 +2634,7 @@ private fun KernelSuAlignedBottomBar(
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
+                            dynamicUnreadCount = dynamicUnreadCount,
                             selected = visual.useSelectedIcon,
                             showIcon = showIcon,
                             showText = showText,
@@ -2599,6 +2664,7 @@ private fun KernelSuAlignedBottomBar(
 private fun RowScope.AndroidNativeBottomBarItem(
     item: BottomNavItem?,
     label: String,
+    dynamicUnreadCount: Int = 0,
     selected: Boolean,
     showIcon: Boolean,
     showText: Boolean,
@@ -2674,6 +2740,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
                         iconStyle == SharedFloatingBottomBarIconStyle.CUPERTINO -> {
                             BottomBarBlendedCupertinoIcon(
                                 item = item,
+                                unreadCount = dynamicUnreadCount,
                                 selectedAlpha = selectedIconAlpha,
                                 contentColor = contentColor
                             )
@@ -2681,6 +2748,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
                         else -> {
                             BottomBarBlendedMaterialIcon(
                                 item = item,
+                                unreadCount = dynamicUnreadCount,
                                 selectedAlpha = selectedIconAlpha,
                                 contentDescription = label,
                                 contentColor = contentColor
@@ -2706,6 +2774,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
 @Composable
 private fun RowScope.MiuixFloatingBottomBarItem(
     item: BottomNavItem?,
+    dynamicUnreadCount: Int = 0,
     selected: Boolean,
     showIcon: Boolean,
     showText: Boolean,
@@ -2750,15 +2819,20 @@ private fun RowScope.MiuixFloatingBottomBarItem(
                         .size(if (showText) 22.dp else 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CompositionLocalProvider(LocalContentColor provides contentColor) {
-                        when {
-                            item == null -> Icon(
-                                imageVector = CupertinoIcons.Outlined.SidebarLeft,
-                                contentDescription = label,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            selected -> item.selectedIcon()
-                            else -> item.unselectedIcon()
+                    BottomBarReminderBadgeAnchor(
+                        item = item,
+                        unreadCount = dynamicUnreadCount
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides contentColor) {
+                            when {
+                                item == null -> Icon(
+                                    imageVector = CupertinoIcons.Outlined.SidebarLeft,
+                                    contentDescription = label,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                selected -> item.selectedIcon()
+                                else -> item.unselectedIcon()
+                            }
                         }
                     }
                 }
@@ -2797,12 +2871,16 @@ private fun resolveMaterialBottomBarIcon(
 @Composable
 private fun BottomBarBlendedCupertinoIcon(
     item: BottomNavItem,
+    unreadCount: Int = 0,
     selectedAlpha: Float,
     contentColor: Color
 ) {
     val clampedSelectedAlpha = selectedAlpha.coerceIn(0f, 1f)
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Box(contentAlignment = Alignment.Center) {
+        BottomBarReminderBadgeAnchor(
+            item = item,
+            unreadCount = unreadCount
+        ) {
             Box(
                 modifier = Modifier.alpha(1f - clampedSelectedAlpha),
                 contentAlignment = Alignment.Center
@@ -2822,13 +2900,17 @@ private fun BottomBarBlendedCupertinoIcon(
 @Composable
 private fun BottomBarBlendedMaterialIcon(
     item: BottomNavItem,
+    unreadCount: Int = 0,
     selectedAlpha: Float,
     contentDescription: String?,
     contentColor: Color
 ) {
     val clampedSelectedAlpha = selectedAlpha.coerceIn(0f, 1f)
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Box(contentAlignment = Alignment.Center) {
+        BottomBarReminderBadgeAnchor(
+            item = item,
+            unreadCount = unreadCount
+        ) {
             Icon(
                 imageVector = resolveMaterialBottomBarIcon(item, selected = false),
                 contentDescription = contentDescription,
@@ -2839,6 +2921,65 @@ private fun BottomBarBlendedMaterialIcon(
                 contentDescription = null,
                 modifier = Modifier.alpha(clampedSelectedAlpha)
             )
+        }
+    }
+}
+
+@Composable
+private fun BottomBarReminderBadgeAnchor(
+    item: BottomNavItem?,
+    unreadCount: Int = 0,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    BottomBarReminderBadgeAnchor(
+        badgeText = formatBottomBarDynamicReminderBadge(
+            if (shouldShowBottomBarDynamicReminderBadge(item, unreadCount)) {
+                unreadCount
+            } else {
+                0
+            }
+        ),
+        modifier = modifier,
+        content = content
+    )
+}
+
+@Composable
+private fun BottomBarReminderBadgeAnchor(
+    badgeText: String?,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+        if (badgeText != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 12.dp, y = (-8).dp)
+                    .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
+                    .background(iOSRed, CircleShape)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = CircleShape
+                    )
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = badgeText,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -3012,8 +3153,12 @@ internal fun resolveBottomBarSlidingContentColor(
     isPending: Boolean
 ): Color {
     val fraction = selectionFraction.coerceIn(0f, 1f)
-    if (isPending || fraction > 0.001f) return selectedColor
-    return unselectedColor
+    if (isPending) return selectedColor
+    return lerpColor(
+        start = unselectedColor,
+        stop = selectedColor,
+        fraction = fraction
+    )
 }
 
 internal fun resolveBottomBarReadableContentColor(
@@ -3039,6 +3184,7 @@ private fun BottomBarContent(
     visibleItems: List<BottomNavItem>,
     selectedIndex: Int,
     itemColorIndices: Map<String, Int>,
+    dynamicUnreadCount: Int,
     onItemClick: (BottomNavItem) -> Unit,
     onToggleSidebar: (() -> Unit)?,
     isTablet: Boolean,
@@ -3096,6 +3242,7 @@ private fun BottomBarContent(
                 labelMode = labelMode,
                 colorIndex = colorBinding.colorIndex,
                 hasCustomAccent = colorBinding.hasCustomAccent,
+                dynamicUnreadCount = dynamicUnreadCount,
                 iconSize = if (labelMode == 0) 20.dp else 24.dp,
                 contentVerticalOffset = contentVerticalOffset,
                 modifier = Modifier.weight(1f),
@@ -3176,6 +3323,7 @@ private fun BottomBarItem(
     labelMode: Int,
     colorIndex: Int,
     hasCustomAccent: Boolean,
+    dynamicUnreadCount: Int,
     iconSize: androidx.compose.ui.unit.Dp,
     contentVerticalOffset: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
@@ -3357,6 +3505,7 @@ private fun BottomBarItem(
                     CompositionLocalProvider(LocalContentColor provides iconColor) {
                         BottomBarBlendedCupertinoIcon(
                             item = item,
+                            unreadCount = dynamicUnreadCount,
                             selectedAlpha = selectedIconAlpha,
                             contentColor = iconColor
                         )
@@ -3402,6 +3551,7 @@ private fun BottomBarItem(
                     CompositionLocalProvider(LocalContentColor provides iconColor) {
                         BottomBarBlendedCupertinoIcon(
                             item = item,
+                            unreadCount = dynamicUnreadCount,
                             selectedAlpha = selectedIconAlpha,
                             contentColor = iconColor
                         )
@@ -3415,9 +3565,9 @@ private fun BottomBarItem(
 internal fun resolveIos26BottomIndicatorGrayColor(isDarkTheme: Boolean): Color {
     return if (isDarkTheme) {
         // Dark mode: brighter neutral gray to float above dark glass.
-        Color(0xFFC8CDD6)
+        iOSSystemGray3
     } else {
         // Light mode: deeper neutral gray to stay visible on bright background.
-        Color(0xFF9BA5B4)
+        iOSSystemGray
     }
 }

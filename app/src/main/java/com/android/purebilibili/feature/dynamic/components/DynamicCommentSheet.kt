@@ -27,6 +27,9 @@ import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.feature.dynamic.DynamicViewModel
 import com.android.purebilibili.feature.dynamic.resolveDynamicCommentSheetTotalCount
 import com.android.purebilibili.feature.video.ui.components.RichCommentText
+import com.android.purebilibili.feature.video.ui.components.FanGroupDecorationBadge
+import com.android.purebilibili.feature.video.ui.components.resolveFanGroupDecorationCardBgs
+import com.android.purebilibili.feature.video.ui.components.resolveFanGroupVisualFromMemberAndSailing
 import com.android.purebilibili.feature.video.ui.components.resolveInlineSubReplyToggleLabel
 import com.android.purebilibili.feature.video.ui.components.resolveVisibleSubReplies
 import com.android.purebilibili.feature.video.ui.components.shouldShowInlineSubReplyToggle
@@ -246,6 +249,12 @@ private fun CommentItem(
     val showInlineToggle = remember(reply.replies) {
         shouldShowInlineSubReplyToggle(reply.replies.orEmpty().size)
     }
+    val fanGroupVisual = remember(member) {
+        resolveFanGroupVisualFromMemberAndSailing(
+            member = member,
+            cardBgs = resolveFanGroupDecorationCardBgs(member)
+        )
+    }
     
     Row(modifier = Modifier.fillMaxWidth()) {
         // 头像
@@ -269,7 +278,10 @@ private fun CommentItem(
                     text = member.uname,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = if (fanGroupVisual != null) Modifier.weight(1f, fill = false) else Modifier
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -277,6 +289,10 @@ private fun CommentItem(
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
                 )
+                if (fanGroupVisual != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FanGroupDecorationBadge(visual = fanGroupVisual)
+                }
             }
             
             Spacer(modifier = Modifier.height(4.dp))

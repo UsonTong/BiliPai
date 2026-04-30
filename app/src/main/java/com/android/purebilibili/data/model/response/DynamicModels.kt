@@ -51,6 +51,82 @@ data class DynamicDetailData(
     val item: DynamicItem? = null
 )
 
+@Serializable
+data class TopicDetailResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: TopicDetailData? = null
+)
+
+@Serializable
+data class TopicDetailData(
+    @SerialName("top_details")
+    val topDetails: TopicTopDetails? = null
+)
+
+@Serializable
+data class TopicTopDetails(
+    @SerialName("topic_creator")
+    val topicCreator: TopicCreator? = null,
+    @SerialName("topic_item")
+    val topicItem: TopicItem? = null
+)
+
+@Serializable
+data class TopicCreator(
+    val uid: Long = 0,
+    val name: String = "",
+    val face: String = ""
+)
+
+@Serializable
+data class TopicItem(
+    val id: Long = 0,
+    val name: String = "",
+    val description: String = "",
+    @SerialName("share_pic")
+    val sharePic: String = "",
+    val view: Long = 0,
+    val discuss: Long = 0,
+    val dynamics: Long = 0,
+    val fav: Long = 0,
+    val like: Long = 0,
+    val share: Long = 0,
+    @SerialName("share_url")
+    val shareUrl: String = "",
+    @SerialName("jump_url")
+    val jumpUrl: String = ""
+)
+
+@Serializable
+data class TopicFeedResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: TopicFeedData? = null
+)
+
+@Serializable
+data class TopicFeedData(
+    @SerialName("topic_card_list")
+    val topicCardList: TopicCardList? = null
+)
+
+@Serializable
+data class TopicCardList(
+    @SerialName("has_more")
+    val hasMore: Boolean = false,
+    val offset: String = "",
+    val items: List<TopicDynamicCardItem> = emptyList()
+)
+
+@Serializable
+data class TopicDynamicCardItem(
+    @SerialName("dynamic_card_item")
+    val dynamicCardItem: DynamicItem? = null,
+    @SerialName("topic_type")
+    val topicType: String = ""
+)
+
 // --- 动态卡片 ---
 @Serializable
 data class DynamicItem(

@@ -330,6 +330,27 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `sliding color transfers continuously from current tab to next tab`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.2f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.2f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
+        )
+
+        assertEquals(0.8f, home.themeWeight, 0.001f)
+        assertEquals(0.2f, dynamic.themeWeight, 0.001f)
+    }
+
+    @Test
     fun `sliding item scale only affects indicator neighbors`() {
         val home = resolveBottomBarItemMotionVisual(
             itemIndex = 0,

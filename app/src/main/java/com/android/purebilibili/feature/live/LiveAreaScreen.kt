@@ -300,8 +300,6 @@ private fun LiveAreaParentTabRow(
             selectedIndex = safeSelectedTab,
             onSelected = onTabSelected,
             itemWidth = segmentedSpec.itemWidthDp?.dp,
-            height = segmentedSpec.heightDp.dp,
-            indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
             labelFontSize = segmentedSpec.labelFontSizeSp.sp,
             containerHorizontalPadding = segmentedSpec.containerHorizontalPaddingDp.dp,
             containerVerticalPadding = segmentedSpec.containerVerticalPaddingDp.dp,

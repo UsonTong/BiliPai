@@ -37,6 +37,7 @@ import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.store.BottomProgressBehavior
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.PlaybackCompletionBehavior
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
 import com.android.purebilibili.core.theme.iOSTeal
@@ -657,8 +658,9 @@ fun PlaybackSettingsContent(
             item {
                 Box(modifier = Modifier.staggeredEntrance(11, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
-                    val swipeHidePlayerEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSwipeHidePlayerEnabled(context).collectAsState(initial = false)
+                    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
+                        .getPortraitPlayerCollapseMode(context)
+                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
                     val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
                     val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
@@ -852,19 +854,25 @@ fun PlaybackSettingsContent(
                             iconTint = com.android.purebilibili.core.theme.iOSPink
                         )
                         IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandDraw,  // 手势图标
-                            title = "上滑隐藏播放器",
-                            subtitle = "竖屏模式下拉评论区隐藏播放器",
-                            checked = swipeHidePlayerEnabled,
-                            onCheckedChange = { 
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setSwipeHidePlayerEnabled(context, it)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IOSSlidingSegmentedSetting(
+                                title = "竖屏播放器缩小：${portraitPlayerCollapseMode.label}",
+                                subtitle = portraitPlayerCollapseMode.description,
+                                options = resolvePortraitPlayerCollapseModeSegmentOptions(),
+                                selectedValue = portraitPlayerCollapseMode,
+                                onSelectionChange = { mode ->
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setPortraitPlayerCollapseMode(context, mode)
+                                    }
                                 }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
+                            )
+                        }
 
                         IOSDivider()
                         IOSSwitchItem(
@@ -959,7 +967,7 @@ fun PlaybackSettingsContent(
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Switch(
+                                AppAdaptiveSwitch(
                                     checked = fullscreenSwipeSeekEnabled,
                                     onCheckedChange = {
                                         scope.launch {
