@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.settings
 import androidx.annotation.DrawableRes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Backup
@@ -84,10 +85,10 @@ internal enum class SettingsEntryTintRole {
 }
 
 private val PreviewMd3SettingsEntryThemePalette = SettingsEntryThemePalette(
-    primary = Color(0xFF6750A4),
-    secondary = Color(0xFF625B71),
-    tertiary = Color(0xFF7D5260),
-    error = Color(0xFFB3261E)
+    primary = lightColorScheme().primary,
+    secondary = lightColorScheme().secondary,
+    tertiary = lightColorScheme().tertiary,
+    error = lightColorScheme().error
 )
 
 internal fun resolveMd3SettingsEntryThemePalette(
@@ -347,15 +348,15 @@ internal fun resolveSettingsEntryVisual(
         )
         SettingsSearchTarget.DONATE -> SettingsEntryVisual(
             icon = CupertinoIcons.Default.Gift,
-            iconTint = Color(0xFFFF3B30)
+            iconTint = iOSRed
         )
         SettingsSearchTarget.TELEGRAM -> SettingsEntryVisual(
             iconResId = R.drawable.ic_telegram_mono,
-            iconTint = Color(0xFF0088CC)
+            iconTint = iOSBlue
         )
         SettingsSearchTarget.TWITTER -> SettingsEntryVisual(
             icon = AppIcons.Twitter,
-            iconTint = Color(0xFF1DA1F2)
+            iconTint = iOSBlue
         )
         SettingsSearchTarget.DISCLAIMER -> SettingsEntryVisual(
             icon = CupertinoIcons.Default.ExclamationmarkTriangle,

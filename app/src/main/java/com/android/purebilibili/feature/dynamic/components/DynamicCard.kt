@@ -42,6 +42,8 @@ import com.android.purebilibili.core.ui.rememberAppMoreIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.data.model.response.DynamicDesc
 import com.android.purebilibili.data.model.response.DynamicItem
+import com.android.purebilibili.feature.dynamic.resolveDynamicActionButtonSlotWeight
+import com.android.purebilibili.feature.dynamic.resolveDynamicActionButtonSpacing
 import com.android.purebilibili.feature.dynamic.resolveDynamicCardContentPadding
 import com.android.purebilibili.feature.dynamic.resolveDynamicCardOuterPadding
 import com.android.purebilibili.data.model.response.DynamicStatModule
@@ -444,18 +446,20 @@ fun DynamicCardV2(
         
         //  [修复] 底部操作栏：转发、评论、点赞 - 始终显示
         val statModule = stat ?: DynamicStatModule()  // 使用默认值避免按钮消失
+        val actionButtonWeight = resolveDynamicActionButtonSlotWeight()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(resolveDynamicActionButtonSpacing())
         ) {
             // 转发按钮
             ActionButton(
                 icon = io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Default.ArrowTurnUpRight,
                 count = statModule.forward.count,
                 label = "转发",
-                onClick = { onRepostClick(item.id_str) }
+                onClick = { onRepostClick(item.id_str) },
+                modifier = Modifier.weight(actionButtonWeight)
             )
             
             // 评论按钮
@@ -463,7 +467,8 @@ fun DynamicCardV2(
                 icon = io.github.alexzhirkevich.cupertino.icons.CupertinoIcons.Default.Message,
                 count = statModule.comment.count,
                 label = "评论",
-                onClick = { onCommentClick(item.id_str) }
+                onClick = { onCommentClick(item.id_str) },
+                modifier = Modifier.weight(actionButtonWeight)
             )
             
             // 点赞按钮
@@ -473,7 +478,8 @@ fun DynamicCardV2(
                 count = statModule.like.count,
                 label = "点赞",
                 isActive = isLiked,
-                onClick = { onLikeClick(item.id_str) }
+                onClick = { onLikeClick(item.id_str) },
+                modifier = Modifier.weight(actionButtonWeight)
             )
         }
         }

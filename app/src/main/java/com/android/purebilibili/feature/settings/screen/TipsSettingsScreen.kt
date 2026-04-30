@@ -74,8 +74,8 @@ fun TipsSettingsScreen(
             TipEntry(
                 icon = CupertinoIcons.Filled.HandDraw,
                 iconTint = iOSBlue,
-                title = "1. 摸鱼模式：评论区一滑隐藏播放器",
-                content = "在播放设置开启「上滑隐藏播放器」后，竖屏评论区上滑即可先隐藏画面，只留评论和声音。"
+                title = "1. 摸鱼模式：竖屏滚动缩小播放器",
+                content = "在播放设置里把「竖屏播放器缩小」设为简介、评论或全部后，对应页面向下滚动会缩小画面。"
             ),
             TipEntry(
                 icon = CupertinoIcons.Default.ChevronUp,

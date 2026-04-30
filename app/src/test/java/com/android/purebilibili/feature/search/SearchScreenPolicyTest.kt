@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.search
 
+import com.android.purebilibili.data.model.response.SearchType
+import com.android.purebilibili.data.repository.SearchUpOrder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -33,6 +35,28 @@ class SearchScreenPolicyTest {
     }
 
     @Test
+    fun backToTopButton_onlyShowsAfterResultListScrollsPastThreshold() {
+        assertFalse(
+            shouldShowSearchBackToTop(
+                firstVisibleItemIndex = 0,
+                firstVisibleItemScrollOffset = 180
+            )
+        )
+        assertTrue(
+            shouldShowSearchBackToTop(
+                firstVisibleItemIndex = 0,
+                firstVisibleItemScrollOffset = 320
+            )
+        )
+        assertTrue(
+            shouldShowSearchBackToTop(
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0
+            )
+        )
+    }
+
+    @Test
     fun submitKeyword_prefersTypedQuery_thenFallsBackToSuggestedKeyword() {
         assertEquals(
             "黑神话悟空",
@@ -53,6 +77,64 @@ class SearchScreenPolicyTest {
             resolveSearchSubmitKeyword(
                 query = "",
                 suggestedKeyword = " "
+            )
+        )
+    }
+
+    @Test
+    fun searchFilterTabs_exposeFullSearchTypesInPlannedOrder() {
+        assertEquals(
+            listOf(
+                SearchType.VIDEO,
+                SearchType.UP,
+                SearchType.BANGUMI,
+                SearchType.MEDIA_FT,
+                SearchType.LIVE,
+                SearchType.LIVE_USER,
+                SearchType.ARTICLE,
+                SearchType.TOPIC,
+                SearchType.PHOTO
+            ),
+            resolveSearchFilterTabs()
+        )
+    }
+
+    @Test
+    fun searchFilterControls_matchCurrentSearchType() {
+        assertEquals(
+            listOf(
+                SearchFilterControl.VIDEO_ORDER,
+                SearchFilterControl.VIDEO_DURATION,
+                SearchFilterControl.VIDEO_TID
+            ),
+            resolveSearchFilterControls(
+                currentType = SearchType.VIDEO,
+                currentUpOrder = SearchUpOrder.DEFAULT
+            )
+        )
+        assertEquals(
+            listOf(
+                SearchFilterControl.UP_ORDER,
+                SearchFilterControl.UP_ORDER_SORT,
+                SearchFilterControl.UP_USER_TYPE
+            ),
+            resolveSearchFilterControls(
+                currentType = SearchType.UP,
+                currentUpOrder = SearchUpOrder.FANS
+            )
+        )
+        assertEquals(
+            listOf(SearchFilterControl.LIVE_ORDER),
+            resolveSearchFilterControls(
+                currentType = SearchType.LIVE,
+                currentUpOrder = SearchUpOrder.DEFAULT
+            )
+        )
+        assertEquals(
+            emptyList(),
+            resolveSearchFilterControls(
+                currentType = SearchType.PHOTO,
+                currentUpOrder = SearchUpOrder.DEFAULT
             )
         )
     }

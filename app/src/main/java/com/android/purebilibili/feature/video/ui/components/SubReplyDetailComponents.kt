@@ -207,17 +207,21 @@ internal fun resolveSubReplyDetailListScrollResetKey(
 }
 
 internal fun resolveSubReplyAuxiliaryLabel(item: ReplyItem): String? {
-    val candidateNumber = item.member.garbCardNumber
-        .filter(Char::isDigit)
-        .takeIf { it.isNotEmpty() }
-        ?: return null
-    return "NO.${candidateNumber.padStart(6, '0')}"
+    val visual = resolveFanGroupVisualFromMemberAndSailing(
+        member = item.member,
+        cardBgs = resolveFanGroupDecorationCardBgs(item.member)
+    ) ?: return null
+    return resolveFanGroupLabelText(visual.fanNumber).ifBlank { null }
 }
 
 internal fun resolveSubReplyAuxiliaryImageUrl(item: ReplyItem): String? {
-    return listOf(
+    return listOfNotNull(
         item.member.garbCardImageWithFocus,
-        item.member.garbCardImage
+        item.member.garbCardImage,
+        item.member.userSailing?.cardBgWithFocus?.image,
+        item.member.userSailing?.cardBg?.image,
+        item.member.userSailingV2?.cardBgWithFocus?.image,
+        item.member.userSailingV2?.cardBg?.image
     ).firstOrNull { it.isNotBlank() }
 }
 

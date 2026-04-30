@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.FullscreenMode
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.store.SettingsManager
 
 internal data class PlaybackSegmentOption<T>(
@@ -101,5 +102,14 @@ internal fun resolveFullscreenAspectRatioSegmentOptions(): List<PlaybackSegmentO
         PlaybackSegmentOption(FullscreenAspectRatio.RATIO_16_9, "16:9"),
         PlaybackSegmentOption(FullscreenAspectRatio.RATIO_4_3, "4:3"),
         PlaybackSegmentOption(FullscreenAspectRatio.STRETCH, "拉伸")
+    )
+}
+
+internal fun resolvePortraitPlayerCollapseModeSegmentOptions(): List<PlaybackSegmentOption<PortraitPlayerCollapseMode>> {
+    return listOf(
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.OFF, "关闭"),
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.INTRO_ONLY, "简介"),
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.COMMENT_ONLY, "评论"),
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.BOTH, "全部")
     )
 }

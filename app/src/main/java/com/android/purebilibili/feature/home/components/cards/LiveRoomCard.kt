@@ -142,7 +142,7 @@ fun LiveRoomCard(
                     .align(Alignment.TopStart)
                     .padding(8.dp),
                 shape = RoundedCornerShape(tagCornerRadius),
-                color = Color(0xFFE02020)
+                color = MaterialTheme.colorScheme.error
             ) {
                 Text(
                     text = "直播中",

@@ -18,6 +18,7 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
     private var type: String = "" // "season" or "series"
     private var id: Long = 0
     private var mid: Long = 0
+    private var ownerName: String = ""
     private var pageTitle: String = ""
 
     // Pagination
@@ -43,12 +44,13 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
     private val _favoriteDetailProgressState = MutableStateFlow(FavoriteDetailProgressState())
     val favoriteDetailProgressState = _favoriteDetailProgressState.asStateFlow()
 
-    fun init(type: String, id: Long, mid: Long, title: String) {
+    fun init(type: String, id: Long, mid: Long, title: String, ownerName: String = "") {
         val request = resolveSpaceCollectionDetailRequest(type, id, mid, title)
         if (request == null) {
             this.type = ""
             this.id = 0L
             this.mid = 0L
+            this.ownerName = ownerName
             this.pageTitle = title
             _uiState.value = _uiState.value.copy(title = title, items = emptyList())
             return
@@ -56,6 +58,7 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
         this.type = request.type.raw
         this.id = request.id
         this.mid = request.mid
+        this.ownerName = ownerName
         this.pageTitle = request.title
         _favoriteDetailProgressState.value = FavoriteDetailProgressState()
         
@@ -94,7 +97,7 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
                     hasMore = archives.size >= 30 // Assumption based on page size
                      _hasMoreState.value = hasMore
                      
-                    return archives.map { item -> mapSeasonArchiveToVideoItem(item, mid) }
+                    return archives.map { item -> mapSeasonArchiveToVideoItem(item, mid, ownerName) }
                 }
             }
         } catch (e: Exception) {
@@ -114,7 +117,7 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
                     hasMore = archives.size >= 30
                     _hasMoreState.value = hasMore
 
-                    return archives.map { item -> mapSeriesArchiveToVideoItem(item, mid) }
+                    return archives.map { item -> mapSeriesArchiveToVideoItem(item, mid, ownerName) }
                 }
             }
         } catch (e: Exception) {
@@ -162,13 +165,13 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
                      val response = spaceApi.getSeasonArchives(mid, id, currentPage)
                      if (response.code == 0 && response.data != null) {
                          val archives = response.data.archives
-                         newItems = archives.map { item -> mapSeasonArchiveToVideoItem(item, mid) }
+                         newItems = archives.map { item -> mapSeasonArchiveToVideoItem(item, mid, ownerName) }
                      }
                 } else if (type == "series") {
                      val response = spaceApi.getSeriesArchives(mid, id, currentPage)
                      if (response.code == 0 && response.data != null) {
                          val archives = response.data.archives
-                         newItems = archives.map { item -> mapSeriesArchiveToVideoItem(item, mid) }
+                         newItems = archives.map { item -> mapSeriesArchiveToVideoItem(item, mid, ownerName) }
                      }
                 } else if (type == "favorite") {
                     val response = FavoriteRepository.getFavoriteList(mediaId = id, pn = currentPage).getOrNull()

@@ -922,8 +922,8 @@ interface SearchApi {
     @GET("x/web-interface/search/default")
     suspend fun getDefaultSearchLegacy(): com.android.purebilibili.data.model.response.SearchDefaultResponse
 
-    @GET("x/web-interface/search/square")
-    suspend fun getHotSearch(@Query("limit") limit: Int = 10): HotSearchResponse
+    @GET("x/web-interface/wbi/search/square")
+    suspend fun getHotSearch(@QueryMap params: Map<String, String>): HotSearchResponse
 
     @GET("https://s.search.bilibili.com/main/hotword")
     suspend fun getTrendingList(
@@ -947,7 +947,7 @@ interface SearchApi {
         "Origin: https://search.bilibili.com",
         "Referer: https://search.bilibili.com/"
     )
-    @GET("x/web-interface/search/all/v2")
+    @GET("x/web-interface/wbi/search/all/v2")
     suspend fun searchAll(@QueryMap params: Map<String, String>): SearchResponse
     
     //  [修复] 分类搜索 - 支持排序和时长筛选
@@ -990,6 +990,13 @@ interface SearchApi {
     @GET("x/web-interface/wbi/search/type")
     suspend fun searchLive(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.LiveRoomSearchResponse
 
+    @Headers(
+        "Origin: https://search.bilibili.com",
+        "Referer: https://search.bilibili.com/"
+    )
+    @GET("x/web-interface/wbi/search/type")
+    suspend fun searchLiveUser(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SearchLiveUserResponse
+
     //  [新增] 专栏搜索 - search_type=article
     @Headers(
         "Origin: https://search.bilibili.com",
@@ -997,6 +1004,20 @@ interface SearchApi {
     )
     @GET("x/web-interface/wbi/search/type")
     suspend fun searchArticle(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SearchArticleResponse
+
+    @Headers(
+        "Origin: https://search.bilibili.com",
+        "Referer: https://search.bilibili.com/"
+    )
+    @GET("x/web-interface/wbi/search/type")
+    suspend fun searchTopic(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SearchTopicResponse
+
+    @Headers(
+        "Origin: https://search.bilibili.com",
+        "Referer: https://search.bilibili.com/"
+    )
+    @GET("x/web-interface/wbi/search/type")
+    suspend fun searchPhoto(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SearchPhotoResponse
     
     //  搜索建议/联想
     @GET("https://s.search.bilibili.com/main/suggest")
@@ -1076,6 +1097,23 @@ interface DynamicApi {
         @Query("id") id: String,
         @Query("features") features: String = DYNAMIC_DETAIL_FEATURES
     ): DynamicDetailResponse
+
+    @GET("https://app.bilibili.com/x/topic/web/details/top")
+    suspend fun getTopicDetail(
+        @Query("topic_id") topicId: Long,
+        @Query("source") source: String = "H5",
+        @Query("web_location") webLocation: String = "333.1036"
+    ): TopicDetailResponse
+
+    @GET("x/polymer/web-dynamic/v1/feed/topic")
+    suspend fun getTopicFeed(
+        @Query("topic_id") topicId: Long,
+        @Query("sort_by") sortBy: Int = 0,
+        @Query("offset") offset: String = "",
+        @Query("page_size") pageSize: Int = 20,
+        @Query("source") source: String = "Web",
+        @Query("features") features: String = DYNAMIC_DETAIL_FEATURES
+    ): TopicFeedResponse
     
     //  [新增] 获取动态评论列表 (type=17 表示动态)
     @GET("x/v2/reply")

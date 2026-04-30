@@ -208,6 +208,29 @@ enum class PlaybackCompletionBehavior(val value: Int, val label: String) {
     }
 }
 
+enum class PortraitPlayerCollapseMode(val value: Int, val label: String, val description: String) {
+    OFF(0, "关闭", "竖屏详情页不自动缩小播放器"),
+    INTRO_ONLY(1, "简介", "简介页向下滚动时缩小播放器"),
+    COMMENT_ONLY(2, "评论", "评论区向下滚动时缩小播放器"),
+    BOTH(3, "全部", "简介和评论区滚动时都缩小播放器");
+
+    val enablesIntro: Boolean
+        get() = this == INTRO_ONLY || this == BOTH
+
+    val enablesComment: Boolean
+        get() = this == COMMENT_ONLY || this == BOTH
+
+    companion object {
+        fun fromValue(value: Int): PortraitPlayerCollapseMode {
+            return entries.find { it.value == value } ?: OFF
+        }
+
+        fun fromLegacySwipeHide(enabled: Boolean): PortraitPlayerCollapseMode {
+            return if (enabled) BOTH else OFF
+        }
+    }
+}
+
 enum class FullscreenMode(val value: Int, val label: String, val description: String) {
     AUTO(0, "自动", "按视频方向自动切换全屏方向"),
     NONE(1, "不改方向", "保持当前方向，仅切换全屏 UI"),
@@ -1272,7 +1295,7 @@ object SettingsManager {
         }
     }
 
-    //  [新增] --- 长按倍速 (默认 2.0x，Hi-Res 音频运行时单独限速) ---
+    //  [新增] --- 长按倍速 (默认 2.0x) ---
     fun getLongPressSpeed(context: Context): Flow<Float> = context.settingsDataStore.data
         .map { preferences -> normalizeLongPressSpeed(preferences[KEY_LONG_PRESS_SPEED] ?: DEFAULT_LONG_PRESS_SPEED) }
 
@@ -3798,6 +3821,7 @@ object SettingsManager {
     // ==========  播放器设置 ==========
     
     private val KEY_SWIPE_HIDE_PLAYER = booleanPreferencesKey("swipe_hide_player")
+    private val KEY_PORTRAIT_PLAYER_COLLAPSE_MODE = intPreferencesKey("portrait_player_collapse_mode")
     private val KEY_PORTRAIT_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("portrait_swipe_to_fullscreen")
     private val KEY_CENTER_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("center_swipe_to_fullscreen")
     private val KEY_FULLSCREEN_SWIPE_SEEK_ENABLED = booleanPreferencesKey("fullscreen_swipe_seek_enabled")
@@ -3820,12 +3844,40 @@ object SettingsManager {
     private val KEY_FULLSCREEN_ASPECT_RATIO = intPreferencesKey("fullscreen_aspect_ratio")
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
     
+    // --- 竖屏播放器滚动缩小模式 ---
+    fun getPortraitPlayerCollapseMode(context: Context): Flow<PortraitPlayerCollapseMode> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE]?.let { raw ->
+                PortraitPlayerCollapseMode.fromValue(raw)
+            } ?: PortraitPlayerCollapseMode.fromLegacySwipeHide(
+                preferences[KEY_SWIPE_HIDE_PLAYER] ?: false
+            )
+        }
+
+    suspend fun setPortraitPlayerCollapseMode(
+        context: Context,
+        mode: PortraitPlayerCollapseMode
+    ) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE] = mode.value
+            preferences[KEY_SWIPE_HIDE_PLAYER] = mode != PortraitPlayerCollapseMode.OFF
+        }
+    }
+
     // --- 上滑隐藏播放器开关 ---
     fun getSwipeHidePlayerEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_SWIPE_HIDE_PLAYER] ?: false }  // 默认关闭
+        .map { preferences ->
+            preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE]?.let { raw ->
+                PortraitPlayerCollapseMode.fromValue(raw) != PortraitPlayerCollapseMode.OFF
+            } ?: (preferences[KEY_SWIPE_HIDE_PLAYER] ?: false)
+        }  // 默认关闭
 
     suspend fun setSwipeHidePlayerEnabled(context: Context, value: Boolean) {
-        context.settingsDataStore.edit { preferences -> preferences[KEY_SWIPE_HIDE_PLAYER] = value }
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SWIPE_HIDE_PLAYER] = value
+            preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE] =
+                PortraitPlayerCollapseMode.fromLegacySwipeHide(value).value
+        }
     }
 
     // --- 竖屏上滑进入全屏（默认开启） ---
@@ -4335,6 +4387,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_PIP_NO_DANMAKU, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_DOUBLE_TAP_LIKE, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_SWIPE_HIDE_PLAYER, SettingsShareSection.GESTURE),
+            IntShareablePreferenceDefinition(KEY_PORTRAIT_PLAYER_COLLAPSE_MODE, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_PORTRAIT_SWIPE_TO_FULLSCREEN, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_CENTER_SWIPE_TO_FULLSCREEN, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_FULLSCREEN_SWIPE_SEEK_ENABLED, SettingsShareSection.GESTURE),

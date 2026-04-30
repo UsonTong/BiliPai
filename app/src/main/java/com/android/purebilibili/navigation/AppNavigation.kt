@@ -594,6 +594,21 @@ fun AppNavigation(
         val dynamicScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val historyScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val favoriteScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
+        var dynamicUnreadCount by remember { mutableStateOf(0) }
+        val dynamicUnreadPollingEnabled = visibleBottomBarItems.contains(BottomNavItem.DYNAMIC)
+        LaunchedEffect(currentRoute, dynamicUnreadPollingEnabled) {
+            if (!dynamicUnreadPollingEnabled || currentRoute == ScreenRoutes.Dynamic.route) {
+                dynamicUnreadCount = 0
+                return@LaunchedEffect
+            }
+            while (true) {
+                com.android.purebilibili.data.repository.DynamicRepository.getDynamicUpdateCount(
+                    advanceBaseline = false
+                )
+                    .onSuccess { count -> dynamicUnreadCount = count }
+                kotlinx.coroutines.delay(60_000L)
+            }
+        }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
@@ -1663,6 +1678,11 @@ fun AppNavigation(
                     onLiveClick = { roomId, title, uname ->
                         if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
                     },
+                    onTopicClick = { topicId ->
+                        if (canNavigate(false) && topicId > 0L) {
+                            navController.navigate(ScreenRoutes.TopicDetail.createRoute(topicId))
+                        }
+                    },
                     onArticleClick = { articleId, title ->
                         if (canNavigate(false)) {
                             coroutineScope.launch {
@@ -1702,6 +1722,30 @@ fun AppNavigation(
             com.android.purebilibili.feature.search.SearchTrendingScreen(
                 onBack = { navController.popBackStack() },
                 onKeywordClick = navigateToSearchKeyword
+            )
+        }
+
+        composable(
+            route = ScreenRoutes.TopicDetail.route,
+            arguments = listOf(
+                navArgument("topicId") { type = NavType.LongType }
+            ),
+            enterTransition = { slideEnterLeft(navMotionSpec) },
+            popExitTransition = { slideExitRight(navMotionSpec) }
+        ) { backStackEntry ->
+            val topicId = backStackEntry.arguments?.getLong("topicId") ?: 0L
+            com.android.purebilibili.feature.search.TopicDetailScreen(
+                topicId = topicId,
+                onBack = { navController.popBackStack() },
+                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
+                onBangumiClick = { seasonId, epId -> navigateToBangumiTarget(seasonId, epId) },
+                onUserClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },
+                onLiveClick = { roomId, title, uname ->
+                    navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                },
+                onDynamicDetailClick = { dynamicId ->
+                    navController.navigate(ScreenRoutes.DynamicDetail.createRoute(dynamicId))
+                }
             )
         }
 
@@ -2073,8 +2117,16 @@ fun AppNavigation(
                             }
                         }
                     },
-                    onViewAllClick = { type, id, mid, title ->
-                        navController.navigate(ScreenRoutes.SeasonSeriesDetail.createRoute(type, id, mid, title))
+                    onViewAllClick = { type, id, mid, title, ownerName ->
+                        navController.navigate(
+                            ScreenRoutes.SeasonSeriesDetail.createRoute(
+                                type = type,
+                                id = id,
+                                mid = mid,
+                                title = title,
+                                ownerName = ownerName
+                            )
+                        )
                     },
                     sharedTransitionScope = LocalSharedTransitionScope.current,
                     animatedVisibilityScope = this
@@ -2089,7 +2141,8 @@ fun AppNavigation(
                 navArgument("type") { type = NavType.StringType },
                 navArgument("id") { type = NavType.LongType },
                 navArgument("mid") { type = NavType.LongType },
-                navArgument("title") { type = NavType.StringType; defaultValue = "" }
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                navArgument("ownerName") { type = NavType.StringType; defaultValue = "" }
             ),
             enterTransition = { slideEnterLeft(navMotionSpec) },
             popEnterTransition = { videoCardReturnPopEnterTransition(ScreenRoutes.SeasonSeriesDetail.route) },
@@ -2099,12 +2152,13 @@ fun AppNavigation(
             val id = backStackEntry.arguments?.getLong("id") ?: 0L
             val mid = backStackEntry.arguments?.getLong("mid") ?: 0L
             val title = Uri.decode(backStackEntry.arguments?.getString("title") ?: "")
+            val ownerName = Uri.decode(backStackEntry.arguments?.getString("ownerName") ?: "")
             
             val viewModel: com.android.purebilibili.feature.space.SeasonSeriesDetailViewModel = viewModel()
             
             // Initial load
-            androidx.compose.runtime.LaunchedEffect(type, id) {
-                viewModel.init(type, id, mid, title)
+            androidx.compose.runtime.LaunchedEffect(type, id, ownerName) {
+                viewModel.init(type, id, mid, title, ownerName)
             }
             
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
@@ -2460,6 +2514,7 @@ fun AppNavigation(
                                     labelMode = bottomBarLabelMode,
                                     visibleItems = visibleBottomBarItems,
                                     itemColorIndices = bottomBarItemColors,
+                                    dynamicUnreadCount = dynamicUnreadCount,
                                     homeSettings = effectiveHomeSettings,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
@@ -2495,6 +2550,7 @@ fun AppNavigation(
                                 labelMode = bottomBarLabelMode,
                                 visibleItems = visibleBottomBarItems,
                                 itemColorIndices = bottomBarItemColors,
+                                dynamicUnreadCount = dynamicUnreadCount,
                                 homeSettings = effectiveHomeSettings,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,

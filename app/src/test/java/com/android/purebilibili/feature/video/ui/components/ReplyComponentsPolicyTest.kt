@@ -15,6 +15,8 @@ import com.android.purebilibili.data.model.response.ReplySailingCardBg
 import com.android.purebilibili.data.model.response.ReplySailingFan
 import com.android.purebilibili.data.model.response.ReplyPicture
 import com.android.purebilibili.data.model.response.ReplyUpAction
+import com.android.purebilibili.data.model.response.ReplyUserSailing
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlin.test.assertContentEquals
 import kotlin.test.Test
@@ -621,6 +623,35 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
+    fun `fan group label uses uppercase co prefix and preserves visible number`() {
+        assertEquals("CO.008502", resolveFanGroupLabelText("008502"))
+        assertEquals("CO.008502", resolveFanGroupLabelText("8502"))
+        assertEquals("", resolveFanGroupLabelText("abc"))
+    }
+
+    @Test
+    fun `fan group label color falls back when server color lacks contrast`() {
+        val resolved = resolveFanGroupLabelTextColor(
+            fanColorHex = "#FFFFFF",
+            backgroundColor = Color.White,
+            fallbackColor = Color(0xFF1B1C1F)
+        )
+
+        assertEquals(Color(0xFF1B1C1F), resolved)
+    }
+
+    @Test
+    fun `fan group label color keeps server color when contrast is readable`() {
+        val resolved = resolveFanGroupLabelTextColor(
+            fanColorHex = "#1B1C1F",
+            backgroundColor = Color.White,
+            fallbackColor = Color(0xFF666666)
+        )
+
+        assertEquals(Color(0xFF1B1C1F), resolved)
+    }
+
+    @Test
     fun `resolveFanGroupTagVisual pads number when num_desc is blank`() {
         val fan = ReplySailingFan(
             isFan = 1,
@@ -653,6 +684,31 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
+    fun `resolveFanGroupDecorationCardBgs prefers focused images before plain card backgrounds`() {
+        val member = ReplyMember(
+            userSailing = ReplyUserSailing(
+                cardBg = ReplySailingCardBg(image = "https://example.com/legacy_plain.png"),
+                cardBgWithFocus = ReplySailingCardBg(image = "https://example.com/legacy_focus.png")
+            ),
+            userSailingV2 = ReplyUserSailing(
+                cardBg = ReplySailingCardBg(image = "https://example.com/v2_plain.png"),
+                cardBgWithFocus = ReplySailingCardBg(image = "https://example.com/v2_focus.png")
+            )
+        )
+
+        val images = resolveFanGroupDecorationCardBgs(member).map { it.image }
+        assertEquals(
+            listOf(
+                "https://example.com/v2_focus.png",
+                "https://example.com/legacy_focus.png",
+                "https://example.com/v2_plain.png",
+                "https://example.com/legacy_plain.png"
+            ),
+            images
+        )
+    }
+
+    @Test
     fun `resolveSailingFan finds first fan with visible number`() {
         val cards = listOf(
             ReplySailingCardBg(
@@ -671,7 +727,7 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
-    fun `resolveFanGroupVisualFromMemberAndSailing prefers pili plus garb card image over focus image`() {
+    fun `resolveFanGroupVisualFromMemberAndSailing prefers sailing fan number and focused garb image`() {
         val member = ReplyMember(
             garbCardImage = "https://example.com/garb_card.png",
             garbCardImageWithFocus = "https://example.com/garb_card_focus.png",
@@ -687,9 +743,25 @@ class ReplyComponentsPolicyTest {
 
         val visual = resolveFanGroupVisualFromMemberAndSailing(member, cards)
         assertNotNull(visual)
-        assertEquals("021288", visual.fanNumber)
-        assertEquals("https://example.com/garb_card.png", visual.cardBgImageUrl)
+        assertEquals("000011", visual.fanNumber)
+        assertEquals("https://example.com/garb_card_focus.png", visual.cardBgImageUrl)
         assertEquals("#f76a6b", visual.fanColorHex)
+    }
+
+    @Test
+    fun `resolveFanGroupVisualFromMemberAndSailing keeps sailing card image when legacy image is missing`() {
+        val member = ReplyMember()
+        val cards = listOf(
+            ReplySailingCardBg(
+                image = "https://example.com/sailing_card.png",
+                fan = ReplySailingFan(number = 8502, numDesc = "008502", color = "#576690", name = "", isFan = 1)
+            )
+        )
+
+        val visual = resolveFanGroupVisualFromMemberAndSailing(member, cards)
+        assertNotNull(visual)
+        assertEquals("008502", visual.fanNumber)
+        assertEquals("https://example.com/sailing_card.png", visual.cardBgImageUrl)
     }
 
     @Test
@@ -705,23 +777,35 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
-    fun `resolveDecorationImageUrl appends low quality suffix for plain image urls`() {
+    fun `resolveDecorationImageUrl keeps normalized original image urls visible`() {
         assertEquals(
-            "https://i0.hdslb.com/bfs/garb/item.png@1q.webp",
+            "https://i0.hdslb.com/bfs/garb/item.png",
             resolveDecorationImageUrl("//i0.hdslb.com/bfs/garb/item.png")
         )
         assertEquals(
-            "https://i0.hdslb.com/bfs/garb/item.png@1q.webp",
+            "https://i0.hdslb.com/bfs/garb/item.png",
             resolveDecorationImageUrl("i0.hdslb.com/bfs/garb/item.png")
         )
     }
 
     @Test
-    fun `resolveDecorationImageUrl upgrades existing thumbnail suffix to include quality`() {
+    fun `resolveDecorationImageUrl keeps existing thumbnail suffix unchanged`() {
         assertEquals(
-            "https://i0.hdslb.com/bfs/garb/item@240w_1q.webp",
+            "https://i0.hdslb.com/bfs/garb/item@240w.webp",
             resolveDecorationImageUrl("https://i0.hdslb.com/bfs/garb/item@240w.webp")
         )
+    }
+
+    @Test
+    fun `fan group decoration image uses large cropped presentation for transparent garb assets`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/video/ui/components/ReplyComponents.kt")
+            .readText()
+        val decorationSource = source
+            .substringAfter("@Composable\ninternal fun FanGroupDecorationBadge(")
+            .substringBefore("@Composable\nprivate fun PiliPlusGarbCardDecoration(")
+
+        assertTrue(decorationSource.contains("contentScale = ContentScale.Crop"))
+        assertTrue(decorationSource.contains(".size(width = 72.dp, height = 52.dp)"))
     }
 
     @Test

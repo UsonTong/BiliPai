@@ -843,6 +843,7 @@ fun CommonListScreen(
                                 end = favoriteHeaderLayout.browseToggleHorizontalPaddingDp.dp,
                                 top = favoriteHeaderLayout.browseToggleTopPaddingDp.dp
                             ),
+                            forceLiquidIndicator = homeSettings.androidNativeLiquidGlassEnabled,
                             onSelectionChange = { section ->
                                 favoriteBrowseSection = section
                                 searchQuery = ""

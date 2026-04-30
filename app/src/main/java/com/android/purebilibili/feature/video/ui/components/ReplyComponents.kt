@@ -42,6 +42,7 @@ import coil.request.ImageRequest
 import coil.ImageLoader
 import coil.imageLoader
 //  已改用 MaterialTheme.colorScheme.primary
+import com.android.purebilibili.core.theme.calculateContrastRatio
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.BilibiliUrlParser
 import com.android.purebilibili.core.util.rememberStoragePermissionState
@@ -707,6 +708,15 @@ internal fun resolveSailingDecorationImage(cardBgs: List<ReplySailingCardBg>): S
         .firstOrNull { it.isNotBlank() }
 }
 
+internal fun resolveFanGroupDecorationCardBgs(member: ReplyMember): List<ReplySailingCardBg> {
+    return listOfNotNull(
+        member.userSailingV2?.cardBgWithFocus,
+        member.userSailing?.cardBgWithFocus,
+        member.userSailingV2?.cardBg,
+        member.userSailing?.cardBg
+    )
+}
+
 internal fun resolveFanGroupTagVisual(
     fan: ReplySailingFan?,
     cardBgImage: String?,
@@ -724,26 +734,45 @@ internal fun resolveFanGroupTagVisual(
     )
 }
 
+internal fun resolveFanGroupLabelText(fanNumber: String): String {
+    val digits = fanNumber.filter(Char::isDigit)
+    if (digits.isBlank()) return ""
+    return "CO.${digits.padStart(6, '0')}"
+}
+
+internal fun resolveFanGroupLabelTextColor(
+    fanColorHex: String?,
+    backgroundColor: Color,
+    fallbackColor: Color,
+    minimumContrast: Float = 4.5f
+): Color {
+    val candidate = parseHexColorOrNull(fanColorHex) ?: return fallbackColor
+    return if (calculateContrastRatio(candidate, backgroundColor) >= minimumContrast) {
+        candidate
+    } else {
+        fallbackColor
+    }
+}
+
 internal fun resolveFanGroupVisualFromMemberAndSailing(
     member: ReplyMember,
     cardBgs: List<ReplySailingCardBg>
 ): FanGroupTagVisual? {
     val sailingFan = resolveSailingFan(cardBgs)
     val legacyNumber = member.garbCardNumber.trim()
+    val sailingNumber = sailingFan?.numDesc?.ifBlank {
+        if (sailingFan.number > 0) sailingFan.number.toString().padStart(6, '0') else ""
+    }.orEmpty()
     val fanNumber = when {
+        sailingNumber.isNotBlank() -> sailingNumber
         legacyNumber.isNotBlank() -> legacyNumber
-        sailingFan != null -> {
-            sailingFan.numDesc.ifBlank {
-                if (sailingFan.number > 0) sailingFan.number.toString().padStart(6, '0') else ""
-            }
-        }
         else -> ""
     }
     if (fanNumber.isBlank()) return null
 
     val image = when {
-        member.garbCardImage.isNotBlank() -> member.garbCardImage
         member.garbCardImageWithFocus.isNotBlank() -> member.garbCardImageWithFocus
+        member.garbCardImage.isNotBlank() -> member.garbCardImage
         else -> resolveSailingDecorationImage(cardBgs).orEmpty()
     }
     val fanColorHex = member.garbCardFanColor
@@ -890,12 +919,7 @@ fun ReplyItemView(
         null
     }
     val sailingCardBgs = if (showIdentityDecorations) {
-        listOfNotNull(
-            item.member.userSailing?.cardBg,
-            item.member.userSailing?.cardBgWithFocus,
-            item.member.userSailingV2?.cardBg,
-            item.member.userSailingV2?.cardBgWithFocus
-        )
+        resolveFanGroupDecorationCardBgs(item.member)
     } else {
         emptyList()
     }
@@ -908,7 +932,6 @@ fun ReplyItemView(
         null
     }
     val piliPlusDecoration = fanGroupVisual
-        ?.takeIf { !it.cardBgImageUrl.isNullOrBlank() }
     var isSubPreviewExpanded by remember(item.rpid) { mutableStateOf(false) }
     val visibleSubReplies = remember(item.replies, isSubPreviewExpanded) {
         resolveVisibleSubReplies(
@@ -1332,7 +1355,7 @@ fun ReplyItemView(
                 }
 
                 if (piliPlusDecoration != null) {
-                    PiliPlusGarbCardDecoration(
+                    FanGroupDecorationBadge(
                         visual = piliPlusDecoration,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -1876,51 +1899,77 @@ private fun NameplateTag(imageUrl: String) {
 }
 
 @Composable
-private fun PiliPlusGarbCardDecoration(
+internal fun FanGroupDecorationBadge(
     visual: FanGroupTagVisual,
     modifier: Modifier = Modifier
 ) {
     val fallbackImageUrl = normalizeHttpImageUrl(visual.cardBgImageUrl)
     val primaryImageUrl = resolveDecorationImageUrl(visual.cardBgImageUrl)
-    if (primaryImageUrl.isBlank()) return
     var imageUrl by remember(primaryImageUrl, fallbackImageUrl) {
         mutableStateOf(primaryImageUrl)
     }
 
-    val textColor = parseHexColorOrNull(visual.fanColorHex) ?: Color(0xFFD2D8E2)
+    val labelText = remember(visual.fanNumber) { resolveFanGroupLabelText(visual.fanNumber) }
+    if (labelText.isBlank() && primaryImageUrl.isBlank()) return
+    val textColor = resolveFanGroupLabelTextColor(
+        fanColorHex = visual.fanColorHex,
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        fallbackColor = MaterialTheme.colorScheme.onSurface
+    )
     Row(
-        modifier = modifier,
+        modifier = modifier.widthIn(min = 86.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(imageUrl)
-                .listener(
-                    onError = { _, _ ->
-                        if (fallbackImageUrl.isNotBlank() && imageUrl != fallbackImageUrl) {
-                            imageUrl = fallbackImageUrl
+        if (primaryImageUrl.isNotBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl)
+                    .listener(
+                        onError = { _, _ ->
+                            if (fallbackImageUrl.isNotBlank() && imageUrl != fallbackImageUrl) {
+                                imageUrl = fallbackImageUrl
+                            }
                         }
-                    }
-                )
-                .crossfade(true)
-                .build(),
-            contentDescription = "Fan group decoration",
-            // Garb card assets often contain huge transparent margins.
-            // Keep center crop so the main emblem near center stays visible.
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.Center,
-            modifier = Modifier
-                .size(width = 42.dp, height = 22.dp)
-                .clip(RoundedCornerShape(2.dp))
-        )
-        Text(
-            text = "co.${visual.fanNumber}",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = textColor
-        )
+                    )
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Fan group decoration",
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .size(width = 72.dp, height = 52.dp)
+                    .clip(RoundedCornerShape(2.dp))
+            )
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+            shape = RoundedCornerShape(5.dp),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        ) {
+            Text(
+                text = labelText,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+        }
     }
+}
+
+@Composable
+private fun PiliPlusGarbCardDecoration(
+    visual: FanGroupTagVisual,
+    modifier: Modifier = Modifier
+) {
+    FanGroupDecorationBadge(
+        visual = visual,
+        modifier = modifier
+    )
 }
 
 internal fun normalizeHttpImageUrl(url: String?): String {
@@ -1938,24 +1987,8 @@ internal fun normalizeHttpImageUrl(url: String?): String {
     }
 }
 
-private val IMAGE_SUFFIX_REGEX =
-    Regex("""\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$""", RegexOption.IGNORE_CASE)
-private val THUMBNAIL_SUFFIX_REGEX =
-    Regex("""(@(\d+[a-z]_?)*)(\..*)?$""", RegexOption.IGNORE_CASE)
-
 internal fun resolveDecorationImageUrl(url: String?): String {
-    val normalized = normalizeHttpImageUrl(url)
-    if (normalized.isBlank()) return ""
-    if (!IMAGE_SUFFIX_REGEX.containsMatchIn(normalized)) return normalized
-
-    return if (THUMBNAIL_SUFFIX_REGEX.containsMatchIn(normalized)) {
-        normalized.replace(THUMBNAIL_SUFFIX_REGEX) { match ->
-            val suffix = match.groups[3]?.value ?: ".webp"
-            "${match.groups[1]?.value.orEmpty()}_1q$suffix"
-        }
-    } else {
-        "$normalized@1q.webp"
-    }
+    return normalizeHttpImageUrl(url)
 }
 
 private fun resolveFansMedalColor(level: Int): Color {
@@ -1969,7 +2002,13 @@ private fun resolveFansMedalColor(level: Int): Color {
 
 private fun parseHexColorOrNull(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
-    return runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()
+    val text = hex.trim().removePrefix("#")
+    val argb = when (text.length) {
+        6 -> "FF$text"
+        8 -> text
+        else -> return null
+    }
+    return runCatching { Color(argb.toLong(16).toInt()) }.getOrNull()
 }
 
 fun formatTime(timestamp: Long): String {

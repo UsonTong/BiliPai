@@ -113,8 +113,8 @@ internal fun resolveLiveInteractionSegmentedControlSpec(): LiveInteractionSegmen
     return LiveInteractionSegmentedControlSpec(
         horizontalPaddingDp = 14,
         verticalPaddingDp = 8,
-        heightDp = 44,
-        indicatorHeightDp = 36,
+        heightDp = 58,
+        indicatorHeightDp = 56,
         labelFontSizeSp = 14
     )
 }

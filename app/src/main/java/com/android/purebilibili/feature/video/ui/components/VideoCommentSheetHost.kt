@@ -3,8 +3,12 @@ package com.android.purebilibili.feature.video.ui.components
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -20,13 +24,17 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.onSizeChanged
 import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
 import com.android.purebilibili.core.ui.bottomSheetContentEnterTransition
 import com.android.purebilibili.core.ui.bottomSheetContentExitTransition
 import com.android.purebilibili.core.ui.bottomSheetScrimEnterTransition
@@ -472,6 +481,15 @@ private fun VideoCommentMainList(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appearance = rememberVideoCommentAppearance()
+    val listState = rememberLazyListState()
+    val shouldShowBackToTop by remember(listState) {
+        androidx.compose.runtime.derivedStateOf {
+            shouldShowVideoCommentBackToTop(
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         CommentSortFilterBar(
@@ -495,76 +513,116 @@ private fun VideoCommentMainList(
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = WindowInsets.navigationBars.asPaddingValues()
-            ) {
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        color = appearance.composerHintBackgroundColor,
-                        shape = RoundedCornerShape(16.dp),
-                        onClick = onRootCommentClick
-                    ) {
-                        Text(
-                            text = "说点什么，直接评论 UP 主和大家",
-                            color = appearance.secondaryTextColor,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = WindowInsets.navigationBars.asPaddingValues()
+                ) {
+                    item {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            color = appearance.composerHintBackgroundColor,
+                            shape = RoundedCornerShape(16.dp),
+                            onClick = onRootCommentClick
+                        ) {
+                            Text(
+                                text = "说点什么，直接评论 UP 主和大家",
+                                color = appearance.secondaryTextColor,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                            )
+                        }
+                    }
+
+                    items(
+                        items = state.replies,
+                        key = { it.rpid },
+                        contentType = { resolveReplyItemContentType(it) }
+                    ) { reply ->
+                        ReplyItemView(
+                            item = reply,
+                            upMid = state.upMid,
+                            showUpFlag = state.showUpFlag,
+                            isPinned = reply.rpid in state.pinnedReplyIds,
+                            onClick = {},
+                            onSubClick = { parentReply ->
+                                if (shouldOpenPortraitCommentThreadDetail(useEmbeddedPresentation = true)) {
+                                    viewModel.openSubReply(parentReply)
+                                }
+                            },
+                            onTimestampClick = onTimestampClick,
+                            maxTimestampMs = maxTimestampMs,
+                            onImagePreview = onImagePreview,
+                            onLikeClick = { viewModel.likeComment(reply.rpid) },
+                            onReplyClick = {
+                                if (shouldOpenPortraitCommentReplyComposer()) {
+                                    onReplyClick(reply)
+                                }
+                            },
+                            onReportClick = { reason -> viewModel.reportComment(reply.rpid, reason) },
+                            canToggleTop = shouldShowReplyTopAction(
+                                currentMid = state.currentMid,
+                                upMid = state.upMid,
+                                item = reply
+                            ),
+                            onToggleTopClick = { viewModel.toggleTopComment(reply) },
+                            onUrlClick = onCommentUrlClick,
+                            onAvatarClick = { mid -> mid.toLongOrNull()?.let(onUserClick) ?: Unit }
                         )
                     }
-                }
 
-                items(
-                    items = state.replies,
-                    key = { it.rpid },
-                    contentType = { resolveReplyItemContentType(it) }
-                ) { reply ->
-                    ReplyItemView(
-                        item = reply,
-                        upMid = state.upMid,
-                        showUpFlag = state.showUpFlag,
-                        isPinned = reply.rpid in state.pinnedReplyIds,
-                        onClick = {},
-                        onSubClick = { parentReply ->
-                            if (shouldOpenPortraitCommentThreadDetail(useEmbeddedPresentation = true)) {
-                                viewModel.openSubReply(parentReply)
+                    item {
+                        if (!state.isRepliesEnd) {
+                            LaunchedEffect(Unit) {
+                                viewModel.loadComments()
                             }
-                        },
-                        onTimestampClick = onTimestampClick,
-                        maxTimestampMs = maxTimestampMs,
-                        onImagePreview = onImagePreview,
-                        onLikeClick = { viewModel.likeComment(reply.rpid) },
-                        onReplyClick = {
-                            if (shouldOpenPortraitCommentReplyComposer()) {
-                                onReplyClick(reply)
-                            }
-                        },
-                        onReportClick = { reason -> viewModel.reportComment(reply.rpid, reason) },
-                        canToggleTop = shouldShowReplyTopAction(
-                            currentMid = state.currentMid,
-                            upMid = state.upMid,
-                            item = reply
-                        ),
-                        onToggleTopClick = { viewModel.toggleTopComment(reply) },
-                        onUrlClick = onCommentUrlClick,
-                        onAvatarClick = { mid -> mid.toLongOrNull()?.let(onUserClick) ?: Unit }
-                    )
-                }
-
-                item {
-                    if (!state.isRepliesEnd) {
-                        LaunchedEffect(Unit) {
-                            viewModel.loadComments()
+                            LoadingFooter()
+                        } else {
+                            NoMoreFooter()
                         }
-                        LoadingFooter()
-                    } else {
-                        NoMoreFooter()
                     }
                 }
+
+                VideoCommentBackToTopButton(
+                    visible = shouldShowBackToTop,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = 20.dp),
+                    onClick = {
+                        scope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun VideoCommentBackToTopButton(
+    visible: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.92f),
+        exit = fadeOut(animationSpec = tween(140)) + scaleOut(targetScale = 0.92f)
+    ) {
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+            contentColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(
+                imageVector = rememberAppChevronUpIcon(),
+                contentDescription = "回到顶部"
+            )
         }
     }
 }

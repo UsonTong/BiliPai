@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.video.screen
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import com.android.purebilibili.core.ui.rememberAppCommentIcon
+import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
 import com.android.purebilibili.core.ui.rememberAppPlayIcon
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
@@ -72,6 +74,7 @@ import com.android.purebilibili.feature.video.ui.components.ReplyItemView
 import com.android.purebilibili.feature.video.ui.components.rememberVideoCommentAppearance
 import com.android.purebilibili.feature.video.ui.components.resolveReplyItemContentType
 import com.android.purebilibili.feature.video.ui.components.shouldShowReplyTopAction
+import com.android.purebilibili.feature.video.ui.components.shouldShowVideoCommentBackToTop
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
@@ -278,7 +281,8 @@ fun VideoContentSection(
     showInteractionActions: Boolean = true,
     isVideoPlaying: Boolean = false,
     onSelectedTabChange: (Int) -> Unit = {},
-    onIntroScrollStateChange: (Int, Int) -> Unit = { _, _ -> }
+    onIntroScrollStateChange: (Int, Int) -> Unit = { _, _ -> },
+    onCommentScrollStateChange: (Int, Int) -> Unit = { _, _ -> }
 ) {
     val tabs = listOf("简介", "评论 $replyCount")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -331,6 +335,13 @@ fun VideoContentSection(
             .distinctUntilChanged()
             .collect { state: Pair<Int, Int> ->
                 onIntroScrollStateChange(state.first, state.second)
+            }
+    }
+    LaunchedEffect(commentListState) {
+        snapshotFlow { commentListState.firstVisibleItemIndex to commentListState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
+            .collect { state: Pair<Int, Int> ->
+                onCommentScrollStateChange(state.first, state.second)
             }
     }
     val bottomContentPadding = if (showInteractionActions) 84.dp else 12.dp
@@ -662,6 +673,15 @@ private fun VideoCommentTab(
     lightweightCommentRendering: Boolean
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
+    val scope = rememberCoroutineScope()
+    val shouldShowBackToTop by remember(listState) {
+        derivedStateOf {
+            shouldShowVideoCommentBackToTop(
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -802,6 +822,33 @@ private fun VideoCommentTab(
                         }
                     }
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = shouldShowBackToTop,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 20.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 12.dp
+                ),
+            enter = fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.92f),
+            exit = fadeOut(animationSpec = tween(140)) + scaleOut(targetScale = 0.92f)
+        ) {
+            SmallFloatingActionButton(
+                onClick = {
+                    scope.launch {
+                        listState.animateScrollToItem(0)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = rememberAppChevronUpIcon(),
+                    contentDescription = "回到顶部"
+                )
             }
         }
     }
