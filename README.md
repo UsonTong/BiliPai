@@ -38,7 +38,8 @@
 | --- | --- |
 | 开始使用 | [下载 Releases](https://github.com/jay3-yy/BiliPai/releases) · [更新日志](CHANGELOG.md) |
 | 文档导航 | [Wiki 首页](docs/wiki/README.md) · [AI / LLM 入口](llms.txt) · [AI 导航指南](docs/wiki/AI.md) |
-| 开发参考 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
+| 开发参考 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK](plugins/sdk/README.md) |
+| 插件生态 | [社区插件目录](plugins/community/README.md) · [插件示例](plugins/samples/) |
 
 > [!IMPORTANT]
 > 应用内默认设置为通用场景，可能不适合所有用户。建议进入 **设置** 按个人习惯手动调整（如外观、动画、播放设置等）。
@@ -95,6 +96,21 @@
 | **插件中心** | 统一管理所有插件，支持独立配置 |
 | **🆕 外部插件** | 支持通过 URL 动态加载 JSON 规则插件 |
 
+#### 当前插件生态与开发者适配状态
+
+> [!NOTE]
+> 插件能力已进入可用阶段，但生态仍处于早期：内置插件随主应用稳定分发，外部规则插件可导入使用，外部 Kotlin 插件包目前以预览、授权和 SDK 适配为主，尚不执行外部 Dex。
+
+| 形态 | 当前情况 | 开发者入口 |
+| --- | --- | --- |
+| **内置插件** | 已内置 5 个：空降助手、去广告、弹幕增强、夜间护眼、今日推荐单；由主应用一同编译和发布 | 参考 `app/src/main/java/com/android/purebilibili/feature/plugin/` 与插件中心实现 |
+| **JSON / `.bp` 规则插件** | 支持通过 URL 导入，适合推荐流过滤、弹幕过滤/高亮；`plugins/community/` 当前只有 1 个演示插件，兼容性样本仍有限 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) · [社区插件目录](plugins/community/README.md) |
+| **外部 `.bpplugin` Kotlin 包** | SDK 与包格式已提供，可解析 manifest、SHA-256、签名状态和能力申请，并保存授权记录；当前宿主不会执行外部 Dex | [Plugin SDK](plugins/sdk/README.md) · [Today Watch Remix 示例](plugins/samples/today-watch-remix/) |
+| **源码级原生 Kotlin 插件** | 适合复杂播放器、推荐、弹幕或自定义 UI 能力；需要修改源码并重新编译 APK，接口仍以当前源码为准 | [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
+
+- 第三方插件接入前请审阅规则或包清单，尤其是 `NETWORK`、`LOCAL_HISTORY_READ`、`LOCAL_FEEDBACK_READ`、`PLAYER_CONTROL` 等敏感能力。
+- 插件 API、能力授权和导入体验还会继续迭代，开发者适配时应固定目标版本，并以 `CHANGELOG.md` 与当前源码为最终依据。
+
 #### 已实现细节（补充）
 
 - `今日推荐单`：
@@ -114,6 +130,9 @@
   - 画质列表按接口返回展示，再用真实 DASH 轨道决定哪些档位可切换
   - 缓存切换改为目标画质精确匹配，缺失时回退 API
   - 切换提示文案更明确（目标不可用时清晰反馈）
+
+<details>
+<summary><b>📌 今日推荐单算法与今日推荐看的算法优化（默认折叠）</b></summary>
 
 #### 今日推荐单算法（通俗版）
 
@@ -235,6 +254,24 @@
 
 - 算法完全在本地运行，不上传历史记录用于个性化训练
 - 支持一键清空本地画像与反馈，恢复冷启动推荐状态
+
+#### 今日推荐看的算法优化建议（2026-04-30）
+
+> 这部分是当前 README 推荐优先阅读的算法优化方向，面向后续迭代和代码审查；不是已全部落地的实现承诺。
+
+| 优先级 | 优化点 | 建议做法 |
+| --- | --- | --- |
+| P0 | 候选池分层召回 | 将首页候选拆为偏好 UP、近期高质量、长尾探索、负反馈避让四类，再进入统一打分，避免单一热门信号主导 |
+| P0 | 反馈半衰期 | 对“不感兴趣”关键词/UP 增加时间衰减，短期强降权、长期逐步恢复，减少误点导致的长期偏差 |
+| P1 | 探索/利用配比 | 队列中保留少量探索位，例如 70% 偏好匹配 + 20% 新鲜内容 + 10% 冷门高质量，提升发现感 |
+| P1 | 时段与场景特征 | 将夜间护眼、工作日/周末、最近会话时长纳入模式权重，短会话更偏短内容，长会话允许学习向长视频 |
+| P1 | 多样化约束升级 | 在同 UP 惩罚外加入分区、关键词簇、时长段多样性，避免列表只是在同一主题内换 UP 主 |
+| P2 | 可解释性校准 | 将解释标签和真实加分项绑定，避免“看起来合理但不是主要原因”的解释误导用户 |
+| P2 | 离线评估基线 | 为 `TodayWatchPolicy` 增加固定样本回归集，跟踪命中偏好、重复率、负反馈命中率和队列时长分布 |
+
+建议下一步优先看 `app/src/main/java/com/android/purebilibili/feature/home/TodayWatchPolicy.kt` 的候选清洗、单条打分和多样化贪心排序，再对照 `TodayWatchProfileStore` / `TodayWatchFeedbackStore` 检查画像与负反馈信号是否需要衰减。
+
+</details>
 
 <details>
 <summary><b>📖 JSON 规则插件快速入门（点击展开）</b></summary>
