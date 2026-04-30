@@ -1915,26 +1915,10 @@ fun VideoDetailScreen(
     BackHandler(enabled = isFullscreenMode) {
         toggleFullscreen()
     }
-    
+
     // 📱 拦截系统返回键：如果是竖屏全屏模式，则先退出竖屏全屏
     BackHandler(enabled = isPortraitFullscreen) {
         isPortraitFullscreen = false
-    }
-    
-    // 📱 [新增] 拦截系统返回键：手机横屏进入了平板分栏模式，应切换回竖屏而非退出
-    val isPhoneInLandscapeSplitView = shouldRotateToPortraitOnSplitBack(
-        useTabletLayout = useTabletLayout,
-        isCompactDevice = windowSizeClass.isCompactDevice,
-        orientation = configuration.orientation
-    )
-    
-    BackHandler(enabled = isPhoneInLandscapeSplitView && !isFullscreenMode && !isPortraitFullscreen) {
-        com.android.purebilibili.core.util.Logger.d(
-            "VideoDetailScreen", 
-            "📱 System back pressed in phone landscape split-view, rotating to PORTRAIT"
-        )
-        val activity = context.findActivity()
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
     
     // 🎯 [移除] 以下 BackHandler 会阻止 Compose Navigation 的预测性返回手势动画
@@ -2127,34 +2111,11 @@ fun VideoDetailScreen(
                         bvid = bvid,
                         coverUrl = coverUrl,
                         onBack = {
-                            // 📱 手机误入平板模式（如横屏宽度触发 Expanded），点击返回应切换回竖屏
-                            val currentOrientation = configuration.orientation
-                            val shouldRotatePortrait = shouldRotateToPortraitOnSplitBack(
-                                useTabletLayout = true,
-                                isCompactDevice = windowSizeClass.isCompactDevice,
-                                orientation = currentOrientation
-                            )
-                            
                             com.android.purebilibili.core.util.Logger.d(
-                                "VideoDetailScreen", 
-                                "📱 onBack clicked: compactDevice=${windowSizeClass.isCompactDevice}, shouldRotatePortrait=$shouldRotatePortrait, " +
-                                "orientation=$currentOrientation, " +
-                                "activity=${activity != null}"
+                                "VideoDetailScreen",
+                                "📱 Calling handleBack()"
                             )
-                            
-                            if (shouldRotatePortrait) {
-                                com.android.purebilibili.core.util.Logger.d(
-                                    "VideoDetailScreen", 
-                                    "📱 Rotating to PORTRAIT"
-                                )
-                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                            } else {
-                                com.android.purebilibili.core.util.Logger.d(
-                                    "VideoDetailScreen", 
-                                    "📱 Calling handleBack()"
-                                )
-                                handleBack()
-                            }
+                            handleBack()
                         },
                         onUpClick = onUpClick,
                         onNavigateToAudioMode = {
@@ -4241,16 +4202,6 @@ internal fun resolveIsPlayerCollapsed(
 ): Boolean {
     if (!swipeHidePlayerEnabled) return false
     return playerHeightOffsetPx <= (-videoHeightPx + collapseTolerancePx)
-}
-
-internal fun shouldRotateToPortraitOnSplitBack(
-    useTabletLayout: Boolean,
-    isCompactDevice: Boolean,
-    orientation: Int
-): Boolean {
-    return useTabletLayout &&
-        isCompactDevice &&
-        orientation == Configuration.ORIENTATION_LANDSCAPE
 }
 
 internal fun shouldUseTabletVideoLayout(
