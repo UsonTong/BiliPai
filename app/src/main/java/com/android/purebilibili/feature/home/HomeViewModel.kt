@@ -5,6 +5,14 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.plugin.PluginManager
+import com.android.purebilibili.core.plugin.RecommendationCreatorSignal
+import com.android.purebilibili.core.plugin.RecommendationFeedbackSignals
+import com.android.purebilibili.core.plugin.RecommendationGroup
+import com.android.purebilibili.core.plugin.RecommendationMode
+import com.android.purebilibili.core.plugin.RecommendationPluginApi
+import com.android.purebilibili.core.plugin.RecommendationRequest
+import com.android.purebilibili.core.plugin.RecommendationResult
+import com.android.purebilibili.core.plugin.RecommendationSceneSignals
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
 import com.android.purebilibili.core.store.TodayWatchProfileStore
@@ -99,6 +107,45 @@ private fun TodayWatchMode.toPluginMode(): TodayWatchPluginMode {
     return when (this) {
         TodayWatchMode.RELAX -> TodayWatchPluginMode.RELAX
         TodayWatchMode.LEARN -> TodayWatchPluginMode.LEARN
+    }
+}
+
+private fun TodayWatchMode.toRecommendationMode(): RecommendationMode {
+    return when (this) {
+        TodayWatchMode.RELAX -> RecommendationMode.RELAX
+        TodayWatchMode.LEARN -> RecommendationMode.LEARN
+    }
+}
+
+private fun RecommendationMode.toTodayWatchMode(): TodayWatchMode {
+    return when (this) {
+        RecommendationMode.RELAX -> TodayWatchMode.RELAX
+        RecommendationMode.LEARN -> TodayWatchMode.LEARN
+    }
+}
+
+private fun RecommendationResult.toTodayWatchPlan(): TodayWatchPlan {
+    val creatorGroup = groups.firstOrNull { it.id == "preferred_creators" }
+    return TodayWatchPlan(
+        mode = mode.toTodayWatchMode(),
+        upRanks = creatorGroup.toTodayUpRanks(),
+        videoQueue = items.map { it.video },
+        explanationByBvid = items.associate { it.video.bvid to it.explanation },
+        historySampleCount = historySampleCount,
+        nightSignalUsed = sceneSignals.eyeCareNightActive,
+        generatedAt = generatedAt
+    )
+}
+
+private fun RecommendationGroup?.toTodayUpRanks(): List<TodayUpRank> {
+    return this?.items.orEmpty().mapNotNull { item ->
+        val mid = item.id.toLongOrNull() ?: return@mapNotNull null
+        TodayUpRank(
+            mid = mid,
+            name = item.title,
+            score = item.score ?: 0.0,
+            watchCount = 1
+        )
     }
 }
 
@@ -374,7 +421,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             context = getApplication(),
             limit = runtime.historySampleLimit / 4
         ).map {
-            TodayWatchCreatorSignal(
+            RecommendationCreatorSignal(
                 mid = it.mid,
                 name = it.name,
                 score = it.score,
@@ -384,21 +431,38 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val eyeCareNightActive = runtime.linkEyeCareSignal &&
             EyeProtectionPlugin.getInstance()?.isNightModeActive?.value == true
 
-        val plan = buildTodayWatchPlan(
-            historyVideos = historySample,
-            candidateVideos = recommendVideos,
-            mode = runtime.mode,
-            eyeCareNightActive = eyeCareNightActive,
-            upRankLimit = runtime.upRankLimit,
-            queueLimit = runtime.queueBuildLimit,
-            creatorSignals = creatorSignals,
-            penaltySignals = TodayWatchPenaltySignals(
-                consumedBvids = todayConsumedBvids.toSet(),
-                dislikedBvids = todayDislikedBvids.toSet(),
-                dislikedCreatorMids = todayDislikedCreatorMids.toSet(),
-                dislikedKeywords = todayDislikedKeywords.toSet()
+        val recommendationPlugin = PluginManager.plugins
+            .firstOrNull { it.enabled && it.plugin.id == TodayWatchPlugin.PLUGIN_ID }
+            ?.plugin as? RecommendationPluginApi
+        if (recommendationPlugin == null) {
+            _uiState.value = _uiState.value.copy(
+                todayWatchPlan = null,
+                todayWatchLoading = false,
+                todayWatchError = "今日推荐插件不可用"
+            )
+            return
+        }
+
+        val result = recommendationPlugin.buildRecommendations(
+            RecommendationRequest(
+                historyVideos = historySample,
+                candidateVideos = recommendVideos,
+                mode = runtime.mode.toRecommendationMode(),
+                sceneSignals = RecommendationSceneSignals(
+                    eyeCareNightActive = eyeCareNightActive
+                ),
+                groupLimit = runtime.upRankLimit,
+                queueLimit = runtime.queueBuildLimit,
+                creatorSignals = creatorSignals,
+                feedbackSignals = RecommendationFeedbackSignals(
+                    consumedBvids = todayConsumedBvids.toSet(),
+                    dislikedBvids = todayDislikedBvids.toSet(),
+                    dislikedCreatorMids = todayDislikedCreatorMids.toSet(),
+                    dislikedKeywords = todayDislikedKeywords.toSet()
+                )
             )
         )
+        val plan = result.toTodayWatchPlan()
 
         _uiState.value = _uiState.value.copy(
             todayWatchPlan = plan,

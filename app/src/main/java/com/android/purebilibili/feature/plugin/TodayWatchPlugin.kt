@@ -24,13 +24,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.purebilibili.core.plugin.Plugin
+import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
+import com.android.purebilibili.core.plugin.RecommendationAction
+import com.android.purebilibili.core.plugin.RecommendationCreatorSignal
+import com.android.purebilibili.core.plugin.RecommendationGroup
+import com.android.purebilibili.core.plugin.RecommendationGroupItem
+import com.android.purebilibili.core.plugin.RecommendationMode
+import com.android.purebilibili.core.plugin.RecommendationPluginApi
+import com.android.purebilibili.core.plugin.RecommendationRequest
+import com.android.purebilibili.core.plugin.RecommendationResult
+import com.android.purebilibili.core.plugin.RecommendedVideo
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
 import com.android.purebilibili.core.store.TodayWatchProfileStore
 import com.android.purebilibili.core.ui.components.IOSSwitchItem
 import com.android.purebilibili.core.util.Logger
+import com.android.purebilibili.feature.home.TodayWatchCreatorSignal
+import com.android.purebilibili.feature.home.TodayWatchMode
+import com.android.purebilibili.feature.home.TodayWatchPenaltySignals
+import com.android.purebilibili.feature.home.buildTodayWatchPlan
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
 import io.github.alexzhirkevich.cupertino.icons.outlined.ListBullet
@@ -71,7 +85,7 @@ data class TodayWatchPluginConfig(
     val refreshTriggerToken: Long = 0L
 )
 
-class TodayWatchPlugin : Plugin {
+class TodayWatchPlugin : RecommendationPluginApi {
 
     override val id: String = PLUGIN_ID
     override val name: String = "今日推荐单"
@@ -79,6 +93,18 @@ class TodayWatchPlugin : Plugin {
     override val version: String = "1.0.0"
     override val author: String = "YangY"
     override val icon: ImageVector = CupertinoIcons.Default.ListBullet
+    override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
+        pluginId = id,
+        displayName = name,
+        version = version,
+        apiVersion = 1,
+        entryClassName = "com.android.purebilibili.feature.plugin.TodayWatchPlugin",
+        capabilities = setOf(
+            PluginCapability.RECOMMENDATION_CANDIDATES,
+            PluginCapability.LOCAL_HISTORY_READ,
+            PluginCapability.LOCAL_FEEDBACK_READ
+        )
+    )
 
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var config: TodayWatchPluginConfig = TodayWatchPluginConfig()
@@ -104,6 +130,62 @@ class TodayWatchPlugin : Plugin {
 
     fun setCurrentMode(mode: TodayWatchPluginMode) {
         updateConfig { it.copy(currentMode = mode) }
+    }
+
+    override fun buildRecommendations(request: RecommendationRequest): RecommendationResult {
+        val plan = buildTodayWatchPlan(
+            historyVideos = request.historyVideos,
+            candidateVideos = request.candidateVideos,
+            mode = request.mode.toTodayWatchMode(),
+            eyeCareNightActive = request.sceneSignals.eyeCareNightActive,
+            nowEpochSec = request.sceneSignals.nowEpochSec,
+            upRankLimit = request.groupLimit,
+            queueLimit = request.queueLimit,
+            creatorSignals = request.creatorSignals.map { it.toTodayWatchCreatorSignal() },
+            penaltySignals = TodayWatchPenaltySignals(
+                consumedBvids = request.feedbackSignals.consumedBvids,
+                dislikedBvids = request.feedbackSignals.dislikedBvids,
+                dislikedCreatorMids = request.feedbackSignals.dislikedCreatorMids,
+                dislikedKeywords = request.feedbackSignals.dislikedKeywords
+            )
+        )
+        val queueSize = plan.videoQueue.size.coerceAtLeast(1)
+        return RecommendationResult(
+            sourcePluginId = id,
+            mode = request.mode,
+            items = plan.videoQueue.mapIndexed { index, video ->
+                RecommendedVideo(
+                    video = video,
+                    score = (queueSize - index).toDouble(),
+                    confidence = 1f - (index.toFloat() / (queueSize * 2f)),
+                    explanation = plan.explanationByBvid[video.bvid].orEmpty(),
+                    actions = listOf(
+                        RecommendationAction(
+                            id = "open",
+                            label = "播放",
+                            targetBvid = video.bvid
+                        )
+                    )
+                )
+            },
+            groups = listOf(
+                RecommendationGroup(
+                    id = "preferred_creators",
+                    title = "偏好 UP",
+                    items = plan.upRanks.map { rank ->
+                        RecommendationGroupItem(
+                            id = rank.mid.toString(),
+                            title = rank.name,
+                            subtitle = "${rank.watchCount} 次观看",
+                            score = rank.score
+                        )
+                    }
+                )
+            ),
+            historySampleCount = plan.historySampleCount,
+            sceneSignals = request.sceneSignals,
+            generatedAt = plan.generatedAt
+        )
     }
 
     fun clearPersonalizationData() {
@@ -379,4 +461,20 @@ class TodayWatchPlugin : Plugin {
                 ?.plugin as? TodayWatchPlugin
         }
     }
+}
+
+private fun RecommendationMode.toTodayWatchMode(): TodayWatchMode {
+    return when (this) {
+        RecommendationMode.RELAX -> TodayWatchMode.RELAX
+        RecommendationMode.LEARN -> TodayWatchMode.LEARN
+    }
+}
+
+private fun RecommendationCreatorSignal.toTodayWatchCreatorSignal(): TodayWatchCreatorSignal {
+    return TodayWatchCreatorSignal(
+        mid = mid,
+        name = name,
+        score = score,
+        watchCount = watchCount
+    )
 }
