@@ -329,7 +329,7 @@ fun PluginsContent(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "通过链接安装 JSON 规则插件",
+                                text = "通过链接安装 JSON 规则插件，安装前预览能力",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -340,6 +340,63 @@ fun PluginsContent(
                             tint = importTint,
                             modifier = Modifier.size(24.dp)
                         )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+                    tonalElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = CupertinoIcons.Filled.Shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "开放 Kotlin 插件包",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "将展示 SHA-256、签名状态和敏感能力，确认授权后再安装",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                        ) {
+                            Text(
+                                text = "设计中",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -592,6 +649,9 @@ fun PluginsContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        PluginCapabilityDetailSection(
+                            capabilities = resolveJsonRulePluginCapabilities(plugin.type)
+                        )
                         if (isImporting) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -748,6 +808,10 @@ private fun PluginItem(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                     )
                 }
+                PluginCapabilityChips(
+                    capabilities = plugin.capabilityManifest.capabilities,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
             }
             
             Spacer(modifier = Modifier.width(8.dp))
@@ -793,8 +857,83 @@ private fun PluginItem(
                         modifier = Modifier.padding(12.dp)
                     )
                 } else {
-                    plugin.SettingsContent()
+                    Column {
+                        PluginCapabilityDetailSection(
+                            capabilities = plugin.capabilityManifest.capabilities,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                        plugin.SettingsContent()
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PluginCapabilityChips(
+    capabilities: Set<com.android.purebilibili.core.plugin.PluginCapability>,
+    modifier: Modifier = Modifier
+) {
+    val models = remember(capabilities) { resolvePluginCapabilityUiModels(capabilities) }
+    if (models.isEmpty()) return
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        models.forEach { model ->
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = if (model.requiresExplicitApproval) {
+                    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.62f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
+                }
+            ) {
+                Text(
+                    text = if (model.requiresExplicitApproval) "${model.label} · 需授权" else model.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (model.requiresExplicitApproval) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PluginCapabilityDetailSection(
+    capabilities: Set<com.android.purebilibili.core.plugin.PluginCapability>,
+    modifier: Modifier = Modifier
+) {
+    val models = remember(capabilities) { resolvePluginCapabilityUiModels(capabilities) }
+    if (models.isEmpty()) return
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "能力与授权",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        models.forEach { model ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = if (model.requiresExplicitApproval) "${model.label} · 安装前确认" else model.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = model.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -910,6 +1049,10 @@ private fun JsonPluginItem(
                         )
                     }
                 }
+                PluginCapabilityChips(
+                    capabilities = resolveJsonRulePluginCapabilities(plugin.type),
+                    modifier = Modifier.padding(top = 6.dp)
+                )
             }
             
             // 开关

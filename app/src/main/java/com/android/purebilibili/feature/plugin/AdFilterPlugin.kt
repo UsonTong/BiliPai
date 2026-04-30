@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.plugin.FeedPlugin
+import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
 import com.android.purebilibili.core.util.Logger
@@ -57,6 +59,18 @@ class AdFilterPlugin : FeedPlugin {
     override val version = "2.0.0"
     override val author = "YangY"
     override val icon: ImageVector = CupertinoIcons.Default.Xmark
+    override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
+        pluginId = id,
+        displayName = name,
+        version = version,
+        apiVersion = 1,
+        entryClassName = "com.android.purebilibili.feature.plugin.AdFilterPlugin",
+        capabilities = setOf(
+            PluginCapability.RECOMMENDATION_CANDIDATES,
+            PluginCapability.LOCAL_FEEDBACK_READ,
+            PluginCapability.PLUGIN_STORAGE
+        )
+    )
     
     private var config: AdFilterConfig = AdFilterConfig()
     private var filteredCount = 0

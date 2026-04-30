@@ -1,8 +1,12 @@
 package com.android.purebilibili.feature.settings
 
+import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
+import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PluginsScreenPolicyTest {
 
@@ -36,5 +40,57 @@ class PluginsScreenPolicyTest {
 
         assertEquals(0, sponsorBlockToggleCount)
         assertEquals(1, genericToggleCount)
+    }
+
+    @Test
+    fun capabilityModels_markNetworkAndStorageAsSensitiveAuthorizationItems() {
+        val models = resolvePluginCapabilityUiModels(
+            setOf(
+                PluginCapability.RECOMMENDATION_CANDIDATES,
+                PluginCapability.NETWORK,
+                PluginCapability.PLUGIN_STORAGE
+            )
+        )
+
+        assertEquals(listOf("推荐候选", "网络访问", "插件存储"), models.map { it.label })
+        assertTrue(models.first { it.capability == PluginCapability.NETWORK }.requiresExplicitApproval)
+        assertTrue(models.first { it.capability == PluginCapability.PLUGIN_STORAGE }.requiresExplicitApproval)
+    }
+
+    @Test
+    fun externalInstallPreview_exposesHashSignerAndSensitiveCapabilities() {
+        val manifest = PluginCapabilityManifest(
+            pluginId = "dev.example.cloud",
+            displayName = "云推荐",
+            version = "1.0.0",
+            apiVersion = 1,
+            entryClassName = "dev.example.CloudPlugin",
+            capabilities = setOf(PluginCapability.NETWORK, PluginCapability.LOCAL_HISTORY_READ)
+        )
+        val preview = buildExternalPluginInstallPreview(
+            ExternalPluginInstallDecision.RequiresUserApproval(
+                manifest = manifest,
+                packageSha256 = "abcdef123456",
+                signerTrusted = false,
+                sensitiveCapabilities = setOf(PluginCapability.NETWORK, PluginCapability.LOCAL_HISTORY_READ)
+            )
+        )
+
+        assertEquals("云推荐", preview.title)
+        assertEquals("SHA-256: abcdef123456", preview.packageHashText)
+        assertEquals("签名未信任", preview.signerText)
+        assertEquals(listOf("观看历史", "网络访问"), preview.sensitiveCapabilityLabels)
+    }
+
+    @Test
+    fun jsonRulePluginType_mapsToHostCapabilities() {
+        assertEquals(
+            setOf(PluginCapability.RECOMMENDATION_CANDIDATES),
+            resolveJsonRulePluginCapabilities("feed")
+        )
+        assertEquals(
+            setOf(PluginCapability.DANMAKU_STREAM, PluginCapability.DANMAKU_MUTATION),
+            resolveJsonRulePluginCapabilities("danmaku")
+        )
     }
 }

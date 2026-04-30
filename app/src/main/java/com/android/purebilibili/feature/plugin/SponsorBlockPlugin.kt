@@ -19,7 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.LocalUriHandler
-import com.android.purebilibili.core.plugin.PlayerPlugin
+import com.android.purebilibili.core.plugin.PlayerPluginApi
+import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
 import com.android.purebilibili.core.plugin.SkipAction
@@ -117,7 +119,7 @@ internal fun resolveSponsorBlockAboutItemModel(): SponsorBlockAboutItemModel {
  * 
  * 基于 SponsorBlock 数据库自动跳过视频中的广告、赞助、片头片尾等片段。
  */
-class SponsorBlockPlugin : PlayerPlugin {
+class SponsorBlockPlugin : PlayerPluginApi {
     
     override val id = SPONSOR_BLOCK_PLUGIN_ID
     override val name = "空降助手"
@@ -125,6 +127,18 @@ class SponsorBlockPlugin : PlayerPlugin {
     override val version = "1.0.0"
     override val author = "YangY"
     override val icon: ImageVector = CupertinoIcons.Default.Paperplane
+    override val capabilityManifest: PluginCapabilityManifest = PluginCapabilityManifest(
+        pluginId = id,
+        displayName = name,
+        version = version,
+        apiVersion = 1,
+        entryClassName = "com.android.purebilibili.feature.plugin.SponsorBlockPlugin",
+        capabilities = setOf(
+            PluginCapability.PLAYER_STATE,
+            PluginCapability.PLAYER_CONTROL,
+            PluginCapability.NETWORK
+        )
+    )
     
     // 当前视频的跳过片段
     private var segments: List<SponsorSegment> = emptyList()
