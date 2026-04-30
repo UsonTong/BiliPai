@@ -14,8 +14,10 @@ import com.android.purebilibili.core.plugin.RecommendationRequest
 import com.android.purebilibili.core.plugin.RecommendationResult
 import com.android.purebilibili.core.plugin.RecommendationSceneSignals
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.TodayWatchDislikedVideoSnapshot
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
 import com.android.purebilibili.core.store.TodayWatchProfileStore
+import com.android.purebilibili.core.store.withDislikedVideoFeedback
 import com.android.purebilibili.core.util.appendDistinctByKey
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.core.util.prependDistinctByKey
@@ -704,21 +706,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun recordTodayWatchNegativeFeedback(video: VideoItem) {
-        if (video.bvid.isNotBlank()) {
-            todayDislikedBvids += video.bvid
-        }
-        if (video.owner.mid > 0L) {
-            todayDislikedCreatorMids += video.owner.mid
-        }
         val keywords = extractFeedbackKeywords(video.title)
-        keywords.forEach { keyword ->
-            if (todayDislikedKeywords.size >= 40) {
-                val oldest = todayDislikedKeywords.firstOrNull()
-                if (oldest != null) todayDislikedKeywords.remove(oldest)
-            }
-            todayDislikedKeywords += keyword
-        }
-        persistTodayWatchFeedback()
+        val snapshot = TodayWatchFeedbackStore.getSnapshot(getApplication()).withDislikedVideoFeedback(
+            video = TodayWatchDislikedVideoSnapshot(
+                bvid = video.bvid,
+                title = video.title,
+                creatorName = video.owner.name,
+                creatorMid = video.owner.mid,
+                dislikedAtMillis = System.currentTimeMillis()
+            ),
+            keywords = keywords
+        )
+        todayDislikedBvids.clear()
+        todayDislikedBvids.addAll(snapshot.dislikedBvids)
+        todayDislikedCreatorMids.clear()
+        todayDislikedCreatorMids.addAll(snapshot.dislikedCreatorMids)
+        todayDislikedKeywords.clear()
+        todayDislikedKeywords.addAll(snapshot.dislikedKeywords)
+        TodayWatchFeedbackStore.saveSnapshot(getApplication(), snapshot)
     }
 
     private fun extractFeedbackKeywords(title: String): Set<String> {
@@ -753,12 +758,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun persistTodayWatchFeedback() {
+        val currentSnapshot = TodayWatchFeedbackStore.getSnapshot(getApplication())
         TodayWatchFeedbackStore.saveSnapshot(
             context = getApplication(),
             snapshot = com.android.purebilibili.core.store.TodayWatchFeedbackSnapshot(
                 dislikedBvids = todayDislikedBvids.toSet(),
                 dislikedCreatorMids = todayDislikedCreatorMids.toSet(),
-                dislikedKeywords = todayDislikedKeywords.toSet()
+                dislikedKeywords = todayDislikedKeywords.toSet(),
+                recentDislikedVideos = currentSnapshot.recentDislikedVideos
             )
         )
     }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -442,6 +441,38 @@ private fun PopularSubCategorySegmentedControl(
     )
 }
 
+@Composable
+private fun TodayWatchModeSegmentedControl(
+    selectedMode: TodayWatchMode,
+    enabled: Boolean,
+    onModeChange: (TodayWatchMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val modes = TodayWatchMode.entries
+    val selectedIndex = modes.indexOf(selectedMode).coerceAtLeast(0)
+    val labels = modes.map { mode ->
+        stringResource(resolveTodayWatchModeLabelRes(mode))
+    }
+
+    BottomBarLiquidSegmentedControl(
+        items = labels,
+        selectedIndex = selectedIndex,
+        onSelected = { index ->
+            modes.getOrNull(index)?.takeIf { it != selectedMode }?.let(onModeChange)
+        },
+        modifier = modifier,
+        enabled = enabled,
+        height = 42.dp,
+        indicatorHeight = 34.dp,
+        labelFontSize = 14.sp,
+        containerHorizontalPadding = 3.dp,
+        containerVerticalPadding = 3.dp,
+        liquidGlassEffectsEnabled = true,
+        dragSelectionEnabled = true,
+        preferInlineContentStyle = false
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TodayWatchPlanCard(
@@ -540,21 +571,12 @@ private fun TodayWatchPlanCard(
                 return@Column
             }
 
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TodayWatchMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = selectedMode == mode,
-                        onClick = { onModeChange(mode) },
-                        label = {
-                            Text(
-                                stringResource(resolveTodayWatchModeLabelRes(mode)),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    )
-                }
-            }
+            TodayWatchModeSegmentedControl(
+                selectedMode = selectedMode,
+                enabled = !isLoading,
+                onModeChange = onModeChange,
+                modifier = Modifier.fillMaxWidth()
+            )
             Text(
                 text = "点开后会自动从推荐单移除；想换一批可点右上角“刷新”。",
                 style = MaterialTheme.typography.labelSmall,

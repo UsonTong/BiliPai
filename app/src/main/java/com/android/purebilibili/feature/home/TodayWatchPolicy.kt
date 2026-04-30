@@ -36,7 +36,7 @@ internal data class TodayWatchPenaltySignals(
  * 核心流程：
  * 1) 从历史观看与画像信号里汇总 UP 主亲和度；
  * 2) 用热度/亲和度/新鲜度/模式/夜间/负反馈等信号给候选视频打分；
- * 3) 在高分基础上做多样化队列，避免连续出现同一位 UP 主。
+ * 3) 在高分基础上做多样化队列，避免连续出现同一位 UP 主或同一主题。
  */
 internal fun buildTodayWatchPlan(
     historyVideos: List<VideoItem>,
@@ -182,6 +182,12 @@ private fun scoreCandidateVideo(
     val modeScore = when (mode) {
         TodayWatchMode.RELAX -> {
             durationRelaxScore(durationMin) +
+                modeFocusScore(
+                    title = title,
+                    durationMin = durationMin,
+                    intensity = intensity,
+                    mode = mode
+                ) +
                 keywordBonus(
                     title = title,
                     positiveKeywords = RELAX_KEYWORDS,
@@ -191,6 +197,12 @@ private fun scoreCandidateVideo(
         }
         TodayWatchMode.LEARN -> {
             durationLearnScore(durationMin) +
+                modeFocusScore(
+                    title = title,
+                    durationMin = durationMin,
+                    intensity = intensity,
+                    mode = mode
+                ) +
                 keywordBonus(
                     title = title,
                     positiveKeywords = LEARN_KEYWORDS,
@@ -231,11 +243,13 @@ private fun buildDiverseQueue(
     val remaining = scoredCandidates.toMutableList()
     val queue = mutableListOf<VideoItem>()
     val creatorUsedCount = mutableMapOf<Long, Int>()
+    val topicUsedCount = mutableMapOf<String, Int>()
     var lastCreatorMid: Long? = null
+    var lastTopicKey: String? = null
 
     // 贪心选取：
     // 每轮选“调整后分数”最高的视频；
-    // 调整项会抑制同一 UP 连续出现，并轻微奖励“新 UP”。
+    // 调整项会抑制同一 UP / 同一主题连续出现，并轻微奖励新鲜来源。
     while (queue.size < queueLimit && remaining.isNotEmpty()) {
         var bestIndex = 0
         var bestAdjustedScore = Double.NEGATIVE_INFINITY
@@ -243,10 +257,25 @@ private fun buildDiverseQueue(
         remaining.forEachIndexed { index, candidate ->
             val mid = candidate.video.owner.mid
             val usedCount = creatorUsedCount[mid] ?: 0
+            val topicKey = resolveTodayWatchTopicKey(candidate.video.title)
+            val topicUsedCountForCandidate = topicKey?.let { topicUsedCount[it] } ?: 0
             val sameCreatorConsecutivePenalty = if (mid > 0L && lastCreatorMid == mid) 1.15 else 0.0
             val creatorRepeatPenalty = usedCount * 0.75
             val creatorNoveltyBonus = if (mid > 0L && usedCount == 0) 0.35 else 0.0
-            val adjusted = candidate.score - sameCreatorConsecutivePenalty - creatorRepeatPenalty + creatorNoveltyBonus
+            val sameTopicConsecutivePenalty = if (topicKey != null && lastTopicKey == topicKey) 0.95 else 0.0
+            val topicRepeatPenalty = topicUsedCountForCandidate * 0.65
+            val topicNoveltyBonus = if (topicKey != null && topicUsedCountForCandidate == 0 && queue.isNotEmpty()) {
+                0.28
+            } else {
+                0.0
+            }
+            val adjusted = candidate.score -
+                sameCreatorConsecutivePenalty -
+                creatorRepeatPenalty -
+                sameTopicConsecutivePenalty -
+                topicRepeatPenalty +
+                creatorNoveltyBonus +
+                topicNoveltyBonus
 
             if (adjusted > bestAdjustedScore) {
                 bestAdjustedScore = adjusted
@@ -259,9 +288,21 @@ private fun buildDiverseQueue(
         val mid = picked.owner.mid
         creatorUsedCount[mid] = (creatorUsedCount[mid] ?: 0) + 1
         lastCreatorMid = mid
+        val pickedTopicKey = resolveTodayWatchTopicKey(picked.title)
+        pickedTopicKey?.let { topicKey ->
+            topicUsedCount[topicKey] = (topicUsedCount[topicKey] ?: 0) + 1
+        }
+        lastTopicKey = pickedTopicKey
     }
 
     return queue
+}
+
+private fun resolveTodayWatchTopicKey(title: String): String? {
+    val normalized = title.lowercase()
+    return TOPIC_KEYWORDS.firstOrNull { (_, keywords) ->
+        keywords.any { keyword -> normalized.contains(keyword) }
+    }?.first
 }
 
 private fun freshnessScore(pubdate: Long, nowEpochSec: Long): Double {
@@ -383,10 +424,44 @@ private fun keywordBonus(
     return (positive - negative).coerceIn(-1.2, 1.8)
 }
 
+private fun modeFocusScore(
+    title: String,
+    durationMin: Double,
+    intensity: Double,
+    mode: TodayWatchMode
+): Double {
+    val hasRelaxCue = RELAX_KEYWORDS.any { title.contains(it) }
+    val hasLearnCue = LEARN_KEYWORDS.any { title.contains(it) }
+    return when (mode) {
+        TodayWatchMode.RELAX -> {
+            val shortCalmFit = if (durationMin <= 15.0 && intensity < 0.008) 0.55 else 0.0
+            val relaxCue = if (hasRelaxCue) 0.7 else 0.0
+            val studyPenalty = if (hasLearnCue) -1.55 else 0.0
+            val longPenalty = if (durationMin > 35.0) -0.7 else 0.0
+            shortCalmFit + relaxCue + studyPenalty + longPenalty
+        }
+        TodayWatchMode.LEARN -> {
+            val focusedDurationFit = if (durationMin in 10.0..45.0) 0.65 else 0.0
+            val learnCue = if (hasLearnCue) 1.05 else 0.0
+            val casualPenalty = if (hasRelaxCue && durationMin < 12.0) -1.1 else 0.0
+            focusedDurationFit + learnCue + casualPenalty
+        }
+    }
+}
+
 private val RELAX_KEYWORDS = listOf(
     "音乐", "vlog", "日常", "搞笑", "轻松", "治愈", "asmr", "旅行", "美食", "游戏"
 )
 
 private val LEARN_KEYWORDS = listOf(
     "教程", "科普", "知识", "学习", "原理", "实战", "复盘", "编程", "数学", "英语", "课程", "技术", "分析", "入门", "进阶"
+)
+
+private val TOPIC_KEYWORDS = listOf(
+    "music" to listOf("音乐", "唱", "歌", "演奏", "翻唱", "live"),
+    "learn" to listOf("教程", "科普", "知识", "学习", "原理", "实战", "复盘", "编程", "数学", "英语", "课程", "技术", "分析", "入门", "进阶", "kotlin", "android"),
+    "game" to listOf("游戏", "实况", "通关", "原神", "崩坏", "minecraft"),
+    "food" to listOf("美食", "做饭", "料理", "探店"),
+    "travel" to listOf("旅行", "旅游", "城市", "徒步", "露营", "vlog"),
+    "relax" to listOf("日常", "搞笑", "轻松", "治愈", "asmr")
 )

@@ -23,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.PluginManager
@@ -37,6 +39,7 @@ import com.android.purebilibili.core.plugin.RecommendationPluginApi
 import com.android.purebilibili.core.plugin.RecommendationRequest
 import com.android.purebilibili.core.plugin.RecommendationResult
 import com.android.purebilibili.core.plugin.RecommendedVideo
+import com.android.purebilibili.core.store.TodayWatchFeedbackSnapshot
 import com.android.purebilibili.core.store.TodayWatchFeedbackStore
 import com.android.purebilibili.core.store.TodayWatchProfileStore
 import com.android.purebilibili.core.ui.components.IOSSwitchItem
@@ -45,6 +48,7 @@ import com.android.purebilibili.feature.home.TodayWatchCreatorSignal
 import com.android.purebilibili.feature.home.TodayWatchMode
 import com.android.purebilibili.feature.home.TodayWatchPenaltySignals
 import com.android.purebilibili.feature.home.buildTodayWatchPlan
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
 import io.github.alexzhirkevich.cupertino.icons.outlined.ListBullet
@@ -248,16 +252,33 @@ class TodayWatchPlugin : RecommendationPluginApi {
     @OptIn(ExperimentalLayoutApi::class)
     @Composable
     override fun SettingsContent() {
+        val context = LocalContext.current
         val configSnapshot by configState.collectAsState()
         var uiConfig by remember { mutableStateOf(configSnapshot) }
+        var feedbackSnapshot by remember {
+            mutableStateOf(TodayWatchFeedbackStore.getSnapshot(context))
+        }
         var showResetDialog by remember { mutableStateOf(false) }
         var resetMessage by remember { mutableStateOf<String?>(null) }
+        var creatorSignals by remember {
+            mutableStateOf(TodayWatchProfileStore.getCreatorSignals(context, limit = 5))
+        }
+        val insightState = remember(uiConfig.currentMode, feedbackSnapshot, creatorSignals) {
+            buildTodayWatchTasteInsightState(
+                mode = uiConfig.currentMode,
+                feedbackSnapshot = feedbackSnapshot,
+                creatorSignals = creatorSignals
+            )
+        }
 
         LaunchedEffect(Unit) {
             loadConfigSuspend()
+            feedbackSnapshot = TodayWatchFeedbackStore.getSnapshot(context)
+            creatorSignals = TodayWatchProfileStore.getCreatorSignals(context, limit = 5)
         }
         LaunchedEffect(configSnapshot) {
             uiConfig = configSnapshot
+            creatorSignals = TodayWatchProfileStore.getCreatorSignals(context, limit = 5)
         }
 
         fun commit(next: TodayWatchPluginConfig) {
@@ -275,16 +296,11 @@ class TodayWatchPlugin : RecommendationPluginApi {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TodayWatchPluginMode.entries.forEach { mode ->
-                    val label = if (mode == TodayWatchPluginMode.RELAX) "今晚轻松看" else "深度学习看"
-                    FilterChip(
-                        selected = uiConfig.currentMode == mode,
-                        onClick = { commit(uiConfig.copy(currentMode = mode)) },
-                        label = { Text(label) }
-                    )
-                }
-            }
+            TodayWatchPluginModeSegmentedControl(
+                selectedMode = uiConfig.currentMode,
+                onModeChange = { mode -> commit(uiConfig.copy(currentMode = mode)) },
+                modifier = Modifier.fillMaxWidth()
+            )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
@@ -395,6 +411,9 @@ class TodayWatchPlugin : RecommendationPluginApi {
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            TodayWatchTasteInsightSection(insightState)
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Text(
                 text = "推荐画像维护",
                 style = MaterialTheme.typography.titleSmall,
@@ -436,6 +455,8 @@ class TodayWatchPlugin : RecommendationPluginApi {
                     TextButton(
                         onClick = {
                             clearPersonalizationData()
+                            feedbackSnapshot = TodayWatchFeedbackSnapshot()
+                            creatorSignals = emptyList()
                             resetMessage = "已清空，本地推荐将重新学习"
                             showResetDialog = false
                         }
@@ -459,6 +480,107 @@ class TodayWatchPlugin : RecommendationPluginApi {
             return PluginManager.plugins
                 .find { it.plugin.id == PLUGIN_ID }
                 ?.plugin as? TodayWatchPlugin
+        }
+    }
+}
+
+@Composable
+private fun TodayWatchPluginModeSegmentedControl(
+    selectedMode: TodayWatchPluginMode,
+    onModeChange: (TodayWatchPluginMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val modes = TodayWatchPluginMode.entries
+    val selectedIndex = modes.indexOf(selectedMode).coerceAtLeast(0)
+    val labels = modes.map { mode ->
+        if (mode == TodayWatchPluginMode.RELAX) "今晚轻松看" else "深度学习看"
+    }
+
+    BottomBarLiquidSegmentedControl(
+        items = labels,
+        selectedIndex = selectedIndex,
+        onSelected = { index ->
+            modes.getOrNull(index)?.takeIf { it != selectedMode }?.let(onModeChange)
+        },
+        modifier = modifier,
+        height = 42.dp,
+        indicatorHeight = 34.dp,
+        labelFontSize = 14.sp,
+        containerHorizontalPadding = 3.dp,
+        containerVerticalPadding = 3.dp,
+        liquidGlassEffectsEnabled = true,
+        dragSelectionEnabled = true,
+        preferInlineContentStyle = false
+    )
+}
+
+@Composable
+private fun TodayWatchTasteInsightSection(
+    state: TodayWatchTasteInsightState
+) {
+    Text(
+        text = "推荐依据",
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary
+    )
+    Text(
+        text = "${state.modeTitle}：${state.modeSummary}",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    if (state.preferredCreators.isNotEmpty()) {
+        Text("近期偏好 UP", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.preferredCreators.forEach { signal ->
+                FilterChip(
+                    selected = false,
+                    onClick = {},
+                    label = { Text("${signal.label} · ${signal.value}") }
+                )
+            }
+        }
+    }
+
+    Text("最近不感兴趣", style = MaterialTheme.typography.labelLarge)
+    if (state.recentDislikedVideos.isEmpty()) {
+        Text(
+            text = "还没有本地负反馈。点视频菜单里的“不感兴趣”后，会在这里显示近期样本。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            state.recentDislikedVideos.forEach { item ->
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+
+    if (state.negativeSignals.isNotEmpty()) {
+        Text("已降权信号", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.negativeSignals.forEach { signal ->
+                FilterChip(
+                    selected = false,
+                    onClick = {},
+                    label = { Text("${signal.label} · ${signal.value}") }
+                )
+            }
         }
     }
 }
