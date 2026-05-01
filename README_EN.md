@@ -434,7 +434,7 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 ### Latest (v8.0.2 · 2026-05-01)
 
 - 🖼️ Appearance settings now support wallpaper scope, with either Home-only or global app-wide wallpaper backgrounds.
-- 🧊 Unified KSU liquid-glass bottom-bar and segmented-control rendering across Home, Dynamic, Favorites, and History.
+- 🧊 Unified liquid-glass bottom-bar and segmented-control rendering across Home, Dynamic, Favorites, and History.
 - 🔤 Raised segmented-control label sizes on Settings-style screens to better match the active indicator.
 - 👁️ Home video-card creator, UP badge, and publish-time text now use higher-contrast `onSurface`-derived colors.
 - 🎧 Fixed audio/listen-mode distortion when changing playback speed.
