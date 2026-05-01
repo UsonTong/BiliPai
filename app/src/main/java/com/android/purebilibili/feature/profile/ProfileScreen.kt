@@ -64,6 +64,7 @@ import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AdaptiveTopAppBarStyle
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
+import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppBookmarkIcon
 import com.android.purebilibili.core.ui.rememberAppDownloadIcon
@@ -264,7 +265,12 @@ fun ProfileScreen(
     val currentUiState = state
     when (currentUiState) {
         is ProfileUiState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .globalWallpaperAwareBackground(),
+                contentAlignment = Alignment.Center
+            ) {
                 LoadingAnimation(size = 80.dp)
             }
         }

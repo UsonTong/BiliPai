@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-05-01 · 文档已同步至 v8.0.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-01 · 文档已同步至 v8.0.2（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -610,15 +610,14 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.1 · 2026-05-01)
+### 最近更新 (v8.0.2 · 2026-05-01)
 
-- 🧠 优化「今日推荐单」算法：新增轻松/学习模式聚焦评分、主题去重、偏好 UP 分组和“不感兴趣”负反馈降权。
-- 📊 今日推荐单设置页新增“推荐依据”，展示当前模式侧重点、近期偏好 UP、最近不感兴趣样本和已降权信号。
-- 🔌 新增内置「CDN 属地优选」插件，默认关闭，面向 CDN 线路不稳定、跨地区网络或海外出口用户。
-- 🛠️ 修复 CDN 插件海外 catalog 与旧缓存 host 导致播放异常的问题，始终保留原始播放 URL 作为回退线路。
-- 📚 同步插件开发入口：[JSON / 外部插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK 中文文档](plugins/sdk/README.md)。
-- 🧩 插件中心区分内置插件能力与外部插件授权文案，官方内置插件作者统一为 `BiliPai项目组`。
-- 🔖 版本号升级到 `8.0.1`，`versionCode` 升级到 `174`。
+- 🧊 统一首页、动态、收藏、历史等页面的 KSU 液态玻璃底栏采样源，底栏会同时捕获全局壁纸和页面内容。
+- 🧹 清理旧底栏玻璃渲染残留，底栏外壳、隐藏文字捕获层和分段控件统一使用 `shellBlurRadiusDp`。
+- 🔤 设置页 iOS 液态分段控件默认字号提升到 `14sp`，MD3 多选项分段控件字号同步上调。
+- 👁️ 首页视频卡片 UP 主名称、UP 标识和发布时间改用 `onSurface` 派生颜色，浅色下更接近黑色，深色下自动适配。
+- 🧭 动态、收藏/历史列表页的底栏滚动显隐和采样状态与首页策略对齐。
+- 🔖 版本号升级到 `8.0.2`，`versionCode` 升级到 `175`。
 
 ### 历史版本
 

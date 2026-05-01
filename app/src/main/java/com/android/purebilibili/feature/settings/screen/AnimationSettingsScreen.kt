@@ -29,6 +29,7 @@ import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
+import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.feature.home.components.LiquidGlassTuning
@@ -78,10 +79,11 @@ fun AnimationSettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(rememberAppBackIcon(), contentDescription = backLabel)
                     }
-                }
+                },
+                color = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
         CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {

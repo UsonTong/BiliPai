@@ -541,6 +541,7 @@ internal fun Modifier.homeTopBottomBarMatchedSurface(
         containerColor = containerColor,
         blurEnabled = isBlurEnabled,
         glassEnabled = isGlassEnabled,
+        blurRadius = 12.dp,
         hazeState = hazeState,
         motionTier = motionTier,
         isTransitionRunning = isTransitionRunning,

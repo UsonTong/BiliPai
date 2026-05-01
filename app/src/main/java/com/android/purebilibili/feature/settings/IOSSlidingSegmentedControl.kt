@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.store.HomeSettings
@@ -30,7 +32,10 @@ import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.feature.home.components.BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_HEIGHT_DP
+import com.android.purebilibili.feature.home.components.BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
+import com.kyant.backdrop.Backdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal fun resolveMd3SegmentedLabelFontSizeSp(
@@ -38,11 +43,11 @@ internal fun resolveMd3SegmentedLabelFontSizeSp(
     longestLabelLength: Int
 ): Float {
     return when {
-        optionCount >= 5 -> 12f
-        optionCount >= 4 && longestLabelLength >= 6 -> 13f
-        optionCount >= 4 -> 14f
-        longestLabelLength >= 8 -> 13f
-        else -> 15f
+        optionCount >= 5 -> 13f
+        optionCount >= 4 && longestLabelLength >= 6 -> 14f
+        optionCount >= 4 -> 15f
+        longestLabelLength >= 8 -> 14f
+        else -> 16f
     }
 }
 
@@ -154,6 +159,10 @@ internal fun <T> IOSSlidingSegmentedControl(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     forceLiquidIndicator: Boolean = false,
+    height: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_HEIGHT_DP.dp,
+    indicatorHeight: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP.dp,
+    labelFontSize: TextUnit = 14.sp,
+    backdrop: Backdrop? = null,
     onSelectionChange: (T) -> Unit
 ) {
     if (options.isEmpty()) return
@@ -186,6 +195,10 @@ internal fun <T> IOSSlidingSegmentedControl(
         modifier = modifier,
         enabled = enabled,
         forceLiquidIndicator = forceLiquidIndicator,
+        height = height,
+        indicatorHeight = indicatorHeight,
+        labelFontSize = labelFontSize,
+        backdrop = backdrop,
         onSelectionChange = onSelectionChange
     )
 }
@@ -273,6 +286,10 @@ private fun <T> IOSSlidingSegmentedControlImpl(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     forceLiquidIndicator: Boolean = false,
+    height: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_HEIGHT_DP.dp,
+    indicatorHeight: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP.dp,
+    labelFontSize: TextUnit = 14.sp,
+    backdrop: Backdrop? = null,
     onSelectionChange: (T) -> Unit
 ) {
     val selectedIndex = resolveSelectionIndex(options = options, selectedValue = selectedValue)
@@ -286,7 +303,10 @@ private fun <T> IOSSlidingSegmentedControlImpl(
         },
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
-        labelFontSize = 12.sp,
+        height = height,
+        indicatorHeight = indicatorHeight,
+        labelFontSize = labelFontSize,
+        backdrop = backdrop,
         forceLiquidChrome = forceLiquidIndicator
     )
 }

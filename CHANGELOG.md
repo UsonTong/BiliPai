@@ -1,5 +1,34 @@
 # Changelog
 
+## v8.0.2 (2026-05-01)
+
+### 版本信息
+- 版本号从 `8.0.1` 升级到 `8.0.2`，`versionCode` 升级到 `175`。
+- 本次为液态玻璃与全局壁纸体验维护版本，重点统一首页、动态、收藏和设置等页面的 KSU 液态玻璃底栏/分段控件渲染，并提升浅色壁纸下文字可读性。
+
+### 液态玻璃与全局壁纸
+- 全局底栏的 `LayerBackdrop` 捕获范围调整为“全局壁纸 + NavHost 内容”，动态、收藏、历史等透明背景页面会和首页一样把壁纸底色送入 KSU 液态玻璃采样源，避免文字直接透过底栏导致渲染不一致。
+- 悬浮底栏统一走 `KernelSuAlignedBottomBar` / `kernelSuFloatingDockSurface`，移除旧底栏玻璃分支和旧 `MiuixFloating...` 渲染残留。
+- 底栏外壳、隐藏文字捕获层和设置/收藏/动态分段控件统一使用 `shellBlurRadiusDp`，清理旧的 `blur(8.dp)` 硬编码，减少文字类内容在玻璃下过清晰的问题。
+- 收藏、动态等页面同步接入页面级 `LayerBackdrop`，顶部/分段控件也使用与首页一致的 KSU 液态玻璃采样路径。
+
+### 设置与分段控件
+- 设置页 iOS 液态分段控件默认字号从 `12sp` 提升到 `14sp`，让指示器内文字和 58dp 胶囊高度更协调。
+- Android 原生/MD3 segmented control 的拥挤场景字号整体上调，语言、主题、深色风格等多选项设置在保持单行省略的同时提高可读性。
+- 收藏夹“收藏夹 / 订阅”切换控件支持独立高度、指示器高度和字号，避免短标签在大胶囊里显得过小。
+
+### 首页可读性
+- 首页视频卡片的 UP 主名称从主题主色改为 `onSurface`，浅色模式下接近黑色，深色模式下自动跟随深色主题前景色。
+- 首页视频卡片 UP 标识、UP 元信息和发布时间统一使用 `onSurface` 派生透明度，提升全局壁纸、玻璃卡片和深色模式下的对比度。
+
+### 其他界面细节
+- 动态、收藏/历史等列表页的底栏滚动显隐状态与首页策略对齐，离开页面时恢复底栏状态并重置采样偏移。
+- 全局壁纸模式下的页面背景、顶栏和列表容器继续减少不必要的实色遮挡，让壁纸、模糊和玻璃控件保持同一视觉层级。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.navigation.AppNavigationAppearancePolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControlStructureTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.home.components.cards.VideoCardScrollLiteVisualPolicyTest'`
+
 ## v8.0.1 (2026-05-01)
 
 ### 版本信息

@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.list
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.store.resolveHomeHeaderBlurEnabled
@@ -18,6 +20,8 @@ internal data class CommonListFavoriteHeaderLayout(
     val searchBarHorizontalPaddingDp: Int,
     val searchBarVerticalPaddingDp: Int,
     val browseToggleHeightDp: Int,
+    val browseToggleIndicatorHeightDp: Int,
+    val browseToggleLabelFontSizeSp: Int,
     val browseToggleHorizontalPaddingDp: Int,
     val browseToggleTopPaddingDp: Int,
     val folderChipMinHeightDp: Int,
@@ -37,6 +41,15 @@ internal fun resolveCommonListHeaderBlurEnabled(
         mode = homeSettings.headerBlurMode,
         uiPreset = uiPreset
     )
+}
+
+internal fun shouldUseCommonListHeaderLocalBlur(
+    headerBlurEnabled: Boolean,
+    globalWallpaperVisible: Boolean
+): Boolean = headerBlurEnabled && !globalWallpaperVisible
+
+internal fun resolveCommonListViewportTopPadding(headerHeight: Dp): Dp {
+    return headerHeight.coerceAtLeast(0.dp)
 }
 
 internal fun resolveCommonListVideoCardAppearance(
@@ -70,6 +83,8 @@ internal fun resolveCommonListFavoriteHeaderLayout(
                 searchBarHorizontalPaddingDp = 16,
                 searchBarVerticalPaddingDp = 6,
                 browseToggleHeightDp = 38,
+                browseToggleIndicatorHeightDp = 34,
+                browseToggleLabelFontSizeSp = 14,
                 browseToggleHorizontalPaddingDp = 16,
                 browseToggleTopPaddingDp = 2,
                 folderChipMinHeightDp = 36,
@@ -87,6 +102,8 @@ internal fun resolveCommonListFavoriteHeaderLayout(
                 searchBarHorizontalPaddingDp = 16,
                 searchBarVerticalPaddingDp = 6,
                 browseToggleHeightDp = 38,
+                browseToggleIndicatorHeightDp = 34,
+                browseToggleLabelFontSizeSp = 14,
                 browseToggleHorizontalPaddingDp = 16,
                 browseToggleTopPaddingDp = 2,
                 folderChipMinHeightDp = 36,
@@ -104,6 +121,8 @@ internal fun resolveCommonListFavoriteHeaderLayout(
                 searchBarHorizontalPaddingDp = 16,
                 searchBarVerticalPaddingDp = 6,
                 browseToggleHeightDp = 34,
+                browseToggleIndicatorHeightDp = 30,
+                browseToggleLabelFontSizeSp = 14,
                 browseToggleHorizontalPaddingDp = 16,
                 browseToggleTopPaddingDp = 2,
                 folderChipMinHeightDp = 32,

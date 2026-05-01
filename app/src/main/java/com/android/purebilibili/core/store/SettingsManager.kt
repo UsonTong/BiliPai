@@ -322,6 +322,7 @@ data class HomeSettings(
     val showHomeCoverGlassBadges: Boolean = true, // 首页封面玻璃信息显示
     val showHomeInfoGlassBadges: Boolean = true, // 首页信息区玻璃标签显示
     val homeWallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
+    val homeWallpaperEffectScope: HomeWallpaperEffectScope = HomeWallpaperEffectScope.HOME_ONLY,
     val showHomeUpBadges: Boolean = true, // 首页和相关推荐 UP 主标识显示
     val showHomeVideoDurationBadges: Boolean = true, // 首页视频封面时长显示
     val easterEggEnabled: Boolean = false, // 下拉刷新趣味提示开关
@@ -342,6 +343,16 @@ enum class HomeWallpaperEffectMode(val value: Int, val label: String) {
     companion object {
         fun fromValue(value: Int): HomeWallpaperEffectMode =
             entries.find { it.value == value } ?: SOFT_BLUR
+    }
+}
+
+enum class HomeWallpaperEffectScope(val value: Int, val label: String) {
+    HOME_ONLY(0, "仅首页"),
+    GLOBAL(1, "全局");
+
+    companion object {
+        fun fromValue(value: Int): HomeWallpaperEffectScope =
+            entries.find { it.value == value } ?: HOME_ONLY
     }
 }
 
@@ -770,6 +781,7 @@ object SettingsManager {
     private val KEY_HOME_INFO_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_info_glass_badges_visible")
     private val KEY_HOME_WALLPAPER_URI = stringPreferencesKey("home_wallpaper_uri")
     private val KEY_HOME_WALLPAPER_EFFECT_MODE = intPreferencesKey("home_wallpaper_effect_mode")
+    private val KEY_HOME_WALLPAPER_EFFECT_SCOPE = intPreferencesKey("home_wallpaper_effect_scope")
     private val KEY_HOME_UP_BADGES_VISIBLE = booleanPreferencesKey("home_up_badges_visible")
     private val KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE =
         booleanPreferencesKey("home_video_duration_badges_visible")
@@ -843,6 +855,9 @@ object SettingsManager {
             showHomeInfoGlassBadges = preferences[KEY_HOME_INFO_GLASS_BADGES_VISIBLE] ?: true,
             homeWallpaperEffectMode = HomeWallpaperEffectMode.fromValue(
                 preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] ?: HomeWallpaperEffectMode.SOFT_BLUR.value
+            ),
+            homeWallpaperEffectScope = HomeWallpaperEffectScope.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] ?: HomeWallpaperEffectScope.HOME_ONLY.value
             ),
             showHomeUpBadges = preferences[KEY_HOME_UP_BADGES_VISIBLE] ?: true,
             showHomeVideoDurationBadges = preferences[KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE] ?: true,
@@ -1533,6 +1548,19 @@ object SettingsManager {
     suspend fun setHomeWallpaperEffectMode(context: Context, mode: HomeWallpaperEffectMode) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] = mode.value
+        }
+    }
+
+    fun getHomeWallpaperEffectScope(context: Context): Flow<HomeWallpaperEffectScope> = context.settingsDataStore.data
+        .map { preferences ->
+            HomeWallpaperEffectScope.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] ?: HomeWallpaperEffectScope.HOME_ONLY.value
+            )
+        }
+
+    suspend fun setHomeWallpaperEffectScope(context: Context, scope: HomeWallpaperEffectScope) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] = scope.value
         }
     }
 

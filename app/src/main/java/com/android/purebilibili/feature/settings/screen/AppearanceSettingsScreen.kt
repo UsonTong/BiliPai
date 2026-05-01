@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
 import com.android.purebilibili.core.store.HomeWallpaperEffectMode
+import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.theme.*
@@ -43,6 +44,7 @@ import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
+import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppSparklesIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -117,11 +119,11 @@ fun AppearanceSettingsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
                     )
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
             CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
@@ -149,10 +151,11 @@ fun AppearanceSettingsScreen(
                         IconButton(onClick = onBack) {
                             Icon(rememberAppBackIcon(), contentDescription = backLabel)
                         }
-                    }
+                    },
+                    color = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
             CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
@@ -383,12 +386,21 @@ fun AppearanceSettingsContent(
     val homeWallpaperEffectMode by SettingsManager
         .getHomeWallpaperEffectMode(context)
         .collectAsState(initial = HomeWallpaperEffectMode.SOFT_BLUR)
+    val homeWallpaperEffectScope by SettingsManager
+        .getHomeWallpaperEffectScope(context)
+        .collectAsState(initial = HomeWallpaperEffectScope.HOME_ONLY)
     val homeWallpaperEffectOptions = remember {
         listOf(
             PlaybackSegmentOption(HomeWallpaperEffectMode.OFF, "关闭"),
             PlaybackSegmentOption(HomeWallpaperEffectMode.SOFT_BLUR, "柔和"),
             PlaybackSegmentOption(HomeWallpaperEffectMode.STRONG_BLUR, "强模糊"),
             PlaybackSegmentOption(HomeWallpaperEffectMode.ORIGINAL, "原图")
+        )
+    }
+    val homeWallpaperEffectScopeOptions = remember {
+        listOf(
+            PlaybackSegmentOption(HomeWallpaperEffectScope.HOME_ONLY, "仅首页"),
+            PlaybackSegmentOption(HomeWallpaperEffectScope.GLOBAL, "全局")
         )
     }
     val homeUpBadgesVisible by SettingsManager
@@ -1373,6 +1385,30 @@ fun AppearanceSettingsContent(
                                 }
                             }
                         )
+
+                        AnimatedVisibility(
+                            visible = homeWallpaperEffectMode != HomeWallpaperEffectMode.OFF,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                IOSDivider(modifier = Modifier.padding(start = 16.dp))
+                                IOSSlidingSegmentedSetting(
+                                    title = "壁纸作用范围",
+                                    subtitle = when (homeWallpaperEffectScope) {
+                                        HomeWallpaperEffectScope.HOME_ONLY -> "仅首页使用该壁纸背景效果"
+                                        HomeWallpaperEffectScope.GLOBAL -> "全局页面复用同一壁纸背景，默认背景层会透明显示"
+                                    },
+                                    options = homeWallpaperEffectScopeOptions,
+                                    selectedValue = homeWallpaperEffectScope,
+                                    onSelectionChange = { scopeValue ->
+                                        scope.launch {
+                                            SettingsManager.setHomeWallpaperEffectScope(context, scopeValue)
+                                        }
+                                    }
+                                )
+                            }
+                        }
 
                         IOSDivider(modifier = Modifier.padding(start = 16.dp))
                         IOSSwitchItem(

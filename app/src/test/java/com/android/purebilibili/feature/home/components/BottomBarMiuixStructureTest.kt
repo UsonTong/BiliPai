@@ -17,6 +17,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(source.contains("KernelSuAlignedBottomBar("))
         assertTrue(kernelSuRendererSource.contains("AndroidNativeBottomBarTuning"))
         assertTrue(kernelSuRendererSource.contains("resolveSharedBottomBarCapsuleShape("))
+        assertTrue(kernelSuRendererSource.contains(".kernelSuFloatingDockSurface("))
+        assertTrue(kernelSuRendererSource.contains("blurRadius = tuning.shellBlurRadiusDp.dp"))
+        assertTrue(kernelSuRendererSource.contains("blur(tuning.shellBlurRadiusDp.dp.toPx())"))
         assertTrue(kernelSuRendererSource.contains("drawBackdrop("))
         assertTrue(kernelSuRendererSource.contains("vibrancy()"))
         assertTrue(kernelSuRendererSource.contains("lens("))
@@ -36,6 +39,11 @@ class BottomBarMiuixStructureTest {
         assertFalse(kernelSuRendererSource.contains("item = currentItem,"))
         assertFalse(kernelSuRendererSource.contains("val tintedContentBackdrop = rememberLayerBackdrop()"))
         assertFalse(kernelSuRendererSource.contains("val refractionMotionProfile by remember"))
+        assertFalse(kernelSuRendererSource.contains("blur(8.dp.toPx())"))
+        assertFalse(source.contains("private fun MiuixFloatingCapsuleBottomBar("))
+        assertFalse(source.contains("private fun MiuixFloatingBottomBarItem("))
+        assertFalse(source.contains("resolveBottomBarChromeMaterialMode("))
+        assertFalse(source.contains("resolveBottomBarContainerColor("))
     }
 
     @Test
@@ -78,11 +86,13 @@ class BottomBarMiuixStructureTest {
     fun `ios floating bottom bar also routes to sukisu renderer`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val iosRendererSource = source
-            .substringAfter("if (LocalUiPreset.current == UiPreset.MD3)")
-            .substringBefore("// 🔒 [防抖]")
+            .substringAfter("fun FrostedBottomBar(")
+            .substringBefore("@Composable\nprivate fun MaterialBottomBar(")
 
         assertTrue(iosRendererSource.contains("KernelSuAlignedBottomBar("))
         assertTrue(iosRendererSource.contains("iconStyle = SharedFloatingBottomBarIconStyle.CUPERTINO"))
+        assertTrue(iosRendererSource.contains("if (isFloating) {"))
+        assertFalse(iosRendererSource.contains("if (isFloating && homeSettings.isBottomBarLiquidGlassEnabled)"))
     }
 
     @Test
@@ -105,7 +115,7 @@ class BottomBarMiuixStructureTest {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val miuixRendererSource = source
             .substringAfter("private fun MiuixBottomBar(")
-            .substringBefore("@Composable\nprivate fun MiuixFloatingCapsuleBottomBar(")
+            .substringBefore("@Composable\nprivate fun RowScope.MiuixDockedBottomBarItem(")
 
         assertTrue(miuixRendererSource.contains("MiuixNavigationBar("))
         assertTrue(miuixRendererSource.contains("MiuixDockedBottomBarItem("))
