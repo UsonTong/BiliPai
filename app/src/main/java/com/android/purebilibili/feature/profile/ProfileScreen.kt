@@ -110,6 +110,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.times
 
 internal fun shouldEnableProfileHeaderLoginClick(isLogin: Boolean): Boolean = !isLogin
 
@@ -451,8 +453,6 @@ fun ProfileScreen(
                             onFavoriteClick = onFavoriteClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
-                            onSettingsClick = onSettingsClick,
-                            onBack = onBack,
                             onWatchLaterClick = onWatchLaterClick,
                             paddingValues = padding
                         )
@@ -712,8 +712,6 @@ fun TabletProfileContent(
     onFavoriteClick: () -> Unit,
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onBack: () -> Unit,
     onWatchLaterClick: () -> Unit,
     paddingValues: PaddingValues
 ) {
@@ -729,19 +727,6 @@ fun TabletProfileContent(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(rememberAppBackIcon(), contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(rememberAppSettingsIcon(), contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                
                 UserInfoSection(user, centered = true)
                 Spacer(modifier = Modifier.height(24.dp))
                 UserStatsSection(user, onFollowingClick)
@@ -768,7 +753,10 @@ fun TabletProfileContent(
                     .border(1.dp, glassBorderColor, RoundedCornerShape(32.dp))
                     .padding(24.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
                         text = "我的服务",
                         style = MaterialTheme.typography.titleLarge,
@@ -776,7 +764,7 @@ fun TabletProfileContent(
                         color = contentColor,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
-                    
+
                     // [Modified] Use new grid layout
                     ServicesSection(
                         onHistoryClick = onHistoryClick, 
@@ -786,33 +774,32 @@ fun TabletProfileContent(
                         onAccountManageClick = onAccountManageClick,
                         isTablet = true, // Force tablet mode
                         containerColor = Color.Transparent, // Grid items handle bg
-                        contentColor = contentColor
+                        contentColor = contentColor,
+                        modifier = Modifier.weight(1f)
                     )
-                    
-                    Spacer(modifier = Modifier.weight(1f))
 
-                    OutlinedButton(
-                        onClick = onAccountManageClick,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .fillMaxWidth(0.5f)
-                    ) {
-                        Text("切换账号")
-                    }
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Button(
-                        onClick = onLogout,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .fillMaxWidth(0.5f) // Wide button
-                    ) {
-                        Text("退出登录")
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = onAccountManageClick,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("切换账号")
+                        }
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        Button(
+                            onClick = onLogout,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("退出登录")
+                        }
                     }
                 }
             }
@@ -1610,7 +1597,8 @@ fun ServicesSection(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     borderColor: Color? = null,
     isLogin: Boolean = true,
-    isTablet: Boolean = false // [New]
+    isTablet: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val downloadIcon = rememberAppDownloadIcon()
     val historyIcon = rememberAppHistoryIcon()
@@ -1634,10 +1622,14 @@ fun ServicesSection(
         // Actually, since it's a fixed list, a hardcoded Row/Column grid is safer than LazyGrid inside Scrollable.
         
         // 2 columns x N rows
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            modifier = modifier
+                .heightIn(max = (items.size / 2) * 160.dp)
+        ) {
             items.chunked(2).forEach { rowItems ->
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     rowItems.forEach { (title, icon, onClick) ->
@@ -1666,7 +1658,7 @@ fun ServicesSection(
     
     // [Modified] Custom Surface implementation to avoid tonalElevation overlay causing "outer background" issue
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 16.dp)
             .then(
                 if (borderColor != null) {
