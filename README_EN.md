@@ -433,11 +433,11 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Latest (v8.0.2 · 2026-05-01)
 
-- 🧊 Unified KSU liquid-glass bottom-bar sampling across Home, Dynamic, Favorites, and History so the dock captures global wallpaper plus page content.
-- 🧹 Removed stale bottom-bar glass paths; the dock shell, hidden text capture layer, and segmented controls now share `shellBlurRadiusDp`.
-- 🔤 Raised iOS liquid segmented-control labels to `14sp` by default and increased crowded MD3 segmented label sizes.
-- 👁️ Home video-card creator, UP badge, and publish-time text now derive from `onSurface` for stronger light-mode contrast and dark-mode adaptation.
-- 🧭 Aligned Dynamic and Favorites/History bottom-bar scroll visibility and sampling state with the Home feed.
+- 🖼️ Appearance settings now support wallpaper scope, with either Home-only or global app-wide wallpaper backgrounds.
+- 🧊 Unified KSU liquid-glass bottom-bar and segmented-control rendering across Home, Dynamic, Favorites, and History.
+- 🔤 Raised segmented-control label sizes on Settings-style screens to better match the active indicator.
+- 👁️ Home video-card creator, UP badge, and publish-time text now use higher-contrast `onSurface`-derived colors.
+- 🎧 Fixed audio/listen-mode distortion when changing playback speed.
 - 🔖 Bumped the app to `8.0.2` with `versionCode` `175`.
 
 ---
