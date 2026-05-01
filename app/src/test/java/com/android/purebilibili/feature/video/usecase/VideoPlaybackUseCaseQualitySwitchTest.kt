@@ -350,6 +350,37 @@ class VideoPlaybackUseCaseQualitySwitchTest {
     }
 
     @Test
+    fun `resolvePlaybackSelection uses standard dash audio for hi res preference at high speed`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.resolvePlaybackSelection(
+            playUrlData = PlayUrlData(
+                quality = 80,
+                acceptQuality = listOf(80, 64),
+                dash = Dash(
+                    video = listOf(
+                        DashVideo(id = 80, baseUrl = "https://example.com/1080-hevc.m4s", codecs = "hev1")
+                    ),
+                    audio = listOf(
+                        DashAudio(id = 30280, baseUrl = "https://example.com/audio-192.m4s", bandwidth = 192000),
+                        DashAudio(id = 30216, baseUrl = "https://example.com/audio-64.m4s", bandwidth = 64000)
+                    )
+                )
+            ),
+            targetQuality = 80,
+            audioQualityPreference = 30251,
+            playbackSpeed = 2.0f,
+            videoCodecPreference = "hev1",
+            videoSecondCodecPreference = "avc1",
+            isHevcSupported = true,
+            isAv1Supported = false
+        )
+
+        assertEquals("https://example.com/audio-192.m4s", result?.audioUrl)
+        assertEquals(listOf(30280, 30216), result?.adaptiveDashSource?.audioTracks?.map { it.id })
+    }
+
+    @Test
     fun `resolvePlaybackSelection falls back to durl when dash is missing`() {
         val useCase = VideoPlaybackUseCase()
 

@@ -425,6 +425,7 @@ private fun CinemaStagePlayer(
                     onSecondCodecChange = onSecondCodecChange,
                     currentAudioQuality = currentAudioQuality,
                     onAudioQualityChange = onAudioQualityChange,
+                    onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                     onSaveCover = { viewModel.saveCover(context) },
                     onDownloadAudio = { viewModel.downloadAudio(context) },
                     currentPlayMode = currentPlayMode,

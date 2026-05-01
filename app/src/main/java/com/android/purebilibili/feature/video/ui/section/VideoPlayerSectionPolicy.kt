@@ -106,24 +106,43 @@ internal fun shouldIgnoreVideoPlayerDragStart(
     return inEdgeSafeZone || inBottomGestureExclusionZone
 }
 
-@Suppress("UNUSED_PARAMETER")
-internal fun resolveEffectiveLongPressSpeed(
+internal fun resolveEffectivePlaybackSpeed(
     requestedSpeed: Float,
     currentAudioQuality: Int
 ): Float {
     return requestedSpeed.coerceAtLeast(0.1f)
 }
 
-internal fun resolveLongPressPlaybackParameters(
+internal fun resolveSpeedSafePlaybackParameters(
     requestedSpeed: Float,
     currentAudioQuality: Int
 ): PlaybackParameters {
     return PlaybackParameters(
-        resolveEffectiveLongPressSpeed(
+        resolveEffectivePlaybackSpeed(
             requestedSpeed = requestedSpeed,
             currentAudioQuality = currentAudioQuality
         ),
         1.0f
+    )
+}
+
+internal fun resolveEffectiveLongPressSpeed(
+    requestedSpeed: Float,
+    currentAudioQuality: Int
+): Float {
+    return resolveEffectivePlaybackSpeed(
+        requestedSpeed = requestedSpeed,
+        currentAudioQuality = currentAudioQuality
+    )
+}
+
+internal fun resolveLongPressPlaybackParameters(
+    requestedSpeed: Float,
+    currentAudioQuality: Int
+): PlaybackParameters {
+    return resolveSpeedSafePlaybackParameters(
+        requestedSpeed = requestedSpeed,
+        currentAudioQuality = currentAudioQuality
     )
 }
 

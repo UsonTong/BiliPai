@@ -2038,6 +2038,7 @@ fun VideoDetailScreen(
                 onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                 currentAudioQuality = audioQualityPreference,
                 onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                 // [New] Audio Language
                 onAudioLangChange = { viewModel.changeAudioLanguage(it) },
                 
@@ -2510,6 +2511,7 @@ fun VideoDetailScreen(
                                 onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                                 currentAudioQuality = audioQualityPreference,
                                 onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                                onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                                 // [New] Audio Language
                                 onAudioLangChange = { viewModel.changeAudioLanguage(it) },
                                 // [New Actions]

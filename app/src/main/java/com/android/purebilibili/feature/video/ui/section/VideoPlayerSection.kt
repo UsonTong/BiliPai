@@ -332,6 +332,7 @@ fun VideoPlayerSection(
     onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
+    onPlaybackSpeedChange: (Float) -> Boolean = { false },
     // [New] Audio Language
     onAudioLangChange: (String) -> Unit = {},
     // 👀 [新增] 在线观看人数
@@ -582,10 +583,24 @@ fun VideoPlayerSection(
                 lockedLongPressSpeed = lockedLongPressSpeed
             )
         ) {
-            playerState.player.playbackParameters = PlaybackParameters(
-                lockedLongPressSpeed,
-                1.0f
+            playerState.player.playbackParameters = resolveSpeedSafePlaybackParameters(
+                requestedSpeed = lockedLongPressSpeed,
+                currentAudioQuality = currentAudioQuality
             )
+        }
+    }
+
+    LaunchedEffect(playerState.player, currentAudioQuality) {
+        val currentParameters = playerState.player.playbackParameters
+        val safeParameters = resolveSpeedSafePlaybackParameters(
+            requestedSpeed = currentParameters.speed,
+            currentAudioQuality = currentAudioQuality
+        )
+        if (
+            abs(currentParameters.speed - safeParameters.speed) > 0.001f ||
+            abs(currentParameters.pitch - safeParameters.pitch) > 0.001f
+        ) {
+            playerState.player.playbackParameters = safeParameters
         }
     }
 
@@ -917,7 +932,12 @@ fun VideoPlayerSection(
             longPressSpeedLocked = false
             lockedLongPressSpeed = speed
         }
-        playerState.player.setPlaybackSpeed(speed)
+        if (!onPlaybackSpeedChange(speed)) {
+            playerState.player.playbackParameters = resolveSpeedSafePlaybackParameters(
+                requestedSpeed = speed,
+                currentAudioQuality = currentAudioQuality
+            )
+        }
     }
 
     var rootModifier = Modifier
@@ -1012,10 +1032,14 @@ fun VideoPlayerSection(
                                 containerWidthPx = size.width.toFloat(),
                                 containerHeightPx = size.height.toFloat()
                             )
-                            if (abs(playerState.player.playbackParameters.speed - resolvedSpeed) > 0.001f) {
+                            val effectiveSpeed = resolveEffectivePlaybackSpeed(
+                                requestedSpeed = resolvedSpeed,
+                                currentAudioQuality = currentAudioQuality
+                            )
+                            if (abs(playerState.player.playbackParameters.speed - effectiveSpeed) > 0.001f) {
                                 applyExplicitPlaybackSpeedChange(resolvedSpeed)
                             }
-                            twoFingerFeedbackSpeed = resolvedSpeed
+                            twoFingerFeedbackSpeed = effectiveSpeed
                             twoFingerSpeedFeedbackVisible = true
                             twoFingerSpeedFeedbackRevision++
                             event.changes.forEach { change ->
