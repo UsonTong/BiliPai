@@ -557,7 +557,7 @@ class VideoPlayerSectionPolicyTest {
             currentAudioQuality = 30251
         )
 
-        assertTrue(effective == 3.0f)
+        assertEquals(3.0f, effective)
     }
 
     @Test
@@ -609,6 +609,16 @@ class VideoPlayerSectionPolicyTest {
         )
 
         assertEquals(PlaybackParameters(3.0f, 1.0f), parameters)
+    }
+
+    @Test
+    fun explicitPlaybackParameters_keepHiResSpeedWithNaturalPitch() {
+        val parameters = resolveSpeedSafePlaybackParameters(
+            requestedSpeed = 2.0f,
+            currentAudioQuality = 30251
+        )
+
+        assertEquals(PlaybackParameters(2.0f, 1.0f), parameters)
     }
 
     @Test
