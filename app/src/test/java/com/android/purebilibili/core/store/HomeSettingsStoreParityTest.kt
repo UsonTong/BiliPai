@@ -40,6 +40,7 @@ class HomeSettingsStoreParityTest {
 
         assertTrue(result.showHomeCoverGlassBadges)
         assertTrue(result.showHomeInfoGlassBadges)
+        assertEquals(HomeWallpaperEffectMode.SOFT_BLUR, result.homeWallpaperEffectMode)
         assertTrue(result.showHomeUpBadges)
         assertTrue(result.showHomeVideoDurationBadges)
     }
@@ -49,6 +50,7 @@ class HomeSettingsStoreParityTest {
         val prefs = mutablePreferencesOf(
             booleanPreferencesKey("home_cover_glass_badges_visible") to false,
             booleanPreferencesKey("home_info_glass_badges_visible") to false,
+            intPreferencesKey("home_wallpaper_effect_mode") to HomeWallpaperEffectMode.OFF.value,
             booleanPreferencesKey("home_up_badges_visible") to false,
             booleanPreferencesKey("home_video_duration_badges_visible") to false
         )
@@ -57,6 +59,7 @@ class HomeSettingsStoreParityTest {
 
         assertEquals(false, result.showHomeCoverGlassBadges)
         assertEquals(false, result.showHomeInfoGlassBadges)
+        assertEquals(HomeWallpaperEffectMode.OFF, result.homeWallpaperEffectMode)
         assertEquals(false, result.showHomeUpBadges)
         assertEquals(false, result.showHomeVideoDurationBadges)
     }

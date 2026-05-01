@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -116,14 +117,33 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
-    fun `top tab neutral indicator color matches bottom bar moving surface`() {
+    fun `top tab neutral indicator color stays muted over wallpaper`() {
         assertEquals(
-            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).copy(alpha = 0.5f),
-            resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.5f)
+            Color(0xFFEAF2EF).copy(alpha = 0.42f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.42f)
         )
         assertEquals(
-            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).copy(alpha = 0.5f),
-            resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.5f)
+            Color(0xFFE1E8E5).copy(alpha = 0.38f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.38f)
+        )
+    }
+
+    @Test
+    fun `top tab neutral indicator alpha avoids bottom bar opacity floor`() {
+        assertEquals(
+            0.42f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = false, configuredAlpha = 0.16f),
+            0.001f
+        )
+        assertEquals(
+            0.38f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = true, configuredAlpha = 0.16f),
+            0.001f
+        )
+        assertEquals(
+            0.72f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = false, configuredAlpha = 0.72f),
+            0.001f
         )
     }
 

@@ -438,13 +438,7 @@ internal fun createStaticMd3ColorScheme(
     val source = primaryColor.toHslColorModel()
 
     val scheme = if (darkTheme) {
-        val primary = deriveAccentColor(
-            source = source,
-            hueShift = 0f,
-            saturationScale = 0.90f,
-            lightness = maxOf(source.lightness, 0.78f),
-            minimumSaturation = 0.22f
-        )
+        val primary = primaryColor
         val secondary = deriveAccentColor(
             source = source,
             hueShift = 10f,
@@ -569,18 +563,7 @@ internal fun alignStaticColorSchemeWithThemePrimary(
     themePrimaryColor: Color,
     darkTheme: Boolean
 ): ColorScheme {
-    val source = themePrimaryColor.toHslColorModel()
-    val primary = if (darkTheme) {
-        deriveAccentColor(
-            source = source,
-            hueShift = 0f,
-            saturationScale = 0.90f,
-            lightness = maxOf(source.lightness, 0.78f),
-            minimumSaturation = 0.22f
-        )
-    } else {
-        themePrimaryColor
-    }
+    val primary = themePrimaryColor
     val primaryContainer = blendColors(
         background = scheme.background,
         foreground = primary,

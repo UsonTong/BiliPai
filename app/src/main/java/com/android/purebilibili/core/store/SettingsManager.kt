@@ -321,6 +321,7 @@ data class HomeSettings(
     val lowQualityHomeCoverInDataSaver: Boolean = false, // 省流量时首页封面使用低清晰度
     val showHomeCoverGlassBadges: Boolean = true, // 首页封面玻璃信息显示
     val showHomeInfoGlassBadges: Boolean = true, // 首页信息区玻璃标签显示
+    val homeWallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     val showHomeUpBadges: Boolean = true, // 首页和相关推荐 UP 主标识显示
     val showHomeVideoDurationBadges: Boolean = true, // 首页视频封面时长显示
     val easterEggEnabled: Boolean = false, // 下拉刷新趣味提示开关
@@ -330,6 +331,18 @@ data class HomeSettings(
 ) {
     val isLiquidGlassEnabled: Boolean
         get() = isTopBarLiquidGlassEnabled || isBottomBarLiquidGlassEnabled
+}
+
+enum class HomeWallpaperEffectMode(val value: Int, val label: String) {
+    OFF(0, "关闭"),
+    SOFT_BLUR(1, "轻微模糊"),
+    ORIGINAL(2, "原图"),
+    STRONG_BLUR(3, "强模糊");
+
+    companion object {
+        fun fromValue(value: Int): HomeWallpaperEffectMode =
+            entries.find { it.value == value } ?: SOFT_BLUR
+    }
 }
 
 internal fun resolveUiPresetPreferenceValue(rawValue: Int?): UiPreset {
@@ -755,6 +768,8 @@ object SettingsManager {
         booleanPreferencesKey("low_quality_home_cover_in_data_saver")
     private val KEY_HOME_COVER_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_cover_glass_badges_visible")
     private val KEY_HOME_INFO_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_info_glass_badges_visible")
+    private val KEY_HOME_WALLPAPER_URI = stringPreferencesKey("home_wallpaper_uri")
+    private val KEY_HOME_WALLPAPER_EFFECT_MODE = intPreferencesKey("home_wallpaper_effect_mode")
     private val KEY_HOME_UP_BADGES_VISIBLE = booleanPreferencesKey("home_up_badges_visible")
     private val KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE =
         booleanPreferencesKey("home_video_duration_badges_visible")
@@ -826,6 +841,9 @@ object SettingsManager {
                 preferences[KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER] ?: false,
             showHomeCoverGlassBadges = preferences[KEY_HOME_COVER_GLASS_BADGES_VISIBLE] ?: true,
             showHomeInfoGlassBadges = preferences[KEY_HOME_INFO_GLASS_BADGES_VISIBLE] ?: true,
+            homeWallpaperEffectMode = HomeWallpaperEffectMode.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] ?: HomeWallpaperEffectMode.SOFT_BLUR.value
+            ),
             showHomeUpBadges = preferences[KEY_HOME_UP_BADGES_VISIBLE] ?: true,
             showHomeVideoDurationBadges = preferences[KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE] ?: true,
             easterEggEnabled = preferences[KEY_EASTER_EGG_ENABLED] ?: false,
@@ -1493,6 +1511,28 @@ object SettingsManager {
     suspend fun setHomeInfoGlassBadgesVisible(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_HOME_INFO_GLASS_BADGES_VISIBLE] = value
+        }
+    }
+
+    fun getHomeWallpaperUri(context: Context): Flow<String> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HOME_WALLPAPER_URI] ?: "" }
+
+    suspend fun setHomeWallpaperUri(context: Context, uri: String) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_URI] = uri
+        }
+    }
+
+    fun getHomeWallpaperEffectMode(context: Context): Flow<HomeWallpaperEffectMode> = context.settingsDataStore.data
+        .map { preferences ->
+            HomeWallpaperEffectMode.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] ?: HomeWallpaperEffectMode.SOFT_BLUR.value
+            )
+        }
+
+    suspend fun setHomeWallpaperEffectMode(context: Context, mode: HomeWallpaperEffectMode) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] = mode.value
         }
     }
 
@@ -4340,6 +4380,8 @@ object SettingsManager {
             ),
             BooleanShareablePreferenceDefinition(KEY_PREDICTIVE_BACK_ANIMATION_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_COMPACT_VIDEO_STATS_ON_COVER, SettingsShareSection.APPEARANCE),
+            StringShareablePreferenceDefinition(KEY_HOME_WALLPAPER_URI, SettingsShareSection.APPEARANCE),
+            IntShareablePreferenceDefinition(KEY_HOME_WALLPAPER_EFFECT_MODE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_UP_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
 

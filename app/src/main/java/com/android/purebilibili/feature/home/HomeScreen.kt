@@ -621,6 +621,14 @@ fun HomeScreen(
     val isLiquidGlassEnabled = homePerformanceConfig.isAnyLiquidGlassEnabled
     val isDataSaverActive = homePerformanceConfig.isDataSaverActive
     val preloadAheadCount = homePerformanceConfig.preloadAheadCount
+    val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
+    val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
+    val homeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
+        resolveHomeWallpaperUri(
+            homeWallpaperUri = configuredHomeWallpaperUri,
+            splashWallpaperUri = splashWallpaperUri
+        )
+    }
 
     val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsState(
         initial = AppNavigationSettings()
@@ -760,6 +768,19 @@ fun HomeScreen(
     // 当使用滑动动画时，Theme.kt 的 SideEffect 可能不会重新执行
     val backgroundColor = MaterialTheme.colorScheme.background
     val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
+    val homeWallpaperBackdropAppearance = remember(
+        homeWallpaperUri,
+        homeSettings.homeWallpaperEffectMode,
+        isLightBackground,
+        isDataSaverActive
+    ) {
+        resolveHomeWallpaperBackdropAppearance(
+            hasWallpaper = homeWallpaperUri.isNotBlank(),
+            effectMode = homeSettings.homeWallpaperEffectMode,
+            isDarkTheme = !isLightBackground,
+            isDataSaverActive = isDataSaverActive
+        )
+    }
     
     if (!view.isInEditMode) {
         SideEffect {
@@ -1142,6 +1163,11 @@ fun HomeScreen(
                             // 首页使用 Pager + Lazy 子层，source 挂在外层容器更稳定。
                             .hazeSource(state = hazeState)
                     ) {
+                    HomeWallpaperBackdrop(
+                        wallpaperUri = homeWallpaperUri,
+                        appearance = homeWallpaperBackdropAppearance,
+                        baseColor = MaterialTheme.colorScheme.background
+                    )
                     // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(
                             state = pagerState,
@@ -1304,6 +1330,8 @@ fun HomeScreen(
                                      compactStatsOnCover = homeSettings.compactVideoStatsOnCover,
                                      showCoverGlassBadges = homeSettings.showHomeCoverGlassBadges,
                                      showInfoGlassBadges = homeSettings.showHomeInfoGlassBadges,
+                                     wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
+                                     wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
                                      showUpBadges = homeSettings.showHomeUpBadges,
                                      showDurationBadges = homeSettings.showHomeVideoDurationBadges,
                                      oldContentAnchorBvid = if (shouldShowRecommendOldContentDivider(

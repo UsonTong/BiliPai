@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.home.components.cards
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +18,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 //  Cupertino Icons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
@@ -62,6 +65,7 @@ import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RAT
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
+import com.android.purebilibili.feature.home.resolveHomeCardInfoSurfaceAppearance
 import com.android.purebilibili.feature.home.rememberHomeGlassPillColors
 import com.android.purebilibili.feature.home.resolveHomeGlassCoverPillBaseColor
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
@@ -148,6 +152,8 @@ fun ElegantVideoCard(
     compactStatsOnCover: Boolean = true, // 播放量/评论数是否贴在封面底部
     showCoverGlassBadges: Boolean = true,
     showInfoGlassBadges: Boolean = true,
+    wallpaperTintEnabled: Boolean = false,
+    wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     showUpBadge: Boolean = true,
     showDurationBadge: Boolean = true,
     showOnlineCount: Boolean = false,
@@ -198,6 +204,15 @@ fun ElegantVideoCard(
         emphasized = false,
         baseColor = MaterialTheme.colorScheme.surface
     )
+    val isDarkCardTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val infoSurfaceAppearance = remember(wallpaperTintEnabled, wallpaperEffectMode, isDarkCardTheme, isDataSaverActive) {
+        resolveHomeCardInfoSurfaceAppearance(
+            wallpaperTintEnabled = wallpaperTintEnabled,
+            wallpaperEffectMode = wallpaperEffectMode,
+            isDarkTheme = isDarkCardTheme,
+            isDataSaverActive = isDataSaverActive
+        )
+    }
     val scrollLitePolicy = remember(scrollLiteModeEnabled, compactStatsOnCover) {
         resolveVideoCardScrollLiteVisualPolicy(
             scrollLiteModeEnabled = scrollLiteModeEnabled,
@@ -338,8 +353,22 @@ fun ElegantVideoCard(
             }
             .padding(bottom = 12.dp)
     ) {
+        val connectedCardShape = remember(cardCornerRadius) { RoundedCornerShape(cardCornerRadius) }
+        val cardContainerModifier = if (infoSurfaceAppearance.useTintedSurface) {
+            Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
+                    shape = connectedCardShape,
+                    ambientColor = Color.Black.copy(alpha = 0.08f),
+                    spotColor = Color.Black.copy(alpha = 0.10f),
+                    clip = false
+                )
+        } else {
+            Modifier.fillMaxWidth()
+        }
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = cardContainerModifier
         ) {
         //  尝试获取共享元素作用域
         val sharedTransitionScope = LocalSharedTransitionScope.current
@@ -375,7 +404,18 @@ fun ElegantVideoCard(
         }
         
         //  [性能优化] 封面圆角形状缓存（避免重组时重复创建）
-        val coverShape = remember(cardCornerRadius) { RoundedCornerShape(cardCornerRadius) }
+        val coverShape = remember(cardCornerRadius, infoSurfaceAppearance.useTintedSurface) {
+            if (infoSurfaceAppearance.useTintedSurface) {
+                RoundedCornerShape(
+                    topStart = cardCornerRadius,
+                    topEnd = cardCornerRadius,
+                    bottomStart = 0.dp,
+                    bottomEnd = 0.dp
+                )
+            } else {
+                RoundedCornerShape(cardCornerRadius)
+            }
+        }
 
         Box(
             modifier = coverModifier
@@ -383,7 +423,7 @@ fun ElegantVideoCard(
                 .aspectRatio(VIDEO_SHARED_COVER_ASPECT_RATIO)
                 // [性能优化] 使用 shadow(clip = true) 合并裁剪和阴影层，避免创建额外的 GraphicsLayer
                 .shadow(
-                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
+                    elevation = if (infoSurfaceAppearance.useTintedSurface) 0.dp else scrollLitePolicy.coverShadowElevationDp.dp,
                     shape = coverShape,
                     ambientColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.08f),
                     spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.10f),
@@ -707,7 +747,35 @@ fun ElegantVideoCard(
             
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        val infoSurfaceShape = remember(cardCornerRadius) {
+            RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = cardCornerRadius,
+                bottomEnd = cardCornerRadius
+            )
+        }
+        val infoContainerModifier = if (infoSurfaceAppearance.useTintedSurface) {
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = infoSurfaceAppearance.containerAlpha),
+                    shape = infoSurfaceShape
+                )
+                .border(
+                    width = 0.8.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = infoSurfaceAppearance.borderAlpha),
+                    shape = infoSurfaceShape
+                )
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        } else {
+            Modifier.fillMaxWidth()
+        }
+
+        Column(modifier = infoContainerModifier) {
+        if (!infoSurfaceAppearance.useTintedSurface) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         
         // 标题行：标题 + 更多按钮
         Row(
@@ -1059,6 +1127,7 @@ fun ElegantVideoCard(
                     }
                 }
             }
+        }
         }
 
     }

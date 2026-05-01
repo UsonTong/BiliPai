@@ -53,6 +53,7 @@ Pick the smallest command set that proves the change:
   `./gradlew :app:lintDebug`
 - Build validation for packaging and manifest/resource regressions:
   `./gradlew :app:assembleDebug`
+- Do not run full package/build validation such as `./gradlew :app:assembleDebug` unless the user explicitly asks for it. Prefer targeted unit tests, compile-triggering tests, lint, or device smoke checks that match the changed surface.
 
 Use extra verification when the task touches these areas:
 

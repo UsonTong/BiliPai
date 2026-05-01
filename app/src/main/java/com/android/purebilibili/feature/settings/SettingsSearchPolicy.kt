@@ -86,6 +86,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "dpi",
             "开屏",
             "开屏壁纸",
+            "自定义壁纸",
+            "相册壁纸",
+            "首页壁纸",
+            "首页壁纸效果",
             "随机壁纸",
             "开屏图标动画",
             "应用图标",
@@ -371,9 +375,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "开屏壁纸 / 启动画面",
-        subtitle = "开屏壁纸、随机壁纸、开屏图标动画",
+        subtitle = "开屏壁纸、自定义壁纸、随机壁纸、开屏图标动画",
         section = "外观设置",
-        aliases = listOf("开屏壁纸", "启动画面", "随机壁纸", "开屏图标动画", "启动壁纸"),
+        aliases = listOf("开屏壁纸", "自定义壁纸", "相册壁纸", "启动画面", "随机壁纸", "开屏图标动画", "启动壁纸"),
         focusId = SettingsSearchFocusIds.APPEARANCE_SPLASH
     ),
     SettingsSearchEntry(
@@ -387,9 +391,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "首页展示",
-        subtitle = "展示样式、玻璃样式、UP主标识",
+        subtitle = "展示样式、首页壁纸效果、玻璃样式、UP主标识",
         section = "外观设置",
-        aliases = listOf("首页展示", "展示样式", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
+        aliases = listOf("首页展示", "展示样式", "首页壁纸", "首页壁纸效果", "原图壁纸", "壁纸模糊", "强模糊", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
         focusId = SettingsSearchFocusIds.APPEARANCE_HOME
     ),
     SettingsSearchEntry(
