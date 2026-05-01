@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.android.purebilibili.R
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
+import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppCollectionIcon
 import com.android.purebilibili.core.ui.rememberAppInfoIcon
@@ -247,7 +248,7 @@ fun TabletSettingsLayout(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .globalWallpaperAwareBackground()
                     .padding(horizontal = layoutPolicy.detailPanePaddingDp.dp),
                 contentAlignment = Alignment.TopCenter
             ) {

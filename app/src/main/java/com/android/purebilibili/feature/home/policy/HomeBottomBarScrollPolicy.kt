@@ -43,3 +43,15 @@ internal fun reduceHomeBottomBarListScroll(
         visibilityIntent = intent
     )
 }
+
+internal fun resolveBottomBarChromeScrollOffset(
+    firstVisibleItem: Int,
+    scrollOffset: Int,
+    offscreenOffset: Float = 1000f
+): Float {
+    return if (firstVisibleItem == 0) {
+        scrollOffset.coerceAtLeast(0).toFloat()
+    } else {
+        offscreenOffset
+    }
+}

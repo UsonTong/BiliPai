@@ -330,6 +330,51 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `settle pulse only triggers after non-initial selected indicator reaches target`() {
+        assertFalse(
+            shouldTriggerBottomBarSettlePulse(
+                hasObservedInitialSelection = false,
+                selectedIndex = 1,
+                indicatorPosition = 1f,
+                isIndicatorRunning = false,
+                isIndicatorDragging = false
+            )
+        )
+        assertFalse(
+            shouldTriggerBottomBarSettlePulse(
+                hasObservedInitialSelection = true,
+                selectedIndex = 1,
+                indicatorPosition = 0.82f,
+                isIndicatorRunning = true,
+                isIndicatorDragging = false
+            )
+        )
+        assertTrue(
+            shouldTriggerBottomBarSettlePulse(
+                hasObservedInitialSelection = true,
+                selectedIndex = 1,
+                indicatorPosition = 1.002f,
+                isIndicatorRunning = false,
+                isIndicatorDragging = false
+            )
+        )
+    }
+
+    @Test
+    fun `settle pulse transform scales up then rebounds`() {
+        val peak = resolveBottomBarSettlePulseTransform(progress = 0.35f)
+        val rebound = resolveBottomBarSettlePulseTransform(progress = 0.65f)
+        val idle = resolveBottomBarSettlePulseTransform(progress = 1f)
+
+        assertTrue(peak.scale > 1f)
+        assertTrue(peak.translationYDp < 0f)
+        assertTrue(rebound.scale < 1f)
+        assertTrue(rebound.translationYDp > 0f)
+        assertEquals(1f, idle.scale, 0.001f)
+        assertEquals(0f, idle.translationYDp, 0.001f)
+    }
+
+    @Test
     fun `sliding color transfers continuously from current tab to next tab`() {
         val home = resolveBottomBarItemMotionVisual(
             itemIndex = 0,
@@ -384,43 +429,6 @@ class BottomBarIndicatorPolicyTest {
         assertEquals(1f, history.scale)
         assertEquals(0f, history.themeWeight)
         assertTrue(profile.progress > 0f)
-    }
-
-    @Test
-    fun `bottom bar outer shell preserves liquid glass when glass effect is enabled`() {
-        assertEquals(
-            TopTabMaterialMode.LIQUID_GLASS,
-            resolveBottomBarChromeMaterialMode(
-                showGlassEffect = true,
-                hasBlur = true
-            )
-        )
-        assertEquals(
-            TopTabMaterialMode.BLUR,
-            resolveBottomBarChromeMaterialMode(
-                showGlassEffect = false,
-                hasBlur = true
-            )
-        )
-        assertEquals(
-            TopTabMaterialMode.PLAIN,
-            resolveBottomBarChromeMaterialMode(
-                showGlassEffect = false,
-                hasBlur = false
-            )
-        )
-    }
-
-    @Test
-    fun `miuix bottom bar blur mode wins over liquid glass when blur is available`() {
-        assertEquals(
-            TopTabMaterialMode.BLUR,
-            resolveBottomBarChromeMaterialMode(
-                showGlassEffect = true,
-                hasBlur = true,
-                preferBlurWhenAvailable = true
-            )
-        )
     }
 
     @Test

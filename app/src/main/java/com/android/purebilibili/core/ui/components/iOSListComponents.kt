@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
@@ -53,6 +54,7 @@ import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSYellow
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import io.github.alexzhirkevich.cupertino.CupertinoSwitch
 import io.github.alexzhirkevich.cupertino.CupertinoSwitchDefaults
@@ -182,9 +184,10 @@ internal fun resolveAdaptiveGroupContainerColor(
     uiPreset: UiPreset,
     colorScheme: ColorScheme,
     fallbackColor: Color,
-    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
+    globalWallpaperVisible: Boolean = false
 ): Color {
-    return if (uiPreset == UiPreset.MD3) {
+    val resolvedColor = if (uiPreset == UiPreset.MD3) {
         if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
             colorScheme.surfaceContainer
         } else {
@@ -193,15 +196,22 @@ internal fun resolveAdaptiveGroupContainerColor(
     } else {
         fallbackColor
     }
+    return resolveGlobalWallpaperListContainerColor(
+        containerColor = resolvedColor,
+        colorScheme = colorScheme,
+        globalWallpaperVisible = globalWallpaperVisible,
+        targetAlpha = 0.62f
+    )
 }
 
 internal fun resolveAdaptiveSearchBarContainerColor(
     uiPreset: UiPreset,
     colorScheme: ColorScheme,
     fallbackColor: Color,
-    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
+    globalWallpaperVisible: Boolean = false
 ): Color {
-    return if (uiPreset == UiPreset.MD3) {
+    val resolvedColor = if (uiPreset == UiPreset.MD3) {
         if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
             colorScheme.surfaceContainer
         } else {
@@ -210,12 +220,47 @@ internal fun resolveAdaptiveSearchBarContainerColor(
     } else {
         fallbackColor
     }
+    return resolveGlobalWallpaperListContainerColor(
+        containerColor = resolvedColor,
+        colorScheme = colorScheme,
+        globalWallpaperVisible = globalWallpaperVisible,
+        targetAlpha = 0.48f
+    )
 }
 
 internal fun shouldUseNativeMiuixSearchBar(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant
 ): Boolean = uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX
+
+internal fun resolveGlobalWallpaperListContainerColor(
+    containerColor: Color,
+    colorScheme: ColorScheme,
+    globalWallpaperVisible: Boolean,
+    targetAlpha: Float
+): Color {
+    if (!globalWallpaperVisible || containerColor.alpha == 0f) return containerColor
+    if (!isDefaultListContainerColor(containerColor, colorScheme)) return containerColor
+    val adjustedAlpha = if (colorScheme.background.luminance() > 0.5f) {
+        targetAlpha
+    } else {
+        (targetAlpha + 0.12f).coerceAtMost(0.78f)
+    }
+    return containerColor.copy(alpha = containerColor.alpha.coerceAtMost(adjustedAlpha))
+}
+
+private fun isDefaultListContainerColor(
+    color: Color,
+    colorScheme: ColorScheme
+): Boolean {
+    val opaqueColor = color.copy(alpha = 1f)
+    return opaqueColor == colorScheme.background.copy(alpha = 1f) ||
+        opaqueColor == colorScheme.surface.copy(alpha = 1f) ||
+        opaqueColor == colorScheme.surfaceVariant.copy(alpha = 1f) ||
+        opaqueColor == colorScheme.surfaceContainer.copy(alpha = 1f) ||
+        opaqueColor == colorScheme.surfaceContainerLow.copy(alpha = 1f) ||
+        opaqueColor == colorScheme.surfaceContainerHigh.copy(alpha = 1f)
+}
 
 private val miuixAdaptiveSearchShape = RoundedCornerShape(percent = 50)
 private val miuixAdaptiveSearchLeadingStartPadding = 16.dp
@@ -533,7 +578,8 @@ fun IOSGroup(
         uiPreset = uiPreset,
         colorScheme = colorScheme,
         fallbackColor = containerColor,
-        androidNativeVariant = androidNativeVariant
+        androidNativeVariant = androidNativeVariant,
+        globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
     )
     
     Surface(
@@ -943,12 +989,18 @@ fun IOSGridItem(
     val effectiveIconTint = rememberAdaptiveSemanticIconTint(iconTint, uiPreset)
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val itemCornerRadius = if (uiPreset == UiPreset.MD3) visualSpec.gridCornerRadiusDp.dp else iOSCornerRadius.Medium * cornerRadiusScale
+    val resolvedContainerColor = resolveGlobalWallpaperListContainerColor(
+        containerColor = containerColor,
+        colorScheme = MaterialTheme.colorScheme,
+        globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current,
+        targetAlpha = 0.62f
+    )
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(itemCornerRadius))
-            .background(containerColor)
+            .background(resolvedContainerColor)
             .clickable(onClick = onClick)
             .padding(vertical = 24.dp, horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1006,7 +1058,8 @@ fun IOSSearchBar(
         uiPreset = uiPreset,
         colorScheme = colorScheme,
         fallbackColor = containerColor,
-        androidNativeVariant = androidNativeVariant
+        androidNativeVariant = androidNativeVariant,
+        globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
     )
     val resolvedHeight = heightOverride ?: visualSpec.searchBarHeightDp.dp
 

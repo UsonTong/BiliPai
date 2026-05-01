@@ -42,22 +42,6 @@ internal data class AppChromeLiquidBackdropSpec(
     val whiteOverlayAlpha: Float
 )
 
-internal fun resolveFloatingDockLiquidSurfaceStyle(
-    depthEffect: Boolean
-): AppChromeLiquidSurfaceStyle {
-    return AppChromeLiquidSurfaceStyle(
-        blurSurfaceType = BlurSurfaceType.BOTTOM_BAR,
-        depthEffect = depthEffect,
-        refractionAmountScrollMultiplier = 0.02f,
-        refractionAmountScrollCap = 14f,
-        surfaceAlphaScrollMultiplier = 0.00015f,
-        surfaceAlphaScrollCap = 0.04f,
-        darkThemeWhiteOverlayMultiplier = 0.86f,
-        useTuningSurfaceAlpha = true,
-        hazeBackgroundAlphaMultiplier = 0.4f
-    )
-}
-
 internal fun resolveAppChromeLiquidBackdropSpec(
     tuning: LiquidGlassTuning,
     scrollOffset: Float,

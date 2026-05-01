@@ -45,7 +45,6 @@ import com.android.purebilibili.core.util.animateEnter
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.core.theme.BiliPink
-import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
 import com.android.purebilibili.core.theme.iOSCornerRadius
 import com.android.purebilibili.core.util.HapticType
@@ -122,6 +121,26 @@ internal fun resolveVideoCardCoverCacheKey(
     }
     val qualityTag = if (useLowQualityCover) "s" else "n"
     return "cover_${normalizedIdentity}_${qualityTag}"
+}
+
+internal data class HomeVideoCardMetadataColors(
+    val upNameColor: Color,
+    val upMetaColor: Color,
+    val upBadgeTextColor: Color,
+    val upBadgeBackgroundColor: Color,
+    val publishTimeColor: Color
+)
+
+internal fun resolveHomeVideoCardMetadataColors(
+    onSurfaceColor: Color
+): HomeVideoCardMetadataColors {
+    return HomeVideoCardMetadataColors(
+        upNameColor = onSurfaceColor,
+        upMetaColor = onSurfaceColor.copy(alpha = 0.82f),
+        upBadgeTextColor = onSurfaceColor.copy(alpha = 0.68f),
+        upBadgeBackgroundColor = onSurfaceColor.copy(alpha = 0.10f),
+        publishTimeColor = onSurfaceColor.copy(alpha = 0.72f)
+    )
 }
 
 /**
@@ -895,6 +914,10 @@ fun ElegantVideoCard(
         
         Spacer(modifier = Modifier.height(6.dp))
         
+        val metadataColors = resolveHomeVideoCardMetadataColors(
+            onSurfaceColor = MaterialTheme.colorScheme.onSurface
+        )
+
         //  底部信息行 - 官方 B 站风格
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -999,10 +1022,10 @@ fun ElegantVideoCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal
                 ),
-                nameColor = MaterialTheme.colorScheme.primary,
-                metaColor = MaterialTheme.colorScheme.primary,
-                badgeTextColor = iOSSystemGray.copy(alpha = 0.85f),
-                badgeBackgroundColor = iOSSystemGray.copy(alpha = 0.12f),
+                nameColor = metadataColors.upNameColor,
+                metaColor = metadataColors.upMetaColor,
+                badgeTextColor = metadataColors.upBadgeTextColor,
+                badgeBackgroundColor = metadataColors.upBadgeBackgroundColor,
                 reserveTrailingSlot = true,
                 showUpBadge = showUpBadge,
                 modifier = upNameModifier
@@ -1021,7 +1044,7 @@ fun ElegantVideoCard(
                         text = publishTimeRowText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                        color = metadataColors.publishTimeColor.copy(alpha = 0.92f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -1031,7 +1054,7 @@ fun ElegantVideoCard(
                 Text(
                     text = publishTimeRowText,
                     fontSize = 11.sp,
-                    color = iOSSystemGray.copy(alpha = 0.7f),
+                    color = metadataColors.publishTimeColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

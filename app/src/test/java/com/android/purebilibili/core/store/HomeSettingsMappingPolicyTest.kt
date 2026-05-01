@@ -40,6 +40,7 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.compactVideoStatsOnCover)
         assertTrue(result.showHomeVideoDurationBadges)
         assertEquals(HomeWallpaperEffectMode.SOFT_BLUR, result.homeWallpaperEffectMode)
+        assertEquals(HomeWallpaperEffectScope.HOME_ONLY, result.homeWallpaperEffectScope)
         assertFalse(result.lowQualityHomeCoverInDataSaver)
         assertTrue(result.showHomeUpBadges)
         assertFalse(result.easterEggEnabled)
@@ -69,6 +70,7 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("compact_video_stats_on_cover") to false,
             booleanPreferencesKey("home_video_duration_badges_visible") to false,
             intPreferencesKey("home_wallpaper_effect_mode") to HomeWallpaperEffectMode.STRONG_BLUR.value,
+            intPreferencesKey("home_wallpaper_effect_scope") to HomeWallpaperEffectScope.GLOBAL.value,
             booleanPreferencesKey("low_quality_home_cover_in_data_saver") to true,
             booleanPreferencesKey("home_up_badges_visible") to false,
             booleanPreferencesKey("easter_egg_enabled") to true,
@@ -102,6 +104,7 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.compactVideoStatsOnCover)
         assertFalse(result.showHomeVideoDurationBadges)
         assertEquals(HomeWallpaperEffectMode.STRONG_BLUR, result.homeWallpaperEffectMode)
+        assertEquals(HomeWallpaperEffectScope.GLOBAL, result.homeWallpaperEffectScope)
         assertTrue(result.lowQualityHomeCoverInDataSaver)
         assertFalse(result.showHomeUpBadges)
         assertTrue(result.easterEggEnabled)

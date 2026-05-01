@@ -3,6 +3,7 @@ package com.android.purebilibili.navigation
 import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -79,5 +80,30 @@ class AppNavigationAppearancePolicyTest {
         assertTrue(appearance.bottomBarFloating)
         assertTrue(appearance.bottomBarBlurEnabled)
         assertEquals(0, appearance.bottomBarLabelMode)
+    }
+
+    @Test
+    fun bottomBarBackdropCapturesGlobalWallpaperBeforeNavHostContent() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
+        val capturedLayerSource = source
+            .substringAfter(".layerBackdrop(bottomBarBackdrop)")
+            .substringBefore("// ===== 全局底栏")
+
+        val wallpaperIndex = capturedLayerSource.indexOf("HomeWallpaperBackdrop(")
+        val navHostIndex = capturedLayerSource.indexOf("NavHost(")
+
+        assertTrue(wallpaperIndex >= 0)
+        assertTrue(navHostIndex > wallpaperIndex)
+        assertTrue(capturedLayerSource.contains(".then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)"))
+    }
+
+    private fun loadSource(path: String): String {
+        val candidates = listOf(
+            File(path),
+            File("app", path.removePrefix("app/")),
+            File(path.removePrefix("app/")),
+            File("..", path)
+        )
+        return candidates.first { it.exists() }.readText()
     }
 }

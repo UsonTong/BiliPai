@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-01 · Synced to v8.0.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-01 · Synced to v8.0.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -431,15 +431,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.1 · 2026-05-01)
+### Latest (v8.0.2 · 2026-05-01)
 
-- 🧠 Improved Today Watch recommendations with Relax/Learn mode focus scoring, topic diversification, preferred-creator groups, and negative-feedback penalties.
-- 📊 Added Today Watch taste insights showing mode focus, preferred creators, recent dislikes, and downgraded signals.
-- 🔌 Added the built-in CDN Region plugin, off by default, for users with unstable CDN routes, cross-region networks, or overseas exits.
-- 🛠️ Fixed the CDN plugin's overseas catalog and stale cached hosts so playback keeps original URLs as fallback.
-- 📚 Synced plugin developer docs: [JSON / external plugin guide](docs/PLUGIN_DEVELOPMENT.md), [native plugin guide](docs/NATIVE_PLUGIN_DEVELOPMENT.md), and [Plugin SDK docs](plugins/sdk/README.md).
-- 🧩 Plugin Center now separates built-in capabilities from external plugin authorization copy; official built-in plugin authors now show as `BiliPai项目组`.
-- 🔖 Bumped the app to `8.0.1` with `versionCode` `174`.
+- 🧊 Unified KSU liquid-glass bottom-bar sampling across Home, Dynamic, Favorites, and History so the dock captures global wallpaper plus page content.
+- 🧹 Removed stale bottom-bar glass paths; the dock shell, hidden text capture layer, and segmented controls now share `shellBlurRadiusDp`.
+- 🔤 Raised iOS liquid segmented-control labels to `14sp` by default and increased crowded MD3 segmented label sizes.
+- 👁️ Home video-card creator, UP badge, and publish-time text now derive from `onSurface` for stronger light-mode contrast and dark-mode adaptation.
+- 🧭 Aligned Dynamic and Favorites/History bottom-bar scroll visibility and sampling state with the Home feed.
+- 🔖 Bumped the app to `8.0.2` with `versionCode` `175`.
 
 ---
 
