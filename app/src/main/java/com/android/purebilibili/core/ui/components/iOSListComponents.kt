@@ -1001,8 +1001,7 @@ fun IOSGridItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(itemCornerRadius))
             .background(resolvedContainerColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 24.dp, horizontal = 16.dp),
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
