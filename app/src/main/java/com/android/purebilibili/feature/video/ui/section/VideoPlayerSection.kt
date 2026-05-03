@@ -465,6 +465,9 @@ fun VideoPlayerSection(
     var longPressSpeedLocked by remember(bvid) { mutableStateOf(false) }
     var lockedLongPressSpeed by remember(bvid) { mutableFloatStateOf(1.0f) }
     var longPressSpeedEndedAtMs by remember { mutableLongStateOf(0L) }
+    val longPressSpeedLockSensitivity = remember(isFullscreen) {
+        resolveLongPressSpeedLockSensitivityPolicy(isFullscreen = isFullscreen)
+    }
     var isMultiTouchActive by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackVisible by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackRevision by remember { mutableIntStateOf(0) }
@@ -1241,14 +1244,17 @@ fun VideoPlayerSection(
                                     return@detectDragGestures
                                 }
                                 totalDragDistanceY += dragAmount.y
-                                val lockZoneHeightPx = LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp.toPx()
+                                val lockZoneHeightPx = longPressSpeedLockSensitivity.lockZoneHeightDp.dp.toPx()
+                                val minLockDragDistancePx = longPressSpeedLockSensitivity.minDragDistanceDp.dp.toPx()
                                 if (
                                     shouldLockLongPressSpeedInTargetZone(
                                         isLongPressing = isLongPressing,
                                         alreadyLocked = longPressSpeedLocked,
                                         currentPointerY = change.position.y,
                                         containerHeightPx = size.height.toFloat(),
-                                        lockZoneHeightPx = lockZoneHeightPx
+                                        lockZoneHeightPx = lockZoneHeightPx,
+                                        accumulatedDragYPx = totalDragDistanceY,
+                                        minDragDistancePx = minLockDragDistancePx
                                     )
                                 ) {
                                     longPressSpeedLocked = true
@@ -1412,7 +1418,8 @@ fun VideoPlayerSection(
                 currentAudioQuality,
                 hasShownHiResCompatHint,
                 scale,
-                isMultiTouchActive
+                isMultiTouchActive,
+                isFullscreen
             ) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
@@ -1436,14 +1443,17 @@ fun VideoPlayerSection(
                             return@detectDragGesturesAfterLongPress
                         }
                         totalDragDistanceY += dragAmount.y
-                        val lockZoneHeightPx = LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp.toPx()
+                        val lockZoneHeightPx = longPressSpeedLockSensitivity.lockZoneHeightDp.dp.toPx()
+                        val minLockDragDistancePx = longPressSpeedLockSensitivity.minDragDistanceDp.dp.toPx()
                         if (
                             shouldLockLongPressSpeedInTargetZone(
                                 isLongPressing = isLongPressing,
                                 alreadyLocked = longPressSpeedLocked,
                                 currentPointerY = change.position.y,
                                 containerHeightPx = size.height.toFloat(),
-                                lockZoneHeightPx = lockZoneHeightPx
+                                lockZoneHeightPx = lockZoneHeightPx,
+                                accumulatedDragYPx = totalDragDistanceY,
+                                minDragDistancePx = minLockDragDistancePx
                             )
                         ) {
                             longPressSpeedLocked = true
@@ -3145,7 +3155,7 @@ fun VideoPlayerSection(
                 val lockZoneVisual = resolveLongPressSpeedLockZoneVisualPolicy()
                 val zoneModifier = Modifier
                     .fillMaxWidth()
-                    .height(LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp)
+                    .height(longPressSpeedLockSensitivity.lockZoneHeightDp.dp)
                 val markerColor = MaterialTheme.colorScheme.primary
                 Box(modifier = zoneModifier.align(Alignment.TopCenter)) {
                     Box(
