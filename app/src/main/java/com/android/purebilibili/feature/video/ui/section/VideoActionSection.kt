@@ -132,7 +132,6 @@ fun ActionButtonsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
             .animateContentSize() // 🚀 [优化] 使布局变化更平滑
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),

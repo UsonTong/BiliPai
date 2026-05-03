@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -241,9 +243,9 @@ fun AdaptiveTopAppBar(
         }
 
         AdaptiveTopAppBarStyle.LARGE -> {
-            LargeTopAppBar(
+            TopAppBar(
                 modifier = modifier,
-                title = { Text(largeTitle) },
+                title = { Text(largeTitle, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = navigationIcon,
                 actions = actions,
                 colors = effectiveColors,
