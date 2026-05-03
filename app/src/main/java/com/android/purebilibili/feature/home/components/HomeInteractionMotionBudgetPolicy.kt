@@ -55,7 +55,7 @@ internal fun shouldAnimateTopTabAutoScroll(
 internal fun shouldSnapHomeTopTabSelection(
     currentPage: Int,
     targetPage: Int
-): Boolean = currentPage != targetPage
+): Boolean = false
 
 internal fun resolveTopTabViewportAnchorIndex(
     selectedIndex: Int,
@@ -117,27 +117,21 @@ internal fun resolveTopTabFollowScrollTarget(
         return currentTarget
     }
 
-    val currentScrollPx = resolveTopTabIndicatorViewportShiftPx(
-        firstVisibleItemIndex = currentTarget.firstVisibleItemIndex,
-        firstVisibleItemScrollOffsetPx = currentTarget.firstVisibleItemScrollOffsetPx,
-        tabWidthPx = itemWidthPx
-    )
     val clampedPosition = indicatorPosition.coerceIn(0f, (itemCount - 1).toFloat())
-    val itemStartPx = clampedPosition * itemWidthPx
-    val itemEndPx = itemStartPx + itemWidthPx
-    val viewportEndPx = currentScrollPx + viewportWidthPx
-    val rawTargetPx = when {
-        itemStartPx - edgeBufferPx < currentScrollPx -> itemStartPx - edgeBufferPx
-        itemEndPx + edgeBufferPx > viewportEndPx -> itemEndPx + edgeBufferPx - viewportWidthPx
-        else -> currentScrollPx
-    }
-    val targetScrollPx = rawTargetPx.toInt().coerceIn(0, maxScrollPx.toInt().coerceAtLeast(0))
-    val targetIndex = (targetScrollPx / itemWidthPx).toInt().coerceIn(0, itemCount - 1)
-    val targetOffsetPx = (targetScrollPx - targetIndex * itemWidthPx).roundToInt().coerceAtLeast(0)
+    val selectedItemIndex = clampedPosition.roundToInt().coerceIn(0, itemCount - 1)
+    val usableViewportWidthPx = (viewportWidthPx - edgeBufferPx.coerceAtLeast(0f) * 2f)
+        .coerceAtLeast(itemWidthPx)
+    val visibleSlots = (usableViewportWidthPx / itemWidthPx).toInt().coerceAtLeast(1)
+    val centerSlotIndex = (visibleSlots / 2).coerceAtLeast(0)
+    val maxFirstVisibleByCount = (itemCount - visibleSlots).coerceAtLeast(0)
+    val maxFirstVisibleByScroll = (maxScrollPx / itemWidthPx).toInt().coerceAtLeast(0)
+    val maxFirstVisibleIndex = minOf(maxFirstVisibleByCount, maxFirstVisibleByScroll)
+    val targetIndex = (selectedItemIndex - centerSlotIndex)
+        .coerceIn(0, maxFirstVisibleIndex)
 
     return TopTabScrollTarget(
         firstVisibleItemIndex = targetIndex,
-        firstVisibleItemScrollOffsetPx = targetOffsetPx
+        firstVisibleItemScrollOffsetPx = 0
     )
 }
 

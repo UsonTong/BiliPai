@@ -12,10 +12,12 @@ internal fun shouldSwitchHomeCategoryFromPager(
     hasSyncedPagerWithState: Boolean,
     pagerCurrentPage: Int,
     pagerScrolling: Boolean,
-    currentCategoryIndex: Int
+    currentCategoryIndex: Int,
+    programmaticPageSwitchInProgress: Boolean = false
 ): Boolean {
     if (!hasSyncedPagerWithState) return false
     if (pagerScrolling) return false
+    if (programmaticPageSwitchInProgress) return false
     return pagerCurrentPage != currentCategoryIndex
 }
 
@@ -24,13 +26,15 @@ internal fun resolveHomePagerSettledAction(
     pagerCurrentPage: Int,
     pagerScrolling: Boolean,
     currentCategoryIndex: Int,
-    settledCategory: HomeCategory?
+    settledCategory: HomeCategory?,
+    programmaticPageSwitchInProgress: Boolean = false
 ): HomePagerSettledAction {
     if (!shouldSwitchHomeCategoryFromPager(
             hasSyncedPagerWithState = hasSyncedPagerWithState,
             pagerCurrentPage = pagerCurrentPage,
             pagerScrolling = pagerScrolling,
-            currentCategoryIndex = currentCategoryIndex
+            currentCategoryIndex = currentCategoryIndex,
+            programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
         )
     ) {
         return HomePagerSettledAction.NONE
@@ -61,6 +65,5 @@ internal fun shouldAnimateHomePagerToCategory(
     if (targetPage < 0) return false
     if (targetPage == pagerCurrentPage) return false
     if (pagerScrolling) return false
-    if (programmaticPageSwitchInProgress) return false
     return true
 }

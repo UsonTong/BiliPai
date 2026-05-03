@@ -304,7 +304,8 @@ fun HomeScreen(
                         settledCategory = resolveHomeCategoryForTopTab(
                             index = page,
                             topCategories = topCategories
-                        )
+                        ),
+                        programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
                     )
                 ) {
                     HomePagerSettledAction.NONE -> return@collect
@@ -370,7 +371,12 @@ fun HomeScreen(
                 programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
             )
         ) {
-            pagerState.animateScrollToPage(targetPage)
+            programmaticPageSwitchInProgress = true
+            try {
+                pagerState.animateScrollToPage(targetPage)
+            } finally {
+                programmaticPageSwitchInProgress = false
+            }
         }
     }
 
@@ -1457,9 +1463,14 @@ fun HomeScreen(
                     if (shouldSnapHomeTopTabSelection(pagerState.currentPage, index)) {
                         coroutineScope.launch {
                             programmaticPageSwitchInProgress = true
-                            pagerState.scrollToPage(index)
-                            programmaticPageSwitchInProgress = false
+                            try {
+                                pagerState.scrollToPage(index)
+                            } finally {
+                                programmaticPageSwitchInProgress = false
+                            }
                         }
+                    } else if (pagerState.currentPage != index && selectedCategory != state.currentCategory) {
+                        programmaticPageSwitchInProgress = true
                     }
                     viewModel.switchCategory(selectedCategory)
                 }

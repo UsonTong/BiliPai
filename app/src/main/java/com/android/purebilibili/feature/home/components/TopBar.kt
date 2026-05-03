@@ -1704,7 +1704,7 @@ internal fun resolveTopTabIndicatorViewportClampShiftPx(
     rowScrollOffsetPx: Float,
     indicatorPanelOffsetPx: Float
 ): Float {
-    return -indicatorPanelOffsetPx
+    return rowScrollOffsetPx - indicatorPanelOffsetPx
 }
 
 @Composable

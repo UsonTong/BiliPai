@@ -167,6 +167,25 @@ internal fun playPlayerFromUserAction(player: Player) {
     playPlayerForUserIntent(player, trackUserAction = true)
 }
 
+internal fun pausePlayerFromUserAction(player: Player) {
+    PlaybackUserActionTracker.recordAction(
+        player = player,
+        type = PlaybackUserActionType.PAUSE
+    )
+    player.pause()
+}
+
+internal fun applyPlaybackButtonUserAction(
+    player: Player,
+    isShowingPauseIcon: Boolean
+) {
+    if (isShowingPauseIcon && player.playbackState != Player.STATE_ENDED) {
+        pausePlayerFromUserAction(player)
+    } else {
+        playPlayerFromUserAction(player)
+    }
+}
+
 private fun playPlayerForUserIntent(
     player: Player,
     trackUserAction: Boolean,
@@ -264,11 +283,7 @@ internal fun togglePlayerPlaybackFromUserAction(player: Player) {
             playbackState = player.playbackState
         )
     ) {
-        PlaybackUserActionTracker.recordAction(
-            player = player,
-            type = PlaybackUserActionType.PAUSE
-        )
-        player.pause()
+        pausePlayerFromUserAction(player)
         Logger.d(
             "VideoPlaybackUseCase",
             "USER_DBG togglePlayerPlaybackFromUserAction paused: " +
