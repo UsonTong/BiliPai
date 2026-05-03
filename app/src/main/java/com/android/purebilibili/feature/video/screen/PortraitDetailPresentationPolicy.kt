@@ -57,12 +57,14 @@ internal fun resolveStandalonePortraitPagerMotionSpec(): StandalonePortraitPager
 
 internal fun shouldEnableInlinePortraitScrollTransform(
     collapseMode: PortraitPlayerCollapseMode,
-    selectedTabIndex: Int
+    selectedTabIndex: Int,
+    isVerticalVideo: Boolean = true
 ): Boolean {
+    if (!collapseMode.enablesVideoOrientation(isVerticalVideo)) return false
     return when (selectedTabIndex) {
         0 -> collapseMode.enablesIntro
         1 -> collapseMode.enablesComment
-        else -> collapseMode != PortraitPlayerCollapseMode.OFF
+        else -> true
     }
 }
 
@@ -84,9 +86,11 @@ internal fun shouldUseCompactInlinePortraitPlayerForCommentTab(
     firstVisibleItemIndex: Int = 0,
     firstVisibleItemScrollOffset: Int = 0,
     collapseMode: PortraitPlayerCollapseMode = PortraitPlayerCollapseMode.BOTH,
+    isVerticalVideo: Boolean = true,
     commentScrollThresholdPx: Int = 56
 ): Boolean {
     if (!useOfficialInlinePortraitDetailExperience || isPortraitFullscreen) return false
+    if (!collapseMode.enablesVideoOrientation(isVerticalVideo)) return false
     if (!collapseMode.enablesComment) return false
     if (isCommentThreadVisible) return true
     if (selectedTabIndex != 1) return false
@@ -101,9 +105,11 @@ internal fun shouldUseCompactInlinePortraitPlayerForIntroScroll(
     firstVisibleItemIndex: Int,
     firstVisibleItemScrollOffset: Int,
     collapseMode: PortraitPlayerCollapseMode = PortraitPlayerCollapseMode.BOTH,
+    isVerticalVideo: Boolean = true,
     introScrollThresholdPx: Int = 56
 ): Boolean {
     if (!useOfficialInlinePortraitDetailExperience || isPortraitFullscreen) return false
+    if (!collapseMode.enablesVideoOrientation(isVerticalVideo)) return false
     if (!collapseMode.enablesIntro) return false
     if (selectedTabIndex != 0) return false
     if (firstVisibleItemIndex > 0) return true

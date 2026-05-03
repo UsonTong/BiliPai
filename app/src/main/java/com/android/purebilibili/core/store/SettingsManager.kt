@@ -209,16 +209,26 @@ enum class PlaybackCompletionBehavior(val value: Int, val label: String) {
 }
 
 enum class PortraitPlayerCollapseMode(val value: Int, val label: String, val description: String) {
-    OFF(0, "关闭", "竖屏详情页不自动缩小播放器"),
-    INTRO_ONLY(1, "简介", "简介页向下滚动时缩小播放器"),
-    COMMENT_ONLY(2, "评论", "评论区向下滚动时缩小播放器"),
-    BOTH(3, "全部", "简介和评论区滚动时都缩小播放器");
+    OFF(0, "关闭", "不自动缩小播放器"),
+    INTRO_ONLY(1, "竖屏", "仅竖屏视频详情页滚动时缩小播放器"),
+    COMMENT_ONLY(2, "横屏", "仅横屏视频详情页滚动时缩小播放器"),
+    BOTH(3, "全部", "横竖屏视频都使用播放器缩小策略");
 
-    val enablesIntro: Boolean
+    val enablesPortraitVideo: Boolean
         get() = this == INTRO_ONLY || this == BOTH
 
-    val enablesComment: Boolean
+    val enablesLandscapeVideo: Boolean
         get() = this == COMMENT_ONLY || this == BOTH
+
+    fun enablesVideoOrientation(isVerticalVideo: Boolean): Boolean {
+        return if (isVerticalVideo) enablesPortraitVideo else enablesLandscapeVideo
+    }
+
+    val enablesIntro: Boolean
+        get() = this != OFF
+
+    val enablesComment: Boolean
+        get() = this != OFF
 
     companion object {
         fun fromValue(value: Int): PortraitPlayerCollapseMode {
@@ -226,7 +236,7 @@ enum class PortraitPlayerCollapseMode(val value: Int, val label: String, val des
         }
 
         fun fromLegacySwipeHide(enabled: Boolean): PortraitPlayerCollapseMode {
-            return if (enabled) BOTH else OFF
+            return if (enabled) INTRO_ONLY else OFF
         }
     }
 }
@@ -3912,7 +3922,7 @@ object SettingsManager {
     private val KEY_FULLSCREEN_ASPECT_RATIO = intPreferencesKey("fullscreen_aspect_ratio")
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
     
-    // --- 竖屏播放器滚动缩小模式 ---
+    // --- 播放器滚动缩小方向策略 ---
     fun getPortraitPlayerCollapseMode(context: Context): Flow<PortraitPlayerCollapseMode> =
         context.settingsDataStore.data.map { preferences ->
             preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE]?.let { raw ->

@@ -212,7 +212,7 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
-    fun `resolvePortraitPlayerCollapseModeSegmentOptions should expose all scroll collapse modes`() {
+    fun `resolvePortraitPlayerCollapseModeSegmentOptions should expose orientation strategy modes`() {
         val modes = resolvePortraitPlayerCollapseModeSegmentOptions().map { it.value }
         assertEquals(
             listOf(
@@ -223,6 +223,7 @@ class PlaybackSettingsSelectionPolicyTest {
             ),
             modes
         )
+        assertEquals(listOf("关闭", "竖屏", "横屏", "全部"), resolvePortraitPlayerCollapseModeSegmentOptions().map { it.label })
     }
 
     @Test

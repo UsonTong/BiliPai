@@ -213,7 +213,7 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayerCollapseMode_limitsIntroAndCommentTriggers() {
+    fun inlinePortraitPlayerCollapseMode_followsPortraitOrientationStrategy() {
         assertTrue(
             shouldUseCompactInlinePortraitPlayerForIntroScroll(
                 useOfficialInlinePortraitDetailExperience = true,
@@ -221,27 +221,8 @@ class PortraitDetailPresentationPolicyTest {
                 isPortraitFullscreen = false,
                 firstVisibleItemIndex = 1,
                 firstVisibleItemScrollOffset = 0,
-                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY
-            )
-        )
-        assertFalse(
-            shouldUseCompactInlinePortraitPlayerForCommentTab(
-                useOfficialInlinePortraitDetailExperience = true,
-                selectedTabIndex = 1,
-                isPortraitFullscreen = false,
-                firstVisibleItemIndex = 1,
-                firstVisibleItemScrollOffset = 0,
-                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY
-            )
-        )
-        assertFalse(
-            shouldUseCompactInlinePortraitPlayerForIntroScroll(
-                useOfficialInlinePortraitDetailExperience = true,
-                selectedTabIndex = 0,
-                isPortraitFullscreen = false,
-                firstVisibleItemIndex = 1,
-                firstVisibleItemScrollOffset = 0,
-                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY,
+                isVerticalVideo = true
             )
         )
         assertTrue(
@@ -251,7 +232,52 @@ class PortraitDetailPresentationPolicyTest {
                 isPortraitFullscreen = false,
                 firstVisibleItemIndex = 1,
                 firstVisibleItemScrollOffset = 0,
-                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY,
+                isVerticalVideo = true
+            )
+        )
+        assertFalse(
+            shouldUseCompactInlinePortraitPlayerForIntroScroll(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 0,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY,
+                isVerticalVideo = false
+            )
+        )
+        assertFalse(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.INTRO_ONLY,
+                isVerticalVideo = false
+            )
+        )
+        assertTrue(
+            shouldUseCompactInlinePortraitPlayerForIntroScroll(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 0,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY,
+                isVerticalVideo = false
+            )
+        )
+        assertTrue(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                firstVisibleItemIndex = 1,
+                firstVisibleItemScrollOffset = 0,
+                collapseMode = PortraitPlayerCollapseMode.COMMENT_ONLY,
+                isVerticalVideo = false
             )
         )
     }
