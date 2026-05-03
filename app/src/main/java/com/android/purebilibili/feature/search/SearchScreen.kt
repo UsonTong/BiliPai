@@ -67,6 +67,7 @@ import com.android.purebilibili.R
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.database.entity.SearchHistory
 import com.android.purebilibili.core.ui.LoadingAnimation
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.ui.rememberAppBackIcon
@@ -133,6 +134,24 @@ internal fun resolveSearchTopBarLayoutSpec(): SearchTopBarLayoutSpec {
         placeholderMaxLines = 1
     )
 }
+
+internal fun resolveSearchTopBarHeaderColor(
+    surfaceColor: Color,
+    backgroundAlpha: Float,
+    globalWallpaperVisible: Boolean,
+    useHeaderBlur: Boolean
+): Color {
+    return if (globalWallpaperVisible || useHeaderBlur) {
+        Color.Transparent
+    } else {
+        surfaceColor.copy(alpha = backgroundAlpha)
+    }
+}
+
+internal fun shouldUseSearchTopBarHeaderBlur(
+    hazeSourceEnabled: Boolean,
+    globalWallpaperVisible: Boolean
+): Boolean = hazeSourceEnabled && !globalWallpaperVisible
 
 internal data class SearchChromeVisualSpec(
     val inputHeightDp: Int,
@@ -471,6 +490,17 @@ fun SearchScreen(
             isScrollingResults = isSearchResultsScrolling
         )
     }
+    val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val shouldUseSearchTopBarBlur = shouldUseSearchTopBarHeaderBlur(
+        hazeSourceEnabled = searchHazeEnabled,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
+    val searchTopBarHeaderColor = resolveSearchTopBarHeaderColor(
+        surfaceColor = MaterialTheme.colorScheme.surface,
+        backgroundAlpha = 0.96f,
+        globalWallpaperVisible = globalWallpaperVisible,
+        useHeaderBlur = shouldUseSearchTopBarBlur
+    )
     val emptyStateCopy = remember(state.emptyStateReason, state.searchType) {
         if (state.emptyStateReason == SearchEmptyStateReason.NONE) {
             null
@@ -1251,7 +1281,7 @@ fun SearchScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .then(
-                        if (searchHazeEnabled) {
+                        if (shouldUseSearchTopBarBlur) {
                             Modifier.unifiedBlur(
                                 hazeState = hazeState,
                                 surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
@@ -1259,9 +1289,10 @@ fun SearchScreen(
                                 forceLowBudget = forceLowBudgetSearchHeaderBlur
                             )
                         } else {
-                            Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                            Modifier
                         }
                     )
+                    .background(searchTopBarHeaderColor)
             )
 
             AnimatedVisibility(

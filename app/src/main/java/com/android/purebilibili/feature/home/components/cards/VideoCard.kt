@@ -577,24 +577,25 @@ fun ElegantVideoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    var viewsOnCoverModifier = Modifier.wrapContentSize()
-                    if (metadataSharedEnabled) {
-                        with(requireNotNull(sharedTransitionScope)) {
-                            viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
-                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ ->
-                                    com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
-                                }
-                            )
-                        }
-                    }
                     Row(
-                        modifier = viewsOnCoverModifier,
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        var viewsOnCoverModifier = Modifier.weight(1f, fill = false)
+                        if (metadataSharedEnabled) {
+                            with(requireNotNull(sharedTransitionScope)) {
+                                viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
+                                    animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                                    boundsTransform = { _, _ ->
+                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                    }
+                                )
+                            }
+                        }
                         HomeVideoBadgePill(
+                            modifier = viewsOnCoverModifier,
                             style = badgeStylePolicy.coverStyle,
                             shape = RoundedCornerShape(999.dp),
                             containerColor = coverPillColors.containerColor,
@@ -614,57 +615,66 @@ fun ElegantVideoCard(
                                 },
                                 color = Color.White.copy(alpha = 0.94f),
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
 
-                    val commentCount = video.stat.reply.takeIf { it > 0 } ?: video.stat.danmaku
-                    if (commentCount > 0) {
-                        HomeVideoBadgePill(
-                            style = badgeStylePolicy.coverStyle,
-                            shape = RoundedCornerShape(999.dp),
-                            containerColor = coverPillColors.containerColor,
-                            borderColor = coverPillColors.borderColor
-                        ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Outlined.BubbleLeft,
-                                contentDescription = null,
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White.copy(alpha = 0.90f)
-                            )
-                            Text(
-                                text = FormatUtils.formatStat(commentCount.toLong()),
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                        val commentCount = video.stat.reply.takeIf { it > 0 } ?: video.stat.danmaku
+                        if (commentCount > 0) {
+                            HomeVideoBadgePill(
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = badgeStylePolicy.coverStyle,
+                                shape = RoundedCornerShape(999.dp),
+                                containerColor = coverPillColors.containerColor,
+                                borderColor = coverPillColors.borderColor
+                            ) {
+                                Icon(
+                                    imageVector = CupertinoIcons.Outlined.BubbleLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White.copy(alpha = 0.90f)
+                                )
+                                Text(
+                                    text = FormatUtils.formatStat(commentCount.toLong()),
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (onlineCount.isNotEmpty()) {
+                            HomeVideoBadgePill(
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = badgeStylePolicy.coverStyle,
+                                shape = RoundedCornerShape(999.dp),
+                                containerColor = coverPillColors.containerColor,
+                                borderColor = coverPillColors.borderColor
+                            ) {
+                                Icon(
+                                    imageVector = CupertinoIcons.Outlined.Eye,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White.copy(alpha = 0.90f)
+                                )
+                                Text(
+                                    text = onlineCount,
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
-
-                    if (onlineCount.isNotEmpty()) {
-                        HomeVideoBadgePill(
-                            style = badgeStylePolicy.coverStyle,
-                            shape = RoundedCornerShape(999.dp),
-                            containerColor = coverPillColors.containerColor,
-                            borderColor = coverPillColors.borderColor
-                        ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Outlined.Eye,
-                                contentDescription = null,
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White.copy(alpha = 0.90f)
-                            )
-                            Text(
-                                text = onlineCount,
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
 
                     //  时长标签 (与播放量/评论数同行对齐)
                     if (showDurationBadge && badgeStylePolicy.coverStyle == HomeVideoBadgeStyle.GLASS) {

@@ -27,6 +27,11 @@ internal const val LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP = 96
 internal const val FOREGROUND_SURFACE_RECOVERY_DELAY_MS = 80L
 internal const val FOREGROUND_SURFACE_RECOVERY_TIMEOUT_MS = 1200L
 
+internal data class LongPressSpeedLockSensitivityPolicy(
+    val lockZoneHeightDp: Int,
+    val minDragDistanceDp: Int
+)
+
 internal data class LongPressSpeedLockZoneVisualPolicy(
     val zoneFillAlpha: Float,
     val borderAlpha: Float,
@@ -53,6 +58,22 @@ internal fun resolveLongPressSpeedLockZoneVisualPolicy(): LongPressSpeedLockZone
         centerMarkerHeightDp = 3,
         centerMarkerWidthFraction = 0.34f
     )
+}
+
+internal fun resolveLongPressSpeedLockSensitivityPolicy(
+    isFullscreen: Boolean
+): LongPressSpeedLockSensitivityPolicy {
+    return if (isFullscreen) {
+        LongPressSpeedLockSensitivityPolicy(
+            lockZoneHeightDp = LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP,
+            minDragDistanceDp = 24
+        )
+    } else {
+        LongPressSpeedLockSensitivityPolicy(
+            lockZoneHeightDp = 36,
+            minDragDistanceDp = 72
+        )
+    }
 }
 
 internal fun resolveGestureSeekableDurationMs(
@@ -197,11 +218,14 @@ internal fun shouldLockLongPressSpeedInTargetZone(
     alreadyLocked: Boolean,
     currentPointerY: Float,
     containerHeightPx: Float,
-    lockZoneHeightPx: Float
+    lockZoneHeightPx: Float,
+    accumulatedDragYPx: Float = 0f,
+    minDragDistancePx: Float = 0f
 ): Boolean {
     if (!isLongPressing || alreadyLocked) return false
     if (containerHeightPx <= 0f || lockZoneHeightPx <= 0f) return false
-    val clampedZoneHeightPx = lockZoneHeightPx.coerceAtMost(containerHeightPx / 2f)
+    if (abs(accumulatedDragYPx) < minDragDistancePx.coerceAtLeast(0f)) return false
+    val clampedZoneHeightPx = lockZoneHeightPx.coerceAtMost(containerHeightPx * 0.25f)
     return currentPointerY <= clampedZoneHeightPx ||
         currentPointerY >= containerHeightPx - clampedZoneHeightPx
 }
