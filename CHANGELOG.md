@@ -6,8 +6,8 @@
 - 版本号从 `8.0.2` 升级到 `8.0.3`，`versionCode` 升级到 `176`。
 - PR / 提交来源：
   - PR #273：`refactor: 更好的平板/折叠屏体验，修复 UI 问题`，作者 `chenx-dust`，merge commit `b4ae9235`。
-  - 直接提交：`Fix wallpaper and video interaction UI`，作者 `Jay3-yy`，commit `cf300988`。
-  - 本次维护提交：作者 `Jay3-yy`，提交号随 8.0.3 release commit 生成。
+  - 直接提交：`Fix wallpaper and video interaction UI`，作者 [`Jay3-yy`](https://github.com/jay3-yy)，commit `cf300988`。
+  - 本次维护提交：作者 [`Jay3-yy`](https://github.com/jay3-yy)，提交号随 8.0.3 release commit 生成。
 - 本次为平板/折叠屏体验、视频交互、首页背景和播放器设置维护版本。
 
 ### 更新内容
