@@ -157,7 +157,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "互动按钮",
             "观看人数",
             "底部进度条",
-            "竖屏播放器缩小",
+            "播放器缩小策略",
             "上滑隐藏播放器",
             "竖屏上滑进入全屏",
             "中部滑动切换全屏",
@@ -430,10 +430,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK,
-        title = "自动连播 / 双击点赞 / 字幕 / 竖屏播放器缩小",
+        title = "自动连播 / 双击点赞 / 字幕 / 播放器缩小策略",
         subtitle = "交互",
         section = "播放设置",
-        aliases = listOf("自动连播", "自动播放下一个", "双击点赞", "字幕", "自动启用字幕", "ai总结", "竖屏播放器缩小", "简介缩小", "评论缩小", "上滑隐藏播放器", "点击视频直接播放"),
+        aliases = listOf("自动连播", "自动播放下一个", "双击点赞", "字幕", "自动启用字幕", "ai总结", "播放器缩小策略", "竖屏视频缩小", "横屏视频缩小", "上滑隐藏播放器", "点击视频直接播放"),
         focusId = SettingsSearchFocusIds.PLAYBACK_INTERACTION
     ),
     SettingsSearchEntry(

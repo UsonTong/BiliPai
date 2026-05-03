@@ -108,8 +108,8 @@ internal fun resolveFullscreenAspectRatioSegmentOptions(): List<PlaybackSegmentO
 internal fun resolvePortraitPlayerCollapseModeSegmentOptions(): List<PlaybackSegmentOption<PortraitPlayerCollapseMode>> {
     return listOf(
         PlaybackSegmentOption(PortraitPlayerCollapseMode.OFF, "关闭"),
-        PlaybackSegmentOption(PortraitPlayerCollapseMode.INTRO_ONLY, "简介"),
-        PlaybackSegmentOption(PortraitPlayerCollapseMode.COMMENT_ONLY, "评论"),
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.INTRO_ONLY, "竖屏"),
+        PlaybackSegmentOption(PortraitPlayerCollapseMode.COMMENT_ONLY, "横屏"),
         PlaybackSegmentOption(PortraitPlayerCollapseMode.BOTH, "全部")
     )
 }

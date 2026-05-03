@@ -861,7 +861,7 @@ fun PlaybackSettingsContent(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             IOSSlidingSegmentedSetting(
-                                title = "竖屏播放器缩小：${portraitPlayerCollapseMode.label}",
+                                title = "播放器缩小策略：${portraitPlayerCollapseMode.label}",
                                 subtitle = portraitPlayerCollapseMode.description,
                                 options = resolvePortraitPlayerCollapseModeSegmentOptions(),
                                 selectedValue = portraitPlayerCollapseMode,

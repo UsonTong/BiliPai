@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -42,14 +41,6 @@ internal fun HomeWallpaperBackdrop(
             modifier = Modifier
                 .fillMaxSize()
                 .blur(appearance.blurRadiusDp.dp)
-        )
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(appearance.detailAlpha)
         )
         Box(
             modifier = Modifier

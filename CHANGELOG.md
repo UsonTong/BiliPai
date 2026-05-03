@@ -1,5 +1,31 @@
 # Changelog
 
+## v8.0.3 (2026-05-03)
+
+### 版本信息
+- 版本号从 `8.0.2` 升级到 `8.0.3`，`versionCode` 升级到 `176`。
+- PR / 提交来源：
+  - PR #273：`refactor: 更好的平板/折叠屏体验，修复 UI 问题`，作者 `chenx-dust`，merge commit `b4ae9235`。
+  - 直接提交：`Fix wallpaper and video interaction UI`，作者 `Jay3-yy`，commit `cf300988`。
+  - 本次维护提交：作者 `Jay3-yy`，提交号随 8.0.3 release commit 生成。
+- 本次为平板/折叠屏体验、视频交互、首页背景和播放器设置维护版本。
+
+### 更新内容
+- 合入 PR #273：优化平板/折叠屏视频页与“我的”页面空间利用率，调整平板影院布局、侧边栏展开按钮和导航栏 padding，减少大屏布局压缩与留白问题。
+- 优化全局壁纸/玻璃背景下的搜索顶栏显示，避免已有全局壁纸时重复叠加搜索顶栏模糊层；补齐搜索顶栏颜色与模糊策略测试。
+- 优化首页卡片封面统计标签布局，播放量、评论/弹幕、在线人数和时长标签在窄宽度下改用可收缩/省略策略，减少封面信息挤压。
+- 优化命令弹幕交互提示：支持关闭单条提示，调整关注/一键三连卡片留白和覆盖区域，避免提示遮挡过久。
+- 调整长按倍速锁定灵敏度，区分全屏和非全屏场景，降低普通竖屏播放中误触锁定的概率。
+- 修复首页背景图片设置后可能出现两张图片上下分离或重叠的问题，背景层改为单图渲染，避免同一 URI 被重复加载叠放。
+- 播放设置中的播放器缩小选项改为视频方向策略：`关闭 / 竖屏 / 横屏 / 全部`，并按当前视频横竖屏过滤，避免选择“竖屏”后横屏视频仍触发缩小。
+- 拆出竖屏内联播放器宿主组件，降低 `VideoDetailScreen` 主 Composable 方法体积，避免 Kotlin 编译时触发 `MethodTooLarge`。
+- 补充平板/动态、搜索顶栏、命令弹幕、播放器策略、首页背景渲染和竖屏策略行为的目标单元测试。
+
+### 验证
+- PR #273 已随 merge commit `b4ae9235` 合入主分支。
+- `cf300988` 已随主分支包含动态、搜索、命令弹幕和播放器交互相关测试。
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.PortraitDetailPresentationPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.VideoDetailPlayerCollapsePolicyTest' --tests 'com.android.purebilibili.feature.home.HomeGlassVisualPolicyTest'`
+
 ## v8.0.2 (2026-05-01)
 
 ### 版本信息

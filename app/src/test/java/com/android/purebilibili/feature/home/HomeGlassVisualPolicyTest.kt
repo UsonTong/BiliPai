@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.home
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.android.purebilibili.core.store.HomeWallpaperEffectMode
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -288,5 +289,13 @@ class HomeGlassVisualPolicyTest {
         )
 
         assertEquals("", resolved)
+    }
+
+    @Test
+    fun homeWallpaperBackdropUsesOneImageLayer() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/HomeWallpaperBackdrop.kt")
+            .readText()
+
+        assertEquals(1, Regex("""\bAsyncImage\(""").findAll(source).count())
     }
 }
