@@ -624,7 +624,8 @@ private fun CinemaVideoIntroSection(
             VideoTitleWithDesc(
                 info = success.info,
                 videoTags = success.videoTags,
-                bgmInfo = success.bgmInfo
+                bgmInfo = success.bgmInfo,
+                bgmInfoList = success.bgmInfoList
             )
             if (success.info.desc.isBlank()) {
                 Text(

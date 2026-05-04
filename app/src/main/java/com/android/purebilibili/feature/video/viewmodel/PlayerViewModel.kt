@@ -26,6 +26,7 @@ import com.android.purebilibili.core.util.NetworkUtils
 import com.android.purebilibili.data.model.VideoLoadError
 import com.android.purebilibili.data.model.response.*
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.data.repository.ViewGrpcRepository
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
@@ -185,6 +186,7 @@ sealed class PlayerUiState {
         val aiSummary: AiSummaryData? = null,
         val aiSummaryPrompt: AiSummaryPromptState? = null,
         val bgmInfo: BgmInfo? = null,
+        val bgmInfoList: List<BgmInfo> = emptyList(),
         // [New] AI Audio Translation
         val aiAudio: AiAudioInfo? = null,
         val currentAudioLang: String? = null,
@@ -3930,6 +3932,23 @@ class PlayerViewModel : ViewModel() {
                             } else current
                         }
                         Logger.d("PlayerVM", "🎵 Loaded BGM: ${data.bgmInfo?.musicTitle}")
+                    }
+
+                    // 2b. gRPC BGM list (multi-song support)
+                    val grpcAid = currentState?.info?.aid ?: 0L
+                    if (grpcAid > 0) {
+                        ViewGrpcRepository.getBgmList(grpcAid, bvid, cid).onSuccess { bgmList ->
+                            Logger.w("PlayerVM", "gRPC BGM result: ${bgmList.size} entries for aid=$grpcAid")
+                            if (bgmList.isNotEmpty()) {
+                                _uiState.update { current ->
+                                    if (current is PlayerUiState.Success) {
+                                        current.copy(bgmInfoList = bgmList)
+                                    } else current
+                                }
+                            }
+                        }.onFailure { e ->
+                            Logger.w("PlayerVM", "gRPC BGM fetch failed: ${e.message}")
+                        }
                     }
 
                     // 3. 字幕信息（优先中文主字幕 + 英文副字幕）
