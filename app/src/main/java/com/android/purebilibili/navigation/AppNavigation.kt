@@ -1162,29 +1162,19 @@ fun AppNavigation(
                         navigateToVideo(vid, targetCid, "")
                     },
                     onBgmClick = { bgm ->
-                        // 获取当前视频的 cid（在闭包中捕获）
+                        if (bgm.jumpUrl.isNotEmpty()) {
+                            navController.navigate(ScreenRoutes.Web.createRoute(bgm.jumpUrl, "发现音乐"))
+                            return@VideoDetailScreen
+                        }
+
                         val videoCid = backStackEntry.arguments?.getLong("cid") ?: 0L
-                        
-                        android.util.Log.d("BGM_DEBUG", "🎵 musicId=${bgm.musicId}, title=${bgm.musicTitle}")
-                        android.util.Log.d("BGM_DEBUG", "🎵 Using current video: bvid=$bvid, cid=$videoCid")
-                        
-                        // 尝试解析 au 格式 (如 au123456 或纯数字)
                         val auSid = bgm.musicId.removePrefix("au").toLongOrNull()
-                        
+
                         if (auSid != null) {
-                            // au 格式：使用原生音乐详情页
                             navController.navigate(ScreenRoutes.MusicDetail.createRoute(auSid))
                         } else if (bgm.musicId.startsWith("MA") && videoCid > 0) {
-                            // MA 格式：使用当前视频的 bvid 和 cid 获取音频流
-                            // jumpUrl 中的 aid/cid 是 B 站内部 ID，无法用于获取视频流
-                            // 所以直接使用当前正在播放的视频来提取音频
                             val title = bgm.musicTitle.ifEmpty { "背景音乐" }
-                            
-                            android.util.Log.d("BGM_DEBUG", "🎵 Navigating with: bvid=$bvid, cid=$videoCid")
                             navController.navigate(ScreenRoutes.NativeMusic.createRoute(title, bvid, videoCid))
-                        } else if (bgm.jumpUrl.isNotEmpty()) {
-                            // 回退：使用 WebView
-                            navController.navigate(ScreenRoutes.Web.createRoute(bgm.jumpUrl, "背景音乐"))
                         }
                     }
                 )

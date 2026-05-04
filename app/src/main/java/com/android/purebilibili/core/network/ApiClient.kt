@@ -481,6 +481,13 @@ interface BilibiliApi {
         @QueryMap params: Map<String, String>
     ): PlayerInfoResponse
 
+    //  [新增] 获取视频的完整 BGM 列表
+    @GET("x/copyright-music-publicity/bgm/multiple/music")
+    suspend fun getBgmMultipleMusic(
+        @Query("aid") aid: Long,
+        @Query("cid") cid: Long
+    ): com.android.purebilibili.data.model.response.BgmMultipleMusicResponse
+
     @GET("x/stein/edgeinfo_v2")
     suspend fun getInteractEdgeInfo(
         @Query("bvid") bvid: String,

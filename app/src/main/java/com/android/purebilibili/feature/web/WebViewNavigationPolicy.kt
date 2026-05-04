@@ -14,8 +14,13 @@ internal fun resolveWebViewNavigationAction(
     urlString: String,
     hasUserGesture: Boolean
 ): WebViewNavigationAction {
-    val normalizedUrl = urlString.trim().lowercase()
+    val trimmedUrl = urlString.trim()
+    val normalizedUrl = trimmedUrl.lowercase()
     val isCustomScheme = normalizedUrl.startsWith("bilibili://") || normalizedUrl.startsWith("bili://")
+
+    if (isOfficialMusicDetailUrl(trimmedUrl)) {
+        return WebViewNavigationAction.AllowWebLoad
+    }
 
     if (isCustomScheme) {
         if (!hasUserGesture) {
@@ -36,6 +41,16 @@ internal fun resolveWebViewNavigationAction(
     } else {
         WebViewNavigationAction.AllowWebLoad
     }
+}
+
+internal fun isOfficialMusicDetailUrl(urlString: String): Boolean {
+    val uri = runCatching { java.net.URI(urlString.trim()) }.getOrNull() ?: return false
+    val pathSegments = uri.path
+        ?.split("/")
+        ?.filter { it.isNotBlank() }
+        ?: emptyList()
+    return uri.host?.equals("music.bilibili.com", ignoreCase = true) == true &&
+        pathSegments.contains("music-detail")
 }
 
 internal fun convertDeepLinkToWebUrl(rawUrl: String): String? {
