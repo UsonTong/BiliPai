@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavBackStackEntry
@@ -37,6 +39,9 @@ import com.android.purebilibili.feature.article.shouldUseArticleNoOpRouteTransit
 import com.android.purebilibili.feature.home.HomeVideoClickRequest
 import com.android.purebilibili.feature.home.HomeScreen
 import com.android.purebilibili.feature.home.HomeViewModel
+import com.android.purebilibili.feature.home.HomeWallpaperBackdrop
+import com.android.purebilibili.feature.home.resolveHomeWallpaperBackdropAppearance
+import com.android.purebilibili.feature.home.resolveHomeWallpaperUri
 import com.android.purebilibili.feature.login.LoginScreen
 import com.android.purebilibili.feature.profile.ProfileScreen
 import com.android.purebilibili.feature.search.ArticleNavigationTarget
@@ -84,6 +89,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.android.purebilibili.core.ui.LocalSetBottomBarVisible
 import com.android.purebilibili.core.ui.LocalBottomBarVisible
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
 import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.softLandingSpring
@@ -96,6 +102,7 @@ import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
 import com.android.purebilibili.core.store.AppNavigationSettings
+import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.resolveEffectiveHomeSettings
 import com.android.purebilibili.core.theme.LocalUiPreset
@@ -474,6 +481,32 @@ fun AppNavigation(
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         val currentBottomNavItem = BottomNavItem.entries.find { it.route == currentRoute } ?: BottomNavItem.HOME
+        val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
+        val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
+        val globalHomeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
+            resolveHomeWallpaperUri(
+                homeWallpaperUri = configuredHomeWallpaperUri,
+                splashWallpaperUri = splashWallpaperUri
+            )
+        }
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
+        val shouldRenderGlobalHomeWallpaper = currentRoute != null &&
+            effectiveHomeSettings.homeWallpaperEffectScope == HomeWallpaperEffectScope.GLOBAL &&
+            currentRoute != ScreenRoutes.Home.route
+        val globalHomeWallpaperAppearance = remember(
+            globalHomeWallpaperUri,
+            effectiveHomeSettings.homeWallpaperEffectMode,
+            shouldRenderGlobalHomeWallpaper,
+            isLightBackground
+        ) {
+            resolveHomeWallpaperBackdropAppearance(
+                hasWallpaper = shouldRenderGlobalHomeWallpaper && globalHomeWallpaperUri.isNotBlank(),
+                effectMode = effectiveHomeSettings.homeWallpaperEffectMode,
+                isDarkTheme = !isLightBackground,
+                isDataSaverActive = false
+            )
+        }
         var previousRouteForStopPolicy by remember { mutableStateOf<String?>(null) }
         var previousVideoBvidForStopPolicy by remember { mutableStateOf<String?>(null) }
 
@@ -611,14 +644,19 @@ fun AppNavigation(
         }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+        LaunchedEffect(currentRoute) {
+            scrollOffsetState.floatValue = 0f
+        }
 
-        // [LayerBackdrop] Create backdrop for bottom bar refraction effect
-        // This captures the NavHost content and allows the bottom bar to refract it
+        // [LayerBackdrop] Create backdrop for bottom bar refraction effect.
+        // Capture the wallpaper and NavHost content together so transparent wallpaper-aware
+        // pages feed the same background into the floating dock as Home.
         val bottomBarBackdrop = rememberLayerBackdrop()
 
         CompositionLocalProvider(
             LocalSetBottomBarVisible provides setBottomBarVisible,
             LocalBottomBarVisible provides finalBottomBarVisible,
+            LocalGlobalWallpaperBackdropVisible provides globalHomeWallpaperAppearance.visible,
             com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel,
             LocalDynamicScrollChannel provides dynamicScrollChannel,
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
@@ -627,17 +665,23 @@ fun AppNavigation(
                 navController.navigateUp()
             }
             Box(modifier = Modifier.fillMaxSize()) {
-            // ===== 内容层 (hazeSource) =====
-            // 这个 Box 包裹所有 NavHost 内容，作为底栏模糊的源
-            // [LayerBackdrop] Apply layerBackdrop to capture content for bottom bar refraction
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .layerBackdrop(bottomBarBackdrop)
-                    // [Fix] 将内容标记为全局底栏模糊的源
-                    // 必须添加 hazeSource，否则底栏的 hazeEffect 无法获取背景内容，导致模糊失效
-                    .then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)
-            ) {
+                // ===== 内容层 (hazeSource) =====
+                // 这个 Box 包裹全局壁纸和所有 NavHost 内容，作为底栏模糊/折射的源
+                // [LayerBackdrop] Apply layerBackdrop before the bottom bar sibling so the dock
+                // captures wallpaper + page content, but never captures itself.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .layerBackdrop(bottomBarBackdrop)
+                        // [Fix] 将内容标记为全局底栏模糊的源
+                        // 必须添加 hazeSource，否则底栏的 hazeEffect 无法获取背景内容，导致模糊失效
+                        .then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)
+                ) {
+                    HomeWallpaperBackdrop(
+                        wallpaperUri = globalHomeWallpaperUri,
+                        appearance = globalHomeWallpaperAppearance,
+                        baseColor = backgroundColor
+                    )
                 val settingsEnterTransition:
                     AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
                     slideEnterLeft(navMotionSpec)
@@ -2506,6 +2550,7 @@ fun AppNavigation(
                                     itemColorIndices = bottomBarItemColors,
                                     dynamicUnreadCount = dynamicUnreadCount,
                                     homeSettings = effectiveHomeSettings,
+                                    scrollOffset = scrollOffsetState.floatValue,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                     forceLowBlurBudget = false,
@@ -2542,6 +2587,7 @@ fun AppNavigation(
                                 itemColorIndices = bottomBarItemColors,
                                 dynamicUnreadCount = dynamicUnreadCount,
                                 homeSettings = effectiveHomeSettings,
+                                scrollOffset = scrollOffsetState.floatValue,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                 forceLowBlurBudget = false,

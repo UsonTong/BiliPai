@@ -24,6 +24,9 @@ data class CommandDanmakuItem(
     val attentionType: Int = 0
 )
 
+internal const val COMMAND_DANMAKU_OVERLAY_DURATION_MS = 3000L
+private const val LEGACY_ADVANCED_COMMAND_DURATION_MS = 5000L
+
 private val NON_VISUAL_COMMAND_TYPES = setOf(
     "UPOWER_STATE",
     "UPGRADE_STATE",
@@ -46,7 +49,7 @@ internal fun buildCommandDanmaku(cmd: DanmakuProto.CommandDm): AdvancedDanmakuDa
         id = "cmd_${cmd.id}",
         content = text,
         startTimeMs = cmd.progress.coerceAtLeast(0).toLong(),
-        durationMs = 5000,
+        durationMs = LEGACY_ADVANCED_COMMAND_DURATION_MS,
         startX = 0.5f,
         startY = 0.1f,
         fontSize = 20f,
@@ -82,10 +85,7 @@ internal fun buildCommandDanmakuItem(cmd: DanmakuProto.CommandDm): CommandDanmak
             else -> text
         },
         startTimeMs = cmd.progress.coerceAtLeast(0).toLong(),
-        durationMs = when (type) {
-            CommandDanmakuType.ATTENTION -> extractJsonLong(extra, "duration")?.coerceAtLeast(1000L) ?: 5000L
-            else -> 5000L
-        },
+        durationMs = COMMAND_DANMAKU_OVERLAY_DURATION_MS,
         iconUrl = extractJsonString(extra, "icon").orEmpty(),
         linkAid = extractJsonLong(extra, "aid") ?: 0L,
         linkBvid = extractJsonString(extra, "bvid").orEmpty(),

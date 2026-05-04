@@ -82,9 +82,9 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.HandThumbsup
 import com.android.purebilibili.core.ui.AppIcons
 import com.android.purebilibili.core.util.HapticType
 import com.android.purebilibili.core.util.rememberHapticFeedback
+import com.android.purebilibili.feature.video.usecase.applyPlaybackButtonUserAction
 import com.android.purebilibili.feature.video.usecase.playPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
-import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
 import com.android.purebilibili.feature.cast.DeviceListDialog
 import com.android.purebilibili.feature.cast.DlnaManager
 import com.android.purebilibili.feature.cast.LocalProxyServer
@@ -926,12 +926,12 @@ fun VideoPlayerOverlay(
             onSeekTo?.invoke(0L) ?: player.seekTo(0L)
             playPlayerFromUserAction(player)
             isPlaying = true
-        } else if (isPlaying) {
-            togglePlayerPlaybackFromUserAction(player)
-            isPlaying = false
         } else {
-            playPlayerFromUserAction(player)
-            isPlaying = true
+            applyPlaybackButtonUserAction(
+                player = player,
+                isShowingPauseIcon = isPlaying
+            )
+            isPlaying = !isPlaying
         }
     }
 

@@ -45,6 +45,19 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
+    fun pagerToCategorySync_waitsDuringProgrammaticPageSwitch() {
+        val shouldSwitch = shouldSwitchHomeCategoryFromPager(
+            hasSyncedPagerWithState = true,
+            pagerCurrentPage = 0,
+            pagerScrolling = false,
+            currentCategoryIndex = 1,
+            programmaticPageSwitchInProgress = true
+        )
+
+        assertFalse(shouldSwitch)
+    }
+
+    @Test
     fun pagerSettledAction_routesToLivePage_whenSettledCategoryIsLive() {
         val action = resolveHomePagerSettledAction(
             hasSyncedPagerWithState = true,
@@ -84,6 +97,20 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
+    fun pagerSettledAction_isNone_duringProgrammaticPageSwitch() {
+        val action = resolveHomePagerSettledAction(
+            hasSyncedPagerWithState = true,
+            pagerCurrentPage = 0,
+            pagerScrolling = false,
+            currentCategoryIndex = 1,
+            settledCategory = HomeCategory.RECOMMEND,
+            programmaticPageSwitchInProgress = true
+        )
+
+        assertEquals(HomePagerSettledAction.NONE, action)
+    }
+
+    @Test
     fun initialPagerSync_usesSnapWhenTargetExists() {
         assertTrue(
             shouldUseInitialHomePagerSnap(
@@ -107,8 +134,8 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
-    fun pagerAnimation_skipsWhileProgrammaticSwitchAlreadyRunning() {
-        assertFalse(
+    fun pagerAnimation_stillRunsForProgrammaticTopTabSelection() {
+        assertTrue(
             shouldAnimateHomePagerToCategory(
                 hasSyncedPagerWithState = true,
                 targetPage = 3,

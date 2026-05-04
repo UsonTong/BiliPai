@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-05-01 · 文档已同步至 v8.0.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-03 · 文档已同步至 v8.0.3（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.3-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -610,15 +610,18 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.1 · 2026-05-01)
+### 最近更新 (v8.0.3 · 2026-05-03)
 
-- 🧠 优化「今日推荐单」算法：新增轻松/学习模式聚焦评分、主题去重、偏好 UP 分组和“不感兴趣”负反馈降权。
-- 📊 今日推荐单设置页新增“推荐依据”，展示当前模式侧重点、近期偏好 UP、最近不感兴趣样本和已降权信号。
-- 🔌 新增内置「CDN 属地优选」插件，默认关闭，面向 CDN 线路不稳定、跨地区网络或海外出口用户。
-- 🛠️ 修复 CDN 插件海外 catalog 与旧缓存 host 导致播放异常的问题，始终保留原始播放 URL 作为回退线路。
-- 📚 同步插件开发入口：[JSON / 外部插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK 中文文档](plugins/sdk/README.md)。
-- 🧩 插件中心区分内置插件能力与外部插件授权文案，官方内置插件作者统一为 `BiliPai项目组`。
-- 🔖 版本号升级到 `8.0.1`，`versionCode` 升级到 `174`。
+- 🧭 合入 PR #273（作者 `chenx-dust`，merge commit `b4ae9235`）：优化平板/折叠屏视频页与“我的”页面空间利用率、侧边栏按钮和导航栏 padding。
+- 🔎 优化全局壁纸/玻璃背景下的搜索顶栏显示，避免重复叠加模糊层。
+- 🏷️ 首页卡片封面统计标签支持收缩和省略，减少播放量、评论、在线人数和时长标签挤压。
+- 💬 命令弹幕交互提示支持关闭单条提示，并优化关注/一键三连卡片留白。
+- ⚡ 调整长按倍速锁定灵敏度，降低非全屏播放误触锁定概率。
+- 🖼️ 修复首页背景图片设置后可能出现两张图片上下分离或重叠的问题。
+- 🎛️ 播放器缩小选项改为视频方向策略：关闭、竖屏、横屏、全部，选择竖屏时横屏视频不再触发缩小。
+- 🧩 拆出竖屏内联播放器宿主组件，降低 `VideoDetailScreen` 方法体积，避免 `MethodTooLarge`。
+- ✅ 补充平板/动态、搜索、命令弹幕、首页背景和播放器策略相关目标单元测试。
+- 🔖 版本号升级到 `8.0.3`，`versionCode` 升级到 `176`。
 
 ### 历史版本
 

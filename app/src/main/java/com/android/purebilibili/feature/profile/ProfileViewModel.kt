@@ -556,6 +556,115 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun setCustomSplashWallpaper(
+        uri: String,
+        mobileBias: Float? = null,
+        tabletBias: Float? = null,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _splashSaveState.value = WallpaperSaveState.Loading
+            try {
+                val context = getApplication<Application>()
+                SettingsManager.setSplashWallpaperUri(context, uri)
+                SettingsManager.setSplashEnabled(context, true)
+                SettingsManager.setSplashRandomEnabled(context, false)
+                mobileBias?.let { SettingsManager.setSplashAlignment(context, isTablet = false, bias = it) }
+                tabletBias?.let { SettingsManager.setSplashAlignment(context, isTablet = true, bias = it) }
+
+                withContext(Dispatchers.Main) {
+                    _splashSaveState.value = WallpaperSaveState.Success
+                    onComplete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _splashSaveState.value = WallpaperSaveState.Error(e.message ?: "保存出错")
+            } finally {
+                if (_splashSaveState.value is WallpaperSaveState.Success) {
+                    _splashSaveState.value = WallpaperSaveState.Idle
+                }
+            }
+        }
+    }
+
+    fun setAsHomeWallpaper(
+        url: String,
+        saveToGallery: Boolean = false,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _splashSaveState.value = WallpaperSaveState.Loading
+            try {
+                val context = getApplication<Application>()
+                var finalUrl = url
+                if (finalUrl.startsWith("//")) {
+                    finalUrl = "https:$finalUrl"
+                } else if (finalUrl.startsWith("http://")) {
+                    finalUrl = finalUrl.replace("http://", "https://")
+                }
+
+                val request = okhttp3.Request.Builder().url(finalUrl).build()
+                val response = NetworkModule.okHttpClient.newCall(request).execute()
+
+                if (response.isSuccessful && response.body != null) {
+                    val bytes = response.body!!.bytes()
+                    val homeWallpaperDir = File(context.filesDir, "home_wallpaper")
+                    if (!homeWallpaperDir.exists()) homeWallpaperDir.mkdirs()
+                    val destFile = File(homeWallpaperDir, "home_bg_${System.currentTimeMillis()}.jpg")
+
+                    FileOutputStream(destFile).use { output ->
+                        output.write(bytes)
+                    }
+
+                    SettingsManager.setHomeWallpaperUri(context, Uri.fromFile(destFile).toString())
+
+                    if (saveToGallery) {
+                        saveImageToGallery(context, bytes, "bili_home_${System.currentTimeMillis()}.jpg")
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        _splashSaveState.value = WallpaperSaveState.Success
+                        onComplete()
+                    }
+                } else {
+                    _splashSaveState.value = WallpaperSaveState.Error("下载失败: ${response.code}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _splashSaveState.value = WallpaperSaveState.Error(e.message ?: "保存出错")
+            } finally {
+                if (_splashSaveState.value is WallpaperSaveState.Success) {
+                    _splashSaveState.value = WallpaperSaveState.Idle
+                }
+            }
+        }
+    }
+
+    fun setCustomHomeWallpaper(
+        uri: String,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _splashSaveState.value = WallpaperSaveState.Loading
+            try {
+                val context = getApplication<Application>()
+                SettingsManager.setHomeWallpaperUri(context, uri)
+
+                withContext(Dispatchers.Main) {
+                    _splashSaveState.value = WallpaperSaveState.Success
+                    onComplete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _splashSaveState.value = WallpaperSaveState.Error(e.message ?: "保存出错")
+            } finally {
+                if (_splashSaveState.value is WallpaperSaveState.Success) {
+                    _splashSaveState.value = WallpaperSaveState.Idle
+                }
+            }
+        }
+    }
+
     private fun saveImageToGallery(context: Context, bytes: ByteArray, fileName: String) {
         try {
             val contentValues = android.content.ContentValues().apply {

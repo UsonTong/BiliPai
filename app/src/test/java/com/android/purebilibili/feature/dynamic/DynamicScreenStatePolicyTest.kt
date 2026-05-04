@@ -12,16 +12,16 @@ import kotlin.test.assertTrue
 class DynamicScreenStatePolicyTest {
 
     @Test
-    fun `horizontal dynamic header should use tighter list top padding`() {
+    fun `horizontal dynamic header reserves top user list height at rest`() {
         assertEquals(
-            168,
+            204,
             resolveDynamicListTopPaddingExtraDp(
                 isHorizontalMode = true,
                 isHorizontalUserListCollapsed = false
             )
         )
         assertEquals(
-            100,
+            116,
             resolveDynamicListTopPaddingExtraDp(
                 isHorizontalMode = true,
                 isHorizontalUserListCollapsed = true

@@ -1417,12 +1417,10 @@ class DanmakuManager private constructor(
                         commandItemList = viewReply.commandDms.mapNotNull { cmd ->
                             buildCommandDanmakuItem(cmd)
                         }
-                        commandDmList = viewReply.commandDms.mapNotNull { cmd ->
-                            buildCommandDanmaku(cmd)
-                        }
+                        commandDmList = emptyList()
                         Log.w(
                             TAG,
-                            " Converted ${commandDmList.size}/${viewReply.commandDms.size} Command Dms to AdvancedDanmakuData"
+                            " Converted ${commandItemList.size}/${viewReply.commandDms.size} Command Dms to overlay cards"
                         )
                     }
                     

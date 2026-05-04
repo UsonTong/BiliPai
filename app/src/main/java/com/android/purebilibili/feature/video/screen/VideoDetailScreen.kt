@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -509,6 +510,104 @@ internal fun resolveVideoPlayerSectionTarget(
         bvid = resolvedBvid,
         entryCoverUrl = resolvedCoverUrl
     )
+}
+
+@Composable
+private fun PortraitInlineVideoPlayerHost(
+    modifier: Modifier,
+    animatedViewportWidth: Dp,
+    animatedViewportHeight: Dp,
+    inlinePlayerAlpha: Float,
+    context: Context,
+    playerState: VideoPlayerState,
+    uiState: PlayerUiState,
+    isPipMode: Boolean,
+    transitionEnabled: Boolean,
+    onToggleFullscreen: () -> Unit,
+    viewModel: PlayerViewModel,
+    onBack: () -> Unit,
+    onHomeClick: () -> Unit,
+    videoPlayerSectionTarget: VideoPlayerSectionTarget,
+    sponsorSegment: com.android.purebilibili.data.model.response.SponsorSegment?,
+    showSponsorSkipButton: Boolean,
+    sleepTimerMinutes: Int?,
+    viewPoints: List<ViewPoint>,
+    sponsorProgressMarkers: List<com.android.purebilibili.data.model.response.SponsorProgressMarker>,
+    isVerticalVideo: Boolean,
+    onPortraitFullscreen: () -> Unit,
+    isPortraitFullscreen: Boolean,
+    onPipClick: () -> Unit,
+    codecPreference: String,
+    secondCodecPreference: String,
+    audioQualityPreference: Int,
+    onNavigateToAudioMode: () -> Unit,
+    forceCoverOnly: Boolean,
+    allowLivePlayerSharedElement: Boolean,
+    suppressSubtitleOverlay: Boolean,
+    subtitleDisplayModePreferenceOverride: SubtitleDisplayMode?,
+    onSubtitleDisplayModePreferenceOverrideChange: (SubtitleDisplayMode) -> Unit
+) {
+    val successState = uiState as? PlayerUiState.Success
+
+    Box(
+        modifier = modifier
+            .width(animatedViewportWidth)
+            .height(animatedViewportHeight)
+            .alpha(inlinePlayerAlpha)
+    ) {
+        VideoPlayerSection(
+            playerState = playerState,
+            uiState = uiState,
+            isFullscreen = false,
+            isInPipMode = isPipMode,
+            transitionEnabled = transitionEnabled,
+            onToggleFullscreen = onToggleFullscreen,
+            onQualityChange = { qid -> viewModel.changeQuality(qid) },
+            onBack = onBack,
+            onHomeClick = onHomeClick,
+            onDanmakuInputClick = { viewModel.showDanmakuSendDialog() },
+            bvid = videoPlayerSectionTarget.bvid,
+            coverUrl = videoPlayerSectionTarget.entryCoverUrl,
+            onDoubleTapLike = { viewModel.toggleLike() },
+            sponsorSegment = sponsorSegment,
+            showSponsorSkipButton = showSponsorSkipButton,
+            onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
+            onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
+            onReloadVideo = { viewModel.reloadVideo() },
+            currentCdnIndex = successState?.currentCdnIndex ?: 0,
+            cdnCount = successState?.cdnCount ?: 1,
+            onSwitchCdn = { viewModel.switchCdn() },
+            onSwitchCdnTo = { viewModel.switchCdnTo(it) },
+            isAudioOnly = false,
+            onAudioOnlyToggle = onNavigateToAudioMode,
+            sleepTimerMinutes = sleepTimerMinutes,
+            onSleepTimerChange = { viewModel.setSleepTimer(it) },
+            videoshotData = successState?.videoshotData,
+            viewPoints = viewPoints,
+            sponsorMarkers = sponsorProgressMarkers,
+            onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
+            isVerticalVideo = isVerticalVideo,
+            onPortraitFullscreen = onPortraitFullscreen,
+            isPortraitFullscreen = isPortraitFullscreen,
+            viewportWidthDpOverride = animatedViewportWidth.value.roundToInt(),
+            onPipClick = onPipClick,
+            currentCodec = codecPreference,
+            onCodecChange = { viewModel.setVideoCodec(it) },
+            currentSecondCodec = secondCodecPreference,
+            onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
+            currentAudioQuality = audioQualityPreference,
+            onAudioQualityChange = { viewModel.setAudioQuality(it) },
+            onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
+            onAudioLangChange = { viewModel.changeAudioLanguage(it) },
+            onSaveCover = { viewModel.saveCover(context) },
+            onDownloadAudio = { viewModel.downloadAudio(context) },
+            forceCoverOnly = forceCoverOnly,
+            allowLivePlayerSharedElement = allowLivePlayerSharedElement,
+            suppressSubtitleOverlay = suppressSubtitleOverlay,
+            subtitleDisplayModePreferenceOverride = subtitleDisplayModePreferenceOverride,
+            onSubtitleDisplayModePreferenceOverrideChange = onSubtitleDisplayModePreferenceOverrideChange
+        )
+    }
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -2038,6 +2137,7 @@ fun VideoDetailScreen(
                 onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
                 currentAudioQuality = audioQualityPreference,
                 onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                 // [New] Audio Language
                 onAudioLangChange = { viewModel.changeAudioLanguage(it) },
                 
@@ -2195,7 +2295,8 @@ fun VideoDetailScreen(
                         .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
                     val inlinePortraitScrollEnabled = shouldEnableInlinePortraitScrollTransform(
                         collapseMode = portraitPlayerCollapseMode,
-                        selectedTabIndex = selectedVideoContentTabIndex
+                        selectedTabIndex = selectedVideoContentTabIndex,
+                        isVerticalVideo = isVerticalVideo
                     )
                     var introFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
                     var introFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
@@ -2209,7 +2310,8 @@ fun VideoDetailScreen(
                             isCommentThreadVisible = subReplyState.visible,
                             firstVisibleItemIndex = commentFirstVisibleItemIndex,
                             firstVisibleItemScrollOffset = commentFirstVisibleItemScrollOffset,
-                            collapseMode = portraitPlayerCollapseMode
+                            collapseMode = portraitPlayerCollapseMode,
+                            isVerticalVideo = isVerticalVideo
                         )
                     val compactInlinePlayerForIntroScroll =
                         shouldUseCompactInlinePortraitPlayerForIntroScroll(
@@ -2218,7 +2320,8 @@ fun VideoDetailScreen(
                             isPortraitFullscreen = isPortraitFullscreen,
                             firstVisibleItemIndex = introFirstVisibleItemIndex,
                             firstVisibleItemScrollOffset = introFirstVisibleItemScrollOffset,
-                            collapseMode = portraitPlayerCollapseMode
+                            collapseMode = portraitPlayerCollapseMode,
+                            isVerticalVideo = isVerticalVideo
                         )
                     
                     // 📏 [Collapsing Player] 上滑隐藏播放器逻辑
@@ -2428,105 +2531,56 @@ fun VideoDetailScreen(
                                 .fillMaxSize()
                                 .padding(top = statusBarHeight)
                         ) {
-                        Box(
-                            modifier = Modifier
-                                .width(animatedViewportWidth)
-                                .height(animatedViewportHeight)
-                                .align(Alignment.TopCenter)
-                                // Fade with the pager so exiting portrait mode no longer hard-cuts.
-                                .alpha(inlinePlayerAlpha)
-                        ) {
-                            VideoPlayerSection(
-                                playerState = playerState,
-                                uiState = uiState,
-                                isFullscreen = false,
-                                isInPipMode = isPipMode,
-                                transitionEnabled = transitionEnabled,
-                                onToggleFullscreen = { toggleFullscreen() },
-                                onQualityChange = { qid -> viewModel.changeQuality(qid) },
-                                onBack = handleBack,
-                                onHomeClick = {
-                                    handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
-                                },
-                                onDanmakuInputClick = { viewModel.showDanmakuSendDialog() },
-                                // 🔗 [新增] 分享功能
-                                bvid = videoPlayerSectionTarget.bvid,
-                                coverUrl = videoPlayerSectionTarget.entryCoverUrl,
-                                onDoubleTapLike = { viewModel.toggleLike() },
-                                sponsorSegment = sponsorSegment,
-                                showSponsorSkipButton = showSponsorSkipButton,
-                                onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
-                                onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
-                                //  [新增] 重载视频
-                                onReloadVideo = { viewModel.reloadVideo() },
-                                //  [新增] CDN 线路切换
-                                currentCdnIndex = (uiState as? PlayerUiState.Success)?.currentCdnIndex ?: 0,
-                                cdnCount = (uiState as? PlayerUiState.Success)?.cdnCount ?: 1,
-                                onSwitchCdn = { viewModel.switchCdn() },
-                                onSwitchCdnTo = { viewModel.switchCdnTo(it) },
-                                
-                                //  [新增] 音频模式
-                                isAudioOnly = false,
-                                onAudioOnlyToggle = { 
-                                    viewModel.setAudioMode(true)
-                                    isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
-                                    onNavigateToAudioMode()
-                                },
-                                
-                                //  [新增] 定时关闭
-                                sleepTimerMinutes = sleepTimerMinutes,
-                                onSleepTimerChange = { viewModel.setSleepTimer(it) },
-                                
-                                // 🖼️ [新增] 视频预览图数据
-                                videoshotData = (uiState as? PlayerUiState.Success)?.videoshotData,
-                                
-                                // 📖 [新增] 视频章节数据
-                        viewPoints = viewPoints,
-                        sponsorMarkers = sponsorProgressMarkers,
-                        onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
-                        
-                        // 📱 [新增] 竖屏全屏模式
-                        isVerticalVideo = isVerticalVideo && (allowStandalonePortraitExperience || useOfficialInlinePortraitDetailExperience),
-                        onPortraitFullscreen = {
-                            when (
-                                resolvePortraitFullscreenButtonAction(
-                                    useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience
-                                )
-                            ) {
-                                PortraitFullscreenButtonAction.ENTER_PORTRAIT_FULLSCREEN -> {
-                                    enterPortraitFullscreen()
+                        PortraitInlineVideoPlayerHost(
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            animatedViewportWidth = animatedViewportWidth,
+                            animatedViewportHeight = animatedViewportHeight,
+                            inlinePlayerAlpha = inlinePlayerAlpha,
+                            context = context,
+                            playerState = playerState,
+                            uiState = uiState,
+                            isPipMode = isPipMode,
+                            transitionEnabled = transitionEnabled,
+                            onToggleFullscreen = { toggleFullscreen() },
+                            viewModel = viewModel,
+                            onBack = handleBack,
+                            onHomeClick = {
+                                handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
+                            },
+                            videoPlayerSectionTarget = videoPlayerSectionTarget,
+                            sponsorSegment = sponsorSegment,
+                            showSponsorSkipButton = showSponsorSkipButton,
+                            sleepTimerMinutes = sleepTimerMinutes,
+                            viewPoints = viewPoints,
+                            sponsorProgressMarkers = sponsorProgressMarkers,
+                            isVerticalVideo = isVerticalVideo && (allowStandalonePortraitExperience || useOfficialInlinePortraitDetailExperience),
+                            onPortraitFullscreen = {
+                                when (
+                                    resolvePortraitFullscreenButtonAction(
+                                        useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience
+                                    )
+                                ) {
+                                    PortraitFullscreenButtonAction.ENTER_PORTRAIT_FULLSCREEN -> {
+                                        enterPortraitFullscreen()
+                                    }
                                 }
-                            }
-	                        },
-	                        isPortraitFullscreen = isPortraitFullscreen,
-	                        viewportWidthDpOverride = animatedViewportWidth.value.roundToInt(),
-
-                                // 📲 [修复] 小窗模式 - 转移到应用内小窗而非直接进入系统 PiP
-                                onPipClick = handlePipClick,
-                                // [New] Codec & Audio
-                                currentCodec = codecPreference,
-                                onCodecChange = { viewModel.setVideoCodec(it) },
-                                currentSecondCodec = secondCodecPreference,
-                                onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
-                                currentAudioQuality = audioQualityPreference,
-                                onAudioQualityChange = { viewModel.setAudioQuality(it) },
-                                // [New] Audio Language
-                                onAudioLangChange = { viewModel.changeAudioLanguage(it) },
-                                // [New Actions]
-                                onSaveCover = { viewModel.saveCover(context) },
-                                onDownloadAudio = { viewModel.downloadAudio(context) },
-                                forceCoverOnly = forceCoverOnlyForReturn,
-                                allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
-                                suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
-                                subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
-                                onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it }
-                                //  空降助手 - 已由插件系统自动处理
-                                // sponsorSegment = sponsorSegment,
-                                // showSponsorSkipButton = showSponsorSkipButton,
-                                // onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
-                                // onSponsorDismiss = { viewModel.dismissSponsorSkipButton() }
-                            )
-                        }
+                            },
+                            isPortraitFullscreen = isPortraitFullscreen,
+                            onPipClick = handlePipClick,
+                            codecPreference = codecPreference,
+                            secondCodecPreference = secondCodecPreference,
+                            audioQualityPreference = audioQualityPreference,
+                            onNavigateToAudioMode = {
+                                viewModel.setAudioMode(true)
+                                isNavigatingToAudioMode = true
+                                onNavigateToAudioMode()
+                            },
+                            forceCoverOnly = forceCoverOnlyForReturn,
+                            allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
+                            suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
+                            subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
+                            onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it }
+                        )
                         }
                     }
                     

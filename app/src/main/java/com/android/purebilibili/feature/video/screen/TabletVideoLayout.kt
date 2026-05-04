@@ -211,6 +211,7 @@ fun TabletVideoLayout(
                             onSecondCodecChange = onSecondCodecChange,
                             currentAudioQuality = currentAudioQuality,
                             onAudioQualityChange = onAudioQualityChange,
+                            onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                             // [New Actions]
                             onSaveCover = { viewModel.saveCover(context) },
                             onDownloadAudio = { viewModel.downloadAudio(context) },

@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.home.components.cards
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +18,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 //  Cupertino Icons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
@@ -42,7 +45,6 @@ import com.android.purebilibili.core.util.animateEnter
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.core.theme.BiliPink
-import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
 import com.android.purebilibili.core.theme.iOSCornerRadius
 import com.android.purebilibili.core.util.HapticType
@@ -62,6 +64,7 @@ import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RAT
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
+import com.android.purebilibili.feature.home.resolveHomeCardInfoSurfaceAppearance
 import com.android.purebilibili.feature.home.rememberHomeGlassPillColors
 import com.android.purebilibili.feature.home.resolveHomeGlassCoverPillBaseColor
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
@@ -120,6 +123,26 @@ internal fun resolveVideoCardCoverCacheKey(
     return "cover_${normalizedIdentity}_${qualityTag}"
 }
 
+internal data class HomeVideoCardMetadataColors(
+    val upNameColor: Color,
+    val upMetaColor: Color,
+    val upBadgeTextColor: Color,
+    val upBadgeBackgroundColor: Color,
+    val publishTimeColor: Color
+)
+
+internal fun resolveHomeVideoCardMetadataColors(
+    onSurfaceColor: Color
+): HomeVideoCardMetadataColors {
+    return HomeVideoCardMetadataColors(
+        upNameColor = onSurfaceColor,
+        upMetaColor = onSurfaceColor.copy(alpha = 0.82f),
+        upBadgeTextColor = onSurfaceColor.copy(alpha = 0.68f),
+        upBadgeBackgroundColor = onSurfaceColor.copy(alpha = 0.10f),
+        publishTimeColor = onSurfaceColor.copy(alpha = 0.72f)
+    )
+}
+
 /**
  *  官方 B 站风格视频卡片
  * 采用与 Bilibili 官方 App 一致的设计：
@@ -148,6 +171,8 @@ fun ElegantVideoCard(
     compactStatsOnCover: Boolean = true, // 播放量/评论数是否贴在封面底部
     showCoverGlassBadges: Boolean = true,
     showInfoGlassBadges: Boolean = true,
+    wallpaperTintEnabled: Boolean = false,
+    wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     showUpBadge: Boolean = true,
     showDurationBadge: Boolean = true,
     showOnlineCount: Boolean = false,
@@ -198,6 +223,15 @@ fun ElegantVideoCard(
         emphasized = false,
         baseColor = MaterialTheme.colorScheme.surface
     )
+    val isDarkCardTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val infoSurfaceAppearance = remember(wallpaperTintEnabled, wallpaperEffectMode, isDarkCardTheme, isDataSaverActive) {
+        resolveHomeCardInfoSurfaceAppearance(
+            wallpaperTintEnabled = wallpaperTintEnabled,
+            wallpaperEffectMode = wallpaperEffectMode,
+            isDarkTheme = isDarkCardTheme,
+            isDataSaverActive = isDataSaverActive
+        )
+    }
     val scrollLitePolicy = remember(scrollLiteModeEnabled, compactStatsOnCover) {
         resolveVideoCardScrollLiteVisualPolicy(
             scrollLiteModeEnabled = scrollLiteModeEnabled,
@@ -338,8 +372,22 @@ fun ElegantVideoCard(
             }
             .padding(bottom = 12.dp)
     ) {
+        val connectedCardShape = remember(cardCornerRadius) { RoundedCornerShape(cardCornerRadius) }
+        val cardContainerModifier = if (infoSurfaceAppearance.useTintedSurface) {
+            Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
+                    shape = connectedCardShape,
+                    ambientColor = Color.Black.copy(alpha = 0.08f),
+                    spotColor = Color.Black.copy(alpha = 0.10f),
+                    clip = false
+                )
+        } else {
+            Modifier.fillMaxWidth()
+        }
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = cardContainerModifier
         ) {
         //  尝试获取共享元素作用域
         val sharedTransitionScope = LocalSharedTransitionScope.current
@@ -375,7 +423,18 @@ fun ElegantVideoCard(
         }
         
         //  [性能优化] 封面圆角形状缓存（避免重组时重复创建）
-        val coverShape = remember(cardCornerRadius) { RoundedCornerShape(cardCornerRadius) }
+        val coverShape = remember(cardCornerRadius, infoSurfaceAppearance.useTintedSurface) {
+            if (infoSurfaceAppearance.useTintedSurface) {
+                RoundedCornerShape(
+                    topStart = cardCornerRadius,
+                    topEnd = cardCornerRadius,
+                    bottomStart = 0.dp,
+                    bottomEnd = 0.dp
+                )
+            } else {
+                RoundedCornerShape(cardCornerRadius)
+            }
+        }
 
         Box(
             modifier = coverModifier
@@ -383,7 +442,7 @@ fun ElegantVideoCard(
                 .aspectRatio(VIDEO_SHARED_COVER_ASPECT_RATIO)
                 // [性能优化] 使用 shadow(clip = true) 合并裁剪和阴影层，避免创建额外的 GraphicsLayer
                 .shadow(
-                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
+                    elevation = if (infoSurfaceAppearance.useTintedSurface) 0.dp else scrollLitePolicy.coverShadowElevationDp.dp,
                     shape = coverShape,
                     ambientColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.08f),
                     spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.10f),
@@ -518,24 +577,25 @@ fun ElegantVideoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    var viewsOnCoverModifier = Modifier.wrapContentSize()
-                    if (metadataSharedEnabled) {
-                        with(requireNotNull(sharedTransitionScope)) {
-                            viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
-                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ ->
-                                    com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
-                                }
-                            )
-                        }
-                    }
                     Row(
-                        modifier = viewsOnCoverModifier,
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        var viewsOnCoverModifier = Modifier.weight(1f, fill = false)
+                        if (metadataSharedEnabled) {
+                            with(requireNotNull(sharedTransitionScope)) {
+                                viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
+                                    animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                                    boundsTransform = { _, _ ->
+                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                    }
+                                )
+                            }
+                        }
                         HomeVideoBadgePill(
+                            modifier = viewsOnCoverModifier,
                             style = badgeStylePolicy.coverStyle,
                             shape = RoundedCornerShape(999.dp),
                             containerColor = coverPillColors.containerColor,
@@ -555,57 +615,66 @@ fun ElegantVideoCard(
                                 },
                                 color = Color.White.copy(alpha = 0.94f),
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
 
-                    val commentCount = video.stat.reply.takeIf { it > 0 } ?: video.stat.danmaku
-                    if (commentCount > 0) {
-                        HomeVideoBadgePill(
-                            style = badgeStylePolicy.coverStyle,
-                            shape = RoundedCornerShape(999.dp),
-                            containerColor = coverPillColors.containerColor,
-                            borderColor = coverPillColors.borderColor
-                        ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Outlined.BubbleLeft,
-                                contentDescription = null,
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White.copy(alpha = 0.90f)
-                            )
-                            Text(
-                                text = FormatUtils.formatStat(commentCount.toLong()),
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                        val commentCount = video.stat.reply.takeIf { it > 0 } ?: video.stat.danmaku
+                        if (commentCount > 0) {
+                            HomeVideoBadgePill(
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = badgeStylePolicy.coverStyle,
+                                shape = RoundedCornerShape(999.dp),
+                                containerColor = coverPillColors.containerColor,
+                                borderColor = coverPillColors.borderColor
+                            ) {
+                                Icon(
+                                    imageVector = CupertinoIcons.Outlined.BubbleLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White.copy(alpha = 0.90f)
+                                )
+                                Text(
+                                    text = FormatUtils.formatStat(commentCount.toLong()),
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (onlineCount.isNotEmpty()) {
+                            HomeVideoBadgePill(
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = badgeStylePolicy.coverStyle,
+                                shape = RoundedCornerShape(999.dp),
+                                containerColor = coverPillColors.containerColor,
+                                borderColor = coverPillColors.borderColor
+                            ) {
+                                Icon(
+                                    imageVector = CupertinoIcons.Outlined.Eye,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White.copy(alpha = 0.90f)
+                                )
+                                Text(
+                                    text = onlineCount,
+                                    color = Color.White.copy(alpha = 0.90f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
-
-                    if (onlineCount.isNotEmpty()) {
-                        HomeVideoBadgePill(
-                            style = badgeStylePolicy.coverStyle,
-                            shape = RoundedCornerShape(999.dp),
-                            containerColor = coverPillColors.containerColor,
-                            borderColor = coverPillColors.borderColor
-                        ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Outlined.Eye,
-                                contentDescription = null,
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White.copy(alpha = 0.90f)
-                            )
-                            Text(
-                                text = onlineCount,
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
 
                     //  时长标签 (与播放量/评论数同行对齐)
                     if (showDurationBadge && badgeStylePolicy.coverStyle == HomeVideoBadgeStyle.GLASS) {
@@ -707,7 +776,35 @@ fun ElegantVideoCard(
             
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        val infoSurfaceShape = remember(cardCornerRadius) {
+            RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = cardCornerRadius,
+                bottomEnd = cardCornerRadius
+            )
+        }
+        val infoContainerModifier = if (infoSurfaceAppearance.useTintedSurface) {
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = infoSurfaceAppearance.containerAlpha),
+                    shape = infoSurfaceShape
+                )
+                .border(
+                    width = 0.8.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = infoSurfaceAppearance.borderAlpha),
+                    shape = infoSurfaceShape
+                )
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        } else {
+            Modifier.fillMaxWidth()
+        }
+
+        Column(modifier = infoContainerModifier) {
+        if (!infoSurfaceAppearance.useTintedSurface) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         
         // 标题行：标题 + 更多按钮
         Row(
@@ -827,6 +924,10 @@ fun ElegantVideoCard(
         
         Spacer(modifier = Modifier.height(6.dp))
         
+        val metadataColors = resolveHomeVideoCardMetadataColors(
+            onSurfaceColor = MaterialTheme.colorScheme.onSurface
+        )
+
         //  底部信息行 - 官方 B 站风格
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -931,10 +1032,10 @@ fun ElegantVideoCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal
                 ),
-                nameColor = MaterialTheme.colorScheme.primary,
-                metaColor = MaterialTheme.colorScheme.primary,
-                badgeTextColor = iOSSystemGray.copy(alpha = 0.85f),
-                badgeBackgroundColor = iOSSystemGray.copy(alpha = 0.12f),
+                nameColor = metadataColors.upNameColor,
+                metaColor = metadataColors.upMetaColor,
+                badgeTextColor = metadataColors.upBadgeTextColor,
+                badgeBackgroundColor = metadataColors.upBadgeBackgroundColor,
                 reserveTrailingSlot = true,
                 showUpBadge = showUpBadge,
                 modifier = upNameModifier
@@ -953,7 +1054,7 @@ fun ElegantVideoCard(
                         text = publishTimeRowText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                        color = metadataColors.publishTimeColor.copy(alpha = 0.92f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -963,7 +1064,7 @@ fun ElegantVideoCard(
                 Text(
                     text = publishTimeRowText,
                     fontSize = 11.sp,
-                    color = iOSSystemGray.copy(alpha = 0.7f),
+                    color = metadataColors.publishTimeColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1059,6 +1160,7 @@ fun ElegantVideoCard(
                     }
                 }
             }
+        }
         }
 
     }

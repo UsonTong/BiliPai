@@ -1,13 +1,16 @@
 package com.android.purebilibili.core.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -16,6 +19,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +50,59 @@ enum class AdaptiveTopAppBarStyle {
     LARGE
 }
 
+val LocalGlobalWallpaperBackdropVisible = compositionLocalOf { false }
+
+fun resolveAdaptiveScaffoldContainerColor(
+    requestedContainerColor: Color,
+    defaultBackgroundColor: Color,
+    globalWallpaperVisible: Boolean
+): Color {
+    return if (globalWallpaperVisible && requestedContainerColor == defaultBackgroundColor) {
+        Color.Transparent
+    } else {
+        requestedContainerColor
+    }
+}
+
+fun resolveGlobalWallpaperChromeColor(
+    requestedColor: Color,
+    defaultBackgroundColor: Color,
+    defaultSurfaceColor: Color,
+    globalWallpaperVisible: Boolean
+): Color {
+    if (!globalWallpaperVisible || requestedColor.alpha == 0f) return requestedColor
+    val requestedOpaque = requestedColor.copy(alpha = 1f)
+    return if (
+        requestedOpaque == defaultBackgroundColor.copy(alpha = 1f) ||
+        requestedOpaque == defaultSurfaceColor.copy(alpha = 1f)
+    ) {
+        Color.Transparent
+    } else {
+        requestedColor
+    }
+}
+
+@Composable
+fun globalWallpaperAwareChromeColor(color: Color): Color {
+    return resolveGlobalWallpaperChromeColor(
+        requestedColor = color,
+        defaultBackgroundColor = MaterialTheme.colorScheme.background,
+        defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+        globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    )
+}
+
+@Composable
+fun Modifier.globalWallpaperAwareBackground(
+    color: Color = MaterialTheme.colorScheme.background
+): Modifier {
+    return if (LocalGlobalWallpaperBackdropVisible.current) {
+        this
+    } else {
+        background(color)
+    }
+}
+
 @Composable
 fun AdaptiveScaffold(
     modifier: Modifier = Modifier,
@@ -57,6 +114,11 @@ fun AdaptiveScaffold(
     contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val effectiveContainerColor = resolveAdaptiveScaffoldContainerColor(
+        requestedContainerColor = containerColor,
+        defaultBackgroundColor = MaterialTheme.colorScheme.background,
+        globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    )
     if (rememberIsNativeMiuixEnabled()) {
         MiuixScaffold(
             modifier = modifier,
@@ -64,7 +126,7 @@ fun AdaptiveScaffold(
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
-            containerColor = containerColor,
+            containerColor = effectiveContainerColor,
             contentWindowInsets = contentWindowInsets,
             content = content
         )
@@ -75,7 +137,7 @@ fun AdaptiveScaffold(
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
-            containerColor = containerColor,
+            containerColor = effectiveContainerColor,
             contentWindowInsets = contentWindowInsets,
             content = content
         )
@@ -95,18 +157,38 @@ fun AdaptiveTopAppBar(
     style: AdaptiveTopAppBarStyle = AdaptiveTopAppBarStyle.SMALL,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
+    val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val effectiveColors = if (globalWallpaperVisible) {
+        colors.copy(
+            containerColor = resolveGlobalWallpaperChromeColor(
+                requestedColor = colors.containerColor,
+                defaultBackgroundColor = MaterialTheme.colorScheme.background,
+                defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+                globalWallpaperVisible = true
+            ),
+            scrolledContainerColor = resolveGlobalWallpaperChromeColor(
+                requestedColor = colors.scrolledContainerColor,
+                defaultBackgroundColor = MaterialTheme.colorScheme.background,
+                defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+                globalWallpaperVisible = true
+            )
+        )
+    } else {
+        colors
+    }
+
     if (rememberIsNativeMiuixEnabled()) {
         val navigationContent =
             @Composable {
                 CompositionLocalProvider(
-                    LocalContentColor provides colors.navigationIconContentColor
+                    LocalContentColor provides effectiveColors.navigationIconContentColor
                 ) {
                     navigationIcon()
                 }
             }
         val actionsContent: @Composable RowScope.() -> Unit = {
             CompositionLocalProvider(
-                LocalContentColor provides colors.actionIconContentColor
+                LocalContentColor provides effectiveColors.actionIconContentColor
             ) {
                 actions()
             }
@@ -117,7 +199,7 @@ fun AdaptiveTopAppBar(
                     title = title,
                     largeTitle = largeTitle,
                     modifier = modifier,
-                    color = colors.containerColor,
+                    color = effectiveColors.containerColor,
                     navigationIcon = navigationContent,
                     actions = actionsContent
                 )
@@ -128,7 +210,7 @@ fun AdaptiveTopAppBar(
                 MiuixSmallTopAppBar(
                     title = title,
                     modifier = modifier,
-                    color = colors.containerColor,
+                    color = effectiveColors.containerColor,
                     navigationIcon = navigationContent,
                     actions = actionsContent
                 )
@@ -144,7 +226,7 @@ fun AdaptiveTopAppBar(
                 title = { Text(title) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = colors,
+                colors = effectiveColors,
                 scrollBehavior = scrollBehavior
             )
         }
@@ -155,18 +237,18 @@ fun AdaptiveTopAppBar(
                 title = { Text(title) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = colors,
+                colors = effectiveColors,
                 scrollBehavior = scrollBehavior
             )
         }
 
         AdaptiveTopAppBarStyle.LARGE -> {
-            LargeTopAppBar(
+            TopAppBar(
                 modifier = modifier,
-                title = { Text(largeTitle) },
+                title = { Text(largeTitle, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = colors,
+                colors = effectiveColors,
                 scrollBehavior = scrollBehavior
             )
         }

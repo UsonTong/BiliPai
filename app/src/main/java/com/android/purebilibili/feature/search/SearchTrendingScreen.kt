@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.ui.ComfortablePullToRefreshBox
+import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,9 +81,14 @@ fun SearchTrendingScreen(
                             contentDescription = "刷新"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
+                )
             )
-        }
+        },
+        containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
     ) { paddingValues ->
         when {
             state.isLoading -> Box(

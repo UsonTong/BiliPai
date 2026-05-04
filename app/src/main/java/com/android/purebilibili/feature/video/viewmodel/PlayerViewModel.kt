@@ -8,6 +8,7 @@ import com.android.purebilibili.feature.video.usecase.*
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.android.purebilibili.core.cache.PlayUrlCache
@@ -29,6 +30,7 @@ import com.android.purebilibili.data.repository.ViewGrpcRepository
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
+import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
 import com.android.purebilibili.feature.video.usecase.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -794,6 +796,118 @@ class PlayerViewModel : ViewModel() {
 
     fun dismissQualitySwitchFailureDialog() {
         _qualitySwitchFailureDialog.value = null
+    }
+
+    fun applyPlaybackSpeedFromUi(speed: Float): Boolean {
+        val player = exoPlayer ?: return false
+        val previousSpeed = player.playbackParameters.speed
+        val normalizedSpeed = speed.coerceAtLeast(0.1f)
+        player.playbackParameters = PlaybackParameters(normalizedSpeed, 1.0f)
+
+        val current = _uiState.value as? PlayerUiState.Success ?: return true
+        if (current.isQualitySwitching) return true
+
+        val audioPreference = appContext?.let {
+            com.android.purebilibili.core.store.SettingsManager.getAudioQualitySync(it)
+        } ?: -1
+        if (!shouldRefreshPremiumAudioForPlaybackSpeedChange(
+                requestedAudioQuality = audioPreference,
+                previousPlaybackSpeed = previousSpeed,
+                nextPlaybackSpeed = normalizedSpeed
+            )
+        ) {
+            return true
+        }
+
+        viewModelScope.launch {
+            refreshPlaybackAudioForSpeedCompatibility(
+                current = current,
+                audioPreference = audioPreference,
+                currentPos = player.currentPosition.coerceAtLeast(0L),
+                playWhenReady = player.playWhenReady
+            )
+        }
+        return true
+    }
+
+    private suspend fun refreshPlaybackAudioForSpeedCompatibility(
+        current: PlayerUiState.Success,
+        audioPreference: Int,
+        currentPos: Long,
+        playWhenReady: Boolean
+    ) {
+        val sessionBlockedCodecs = playbackSessionStore.state.value.blockedVideoCodecs
+        val videoCodecPreference = resolveEffectiveVideoCodecPreference(
+            requestCodecOverride = null,
+            settingsCodecPreference = _videoCodecPreference.value,
+            sessionBlockedCodecs = sessionBlockedCodecs
+        )
+        val videoSecondCodecPreference = _videoSecondCodecPreference.value
+        val isHevcSupported = com.android.purebilibili.core.util.MediaUtils.isHevcSupported()
+        val isAv1Supported = resolveEffectiveAv1Support(
+            deviceSupportsAv1 = com.android.purebilibili.core.util.MediaUtils.isAv1Supported(),
+            sessionBlockedCodecs = sessionBlockedCodecs
+        )
+        val result = playbackUseCase.changeQualityFromCache(
+            qualityId = current.currentQuality,
+            cachedVideos = current.cachedDashVideos,
+            cachedAudios = current.cachedDashAudios,
+            currentPos = currentPos,
+            durationMs = current.videoDurationMs,
+            playbackQualityMode = current.playbackQualityMode,
+            audioQualityPreference = audioPreference,
+            videoCodecPreference = videoCodecPreference,
+            videoSecondCodecPreference = videoSecondCodecPreference,
+            isHevcSupported = isHevcSupported,
+            isAv1Supported = isAv1Supported,
+            playWhenReady = playWhenReady
+        ) ?: playbackUseCase.changeQualityFromApi(
+            bvid = currentBvid,
+            cid = currentCid,
+            qualityId = current.currentQuality,
+            currentPos = currentPos,
+            playbackQualityMode = current.playbackQualityMode,
+            audioQualityPreference = audioPreference,
+            videoCodecPreference = videoCodecPreference,
+            videoSecondCodecPreference = videoSecondCodecPreference,
+            isHevcSupported = isHevcSupported,
+            isAv1Supported = isAv1Supported,
+            playWhenReady = playWhenReady
+        ) ?: return
+
+        val nextCachedDashVideos = result.cachedDashVideos.ifEmpty { current.cachedDashVideos }
+        val nextCachedDashAudios = result.cachedDashAudios.ifEmpty { current.cachedDashAudios }
+        val cdnSelection = resolvePlaybackCdnCandidateSelection(
+            videoUrl = result.videoUrl,
+            audioUrl = result.audioUrl,
+            quality = result.actualQuality,
+            cachedDashVideos = nextCachedDashVideos,
+            cachedDashAudios = nextCachedDashAudios,
+            adaptiveDashSource = result.adaptiveDashSource
+        )
+        if (cdnSelection.playUrl != result.videoUrl || cdnSelection.audioUrl != result.audioUrl) {
+            playResolvedPlayback(
+                videoUrl = cdnSelection.playUrl,
+                audioUrl = cdnSelection.audioUrl,
+                adaptiveDashSource = cdnSelection.adaptiveDashSource,
+                startPositionMs = currentPos,
+                playWhenReady = playWhenReady
+            )
+        }
+        _uiState.value = current.copy(
+            playUrl = cdnSelection.playUrl,
+            audioUrl = cdnSelection.audioUrl,
+            currentQuality = result.actualQuality,
+            adaptiveDashSource = cdnSelection.adaptiveDashSource,
+            cachedDashVideos = nextCachedDashVideos,
+            cachedDashAudios = nextCachedDashAudios,
+            allVideoUrls = cdnSelection.allVideoUrls,
+            allAudioUrls = cdnSelection.allAudioUrls,
+            currentCdnIndex = 0,
+            qualityIds = result.qualityIds.ifEmpty { current.qualityIds },
+            qualityLabels = result.qualityLabels.ifEmpty { current.qualityLabels },
+            switchableQualityIds = result.switchableQualityIds.ifEmpty { current.switchableQualityIds }
+        )
     }
     
     //  SponsorBlock (via Plugin)

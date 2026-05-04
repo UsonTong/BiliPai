@@ -179,4 +179,18 @@ class ThemeDynamicColorPolicyTest {
         assertNotEquals(Color(0xFF121212), scheme.background)
         assertNotEquals(Color(0xFF1E1E1E), scheme.surface)
     }
+
+    @Test
+    fun `static md3 dark scheme preserves selected theme color as primary`() {
+        val selectedThemeColor = Color(0xFF007AFF)
+
+        val scheme = createStaticMd3ColorScheme(
+            primaryColor = selectedThemeColor,
+            darkTheme = true,
+            amoledDarkTheme = false
+        )
+
+        assertEquals(selectedThemeColor, scheme.primary)
+        assertTrue(calculateContrastRatio(scheme.onPrimary, scheme.primary) >= 4.5f)
+    }
 }

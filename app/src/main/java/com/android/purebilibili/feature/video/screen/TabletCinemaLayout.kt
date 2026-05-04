@@ -3,12 +3,18 @@ package com.android.purebilibili.feature.video.screen
 import android.app.Activity
 import android.content.ContextWrapper
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -204,8 +211,9 @@ fun TabletCinemaLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = policy.horizontalPaddingDp.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .navigationBarsPadding()
+                .padding(horizontal = policy.horizontalPaddingDp.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -374,7 +382,6 @@ private fun CinemaStagePlayer(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
         ) {
             val playerWidth = minOf(maxWidth, playerMaxWidth)
             val videoHeight = if (forceCoverOnlyOnReturn) {
@@ -387,7 +394,6 @@ private fun CinemaStagePlayer(
                     .width(playerWidth)
                     .height(videoHeight)
                     .align(Alignment.Center)
-                    .clip(RoundedCornerShape(18.dp))
                     .background(Color.Black)
             ) {
                 VideoPlayerSection(
@@ -425,6 +431,7 @@ private fun CinemaStagePlayer(
                     onSecondCodecChange = onSecondCodecChange,
                     currentAudioQuality = currentAudioQuality,
                     onAudioQualityChange = onAudioQualityChange,
+                    onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
                     onSaveCover = { viewModel.saveCover(context) },
                     onDownloadAudio = { viewModel.downloadAudio(context) },
                     currentPlayMode = currentPlayMode,
@@ -515,8 +522,8 @@ private fun CinemaMetaPanel(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            contentPadding = PaddingValues(bottom = 16.dp),
+                .padding(horizontal = 8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(
@@ -601,19 +608,18 @@ private fun CinemaVideoIntroSection(
         .getVideoAiSummaryEntryEnabled(context)
         .collectAsState(initial = true)
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = resolveCinemaIntroCardContainerColor(
-            isDarkTheme = isDarkTheme,
-            surfaceContainerLowColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = resolveCinemaIntroCardContainerColor(
+                isDarkTheme = isDarkTheme,
+                surfaceContainerLowColor = MaterialTheme.colorScheme.surfaceContainerLow
+            )
         ) {
             VideoTitleWithDesc(
                 info = success.info,
@@ -621,22 +627,6 @@ private fun CinemaVideoIntroSection(
                 bgmInfo = success.bgmInfo,
                 bgmInfoList = success.bgmInfoList
             )
-            if (shouldShowAiSummaryEntry(
-                    aiSummary = success.aiSummary,
-                    isAiSummaryEntryEnabled = videoAiSummaryEntryEnabled
-                )
-            ) {
-                AiSummaryCard(
-                    aiSummary = success.aiSummary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            } else if (videoAiSummaryEntryEnabled && success.aiSummaryPrompt != null) {
-                AiSummaryPromptCard(
-                    promptState = success.aiSummaryPrompt,
-                    onActionClick = onRetryAiSummary,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            }
             if (success.info.desc.isBlank()) {
                 Text(
                     text = "暂无简介",
@@ -645,6 +635,22 @@ private fun CinemaVideoIntroSection(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                 )
             }
+        }
+        if (shouldShowAiSummaryEntry(
+                aiSummary = success.aiSummary,
+                isAiSummaryEntryEnabled = videoAiSummaryEntryEnabled
+            )
+        ) {
+            AiSummaryCard(
+                aiSummary = success.aiSummary,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        } else if (videoAiSummaryEntryEnabled && success.aiSummaryPrompt != null) {
+            AiSummaryPromptCard(
+                promptState = success.aiSummaryPrompt,
+                onActionClick = onRetryAiSummary,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
         }
     }
 }
@@ -678,135 +684,151 @@ private fun CinemaSideCurtain(
             }
         }
     }
-    Row(
-        modifier = Modifier.fillMaxHeight(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(
-            modifier = Modifier
-                .width(34.dp)
-                .fillMaxHeight()
-                .padding(vertical = 26.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .clickable { onToggle() },
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (state == TabletSideCurtainState.OPEN) {
-                        Icons.Outlined.KeyboardDoubleArrowRight
-                    } else {
-                        Icons.Outlined.KeyboardDoubleArrowLeft
-                    },
-                    contentDescription = "toggle curtain",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+    AnimatedContent(
+        targetState = state,
+        transitionSpec = {
+            // 使用 fadeIn + scaleIn 与 fadeOut 组合，避免尺寸变化时的布局生硬
+            (fadeIn(animationSpec = tween(220, delayMillis = 90)))
+                .togetherWith(fadeOut(animationSpec = tween(90)))
+                .using(
+                    // 关键：SizeTransform 决定了容器尺寸如何变化
+                    SizeTransform(clip = true)
                 )
-            }
-        }
-
-        if (state != TabletSideCurtainState.HIDDEN) {
+        },
+        label = "SideCurtainAnimation",
+        modifier = Modifier.fillMaxHeight()
+    ) { targetState ->
+        Row(
+            modifier = Modifier.fillMaxHeight(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Surface(
                 modifier = Modifier
-                    .width(width)
+                    .width(20.dp)
                     .fillMaxHeight()
-                    .animateContentSize(),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null // 移除点击视觉反馈
+                    ) { onToggle() },
+                color = Color.Transparent
             ) {
-                if (state == TabletSideCurtainState.PEEK) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(vertical = 18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        IconButton(onClick = { onTabSelected(0) }) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChatBubbleOutline,
-                                contentDescription = "comments"
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        IconButton(onClick = { onTabSelected(1) }) {
-                            Icon(
-                                imageVector = Icons.Outlined.PlaylistPlay,
-                                contentDescription = "related videos"
-                            )
-                        }
-                    }
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        TabRow(
-                            selectedTabIndex = pagerState.currentPage,
-                            modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (targetState == TabletSideCurtainState.OPEN) {
+                            Icons.Outlined.KeyboardDoubleArrowRight
+                        } else {
+                            Icons.Outlined.KeyboardDoubleArrowLeft
+                        },
+                        contentDescription = "toggle curtain",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (targetState != TabletSideCurtainState.HIDDEN) {
+                Surface(
+                    modifier = Modifier
+                        .width(width)
+                        .fillMaxHeight()
+                        .animateContentSize(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                ) {
+                    if (targetState == TabletSideCurtainState.PEEK) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(vertical = 18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Tab(
-                                selected = pagerState.currentPage == 0,
-                                onClick = {
-                                    onTabSelected(0)
-                                    scope.launch {
-                                        pagerState.animateScrollToPage(0)
-                                    }
-                                },
-                                text = {
-                                    Text(
-                                        text = "评论 ${if (commentState.replyCount > 0) "(${commentState.replyCount})" else ""}"
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = pagerState.currentPage == 1,
-                                onClick = {
-                                    onTabSelected(1)
-                                    scope.launch {
-                                        pagerState.animateScrollToPage(1)
-                                    }
-                                },
-                                text = { Text("相关推荐") }
-                            )
+                            IconButton(onClick = { onTabSelected(0) }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ChatBubbleOutline,
+                                    contentDescription = "comments"
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            IconButton(onClick = { onTabSelected(1) }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PlaylistPlay,
+                                    contentDescription = "related videos"
+                                )
+                            }
                         }
-
-                        HorizontalPager(
-                            state = pagerState,
-                            userScrollEnabled = true,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            when {
-                                success == null -> {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CupertinoActivityIndicator()
+                    } else {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            TabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Tab(
+                                    selected = pagerState.currentPage == 0,
+                                    onClick = {
+                                        onTabSelected(0)
+                                        scope.launch {
+                                            pagerState.animateScrollToPage(0)
+                                        }
+                                    },
+                                    text = {
+                                        Text(
+                                            text = "评论 ${if (commentState.replyCount > 0) "(${commentState.replyCount})" else ""}"
+                                        )
                                     }
-                                }
+                                )
+                                Tab(
+                                    selected = pagerState.currentPage == 1,
+                                    onClick = {
+                                        onTabSelected(1)
+                                        scope.launch {
+                                            pagerState.animateScrollToPage(1)
+                                        }
+                                    },
+                                    text = { Text("相关推荐") }
+                                )
+                            }
 
-                                page == 0 -> {
-                                    CinemaCommentsPane(
-                                        success = success,
-                                        commentState = commentState,
-                                        subReplyState = subReplyState,
-                                        commentViewModel = commentViewModel,
-                                        viewModel = viewModel,
-                                        playerState = playerState,
-                                        onUpClick = onUpClick,
-                                        context = context,
-                                        onRelatedVideoClick = onRelatedVideoClick,
-                                        onSearchKeywordClick = onSearchKeywordClick
-                                    )
-                                }
+                            HorizontalPager(
+                                state = pagerState,
+                                userScrollEnabled = true,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                when {
+                                    success == null -> {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CupertinoActivityIndicator()
+                                        }
+                                    }
 
-                                else -> {
-                                    CinemaRelatedPane(
-                                        success = success,
-                                        onRelatedVideoClick = onRelatedVideoClick,
-                                        context = context,
-                                        showUpBadge = showUpBadge
-                                    )
+                                    page == 0 -> {
+                                        CinemaCommentsPane(
+                                            success = success,
+                                            commentState = commentState,
+                                            subReplyState = subReplyState,
+                                            commentViewModel = commentViewModel,
+                                            viewModel = viewModel,
+                                            playerState = playerState,
+                                            onUpClick = onUpClick,
+                                            context = context,
+                                            onRelatedVideoClick = onRelatedVideoClick,
+                                            onSearchKeywordClick = onSearchKeywordClick
+                                        )
+                                    }
+
+                                    else -> {
+                                        CinemaRelatedPane(
+                                            success = success,
+                                            onRelatedVideoClick = onRelatedVideoClick,
+                                            context = context,
+                                            showUpBadge = showUpBadge
+                                        )
+                                    }
                                 }
                             }
                         }

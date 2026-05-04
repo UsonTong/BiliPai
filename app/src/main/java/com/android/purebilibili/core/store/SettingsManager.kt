@@ -209,16 +209,26 @@ enum class PlaybackCompletionBehavior(val value: Int, val label: String) {
 }
 
 enum class PortraitPlayerCollapseMode(val value: Int, val label: String, val description: String) {
-    OFF(0, "关闭", "竖屏详情页不自动缩小播放器"),
-    INTRO_ONLY(1, "简介", "简介页向下滚动时缩小播放器"),
-    COMMENT_ONLY(2, "评论", "评论区向下滚动时缩小播放器"),
-    BOTH(3, "全部", "简介和评论区滚动时都缩小播放器");
+    OFF(0, "关闭", "不自动缩小播放器"),
+    INTRO_ONLY(1, "竖屏", "仅竖屏视频详情页滚动时缩小播放器"),
+    COMMENT_ONLY(2, "横屏", "仅横屏视频详情页滚动时缩小播放器"),
+    BOTH(3, "全部", "横竖屏视频都使用播放器缩小策略");
 
-    val enablesIntro: Boolean
+    val enablesPortraitVideo: Boolean
         get() = this == INTRO_ONLY || this == BOTH
 
-    val enablesComment: Boolean
+    val enablesLandscapeVideo: Boolean
         get() = this == COMMENT_ONLY || this == BOTH
+
+    fun enablesVideoOrientation(isVerticalVideo: Boolean): Boolean {
+        return if (isVerticalVideo) enablesPortraitVideo else enablesLandscapeVideo
+    }
+
+    val enablesIntro: Boolean
+        get() = this != OFF
+
+    val enablesComment: Boolean
+        get() = this != OFF
 
     companion object {
         fun fromValue(value: Int): PortraitPlayerCollapseMode {
@@ -226,7 +236,7 @@ enum class PortraitPlayerCollapseMode(val value: Int, val label: String, val des
         }
 
         fun fromLegacySwipeHide(enabled: Boolean): PortraitPlayerCollapseMode {
-            return if (enabled) BOTH else OFF
+            return if (enabled) INTRO_ONLY else OFF
         }
     }
 }
@@ -321,6 +331,8 @@ data class HomeSettings(
     val lowQualityHomeCoverInDataSaver: Boolean = false, // 省流量时首页封面使用低清晰度
     val showHomeCoverGlassBadges: Boolean = true, // 首页封面玻璃信息显示
     val showHomeInfoGlassBadges: Boolean = true, // 首页信息区玻璃标签显示
+    val homeWallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
+    val homeWallpaperEffectScope: HomeWallpaperEffectScope = HomeWallpaperEffectScope.HOME_ONLY,
     val showHomeUpBadges: Boolean = true, // 首页和相关推荐 UP 主标识显示
     val showHomeVideoDurationBadges: Boolean = true, // 首页视频封面时长显示
     val easterEggEnabled: Boolean = false, // 下拉刷新趣味提示开关
@@ -330,6 +342,28 @@ data class HomeSettings(
 ) {
     val isLiquidGlassEnabled: Boolean
         get() = isTopBarLiquidGlassEnabled || isBottomBarLiquidGlassEnabled
+}
+
+enum class HomeWallpaperEffectMode(val value: Int, val label: String) {
+    OFF(0, "关闭"),
+    SOFT_BLUR(1, "轻微模糊"),
+    ORIGINAL(2, "原图"),
+    STRONG_BLUR(3, "强模糊");
+
+    companion object {
+        fun fromValue(value: Int): HomeWallpaperEffectMode =
+            entries.find { it.value == value } ?: SOFT_BLUR
+    }
+}
+
+enum class HomeWallpaperEffectScope(val value: Int, val label: String) {
+    HOME_ONLY(0, "仅首页"),
+    GLOBAL(1, "全局");
+
+    companion object {
+        fun fromValue(value: Int): HomeWallpaperEffectScope =
+            entries.find { it.value == value } ?: HOME_ONLY
+    }
 }
 
 internal fun resolveUiPresetPreferenceValue(rawValue: Int?): UiPreset {
@@ -755,6 +789,9 @@ object SettingsManager {
         booleanPreferencesKey("low_quality_home_cover_in_data_saver")
     private val KEY_HOME_COVER_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_cover_glass_badges_visible")
     private val KEY_HOME_INFO_GLASS_BADGES_VISIBLE = booleanPreferencesKey("home_info_glass_badges_visible")
+    private val KEY_HOME_WALLPAPER_URI = stringPreferencesKey("home_wallpaper_uri")
+    private val KEY_HOME_WALLPAPER_EFFECT_MODE = intPreferencesKey("home_wallpaper_effect_mode")
+    private val KEY_HOME_WALLPAPER_EFFECT_SCOPE = intPreferencesKey("home_wallpaper_effect_scope")
     private val KEY_HOME_UP_BADGES_VISIBLE = booleanPreferencesKey("home_up_badges_visible")
     private val KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE =
         booleanPreferencesKey("home_video_duration_badges_visible")
@@ -826,6 +863,12 @@ object SettingsManager {
                 preferences[KEY_LOW_QUALITY_HOME_COVER_IN_DATA_SAVER] ?: false,
             showHomeCoverGlassBadges = preferences[KEY_HOME_COVER_GLASS_BADGES_VISIBLE] ?: true,
             showHomeInfoGlassBadges = preferences[KEY_HOME_INFO_GLASS_BADGES_VISIBLE] ?: true,
+            homeWallpaperEffectMode = HomeWallpaperEffectMode.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] ?: HomeWallpaperEffectMode.SOFT_BLUR.value
+            ),
+            homeWallpaperEffectScope = HomeWallpaperEffectScope.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] ?: HomeWallpaperEffectScope.HOME_ONLY.value
+            ),
             showHomeUpBadges = preferences[KEY_HOME_UP_BADGES_VISIBLE] ?: true,
             showHomeVideoDurationBadges = preferences[KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE] ?: true,
             easterEggEnabled = preferences[KEY_EASTER_EGG_ENABLED] ?: false,
@@ -1493,6 +1536,41 @@ object SettingsManager {
     suspend fun setHomeInfoGlassBadgesVisible(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_HOME_INFO_GLASS_BADGES_VISIBLE] = value
+        }
+    }
+
+    fun getHomeWallpaperUri(context: Context): Flow<String> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HOME_WALLPAPER_URI] ?: "" }
+
+    suspend fun setHomeWallpaperUri(context: Context, uri: String) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_URI] = uri
+        }
+    }
+
+    fun getHomeWallpaperEffectMode(context: Context): Flow<HomeWallpaperEffectMode> = context.settingsDataStore.data
+        .map { preferences ->
+            HomeWallpaperEffectMode.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] ?: HomeWallpaperEffectMode.SOFT_BLUR.value
+            )
+        }
+
+    suspend fun setHomeWallpaperEffectMode(context: Context, mode: HomeWallpaperEffectMode) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_EFFECT_MODE] = mode.value
+        }
+    }
+
+    fun getHomeWallpaperEffectScope(context: Context): Flow<HomeWallpaperEffectScope> = context.settingsDataStore.data
+        .map { preferences ->
+            HomeWallpaperEffectScope.fromValue(
+                preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] ?: HomeWallpaperEffectScope.HOME_ONLY.value
+            )
+        }
+
+    suspend fun setHomeWallpaperEffectScope(context: Context, scope: HomeWallpaperEffectScope) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_WALLPAPER_EFFECT_SCOPE] = scope.value
         }
     }
 
@@ -3844,7 +3922,7 @@ object SettingsManager {
     private val KEY_FULLSCREEN_ASPECT_RATIO = intPreferencesKey("fullscreen_aspect_ratio")
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
     
-    // --- 竖屏播放器滚动缩小模式 ---
+    // --- 播放器滚动缩小方向策略 ---
     fun getPortraitPlayerCollapseMode(context: Context): Flow<PortraitPlayerCollapseMode> =
         context.settingsDataStore.data.map { preferences ->
             preferences[KEY_PORTRAIT_PLAYER_COLLAPSE_MODE]?.let { raw ->
@@ -4340,6 +4418,8 @@ object SettingsManager {
             ),
             BooleanShareablePreferenceDefinition(KEY_PREDICTIVE_BACK_ANIMATION_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_COMPACT_VIDEO_STATS_ON_COVER, SettingsShareSection.APPEARANCE),
+            StringShareablePreferenceDefinition(KEY_HOME_WALLPAPER_URI, SettingsShareSection.APPEARANCE),
+            IntShareablePreferenceDefinition(KEY_HOME_WALLPAPER_EFFECT_MODE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_UP_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
 

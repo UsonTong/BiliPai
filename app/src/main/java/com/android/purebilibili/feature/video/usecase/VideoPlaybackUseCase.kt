@@ -19,6 +19,7 @@ import com.android.purebilibili.feature.video.playback.dash.AdaptiveDashPlayback
 import com.android.purebilibili.feature.video.playback.dash.buildLocalDashManifest
 import com.android.purebilibili.feature.video.playback.policy.PlaybackQualityMode
 import com.android.purebilibili.feature.video.playback.policy.buildAdaptiveDashTrackSet
+import com.android.purebilibili.feature.video.playback.policy.resolveSpeedCompatibleAudioQualityPreference
 import com.android.purebilibili.data.repository.ActionRepository
 import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
@@ -166,6 +167,25 @@ internal fun playPlayerFromUserAction(player: Player) {
     playPlayerForUserIntent(player, trackUserAction = true)
 }
 
+internal fun pausePlayerFromUserAction(player: Player) {
+    PlaybackUserActionTracker.recordAction(
+        player = player,
+        type = PlaybackUserActionType.PAUSE
+    )
+    player.pause()
+}
+
+internal fun applyPlaybackButtonUserAction(
+    player: Player,
+    isShowingPauseIcon: Boolean
+) {
+    if (isShowingPauseIcon && player.playbackState != Player.STATE_ENDED) {
+        pausePlayerFromUserAction(player)
+    } else {
+        playPlayerFromUserAction(player)
+    }
+}
+
 private fun playPlayerForUserIntent(
     player: Player,
     trackUserAction: Boolean,
@@ -263,11 +283,7 @@ internal fun togglePlayerPlaybackFromUserAction(player: Player) {
             playbackState = player.playbackState
         )
     ) {
-        PlaybackUserActionTracker.recordAction(
-            player = player,
-            type = PlaybackUserActionType.PAUSE
-        )
-        player.pause()
+        pausePlayerFromUserAction(player)
         Logger.d(
             "VideoPlaybackUseCase",
             "USER_DBG togglePlayerPlaybackFromUserAction paused: " +
@@ -485,6 +501,7 @@ class VideoPlaybackUseCase(
                         playUrlData = playData,
                         targetQuality = targetQn,
                         audioQualityPreference = audioQualityPreference,
+                        playbackSpeed = exoPlayer?.playbackParameters?.speed ?: 1.0f,
                         videoCodecPreference = videoCodecPreference,
                         videoSecondCodecPreference = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
@@ -713,6 +730,7 @@ class VideoPlaybackUseCase(
         durationMs: Long = 0L,
         playbackQualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
         audioQualityPreference: Int = -1, // [新增] 传入音频偏好
+        playbackSpeed: Float = exoPlayer?.playbackParameters?.speed ?: 1.0f,
         videoCodecPreference: String = "hev1",
         videoSecondCodecPreference: String = "avc1",
         isHevcSupported: Boolean = com.android.purebilibili.core.util.MediaUtils.isHevcSupported(),
@@ -764,10 +782,15 @@ class VideoPlaybackUseCase(
         val videoUrl = match.getValidUrl()
         
         // [修复] 音频也应该重新选择最佳匹配，而不是盲目取第一个
-        val dashAudio = if (audioQualityPreference != -1) {
+        val effectiveAudioQualityPreference = resolveSpeedCompatibleAudioQualityPreference(
+            requestedAudioQuality = audioQualityPreference,
+            playbackSpeed = playbackSpeed
+        )
+
+        val dashAudio = if (effectiveAudioQualityPreference != -1) {
             // 使用 Dash.getBestAudio 逻辑的简化版 (因为这里只有 List<DashAudio>)
-            cachedAudios.find { it.id == audioQualityPreference }
-                ?: cachedAudios.minByOrNull { kotlin.math.abs(it.id - audioQualityPreference) }
+            cachedAudios.find { it.id == effectiveAudioQualityPreference }
+                ?: cachedAudios.minByOrNull { kotlin.math.abs(it.id - effectiveAudioQualityPreference) }
         } else {
             cachedAudios.maxByOrNull { it.bandwidth }
         }
@@ -778,7 +801,7 @@ class VideoPlaybackUseCase(
             minBufferTimeMs = 1500L,
             dash = Dash(video = cachedVideos, audio = cachedAudios),
             targetQuality = requestedQuality,
-            audioQualityPreference = audioQualityPreference,
+            audioQualityPreference = effectiveAudioQualityPreference,
             videoCodecPreference = videoCodecPreference,
             videoSecondCodecPreference = videoSecondCodecPreference,
             playbackQualityMode = effectivePlaybackQualityMode,
@@ -820,6 +843,7 @@ class VideoPlaybackUseCase(
         currentPos: Long,
         playbackQualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
         audioQualityPreference: Int = -1, // [新增] 传入音频偏好
+        playbackSpeed: Float = exoPlayer?.playbackParameters?.speed ?: 1.0f,
         videoCodecPreference: String = "hev1",
         videoSecondCodecPreference: String = "avc1",
         isHevcSupported: Boolean = com.android.purebilibili.core.util.MediaUtils.isHevcSupported(),
@@ -851,6 +875,7 @@ class VideoPlaybackUseCase(
             playUrlData = playUrlData,
             targetQuality = qualityId,
             audioQualityPreference = audioQualityPreference,
+            playbackSpeed = playbackSpeed,
             videoCodecPreference = videoCodecPreference,
             videoSecondCodecPreference = videoSecondCodecPreference,
             playbackQualityMode = effectivePlaybackQualityMode,
@@ -913,6 +938,7 @@ class VideoPlaybackUseCase(
         playUrlData: PlayUrlData,
         targetQuality: Int,
         audioQualityPreference: Int = -1,
+        playbackSpeed: Float = exoPlayer?.playbackParameters?.speed ?: 1.0f,
         videoCodecPreference: String = "hev1",
         videoSecondCodecPreference: String = "avc1",
         playbackQualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
@@ -926,7 +952,11 @@ class VideoPlaybackUseCase(
             isHevcSupported = isHevcSupported,
             isAv1Supported = isAv1Supported
         )
-        val dashAudio = playUrlData.dash?.getBestAudio(audioQualityPreference)
+        val effectiveAudioQualityPreference = resolveSpeedCompatibleAudioQualityPreference(
+            requestedAudioQuality = audioQualityPreference,
+            playbackSpeed = playbackSpeed
+        )
+        val dashAudio = playUrlData.dash?.getBestAudio(effectiveAudioQualityPreference)
         val videoUrl = getValidVideoUrl(dashVideo, playUrlData)
         if (videoUrl.isBlank()) return null
 
@@ -940,7 +970,7 @@ class VideoPlaybackUseCase(
             minBufferTimeMs = playUrlData.dash?.minBufferTime?.times(1000f)?.toLong() ?: 1500L,
             dash = playUrlData.dash,
             targetQuality = targetQuality,
-            audioQualityPreference = audioQualityPreference,
+            audioQualityPreference = effectiveAudioQualityPreference,
             videoCodecPreference = videoCodecPreference,
             videoSecondCodecPreference = videoSecondCodecPreference,
             playbackQualityMode = playbackQualityMode,

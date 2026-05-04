@@ -539,7 +539,6 @@ fun UpInfoSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier

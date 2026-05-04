@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 
 data class HomeGlassChromeStyle(
     val containerAlpha: Float,
@@ -35,6 +36,22 @@ data class HomeRefreshTipAppearance(
     val borderWidthDp: Float,
     val tonalElevationDp: Float,
     val shadowElevationDp: Float
+)
+
+data class HomeWallpaperBackdropAppearance(
+    val visible: Boolean,
+    val baseBackgroundAlpha: Float,
+    val detailAlpha: Float,
+    val scrimAlpha: Float,
+    val bottomScrimAlpha: Float,
+    val blurRadiusDp: Float
+)
+
+data class HomeCardInfoSurfaceAppearance(
+    val useTintedSurface: Boolean,
+    val containerAlpha: Float,
+    val borderAlpha: Float,
+    val highlightAlpha: Float
 )
 
 internal fun resolveHomeGlassChromeStyle(
@@ -113,6 +130,116 @@ internal fun resolveHomeRefreshTipAppearance(
             shadowElevationDp = 6f
         )
     }
+}
+
+internal fun resolveHomeWallpaperBackdropAppearance(
+    hasWallpaper: Boolean,
+    effectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
+    isDarkTheme: Boolean,
+    isDataSaverActive: Boolean
+): HomeWallpaperBackdropAppearance {
+    if (!hasWallpaper || effectMode == HomeWallpaperEffectMode.OFF) {
+        return HomeWallpaperBackdropAppearance(
+            visible = false,
+            baseBackgroundAlpha = 1f,
+            detailAlpha = 0f,
+            scrimAlpha = 0f,
+            bottomScrimAlpha = 0f,
+            blurRadiusDp = 0f
+        )
+    }
+
+    return when {
+        effectMode == HomeWallpaperEffectMode.ORIGINAL -> HomeWallpaperBackdropAppearance(
+            visible = true,
+            baseBackgroundAlpha = if (isDarkTheme) 0.24f else 0.14f,
+            detailAlpha = 0f,
+            scrimAlpha = if (isDarkTheme) 0.16f else 0.04f,
+            bottomScrimAlpha = if (isDarkTheme) 0.22f else 0.12f,
+            blurRadiusDp = 0f
+        )
+
+        effectMode == HomeWallpaperEffectMode.STRONG_BLUR -> HomeWallpaperBackdropAppearance(
+            visible = true,
+            baseBackgroundAlpha = if (isDarkTheme) 0.50f else 0.34f,
+            detailAlpha = 0.05f,
+            scrimAlpha = if (isDarkTheme) 0.28f else 0.12f,
+            bottomScrimAlpha = if (isDarkTheme) 0.40f else 0.26f,
+            blurRadiusDp = 60f
+        )
+
+        isDataSaverActive -> HomeWallpaperBackdropAppearance(
+            visible = true,
+            baseBackgroundAlpha = if (isDarkTheme) 0.48f else 0.34f,
+            detailAlpha = 0.16f,
+            scrimAlpha = if (isDarkTheme) 0.20f else 0.08f,
+            bottomScrimAlpha = if (isDarkTheme) 0.28f else 0.18f,
+            blurRadiusDp = 18f
+        )
+
+        isDarkTheme -> HomeWallpaperBackdropAppearance(
+            visible = true,
+            baseBackgroundAlpha = 0.34f,
+            detailAlpha = 0.24f,
+            scrimAlpha = 0.24f,
+            bottomScrimAlpha = 0.34f,
+            blurRadiusDp = 24f
+        )
+
+        else -> HomeWallpaperBackdropAppearance(
+            visible = true,
+            baseBackgroundAlpha = 0.22f,
+            detailAlpha = 0.32f,
+            scrimAlpha = 0.06f,
+            bottomScrimAlpha = 0.18f,
+            blurRadiusDp = 22f
+        )
+    }
+}
+
+internal fun resolveHomeWallpaperUri(
+    homeWallpaperUri: String?,
+    splashWallpaperUri: String?
+): String {
+    val dedicatedHomeUri = homeWallpaperUri?.trim().orEmpty()
+    if (dedicatedHomeUri.isNotEmpty()) return dedicatedHomeUri
+    return splashWallpaperUri?.trim().orEmpty()
+}
+
+internal fun resolveHomeCardInfoSurfaceAppearance(
+    wallpaperTintEnabled: Boolean,
+    wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
+    isDarkTheme: Boolean,
+    isDataSaverActive: Boolean
+): HomeCardInfoSurfaceAppearance {
+    if (!wallpaperTintEnabled || wallpaperEffectMode == HomeWallpaperEffectMode.OFF) {
+        return HomeCardInfoSurfaceAppearance(
+            useTintedSurface = false,
+            containerAlpha = 1f,
+            borderAlpha = 0f,
+            highlightAlpha = 0f
+        )
+    }
+
+    return HomeCardInfoSurfaceAppearance(
+        useTintedSurface = true,
+        containerAlpha = when {
+            wallpaperEffectMode == HomeWallpaperEffectMode.ORIGINAL && isDarkTheme -> 0.26f
+            wallpaperEffectMode == HomeWallpaperEffectMode.ORIGINAL -> 0.12f
+            wallpaperEffectMode == HomeWallpaperEffectMode.STRONG_BLUR && isDarkTheme -> 0.50f
+            wallpaperEffectMode == HomeWallpaperEffectMode.STRONG_BLUR -> 0.32f
+            isDataSaverActive -> if (isDarkTheme) 0.56f else 0.36f
+            isDarkTheme -> 0.36f
+            else -> 0.16f
+        },
+        borderAlpha = when {
+            wallpaperEffectMode == HomeWallpaperEffectMode.ORIGINAL && isDarkTheme -> 0.18f
+            wallpaperEffectMode == HomeWallpaperEffectMode.ORIGINAL -> 0.22f
+            isDarkTheme -> 0.12f
+            else -> 0.14f
+        },
+        highlightAlpha = if (isDarkTheme) 0.04f else 0.06f
+    )
 }
 
 internal fun resolveHomeGlassCoverPillBaseColor(): Color {

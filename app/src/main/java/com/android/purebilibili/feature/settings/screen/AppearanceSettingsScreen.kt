@@ -35,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
+import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.theme.*
@@ -42,6 +44,7 @@ import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
+import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppSparklesIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -116,11 +119,11 @@ fun AppearanceSettingsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
                     )
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
             CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
@@ -148,10 +151,11 @@ fun AppearanceSettingsScreen(
                         IconButton(onClick = onBack) {
                             Icon(rememberAppBackIcon(), contentDescription = backLabel)
                         }
-                    }
+                    },
+                    color = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
             contentWindowInsets = WindowInsets(0.dp)
         ) { padding ->
             CompositionLocalProvider(LocalSettingsLiquidGlassEnabled provides state.isLiquidGlassEnabled) {
@@ -369,6 +373,36 @@ fun AppearanceSettingsContent(
     val homeInfoGlassBadgesVisible by SettingsManager
         .getHomeInfoGlassBadgesVisible(context)
         .collectAsState(initial = true)
+    val dedicatedHomeWallpaperUri by SettingsManager
+        .getHomeWallpaperUri(context)
+        .collectAsState(initial = "")
+    val splashWallpaperFallbackUri by SettingsManager
+        .getSplashWallpaperUri(context)
+        .collectAsState(initial = "")
+    val resolvedHomeWallpaperUri = remember(dedicatedHomeWallpaperUri, splashWallpaperFallbackUri) {
+        dedicatedHomeWallpaperUri.ifBlank { splashWallpaperFallbackUri }.trim()
+    }
+    val homeWallpaperFollowsSplash = dedicatedHomeWallpaperUri.isBlank() && splashWallpaperFallbackUri.isNotBlank()
+    val homeWallpaperEffectMode by SettingsManager
+        .getHomeWallpaperEffectMode(context)
+        .collectAsState(initial = HomeWallpaperEffectMode.SOFT_BLUR)
+    val homeWallpaperEffectScope by SettingsManager
+        .getHomeWallpaperEffectScope(context)
+        .collectAsState(initial = HomeWallpaperEffectScope.HOME_ONLY)
+    val homeWallpaperEffectOptions = remember {
+        listOf(
+            PlaybackSegmentOption(HomeWallpaperEffectMode.OFF, "关闭"),
+            PlaybackSegmentOption(HomeWallpaperEffectMode.SOFT_BLUR, "柔和"),
+            PlaybackSegmentOption(HomeWallpaperEffectMode.STRONG_BLUR, "强模糊"),
+            PlaybackSegmentOption(HomeWallpaperEffectMode.ORIGINAL, "原图")
+        )
+    }
+    val homeWallpaperEffectScopeOptions = remember {
+        listOf(
+            PlaybackSegmentOption(HomeWallpaperEffectScope.HOME_ONLY, "仅首页"),
+            PlaybackSegmentOption(HomeWallpaperEffectScope.GLOBAL, "全局")
+        )
+    }
     val homeUpBadgesVisible by SettingsManager
         .getHomeUpBadgesVisible(context)
         .collectAsState(initial = true)
@@ -830,6 +864,7 @@ fun AppearanceSettingsContent(
                     val splashRandomPoolUris by com.android.purebilibili.core.store.SettingsManager.getSplashRandomPoolUris(context).collectAsState(initial = emptyList())
                     val splashIconAnimationEnabled by com.android.purebilibili.core.store.SettingsManager.getSplashIconAnimationEnabled(context).collectAsState(initial = true)
                     val splashWallpaperUri by com.android.purebilibili.core.store.SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = null)
+                    val hasSplashWallpaper = !splashWallpaperUri.isNullOrBlank()
                     val splashRandomPoolPreview = remember(splashRandomPoolUris) {
                         resolveSplashRandomPoolPreviewState(poolUris = splashRandomPoolUris)
                     }
@@ -838,7 +873,7 @@ fun AppearanceSettingsContent(
                     IOSSwitchItem(
                         icon = CupertinoIcons.Default.Photo,
                         title = "使用开屏壁纸",
-                        subtitle = "应用启动时显示所选官方壁纸",
+                        subtitle = "应用启动时显示官方或相册壁纸",
                         checked = isSplashEnabled,
                         onCheckedChange = { viewModel.toggleSplashEnabled(it) },
                         iconTint = com.android.purebilibili.core.theme.iOSBlue
@@ -954,7 +989,7 @@ fun AppearanceSettingsContent(
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
                                 ) {
-                                    if (splashWallpaperUri != null) {
+                                    if (hasSplashWallpaper) {
                                         AsyncImage(
                                             model = coil.request.ImageRequest.Builder(context)
                                                 .data(splashWallpaperUri)
@@ -988,7 +1023,7 @@ fun AppearanceSettingsContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = if (splashWallpaperUri != null) "已设置自定义壁纸" else "从官方壁纸库中选择",
+                                        text = if (hasSplashWallpaper) "已设置壁纸，可从官方库或相册更换" else "从官方壁纸库或相册选择",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1258,6 +1293,122 @@ fun AppearanceSettingsContent(
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPurple
                         )
+
+                        IOSDivider(modifier = Modifier.padding(start = 16.dp))
+                        var showHomeWallpaperPicker by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showHomeWallpaperPicker = true }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                if (resolvedHomeWallpaperUri.isNotBlank()) {
+                                    AsyncImage(
+                                        model = coil.request.ImageRequest.Builder(context)
+                                            .data(resolvedHomeWallpaperUri)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = null,
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            CupertinoIcons.Default.Photo,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "选择首页壁纸",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = when {
+                                        dedicatedHomeWallpaperUri.isNotBlank() -> "已单独设置首页壁纸"
+                                        homeWallpaperFollowsSplash -> "未单独设置，当前跟随开屏壁纸"
+                                        else -> "从官方壁纸库或相册选择"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Icon(
+                                CupertinoIcons.Default.ChevronForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        if (showHomeWallpaperPicker) {
+                            com.android.purebilibili.feature.profile.SplashWallpaperPickerSheet(
+                                target = com.android.purebilibili.feature.profile.WallpaperPickerTarget.HOME,
+                                onDismiss = { showHomeWallpaperPicker = false }
+                            )
+                        }
+
+                        IOSDivider(modifier = Modifier.padding(start = 16.dp))
+                        IOSSlidingSegmentedSetting(
+                            title = "首页壁纸效果",
+                            subtitle = when (homeWallpaperEffectMode) {
+                                HomeWallpaperEffectMode.OFF -> "首页不使用开屏壁纸作为背景"
+                                HomeWallpaperEffectMode.SOFT_BLUR -> "真实壁纸轻微模糊，卡片信息区半透明接入壁纸"
+                                HomeWallpaperEffectMode.STRONG_BLUR -> "更强模糊和更稳遮罩，保留壁纸色彩但降低细节干扰"
+                                HomeWallpaperEffectMode.ORIGINAL -> "直接接入真实壁纸，文字区使用更轻的保护层"
+                            },
+                            options = homeWallpaperEffectOptions,
+                            selectedValue = homeWallpaperEffectMode,
+                            onSelectionChange = { mode ->
+                                scope.launch {
+                                    SettingsManager.setHomeWallpaperEffectMode(context, mode)
+                                }
+                            }
+                        )
+
+                        AnimatedVisibility(
+                            visible = homeWallpaperEffectMode != HomeWallpaperEffectMode.OFF,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                IOSDivider(modifier = Modifier.padding(start = 16.dp))
+                                IOSSlidingSegmentedSetting(
+                                    title = "壁纸作用范围",
+                                    subtitle = when (homeWallpaperEffectScope) {
+                                        HomeWallpaperEffectScope.HOME_ONLY -> "仅首页使用该壁纸背景效果"
+                                        HomeWallpaperEffectScope.GLOBAL -> "全局页面复用同一壁纸背景，默认背景层会透明显示"
+                                    },
+                                    options = homeWallpaperEffectScopeOptions,
+                                    selectedValue = homeWallpaperEffectScope,
+                                    onSelectionChange = { scopeValue ->
+                                        scope.launch {
+                                            SettingsManager.setHomeWallpaperEffectScope(context, scopeValue)
+                                        }
+                                    }
+                                )
+                            }
+                        }
 
                         IOSDivider(modifier = Modifier.padding(start = 16.dp))
                         IOSSwitchItem(

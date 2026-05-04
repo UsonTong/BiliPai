@@ -4,7 +4,6 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,6 +51,7 @@ import com.android.purebilibili.core.theme.iOSPink
 import com.android.purebilibili.core.theme.iOSPurple
 import com.android.purebilibili.core.ui.IOSAlertDialog
 import com.android.purebilibili.core.ui.IOSDialogAction
+import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.components.IOSClickableItem
 import com.android.purebilibili.core.ui.components.IOSDivider
 import com.android.purebilibili.core.ui.components.IOSGroup
@@ -120,7 +120,7 @@ fun SettingsShareScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .globalWallpaperAwareBackground()
     ) {
         LazyColumn(
             state = listState,

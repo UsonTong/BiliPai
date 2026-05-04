@@ -16,10 +16,12 @@ import androidx.compose.ui.unit.sp
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarHorizontalPadding
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarLiquidTabSpec
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
+import com.kyant.backdrop.Backdrop
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import dev.chrisbanes.haze.HazeState
@@ -41,7 +43,8 @@ fun DynamicTopBarWithTabs(
     modifier: Modifier = Modifier,
     displayMode: DynamicDisplayMode = DynamicDisplayMode.SIDEBAR,
     onDisplayModeChange: (DynamicDisplayMode) -> Unit = {},
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    backdrop: Backdrop? = null
 ) {
     val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.getTop(density).let { with(density) { it.toDp() } }
@@ -50,16 +53,25 @@ fun DynamicTopBarWithTabs(
     //  读取当前模糊强度以确定背景透明度
     val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
+    val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val shouldUseHeaderBlur = shouldUseDynamicTopBarHeaderBlur(
+        hasHazeState = hazeState != null,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
     
     //  使用 blurIntensity 对应的背景透明度实现毛玻璃质感
-    val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (hazeState != null) backgroundAlpha else 0f)
+    val headerColor = resolveDynamicTopBarHeaderColor(
+        surfaceColor = MaterialTheme.colorScheme.surface,
+        backgroundAlpha = if (shouldUseHeaderBlur) backgroundAlpha else 0f,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
 
     //  [关键修复] 使用透明背景，让主界面的渐变透出来
     Box(
         modifier = modifier
             .fillMaxWidth()
             // 应用模糊效果
-            .then(if (hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
+            .then(if (shouldUseHeaderBlur && hazeState != null) Modifier.unifiedBlur(hazeState) else Modifier)
             .background(headerColor)
     ) {
         Column {
@@ -118,7 +130,8 @@ fun DynamicTopBarWithTabs(
                     selectedIndex = selectedTab,
                     onSelected = onTabSelected,
                     modifier = Modifier.fillMaxWidth(),
-                    labelFontSize = liquidTabSpec.labelFontSizeSp.sp
+                    labelFontSize = liquidTabSpec.labelFontSizeSp.sp,
+                    backdrop = backdrop
                 )
             }
         }
@@ -131,6 +144,23 @@ private fun rememberDynamicTabSelectedColor(): Color {
 }
 
 internal fun resolveDynamicTabSelectedColor(primaryColor: Color): Color = primaryColor
+
+internal fun resolveDynamicTopBarHeaderColor(
+    surfaceColor: Color,
+    backgroundAlpha: Float,
+    globalWallpaperVisible: Boolean
+): Color {
+    return if (globalWallpaperVisible) {
+        Color.Transparent
+    } else {
+        surfaceColor.copy(alpha = backgroundAlpha)
+    }
+}
+
+internal fun shouldUseDynamicTopBarHeaderBlur(
+    hasHazeState: Boolean,
+    globalWallpaperVisible: Boolean
+): Boolean = hasHazeState && !globalWallpaperVisible
 
 @Composable
 private fun rememberDynamicTabUnselectedColor(): Color {

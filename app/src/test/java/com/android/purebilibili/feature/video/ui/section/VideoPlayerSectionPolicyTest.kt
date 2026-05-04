@@ -557,7 +557,7 @@ class VideoPlayerSectionPolicyTest {
             currentAudioQuality = 30251
         )
 
-        assertTrue(effective == 3.0f)
+        assertEquals(3.0f, effective)
     }
 
     @Test
@@ -609,6 +609,16 @@ class VideoPlayerSectionPolicyTest {
         )
 
         assertEquals(PlaybackParameters(3.0f, 1.0f), parameters)
+    }
+
+    @Test
+    fun explicitPlaybackParameters_keepHiResSpeedWithNaturalPitch() {
+        val parameters = resolveSpeedSafePlaybackParameters(
+            requestedSpeed = 2.0f,
+            currentAudioQuality = 30251
+        )
+
+        assertEquals(PlaybackParameters(2.0f, 1.0f), parameters)
     }
 
     @Test
@@ -897,6 +907,43 @@ class VideoPlayerSectionPolicyTest {
                 lockZoneHeightPx = 120f
             )
         )
+    }
+
+    @Test
+    fun longPressSpeedLock_requiresConfiguredDragDistanceBeforeLocking() {
+        assertFalse(
+            shouldLockLongPressSpeedInTargetZone(
+                isLongPressing = true,
+                alreadyLocked = false,
+                currentPointerY = 72f,
+                containerHeightPx = 1_000f,
+                lockZoneHeightPx = 120f,
+                accumulatedDragYPx = 20f,
+                minDragDistancePx = 56f
+            )
+        )
+        assertTrue(
+            shouldLockLongPressSpeedInTargetZone(
+                isLongPressing = true,
+                alreadyLocked = false,
+                currentPointerY = 72f,
+                containerHeightPx = 1_000f,
+                lockZoneHeightPx = 120f,
+                accumulatedDragYPx = -80f,
+                minDragDistancePx = 56f
+            )
+        )
+    }
+
+    @Test
+    fun longPressSpeedLock_usesLowerSensitivityOutsideFullscreen() {
+        val fullscreen = resolveLongPressSpeedLockSensitivityPolicy(isFullscreen = true)
+        val inline = resolveLongPressSpeedLockSensitivityPolicy(isFullscreen = false)
+
+        assertEquals(LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP, fullscreen.lockZoneHeightDp)
+        assertTrue(fullscreen.minDragDistanceDp > 0)
+        assertTrue(inline.lockZoneHeightDp < fullscreen.lockZoneHeightDp)
+        assertTrue(inline.minDragDistanceDp > fullscreen.minDragDistanceDp)
     }
 
     @Test

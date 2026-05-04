@@ -541,6 +541,7 @@ internal fun Modifier.homeTopBottomBarMatchedSurface(
         containerColor = containerColor,
         blurEnabled = isBlurEnabled,
         glassEnabled = isGlassEnabled,
+        blurRadius = 12.dp,
         hazeState = hazeState,
         motionTier = motionTier,
         isTransitionRunning = isTransitionRunning,
@@ -910,10 +911,8 @@ fun CategoryTabRow(
                     translationX = -scrollOffset + indicatorPanelOffsetPx
                 }) {
                     val isDarkTheme = isSystemInDarkTheme()
-                    val topIndicatorTintAlpha = resolveIosFloatingBottomIndicatorTintAlpha(
-                        visualPolicy = topIndicatorVisualPolicy,
+                    val topIndicatorTintAlpha = resolveTopTabNeutralIndicatorTintAlpha(
                         isDarkTheme = isDarkTheme,
-                        liquidGlassProgress = resolvedLiquidGlassTuning.progress,
                         configuredAlpha = resolvedLiquidGlassTuning.indicatorTintAlpha
                     )
                     val topIndicatorColor = resolveTopTabNeutralIndicatorColor(
@@ -1565,8 +1564,20 @@ internal fun resolveTopTabNeutralIndicatorColor(
     isDarkTheme: Boolean,
     alpha: Float
 ): Color {
-    return resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = isDarkTheme)
-        .copy(alpha = alpha)
+    val baseColor = if (isDarkTheme) {
+        Color(0xFFE1E8E5)
+    } else {
+        Color(0xFFEAF2EF)
+    }
+    return baseColor.copy(alpha = alpha)
+}
+
+internal fun resolveTopTabNeutralIndicatorTintAlpha(
+    isDarkTheme: Boolean,
+    configuredAlpha: Float
+): Float {
+    val floor = if (isDarkTheme) 0.38f else 0.42f
+    return configuredAlpha.coerceAtLeast(floor)
 }
 
 internal data class TopTabIndicatorBackdropPolicy(
@@ -1693,7 +1704,7 @@ internal fun resolveTopTabIndicatorViewportClampShiftPx(
     rowScrollOffsetPx: Float,
     indicatorPanelOffsetPx: Float
 ): Float {
-    return -indicatorPanelOffsetPx
+    return rowScrollOffsetPx - indicatorPanelOffsetPx
 }
 
 @Composable
