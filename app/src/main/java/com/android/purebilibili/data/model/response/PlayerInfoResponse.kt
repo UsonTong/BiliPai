@@ -55,7 +55,22 @@ data class BgmInfo(
     @SerialName("music_title")
     val musicTitle: String = "",
     @SerialName("jump_url")
-    val jumpUrl: String = ""
+    val jumpUrl: String = "",
+    val actor: String = "",
+    @SerialName("cover_url")
+    val coverUrl: String = ""
+)
+
+@Serializable
+data class BgmMultipleMusicResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: BgmMultipleMusicData? = null
+)
+
+@Serializable
+data class BgmMultipleMusicData(
+    val list: List<BgmInfo> = emptyList()
 )
 
 /**
