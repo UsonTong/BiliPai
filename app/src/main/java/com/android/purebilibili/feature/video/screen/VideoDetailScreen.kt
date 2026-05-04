@@ -2729,6 +2729,7 @@ fun VideoDetailScreen(
                                                         aiSummaryPrompt = success.aiSummaryPrompt,
                                                         onRetryAiSummary = { viewModel.retryAiSummary() },
                                                         bgmInfo = success.bgmInfo,
+                                                        bgmInfoList = success.bgmInfoList,
                                                         onBgmClick = onBgmClick,
                                                         onlineCount = success.onlineCount,
                                                         ownerFollowerCount = success.ownerFollowerCount,
