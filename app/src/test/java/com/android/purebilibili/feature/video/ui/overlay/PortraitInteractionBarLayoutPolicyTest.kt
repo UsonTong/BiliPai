@@ -14,9 +14,10 @@ class PortraitInteractionBarLayoutPolicyTest {
         assertEquals(8, policy.endPaddingDp)
         assertEquals(180, policy.bottomPaddingDp)
         assertEquals(20, policy.itemSpacingDp)
-        assertEquals(34, policy.iconSizeDp)
-        assertEquals(44, policy.iconBackingSizeDp)
-        assertEquals(5, policy.iconBackingInnerPaddingDp)
+        assertEquals(29, policy.iconSizeDp)
+        assertEquals(38, policy.iconBackingSizeDp)
+        assertEquals(4, policy.iconBackingInnerPaddingDp)
+        assertEquals(0.14f, policy.iconBackingAlpha)
         assertEquals(12, policy.labelFontSp)
     }
 
@@ -29,9 +30,10 @@ class PortraitInteractionBarLayoutPolicyTest {
         assertEquals(10, policy.endPaddingDp)
         assertEquals(188, policy.bottomPaddingDp)
         assertEquals(22, policy.itemSpacingDp)
-        assertEquals(37, policy.iconSizeDp)
-        assertEquals(48, policy.iconBackingSizeDp)
+        assertEquals(32, policy.iconSizeDp)
+        assertEquals(42, policy.iconBackingSizeDp)
         assertEquals(5, policy.iconBackingInnerPaddingDp)
+        assertEquals(0.14f, policy.iconBackingAlpha)
         assertEquals(12, policy.labelFontSp)
     }
 
@@ -44,9 +46,10 @@ class PortraitInteractionBarLayoutPolicyTest {
         assertEquals(12, policy.endPaddingDp)
         assertEquals(196, policy.bottomPaddingDp)
         assertEquals(24, policy.itemSpacingDp)
-        assertEquals(40, policy.iconSizeDp)
-        assertEquals(52, policy.iconBackingSizeDp)
-        assertEquals(6, policy.iconBackingInnerPaddingDp)
+        assertEquals(35, policy.iconSizeDp)
+        assertEquals(46, policy.iconBackingSizeDp)
+        assertEquals(5, policy.iconBackingInnerPaddingDp)
+        assertEquals(0.15f, policy.iconBackingAlpha)
         assertEquals(13, policy.labelFontSp)
     }
 
@@ -59,9 +62,10 @@ class PortraitInteractionBarLayoutPolicyTest {
         assertEquals(18, policy.endPaddingDp)
         assertEquals(220, policy.bottomPaddingDp)
         assertEquals(28, policy.itemSpacingDp)
-        assertEquals(46, policy.iconSizeDp)
-        assertEquals(58, policy.iconBackingSizeDp)
+        assertEquals(40, policy.iconSizeDp)
+        assertEquals(52, policy.iconBackingSizeDp)
         assertEquals(6, policy.iconBackingInnerPaddingDp)
+        assertEquals(0.16f, policy.iconBackingAlpha)
         assertEquals(15, policy.labelFontSp)
     }
 }

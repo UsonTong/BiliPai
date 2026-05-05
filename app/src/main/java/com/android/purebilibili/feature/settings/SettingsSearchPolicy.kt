@@ -64,6 +64,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "触感反馈",
             "震动",
             "haptic",
+            "底栏搜索",
+            "底栏搜索入口",
+            "搜索入口",
+            "悬浮搜索",
             "模糊",
             "皮肤",
             "玻璃",
@@ -383,9 +387,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "动画与效果 / 触感反馈",
-        subtitle = "动画、预测性返回、触感反馈",
+        subtitle = "动画、预测性返回、触感反馈、底栏搜索入口",
         section = "外观设置",
-        aliases = listOf("动画与效果", "预测性返回", "预测性返回手势", "触感反馈", "动画设置", "应用图标"),
+        aliases = listOf("动画与效果", "预测性返回", "预测性返回手势", "触感反馈", "动画设置", "应用图标", "底栏搜索", "底栏搜索入口", "搜索入口", "悬浮搜索"),
         focusId = SettingsSearchFocusIds.APPEARANCE_PERSONALIZATION
     ),
     SettingsSearchEntry(

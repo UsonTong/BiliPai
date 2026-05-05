@@ -120,6 +120,8 @@ import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackJankStateValue
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
+import com.android.purebilibili.core.ui.transition.resolveVideoReturnCoverSharedBoundsTransformSpec
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.util.Logger
@@ -961,8 +963,8 @@ fun VideoPlayerSection(
              rootModifier = rootModifier.sharedElement(
                  sharedContentState = rememberSharedContentState(key = "video-$bvid"),
                  animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                 boundsTransform = { _, _ ->
-                     com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                 boundsTransform = { initialBounds, targetBounds ->
+                     resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
                  }
              )
          }
@@ -2357,7 +2359,13 @@ fun VideoPlayerSection(
                 Modifier.sharedBounds(
                     sharedContentState = rememberSharedContentState(key = "video_cover_$bvid"),
                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                    boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
+                    boundsTransform = { initialBounds, targetBounds ->
+                        if (shouldUseReturnLandingMotionForForcedReturnCover(forceCoverDuringReturnAnimation)) {
+                            resolveVideoReturnCoverSharedBoundsTransformSpec()
+                        } else {
+                            resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                        }
+                    },
                     clipInOverlayDuringTransition = OverlayClip(coverCardShape)
                 )
             }

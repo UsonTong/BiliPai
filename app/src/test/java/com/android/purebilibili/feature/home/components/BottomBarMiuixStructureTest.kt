@@ -16,6 +16,15 @@ class BottomBarMiuixStructureTest {
 
         assertTrue(source.contains("KernelSuAlignedBottomBar("))
         assertTrue(kernelSuRendererSource.contains("AndroidNativeBottomBarTuning"))
+        assertTrue(source.contains("resolveKernelSuFloatingBottomBarWidth("))
+        assertTrue(kernelSuRendererSource.contains("resolveKernelSuBottomBarSearchLayout("))
+        assertTrue(kernelSuRendererSource.contains("KernelSuBottomBarSearchCapsule("))
+        assertTrue(source.contains("val collapsedSearchWidth = 64.dp"))
+        assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockWidth\""))
+        assertTrue(kernelSuRendererSource.contains("label = \"bottomBarSearchWidth\""))
+        assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockContentAlpha\""))
+        assertTrue(kernelSuRendererSource.contains("easing = AppMotionEasing.Continuity"))
+        assertTrue(kernelSuRendererSource.contains(".width(dockWidth)"))
         assertTrue(kernelSuRendererSource.contains("resolveSharedBottomBarCapsuleShape("))
         assertTrue(kernelSuRendererSource.contains(".kernelSuFloatingDockSurface("))
         assertTrue(kernelSuRendererSource.contains("blurRadius = tuning.shellBlurRadiusDp.dp"))
@@ -26,12 +35,21 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("rememberCombinedBackdrop(backdrop, tabsBackdrop)"))
         assertTrue(kernelSuRendererSource.contains("val tabsBackdrop = rememberLayerBackdrop()"))
         assertTrue(kernelSuRendererSource.contains("val progress = dampedDragState.pressProgress"))
+        assertTrue(kernelSuRendererSource.contains("notifyIndexChangedOnReleaseStart = true"))
+        assertTrue(kernelSuRendererSource.contains("holdPressUntilReleaseTargetSettles = true"))
+        assertTrue(kernelSuRendererSource.contains("dampedDragState.updateIndex(index)"))
+        assertTrue(kernelSuRendererSource.contains("if (searchExpanded) {\n                                    Modifier.clickable("))
+        assertTrue(kernelSuRendererSource.contains("ColorFilter.tint(exportTintColor)"))
+        assertTrue(kernelSuRendererSource.contains("val contentColor = Color.White"))
+        assertTrue(kernelSuRendererSource.contains("if (glassEnabled) {\n                unselectedColor"))
         assertTrue(kernelSuRendererSource.contains("layerBlock = {"))
         assertTrue(kernelSuRendererSource.contains("val indicatorScale = lerp(1f, 78f / 56f, motionProgress)"))
         assertTrue(kernelSuRendererSource.contains("val velocity = dampedDragState.velocity / 10f"))
         assertTrue(kernelSuRendererSource.contains("scaleX = indicatorScale /"))
         assertTrue(kernelSuRendererSource.contains("scaleY = indicatorScale *"))
         assertTrue(kernelSuRendererSource.contains("chromaticAberration = true"))
+        assertTrue(kernelSuRendererSource.contains("refractionHeight = 10.dp.toPx() * motionProgress"))
+        assertTrue(kernelSuRendererSource.contains("refractionAmount = 14.dp.toPx() * motionProgress"))
         assertTrue(kernelSuRendererSource.contains("selected = visual.useSelectedIcon,"))
         assertTrue(kernelSuRendererSource.contains("contentColorOverride = contentColor,"))
         assertTrue(kernelSuRendererSource.contains("selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis"))
@@ -39,11 +57,37 @@ class BottomBarMiuixStructureTest {
         assertFalse(kernelSuRendererSource.contains("item = currentItem,"))
         assertFalse(kernelSuRendererSource.contains("val tintedContentBackdrop = rememberLayerBackdrop()"))
         assertFalse(kernelSuRendererSource.contains("val refractionMotionProfile by remember"))
+        assertFalse(kernelSuRendererSource.contains("refractionMotionProfile.chromaticBoostScale"))
         assertFalse(kernelSuRendererSource.contains("blur(8.dp.toPx())"))
         assertFalse(source.contains("private fun MiuixFloatingCapsuleBottomBar("))
         assertFalse(source.contains("private fun MiuixFloatingBottomBarItem("))
         assertFalse(source.contains("resolveBottomBarChromeMaterialMode("))
         assertFalse(source.contains("resolveBottomBarContainerColor("))
+        assertFalse(source.contains("LocalSoftwareKeyboardController"))
+        assertFalse(source.contains("focusRequester.requestFocus()"))
+        assertFalse(kernelSuRendererSource.contains("enabled = searchExpanded"))
+    }
+
+    @Test
+    fun `bottom bar nonlinear search motion does not change indicator dispersion or settle pulse`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val settlePulseSource = source
+            .substringAfter("private fun rememberBottomBarSettlePulseTransform(")
+            .substringBefore("internal fun resolveBottomBarMotionThemeWeight(")
+        val refractionProfileSource = source
+            .substringAfter("internal fun resolveBottomBarRefractionMotionProfile(")
+            .substringBefore("@Composable\nfun FrostedBottomBar(")
+        val searchCapsuleSource = source
+            .substringAfter("private fun KernelSuBottomBarSearchCapsule(")
+            .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+
+        assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchFieldAlpha\""))
+        assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchIconScale\""))
+        assertTrue(searchCapsuleSource.contains("easing = AppMotionEasing.Continuity"))
+        assertTrue(settlePulseSource.contains("animationSpec = tween(durationMillis = 240)"))
+        assertFalse(settlePulseSource.contains("AppMotionEasing.Continuity"))
+        assertTrue(refractionProfileSource.contains("rawProgress * rawProgress * (3f - 2f * rawProgress)"))
+        assertFalse(refractionProfileSource.contains("resolveBottomBarIOSMotionProgress"))
     }
 
     @Test
@@ -59,7 +103,7 @@ class BottomBarMiuixStructureTest {
         val tintCaptureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
         val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = contentBackdrop")
         val hitOverlayIndex = kernelSuRendererSource.indexOf(
-            ".alpha(0f)\n                        .graphicsLayer { translationX = panelOffsetPx }\n                        .horizontalDragGesture",
+            "if (!searchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(contentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
             startIndex = indicatorIndex
         )
 

@@ -257,6 +257,20 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
+    fun `android native export layer tint preserves theme brightness in light theme`() {
+        val themeColor = Color(0xFFE67A73)
+        val color = resolveAndroidNativeExportTintColor(
+            themeColor = themeColor,
+            darkTheme = false
+        )
+
+        assertEquals(themeColor.red, color.red, 0.001f)
+        assertEquals(themeColor.green, color.green, 0.001f)
+        assertEquals(themeColor.blue, color.blue, 0.001f)
+        assertEquals(themeColor.alpha, color.alpha, 0.001f)
+    }
+
+    @Test
     fun `moving floating bottom bar staggers shell and indicator refraction offsets`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 1.35f,

@@ -51,7 +51,6 @@ import com.android.purebilibili.core.util.HapticType
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.core.spring
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import androidx.compose.ui.graphics.graphicsLayer
@@ -61,6 +60,8 @@ import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
+import com.android.purebilibili.core.ui.transition.resolveVideoMetadataSharedBoundsTransformSpec
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
@@ -420,8 +421,8 @@ fun ElegantVideoCard(
                         sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         //  添加回弹效果的 spring 动画
-                        boundsTransform = { _, _ ->
-                            com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                        boundsTransform = { initialBounds, targetBounds ->
+                            resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
                         },
                         clipInOverlayDuringTransition = OverlayClip(
                             RoundedCornerShape(cardCornerRadius)  //  过渡时保持动态圆角
@@ -599,7 +600,7 @@ fun ElegantVideoCard(
                                     sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     }
                                 )
                             }
@@ -830,7 +831,7 @@ fun ElegantVideoCard(
                         sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
-                            com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                            resolveVideoMetadataSharedBoundsTransformSpec()
                         }
                     )
                 }
@@ -949,7 +950,7 @@ fun ElegantVideoCard(
                         sharedContentState = rememberSharedContentState(key = "video_up_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
-                            com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                            resolveVideoMetadataSharedBoundsTransformSpec()
                         }
                     )
                 }
@@ -961,7 +962,7 @@ fun ElegantVideoCard(
                         sharedContentState = rememberSharedContentState(key = "video_up_action_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
-                            com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                            resolveVideoMetadataSharedBoundsTransformSpec()
                         }
                     )
                 }
@@ -1014,7 +1015,7 @@ fun ElegantVideoCard(
                                     sharedContentState = rememberSharedContentState(key = "video_avatar_${video.bvid}"),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     },
                                     clipInOverlayDuringTransition = OverlayClip(CircleShape)
                                 )
@@ -1090,7 +1091,7 @@ fun ElegantVideoCard(
                             sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                             boundsTransform = { _, _ ->
-                                com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                resolveVideoMetadataSharedBoundsTransformSpec()
                             }
                         )
                     }

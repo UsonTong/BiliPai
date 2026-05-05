@@ -27,6 +27,7 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.isBottomBarBlurEnabled)
         assertTrue(result.isTopBarLiquidGlassEnabled)
         assertTrue(result.isBottomBarLiquidGlassEnabled)
+        assertFalse(result.isBottomBarSearchEnabled)
         assertFalse(result.androidNativeLiquidGlassEnabled)
         assertTrue(result.isLiquidGlassEnabled)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
@@ -59,6 +60,7 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("bottom_bar_blur_enabled") to false,
             booleanPreferencesKey("top_bar_liquid_glass_enabled") to false,
             booleanPreferencesKey("bottom_bar_liquid_glass_enabled") to false,
+            booleanPreferencesKey("bottom_bar_search_enabled") to true,
             booleanPreferencesKey("android_native_liquid_glass_enabled") to true,
             intPreferencesKey("liquid_glass_style") to LiquidGlassStyle.IOS26.value,
             intPreferencesKey("grid_column_count") to 4,
@@ -89,6 +91,7 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.isBottomBarBlurEnabled)
         assertFalse(result.isTopBarLiquidGlassEnabled)
         assertFalse(result.isBottomBarLiquidGlassEnabled)
+        assertTrue(result.isBottomBarSearchEnabled)
         assertTrue(result.androidNativeLiquidGlassEnabled)
         assertFalse(result.isLiquidGlassEnabled)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)

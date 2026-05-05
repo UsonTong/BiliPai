@@ -33,7 +33,6 @@ internal enum class VideoPopExitAction {
 
 internal enum class VideoPushEnterAction {
     NO_OP,
-    HERO_EXPAND_FADE,
     SOFT_FADE,
     LEFT_SLIDE
 }
@@ -41,6 +40,16 @@ internal enum class VideoPushEnterAction {
 internal data class VideoPopExitDecision(
     val action: VideoPopExitAction,
     val direction: VideoPopExitDirection? = null
+)
+
+internal data class VideoSourceBackgroundMotion(
+    val enabled: Boolean,
+    val blurEnabled: Boolean,
+    val visibleScale: Float = 1f,
+    val hiddenScale: Float = 0.965f,
+    val visibleAlpha: Float = 1f,
+    val hiddenAlpha: Float = 0.94f,
+    val maxBlurRadiusPx: Float = 12f
 )
 
 internal fun resolveVideoPushEnterAction(
@@ -67,7 +76,7 @@ internal fun resolveVideoPushEnterAction(
 
     if (shouldUseClassicBackRouteMotion(backRouteMotionMode)) {
         return if (sharedTransitionReady) {
-            VideoPushEnterAction.HERO_EXPAND_FADE
+            VideoPushEnterAction.NO_OP
         } else {
             VideoPushEnterAction.SOFT_FADE
         }
@@ -199,6 +208,14 @@ internal fun resolveVideoPopExitAction(
 
     if (
         targetIsCardReturnTarget &&
+        shouldUseClassicBackRouteMotion(backRouteMotionMode) &&
+        sharedTransitionReady
+    ) {
+        return VideoPopExitDecision(action = VideoPopExitAction.NO_OP)
+    }
+
+    if (
+        targetIsCardReturnTarget &&
         shouldUseClassicBackRouteMotion(backRouteMotionMode)
     ) {
         return VideoPopExitDecision(
@@ -261,6 +278,36 @@ internal fun shouldUseNoOpRouteTransitionBetweenVideoDetails(
     return cardTransitionEnabled &&
         isVideoDetailRoute(fromRoute) &&
         isVideoDetailRoute(toRoute)
+}
+
+internal fun resolveVideoSourceBackgroundMotion(
+    sourceRoute: String?,
+    activeRoute: String?,
+    lastVideoSourceRoute: String?,
+    cardTransitionEnabled: Boolean,
+    predictiveBackAnimationEnabled: Boolean,
+    sharedTransitionReady: Boolean,
+    realtimeBlurEnabled: Boolean,
+    isReturningFromDetail: Boolean
+): VideoSourceBackgroundMotion {
+    val sourceRouteBase = sourceRoute?.substringBefore("?")
+    val activeRouteBase = activeRoute?.substringBefore("/")
+    val lastSourceRouteBase = lastVideoSourceRoute?.substringBefore("?")
+    val sourceMatchesLastVideoRoute = sourceRouteBase != null &&
+        sourceRouteBase == lastSourceRouteBase &&
+        isVideoCardReturnTargetRoute(sourceRouteBase)
+    val isForwardToVideo = activeRouteBase == VideoRoute.base && !isReturningFromDetail
+    val isReturningToSource = isReturningFromDetail && activeRoute?.substringBefore("?") == sourceRouteBase
+    val enabled = cardTransitionEnabled &&
+        !predictiveBackAnimationEnabled &&
+        sharedTransitionReady &&
+        sourceMatchesLastVideoRoute &&
+        (isForwardToVideo || isReturningToSource)
+
+    return VideoSourceBackgroundMotion(
+        enabled = enabled,
+        blurEnabled = enabled && realtimeBlurEnabled
+    )
 }
 
 internal fun shouldUseNoOpQuickReturnForNonHomeCardRoute(

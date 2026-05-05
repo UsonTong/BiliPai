@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-05-04 · 文档已同步至 v8.0.4（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-05 · 文档已同步至 v8.0.5（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.4-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.5-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -610,14 +610,14 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.4 · 2026-05-04)
+### 最近更新 (v8.0.5 · 2026-05-05)
 
-- 🎵 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**：优先跳转 B 站官方 BGM 发现页，修复从首页、历史等入口进入视频后点击“发现音乐”直接播放的问题。
-- 🎶 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**：接入多 BGM 列表接口，支持多首背景音乐识别、展开/收起和歌手信息展示。
-- 🌐 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**：WebView 放行 `music.bilibili.com` 官方音乐详情页，避免官方发现页被原生路由误拦截。
-- 🏷️ **@播放量修复**：首页视频卡片封面播放量胶囊增加保底宽度，避免窄卡片上播放量被挤成 `...`。
-- ✅ 补充首页卡片统计布局策略测试，并复跑卡片策略与 WebView 导航策略目标单测。
-- 🔖 版本号升级到 `8.0.4`，`versionCode` 升级到 `177`。
+- 🎬 共享元素视频转场增加 iOS 式来源页整体收缩/恢复动效，进入详情和返回列表都更连贯。
+- 🌫️ 动画设置新增“共享元素背景模糊”开关，Android 12+ 支持实时背景模糊，低版本自动降级为无模糊动效。
+- 🔎 底栏搜索胶囊、Dock 宽度和内容淡入淡出改为先快后慢的非线性动画，指示器色散与 settle pulse 保持原策略。
+- 📱 优化视频卡片、相关推荐、竖屏互动栏和平板视频布局的共享转场与返回表现。
+- ✅ 补充导航外观、共享元素背景动效、设置映射和底栏结构策略测试。
+- 🔖 版本号升级到 `8.0.5`，`versionCode` 升级到 `178`。
 
 ### 历史版本
 

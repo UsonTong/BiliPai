@@ -1988,11 +1988,11 @@ internal fun resolveReturnAnimationSuppressionDurationMs(
     isQuickReturnFromDetail: Boolean
 ): Long {
     if (cardTransitionEnabled && isQuickReturnFromDetail) {
-        return if (isTabletLayout) 500L else 380L
+        return if (isTabletLayout) 540L else 420L
     }
     if (cardTransitionEnabled) {
-        if (!cardAnimationEnabled) return if (isTabletLayout) 420L else 360L
-        return if (isTabletLayout) 420L else 360L
+        if (!cardAnimationEnabled) return if (isTabletLayout) 460L else 400L
+        return if (isTabletLayout) 460L else 400L
     }
     if (!cardAnimationEnabled) return 220L
     return if (isTabletLayout) 220L else 240L
@@ -2003,6 +2003,6 @@ internal fun resolveBottomBarRestoreDelayMs(
     isQuickReturnFromDetail: Boolean
 ): Long {
     if (!cardTransitionEnabled) return 150L
-    if (isQuickReturnFromDetail) return 300L
-    return 360L
+    if (isQuickReturnFromDetail) return 340L
+    return 380L
 }

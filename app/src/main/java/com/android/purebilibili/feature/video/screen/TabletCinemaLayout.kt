@@ -83,6 +83,7 @@ import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
 import com.android.purebilibili.core.util.ShareUtils
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
@@ -364,7 +365,9 @@ private fun CinemaStagePlayer(
             Modifier.sharedBounds(
                 sharedContentState = rememberSharedContentState(key = "video_cover_$bvid"),
                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
+                boundsTransform = { initialBounds, targetBounds ->
+                    resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                },
                 clipInOverlayDuringTransition = OverlayClip(
                     RoundedCornerShape(12.dp)
                 )
