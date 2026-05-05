@@ -433,11 +433,11 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Latest (v8.0.5 · 2026-05-05)
 
-- 🎬 Shared-element video transitions now add an iOS-style source-page shrink/restore motion when entering and returning from video detail.
-- 🌫️ Animation settings now include a shared-element background blur toggle; Android 12+ uses live blur and older versions gracefully keep scale/alpha motion only.
-- 🔎 Bottom-bar search capsule, Dock width, and content fade animations now use fast-out slow-in nonlinear timing while keeping indicator dispersion and settle pulse behavior unchanged.
-- 📱 Refined shared-transition and return behavior across video cards, related videos, portrait controls, and tablet video layouts.
-- ✅ Added focused tests for navigation appearance, source-background motion, settings mapping, and bottom-bar structure policies.
+- 🎬 Reworked video-detail shared transitions with source-page shrink/restore motion and separate timing for cover, title, and metadata.
+- 🌫️ Added a shared-element background blur toggle; Android 12+ can use live blur, while unready or predictive-return cases degrade cleanly.
+- 🔎 Bottom-bar search capsule, Dock width, and content fades now use fast-out slow-in timing without changing indicator dispersion or settle pulse behavior.
+- 📱 Unified shared-transition parameters across video cards, related videos, portrait controls, portrait pager, info sections, and tablet layouts.
+- 🧭 Tightened top-tab and bottom-bar release details, with focused tests for navigation, settings, bottom bar, top tabs, and video layout policies.
 - 🔖 Bumped the app to `8.0.5` with `versionCode` `178`.
 
 ---
