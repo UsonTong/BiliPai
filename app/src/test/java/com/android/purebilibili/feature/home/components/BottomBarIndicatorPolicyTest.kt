@@ -231,6 +231,17 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `moving indicator deforms capsule shape like kernelsu dock`() {
+        val deformation = resolveBottomBarIndicatorDeformation(
+            progress = 1f,
+            velocity = 2.0f
+        )
+
+        assertTrue(deformation.scaleX > 1.42f)
+        assertTrue(deformation.scaleY > 1.30f)
+    }
+
+    @Test
     fun `idle refraction profile disables offset and keeps full visible emphasis`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 2f,

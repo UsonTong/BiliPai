@@ -362,7 +362,7 @@ internal fun resolveAndroidNativeBottomBarTuning(
         shellShadowElevationDp = if (darkTheme) 0.6f else 0.8f,
         shellBlurRadiusDp = if (blurEnabled) 12f else 0f,
         shellSurfaceAlpha = if (blurEnabled) 0.4f else 1f,
-        outerHorizontalPaddingDp = 20f,
+        outerHorizontalPaddingDp = 32f,
         innerHorizontalPaddingDp = 4f,
         indicatorHeightDp = 56f,
         indicatorLensRadiusDp = 24f
@@ -645,6 +645,11 @@ internal data class BottomBarItemMotionVisual(
     val selectedIconAlpha: Float
 )
 
+internal data class BottomBarIndicatorDeformation(
+    val scaleX: Float,
+    val scaleY: Float
+)
+
 internal data class BottomBarSettlePulseTransform(
     val scale: Float,
     val translationYDp: Float
@@ -791,6 +796,30 @@ internal fun resolveBottomBarItemMotionVisual(
         scale = scale,
         useSelectedIcon = useSelectedIcon,
         selectedIconAlpha = themeWeight
+    )
+}
+
+internal fun resolveBottomBarFloatingItemContentColor(
+    unselectedColor: Color,
+    selectedColor: Color,
+    selectionFraction: Float
+): Color = lerpColor(
+    start = unselectedColor,
+    stop = selectedColor,
+    fraction = selectionFraction.coerceIn(0f, 1f)
+)
+
+internal fun resolveBottomBarIndicatorDeformation(
+    progress: Float,
+    velocity: Float,
+    pressedScale: Float = 78f / 56f
+): BottomBarIndicatorDeformation {
+    val clampedProgress = progress.coerceIn(0f, 1f)
+    val baseScale = lerp(1f, pressedScale, clampedProgress)
+    val velocityScale = velocity / 10f
+    return BottomBarIndicatorDeformation(
+        scaleX = baseScale / (1f - (velocityScale * 0.75f).coerceIn(-0.2f, 0.2f)),
+        scaleY = baseScale * (1f - (velocityScale * 0.25f).coerceIn(-0.2f, 0.2f))
     )
 }
 
@@ -1737,10 +1766,14 @@ private fun KernelSuAlignedBottomBar(
             fun itemContentColor(
                 item: BottomNavItem?,
                 visual: BottomBarItemMotionVisual
-            ): Color = lerpColor(
-                unselectedColor,
-                selectedContentColor(item),
-                visual.themeWeight
+            ): Color = resolveBottomBarFloatingItemContentColor(
+                unselectedColor = unselectedColor,
+                selectedColor = selectedContentColor(item),
+                selectionFraction = visual.themeWeight
+            )
+            val indicatorDeformation = resolveBottomBarIndicatorDeformation(
+                progress = motionProgress,
+                velocity = dampedDragState.velocity
             )
 
             Box(
@@ -1929,6 +1962,8 @@ private fun KernelSuAlignedBottomBar(
                             .offset(x = contentPadding + indicatorWidth * dampedDragState.value)
                             .graphicsLayer {
                                 translationX = panelOffsetPx
+                                scaleX = indicatorDeformation.scaleX
+                                scaleY = indicatorDeformation.scaleY
                             }
                             .width(indicatorWidth)
                             .height(56.dp)
@@ -1962,22 +1997,7 @@ private fun KernelSuAlignedBottomBar(
                                                 alpha = if (glassEnabled) motionProgress else 0f
                                             )
                                         },
-                                        layerBlock = {
-                                            if (glassEnabled) {
-                                                val indicatorScale = lerp(1f, 78f / 56f, motionProgress)
-                                                val velocity = dampedDragState.velocity / 10f
-                                                scaleX = indicatorScale / (
-                                                    1f - (
-                                                        velocity * 0.75f
-                                                    ).coerceIn(-0.2f, 0.2f)
-                                                )
-                                                scaleY = indicatorScale * (
-                                                    1f - (
-                                                        velocity * 0.25f
-                                                    ).coerceIn(-0.2f, 0.2f)
-                                                )
-                                            }
-                                        },
+                                        layerBlock = {},
                                         onDrawSurface = {
                                             drawRect(
                                                 color = if (isDarkTheme) {

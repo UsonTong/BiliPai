@@ -278,15 +278,25 @@ internal class DampedDragAnimationState(
         val generation = startNewMotion()
         selectionJob?.cancel()
         positionJob?.cancel()
+        pressJob?.cancel()
         velocityPxPerSecond = 0f
         targetIndex = index
         desiredValue = index.toFloat()
+        pressJob = scope.launch {
+            pressProgressAnimation.animateTo(1f, motionSpec.drag.pressSpring.toSpringSpec())
+        }
         selectionJob = scope.launch {
             if (generation != motionGeneration) return@launch
             animatable.animateTo(
                 targetValue = index.toFloat(),
                 animationSpec = motionSpec.drag.selectionSpring.toSpringSpec()
             )
+            if (generation == motionGeneration) {
+                pressJob?.cancel()
+                pressJob = scope.launch {
+                    pressProgressAnimation.animateTo(0f, motionSpec.drag.pressSpring.toSpringSpec())
+                }
+            }
         }
     }
 }
