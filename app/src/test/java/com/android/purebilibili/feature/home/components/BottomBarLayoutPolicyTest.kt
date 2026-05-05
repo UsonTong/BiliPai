@@ -91,13 +91,15 @@ class BottomBarLayoutPolicyTest {
             searchExpanded = true
         )
 
-        assertEquals(64.dp, layout.dockWidth)
-        assertEquals(279.dp, layout.searchWidth)
+        assertEquals(58.dp, layout.dockWidth)
+        assertEquals(280.dp, layout.searchWidth)
         assertEquals(10.dp, layout.gap)
     }
 
     @Test
-    fun `kernelsu search capsule is slimmer only when expanded`() {
+    fun `kernelsu expanded home dock aligns with slimmer search capsule`() {
+        assertEquals(64.dp, resolveKernelSuBottomBarDockHeight(searchExpanded = false))
+        assertEquals(58.dp, resolveKernelSuBottomBarDockHeight(searchExpanded = true))
         assertEquals(64.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = false))
         assertEquals(58.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = true))
     }
@@ -209,29 +211,76 @@ class BottomBarLayoutPolicyTest {
     }
 
     @Test
-    fun `home icon click expands collapsed search before scrolling to top`() {
+    fun `manual bottom search override wins over auto expansion`() {
         assertEquals(
             true,
-            shouldExpandBottomBarSearchOnNavItemClick(
-                clickedItem = BottomNavItem.HOME,
+            resolveEffectiveBottomBarSearchExpanded(
+                currentItem = BottomNavItem.HOME,
                 bottomBarSearchEnabled = true,
-                searchExpanded = false
+                shouldAutoExpand = false,
+                expansionOverride = BottomBarSearchExpansionOverride.EXPANDED
             )
         )
         assertEquals(
             false,
-            shouldExpandBottomBarSearchOnNavItemClick(
+            resolveEffectiveBottomBarSearchExpanded(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                shouldAutoExpand = true,
+                expansionOverride = BottomBarSearchExpansionOverride.COLLAPSED
+            )
+        )
+    }
+
+    @Test
+    fun `non home routes do not expand bottom search`() {
+        assertEquals(
+            false,
+            resolveEffectiveBottomBarSearchExpanded(
+                currentItem = BottomNavItem.HISTORY,
+                bottomBarSearchEnabled = true,
+                shouldAutoExpand = true,
+                expansionOverride = BottomBarSearchExpansionOverride.EXPANDED
+            )
+        )
+    }
+
+    @Test
+    fun `home icon click toggles search and dock only while already on home`() {
+        assertEquals(
+            BottomBarSearchExpansionOverride.EXPANDED,
+            resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                currentItem = BottomNavItem.HOME,
                 clickedItem = BottomNavItem.HOME,
                 bottomBarSearchEnabled = true,
-                searchExpanded = true
+                effectiveSearchExpanded = false
             )
         )
         assertEquals(
-            false,
-            shouldExpandBottomBarSearchOnNavItemClick(
+            BottomBarSearchExpansionOverride.COLLAPSED,
+            resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                currentItem = BottomNavItem.HOME,
+                clickedItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                effectiveSearchExpanded = true
+            )
+        )
+        assertEquals(
+            null,
+            resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                currentItem = BottomNavItem.HOME,
                 clickedItem = BottomNavItem.DYNAMIC,
                 bottomBarSearchEnabled = true,
-                searchExpanded = false
+                effectiveSearchExpanded = false
+            )
+        )
+        assertEquals(
+            null,
+            resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                currentItem = BottomNavItem.HISTORY,
+                clickedItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                effectiveSearchExpanded = false
             )
         )
     }

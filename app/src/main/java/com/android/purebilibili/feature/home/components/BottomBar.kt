@@ -410,23 +410,28 @@ internal fun resolveKernelSuBottomBarSearchLayout(
 
     val gap = 10.dp
     val availableWidth = (containerWidth - (minEdgePadding * 2)).coerceAtLeast(0.dp)
-    val compactDockWidth = 64.dp
+    val compactHomeDockSize = 58.dp
+    val minimumDockWidth = 64.dp
     val collapsedSearchWidth = 64.dp
     val expandedSearchWidth = minOf(
         280.dp,
-        (availableWidth - compactDockWidth - gap).coerceAtLeast(176.dp)
+        (availableWidth - compactHomeDockSize - gap).coerceAtLeast(176.dp)
     )
     val targetSearchWidth = if (searchExpanded) expandedSearchWidth else collapsedSearchWidth
     val targetDockWidth = if (searchExpanded) {
-        compactDockWidth
+        compactHomeDockSize
     } else {
-        minOf(baseDockWidth, (availableWidth - targetSearchWidth - gap).coerceAtLeast(compactDockWidth))
+        minOf(baseDockWidth, (availableWidth - targetSearchWidth - gap).coerceAtLeast(minimumDockWidth))
     }
     return KernelSuBottomBarSearchLayout(
         dockWidth = targetDockWidth,
         searchWidth = targetSearchWidth,
         gap = gap
     )
+}
+
+internal fun resolveKernelSuBottomBarDockHeight(searchExpanded: Boolean): Dp {
+    return if (searchExpanded) 58.dp else 64.dp
 }
 
 internal fun resolveKernelSuBottomBarSearchHeight(searchExpanded: Boolean): Dp {
@@ -448,12 +453,40 @@ internal fun shouldAutoExpandBottomBarSearch(
     }
 }
 
-internal fun shouldExpandBottomBarSearchOnNavItemClick(
+internal enum class BottomBarSearchExpansionOverride {
+    FOLLOW_AUTO,
+    EXPANDED,
+    COLLAPSED
+}
+
+internal fun resolveEffectiveBottomBarSearchExpanded(
+    currentItem: BottomNavItem,
+    bottomBarSearchEnabled: Boolean,
+    shouldAutoExpand: Boolean,
+    expansionOverride: BottomBarSearchExpansionOverride
+): Boolean {
+    if (!bottomBarSearchEnabled || currentItem != BottomNavItem.HOME) return false
+    return when (expansionOverride) {
+        BottomBarSearchExpansionOverride.FOLLOW_AUTO -> shouldAutoExpand
+        BottomBarSearchExpansionOverride.EXPANDED -> true
+        BottomBarSearchExpansionOverride.COLLAPSED -> false
+    }
+}
+
+internal fun resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+    currentItem: BottomNavItem,
     clickedItem: BottomNavItem,
     bottomBarSearchEnabled: Boolean,
-    searchExpanded: Boolean
-): Boolean {
-    return bottomBarSearchEnabled && clickedItem == BottomNavItem.HOME && !searchExpanded
+    effectiveSearchExpanded: Boolean
+): BottomBarSearchExpansionOverride? {
+    if (!bottomBarSearchEnabled || currentItem != BottomNavItem.HOME || clickedItem != BottomNavItem.HOME) {
+        return null
+    }
+    return if (effectiveSearchExpanded) {
+        BottomBarSearchExpansionOverride.COLLAPSED
+    } else {
+        BottomBarSearchExpansionOverride.EXPANDED
+    }
 }
 
 internal fun resolveAndroidNativeBottomBarTuning(
@@ -1868,7 +1901,9 @@ private fun KernelSuAlignedBottomBar(
         themeColor = selectedColor,
         darkTheme = isDarkTheme
     )
-    var searchExpanded by remember { mutableStateOf(false) }
+    var searchExpansionOverride by remember {
+        mutableStateOf(BottomBarSearchExpansionOverride.FOLLOW_AUTO)
+    }
     var searchQuery by remember { mutableStateOf("") }
     var homeClickPulseKey by remember { mutableIntStateOf(0) }
     val homeClickPulseTransform = rememberBottomBarClickPulseTransform(homeClickPulseKey)
@@ -1884,13 +1919,18 @@ private fun KernelSuAlignedBottomBar(
             )
         }
     }
-    val effectiveSearchExpanded = searchExpanded || shouldAutoExpandSearch
+    val effectiveSearchExpanded = resolveEffectiveBottomBarSearchExpanded(
+        currentItem = currentItem,
+        bottomBarSearchEnabled = searchEnabled,
+        shouldAutoExpand = shouldAutoExpandSearch,
+        expansionOverride = searchExpansionOverride
+    )
     LaunchedEffect(currentItem, searchEnabled, shouldAutoExpandSearch, homeScrollOffset.floatValue) {
-        val shouldCollapseManualSearch = !searchEnabled ||
+        val shouldResetSearchOverride = !searchEnabled ||
             currentItem != BottomNavItem.HOME ||
             (currentItem == BottomNavItem.HOME && !shouldAutoExpandSearch && homeScrollOffset.floatValue > 32f)
-        if (shouldCollapseManualSearch) {
-            searchExpanded = false
+        if (shouldResetSearchOverride) {
+            searchExpansionOverride = BottomBarSearchExpansionOverride.FOLLOW_AUTO
         }
     }
 
@@ -1935,6 +1975,16 @@ private fun KernelSuAlignedBottomBar(
                     easing = AppMotionEasing.Continuity
                 ),
                 label = "bottomBarSearchGap"
+            )
+            val dockHeight by animateDpAsState(
+                targetValue = resolveKernelSuBottomBarDockHeight(
+                    searchExpanded = effectiveSearchExpanded
+                ),
+                animationSpec = tween(
+                    durationMillis = 220,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarDockHeight"
             )
             val searchHeight by animateDpAsState(
                 targetValue = resolveKernelSuBottomBarSearchHeight(
@@ -2023,7 +2073,7 @@ private fun KernelSuAlignedBottomBar(
                 Box(
                     modifier = Modifier
                         .width(dockWidth)
-                        .height(shellHeight)
+                        .height(dockHeight)
                 ) {
                 Box(
                     modifier = Modifier
@@ -2312,17 +2362,18 @@ private fun KernelSuAlignedBottomBar(
                             contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
-                                val shouldExpandSearchOnly = shouldExpandBottomBarSearchOnNavItemClick(
+                                val searchOverride = resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                                    currentItem = currentItem,
                                     clickedItem = item,
                                     bottomBarSearchEnabled = searchEnabled,
-                                    searchExpanded = searchExpanded
+                                    effectiveSearchExpanded = effectiveSearchExpanded
                                 )
                                 if (item == BottomNavItem.HOME) {
                                     homeClickPulseKey += 1
                                 }
-                                if (shouldExpandSearchOnly) {
+                                if (searchOverride != null) {
                                     haptic(HapticType.LIGHT)
-                                    searchExpanded = true
+                                    searchExpansionOverride = searchOverride
                                 } else {
                                     dampedDragState.updateIndex(index)
                                     performMaterialBottomBarTap(
@@ -2383,14 +2434,15 @@ private fun KernelSuAlignedBottomBar(
                                         indication = null
                                     ) {
                                         homeClickPulseKey += 1
-                                        if (shouldExpandBottomBarSearchOnNavItemClick(
-                                                clickedItem = BottomNavItem.HOME,
-                                                bottomBarSearchEnabled = searchEnabled,
-                                                searchExpanded = searchExpanded
-                                            )
-                                        ) {
+                                        val searchOverride = resolveBottomBarSearchExpansionOverrideOnNavItemClick(
+                                            currentItem = currentItem,
+                                            clickedItem = BottomNavItem.HOME,
+                                            bottomBarSearchEnabled = searchEnabled,
+                                            effectiveSearchExpanded = effectiveSearchExpanded
+                                        )
+                                        if (searchOverride != null) {
                                             haptic(HapticType.LIGHT)
-                                            searchExpanded = true
+                                            searchExpansionOverride = searchOverride
                                         } else {
                                             performMaterialBottomBarTap(
                                                 haptic = haptic,
@@ -2432,7 +2484,11 @@ private fun KernelSuAlignedBottomBar(
                         onQueryChange = { searchQuery = it },
                         onExpandChange = { expanded ->
                             haptic(HapticType.LIGHT)
-                            searchExpanded = expanded
+                            searchExpansionOverride = if (expanded) {
+                                BottomBarSearchExpansionOverride.EXPANDED
+                            } else {
+                                BottomBarSearchExpansionOverride.COLLAPSED
+                            }
                         },
                         onSubmit = {
                             val keyword = searchQuery.trim()
