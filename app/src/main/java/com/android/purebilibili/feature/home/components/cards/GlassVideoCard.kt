@@ -53,7 +53,6 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
-import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
 import com.android.purebilibili.feature.home.rememberHomeGlassPillColors
 import com.android.purebilibili.feature.home.resolveHomeGlassCoverPillBaseColor
@@ -181,9 +180,7 @@ fun GlassVideoCard(
                 .sharedBounds(
                     sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
                     animatedVisibilityScope = animatedVisibilityScope,
-                    boundsTransform = { initialBounds, targetBounds ->
-                        resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
-                    },
+                    boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
                     clipInOverlayDuringTransition = OverlayClip(
                         RoundedCornerShape(cardCornerRadius)  // 过渡时保持动态圆角
                     )

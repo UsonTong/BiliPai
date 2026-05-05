@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.unit.dp
+import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -91,8 +92,126 @@ class BottomBarLayoutPolicyTest {
         )
 
         assertEquals(64.dp, layout.dockWidth)
-        assertEquals(260.dp, layout.searchWidth)
+        assertEquals(279.dp, layout.searchWidth)
         assertEquals(10.dp, layout.gap)
+    }
+
+    @Test
+    fun `kernelsu search capsule is slimmer only when expanded`() {
+        assertEquals(64.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = false))
+        assertEquals(58.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = true))
+    }
+
+    @Test
+    fun `home top automatically expands bottom search`() {
+        assertEquals(
+            true,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                homeScrollOffsetPx = 0f
+            )
+        )
+        assertEquals(
+            true,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                homeScrollOffsetPx = 24f
+            )
+        )
+    }
+
+    @Test
+    fun `bottom search auto collapses away from home top in top expand mode`() {
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                homeScrollOffsetPx = 96f
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.DYNAMIC,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                homeScrollOffsetPx = 0f
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = false,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                homeScrollOffsetPx = 0f
+            )
+        )
+    }
+
+    @Test
+    fun `bottom search auto expands away from home top in scroll expand mode`() {
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+                homeScrollOffsetPx = 0f
+            )
+        )
+        assertEquals(
+            true,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+                homeScrollOffsetPx = 96f
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.DYNAMIC,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+                homeScrollOffsetPx = 96f
+            )
+        )
+    }
+
+    @Test
+    fun `home icon click expands collapsed search before scrolling to top`() {
+        assertEquals(
+            true,
+            shouldExpandBottomBarSearchOnNavItemClick(
+                clickedItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                searchExpanded = false
+            )
+        )
+        assertEquals(
+            false,
+            shouldExpandBottomBarSearchOnNavItemClick(
+                clickedItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                searchExpanded = true
+            )
+        )
+        assertEquals(
+            false,
+            shouldExpandBottomBarSearchOnNavItemClick(
+                clickedItem = BottomNavItem.DYNAMIC,
+                bottomBarSearchEnabled = true,
+                searchExpanded = false
+            )
+        )
     }
 
     @Test

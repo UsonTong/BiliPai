@@ -244,9 +244,9 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun videoPushEnterAction_classicBackWithSharedReady_letsSharedElementDriveRouteMotion() {
+    fun videoPushEnterAction_classicBackWithSharedReady_usesHeroExpandFade() {
         assertEquals(
-            VideoPushEnterAction.NO_OP,
+            VideoPushEnterAction.HERO_EXPAND_FADE,
             resolveVideoPushEnterAction(
                 cardTransitionEnabled = true,
                 predictiveBackAnimationEnabled = false,
@@ -296,104 +296,6 @@ class AppNavigationTransitionPolicyTest {
                 toRoute = VideoRoute.route,
                 sharedTransitionReady = false
             )
-        )
-    }
-
-    @Test
-    fun videoSourceBackgroundMotion_forwardWithSharedReady_scalesAndBlursSourcePage() {
-        val decision = resolveVideoSourceBackgroundMotion(
-            sourceRoute = ScreenRoutes.Home.route,
-            activeRoute = VideoRoute.route,
-            lastVideoSourceRoute = ScreenRoutes.Home.route,
-            cardTransitionEnabled = true,
-            predictiveBackAnimationEnabled = false,
-            sharedTransitionReady = true,
-            realtimeBlurEnabled = true,
-            isReturningFromDetail = false
-        )
-
-        assertTrue(decision.enabled)
-        assertTrue(decision.blurEnabled)
-        assertEquals(1f, decision.visibleScale)
-        assertEquals(0.965f, decision.hiddenScale)
-        assertEquals(12f, decision.maxBlurRadiusPx)
-    }
-
-    @Test
-    fun videoSourceBackgroundMotion_returnWithSharedReady_restoresSourcePageFromBlurredScale() {
-        val decision = resolveVideoSourceBackgroundMotion(
-            sourceRoute = ScreenRoutes.Search.route,
-            activeRoute = ScreenRoutes.Search.route,
-            lastVideoSourceRoute = ScreenRoutes.Search.route,
-            cardTransitionEnabled = true,
-            predictiveBackAnimationEnabled = false,
-            sharedTransitionReady = true,
-            realtimeBlurEnabled = true,
-            isReturningFromDetail = true
-        )
-
-        assertTrue(decision.enabled)
-        assertTrue(decision.blurEnabled)
-    }
-
-    @Test
-    fun videoSourceBackgroundMotion_keepsScaleButDisablesBlurWhenRealtimeBlurSwitchIsOff() {
-        val decision = resolveVideoSourceBackgroundMotion(
-            sourceRoute = ScreenRoutes.History.route,
-            activeRoute = VideoRoute.route,
-            lastVideoSourceRoute = ScreenRoutes.History.route,
-            cardTransitionEnabled = true,
-            predictiveBackAnimationEnabled = false,
-            sharedTransitionReady = true,
-            realtimeBlurEnabled = false,
-            isReturningFromDetail = false
-        )
-
-        assertTrue(decision.enabled)
-        assertFalse(decision.blurEnabled)
-    }
-
-    @Test
-    fun videoSourceBackgroundMotion_disabledWhenSharedElementIsNotReadyOrPredictiveStable() {
-        assertFalse(
-            resolveVideoSourceBackgroundMotion(
-                sourceRoute = ScreenRoutes.Home.route,
-                activeRoute = VideoRoute.route,
-                lastVideoSourceRoute = ScreenRoutes.Home.route,
-                cardTransitionEnabled = true,
-                predictiveBackAnimationEnabled = false,
-                sharedTransitionReady = false,
-                realtimeBlurEnabled = true,
-                isReturningFromDetail = false
-            ).enabled
-        )
-        assertFalse(
-            resolveVideoSourceBackgroundMotion(
-                sourceRoute = ScreenRoutes.Home.route,
-                activeRoute = VideoRoute.route,
-                lastVideoSourceRoute = ScreenRoutes.Home.route,
-                cardTransitionEnabled = true,
-                predictiveBackAnimationEnabled = true,
-                sharedTransitionReady = true,
-                realtimeBlurEnabled = true,
-                isReturningFromDetail = false
-            ).enabled
-        )
-    }
-
-    @Test
-    fun videoSourceBackgroundMotion_disabledWhenCardTransitionIsOff() {
-        assertFalse(
-            resolveVideoSourceBackgroundMotion(
-                sourceRoute = ScreenRoutes.Home.route,
-                activeRoute = VideoRoute.route,
-                lastVideoSourceRoute = ScreenRoutes.Home.route,
-                cardTransitionEnabled = false,
-                predictiveBackAnimationEnabled = false,
-                sharedTransitionReady = true,
-                realtimeBlurEnabled = true,
-                isReturningFromDetail = false
-            ).enabled
         )
     }
 
@@ -473,24 +375,6 @@ class AppNavigationTransitionPolicyTest {
                 isQuickReturnFromDetail = true,
                 sharedTransitionReady = false,
                 profile = VideoSharedTransitionProfile.COVER_AND_METADATA
-            )
-        )
-    }
-
-    @Test
-    fun popExitToHome_withSharedReady_usesNoOpSoSharedElementOwnsCardRebound() {
-        assertEquals(
-            VideoPopExitDecision(action = VideoPopExitAction.NO_OP),
-            resolveVideoPopExitAction(
-                cardTransitionEnabled = true,
-                predictiveBackAnimationEnabled = false,
-                isTabletLayout = false,
-                fromRoute = VideoRoute.route,
-                targetRoute = ScreenRoutes.Home.route,
-                isQuickReturnFromDetail = false,
-                sharedTransitionReady = true,
-                isSingleColumnCard = false,
-                lastClickedCardCenterX = 0.2f
             )
         )
     }

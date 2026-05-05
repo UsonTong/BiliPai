@@ -180,16 +180,6 @@ fun AnimationSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Sparkles,
-                            title = "共享元素背景模糊",
-                            subtitle = "进入和返回视频详情时的背景收缩模糊效果",
-                            checked = state.videoTransitionRealtimeBlurEnabled,
-                            onCheckedChange = { viewModel.toggleVideoTransitionRealtimeBlur(it) },
-                            enabled = state.cardTransitionEnabled,
-                            iconTint = iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
                             icon = Icons.AutoMirrored.Outlined.ArrowBack,
                             title = predictiveBackToggleState.title,
                             subtitle = predictiveBackToggleState.subtitle,

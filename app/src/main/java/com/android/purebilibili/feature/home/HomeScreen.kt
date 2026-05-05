@@ -189,6 +189,7 @@ fun HomeScreen(
     val homeBackdrop = rememberLayerBackdrop()
 
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
+    val globalScrollOffset = LocalHomeScrollOffset.current
     // [Header] 首页重选/双击回顶时需要强制恢复顶部，避免自动收缩后残留空白区域
     var headerOffsetHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var headerSettleAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -253,6 +254,7 @@ fun HomeScreen(
                     listState.animateScrollToItem(plan.animateTargetIndex)
                 }
                 setHeaderOffsetImmediate(0f)
+                globalScrollOffset.floatValue = 0f
             }
         }
     }
@@ -838,6 +840,7 @@ fun HomeScreen(
                         listState.animateScrollToItem(0)
                     } 
                     setHeaderOffsetImmediate(0f)
+                    globalScrollOffset.floatValue = 0f
                 }
             }
             BottomNavItem.DYNAMIC -> onDynamicClick()
@@ -1034,7 +1037,6 @@ fun HomeScreen(
     val bottomBarVisibleState = LocalSetBottomBarVisible.current
     
     // [Feature] Global Scroll Offset for Liquid Glass
-    val globalScrollOffset = LocalHomeScrollOffset.current
     val activeGridState = gridStates[state.currentCategory]
     val canRevealHeader by remember(activeGridState) {
         derivedStateOf {
@@ -1138,6 +1140,7 @@ fun HomeScreen(
                 }
                 recommendGridState.animateScrollToItem(0)
                 setHeaderOffsetImmediate(0f)
+                globalScrollOffset.floatValue = 0f
                 todayWatchStartupRevealHandled = true
             }
             TodayWatchStartupRevealDecision.SKIP -> {
@@ -1487,6 +1490,7 @@ fun HomeScreen(
                 coroutineScope.launch {
                     gridStates[state.currentCategory]?.animateScrollToItem(0)
                     setHeaderOffsetImmediate(0f) // [Refinement] Reset header on double tap
+                    globalScrollOffset.floatValue = 0f
                 }
             },
             isRefreshing = isRefreshing,
@@ -1934,6 +1938,7 @@ fun HomeScreen(
                         setHeaderOffsetImmediate(0f)
                         gridStates[state.currentCategory]?.animateScrollToItem(0)
                         setHeaderOffsetImmediate(0f)
+                        globalScrollOffset.floatValue = 0f
                     }
                 },
                 hazeState = if (isBottomBarBlurEnabled) hazeState else null,

@@ -2,19 +2,15 @@
 package com.android.purebilibili.navigation
 
 import android.net.Uri
-import android.os.Build
-import android.graphics.Shader
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState //  新增
 import androidx.compose.runtime.getValue //  新增
@@ -24,8 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -82,6 +77,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.CompositionLocalProvider
@@ -188,107 +184,6 @@ internal fun resolveStandardVideoRoute(
     )
 }
 
-@Composable
-private fun VideoSourceBackgroundMotionHost(
-    sourceRoute: String,
-    activeRoute: String?,
-    cardTransitionEnabled: Boolean,
-    predictiveBackAnimationEnabled: Boolean,
-    realtimeBlurEnabled: Boolean,
-    navMotionSpec: AppNavigationMotionSpec,
-    animatedVisibilityScope: AnimatedVisibilityScope,
-    content: @Composable () -> Unit
-) {
-    val sharedTransitionReady = CardPositionManager.lastClickedCardBounds != null &&
-        CardPositionManager.isCardFullyVisible
-    val motion = remember(
-        sourceRoute,
-        activeRoute,
-        CardPositionManager.lastVideoSourceRoute,
-        cardTransitionEnabled,
-        predictiveBackAnimationEnabled,
-        sharedTransitionReady,
-        realtimeBlurEnabled
-    ) {
-        resolveVideoSourceBackgroundMotion(
-            sourceRoute = sourceRoute,
-            activeRoute = activeRoute,
-            lastVideoSourceRoute = CardPositionManager.lastVideoSourceRoute,
-            cardTransitionEnabled = cardTransitionEnabled,
-            predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-            sharedTransitionReady = sharedTransitionReady,
-            realtimeBlurEnabled = realtimeBlurEnabled,
-            isReturningFromDetail = CardPositionManager.isReturningFromDetail
-        )
-    }
-    if (!motion.enabled) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            content()
-        }
-        return
-    }
-
-    val transition = animatedVisibilityScope.transition
-    val scale by transition.animateFloat(
-        transitionSpec = {
-            tween(
-                durationMillis = navMotionSpec.slowFadeDurationMillis,
-                easing = IOS_RETURN_EASING
-            )
-        },
-        label = "video_source_background_scale"
-    ) { state ->
-        if (state == EnterExitState.Visible) motion.visibleScale else motion.hiddenScale
-    }
-    val alpha by transition.animateFloat(
-        transitionSpec = {
-            tween(
-                durationMillis = navMotionSpec.slowFadeDurationMillis,
-                easing = IOS_RETURN_EASING
-            )
-        },
-        label = "video_source_background_alpha"
-    ) { state ->
-        if (state == EnterExitState.Visible) motion.visibleAlpha else motion.hiddenAlpha
-    }
-    val blurRadiusPx by transition.animateFloat(
-        transitionSpec = {
-            tween(
-                durationMillis = navMotionSpec.slowFadeDurationMillis,
-                easing = IOS_RETURN_EASING
-            )
-        },
-        label = "video_source_background_blur"
-    ) { state ->
-        if (state == EnterExitState.Visible) 0f else motion.maxBlurRadiusPx
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-                renderEffect = if (
-                    motion.blurEnabled &&
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    blurRadiusPx > 0.01f
-                ) {
-                    android.graphics.RenderEffect.createBlurEffect(
-                        blurRadiusPx,
-                        blurRadiusPx,
-                        Shader.TileMode.CLAMP
-                    ).asComposeRenderEffect()
-                } else {
-                    null
-                }
-            }
-    ) {
-        content()
-    }
-}
-
 @androidx.media3.common.util.UnstableApi
 // @OptIn(ExperimentalMaterial3WindowSizeClassApi::class) (Removed)
 @Composable
@@ -333,7 +228,6 @@ fun AppNavigation(
         )
     }
     val cardTransitionEnabled = appearance.cardTransitionEnabled
-    val videoTransitionRealtimeBlurEnabled = appearance.videoTransitionRealtimeBlurEnabled
     val predictiveBackAnimationEnabled = appearance.predictiveBackAnimationEnabled
     val isBottomBarBlurEnabled = appearance.bottomBarBlurEnabled
     val bottomBarLabelMode = appearance.bottomBarLabelMode
@@ -837,23 +731,7 @@ fun AppNavigation(
         composable(
             route = ScreenRoutes.Home.route,
             //  进入视频详情页时的退出动画
-            exitTransition = {
-                val targetRoute = targetState.destination.route
-                val sharedTransitionReady = CardPositionManager.lastClickedCardBounds != null &&
-                    CardPositionManager.isCardFullyVisible
-                if (
-                    targetRoute?.startsWith("${VideoRoute.base}/") == true &&
-                    shouldUseNoOpSharedElementRouteTransition(
-                        cardTransitionEnabled = cardTransitionEnabled,
-                        sharedTransitionReady = sharedTransitionReady,
-                        predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
-                    )
-                ) {
-                    ExitTransition.None
-                } else {
-                    fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis))
-                }
-            },
+            exitTransition = { fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis)) },
             //  [修复] 从设置页返回时使用右滑动画
             popEnterTransition = { 
                 val fromRoute = initialState.destination.route
@@ -928,62 +806,52 @@ fun AppNavigation(
             }
         ) {
             //  提供 AnimatedVisibilityScope 给 HomeScreen 以支持共享元素过渡i l
-            VideoSourceBackgroundMotionHost(
-                sourceRoute = ScreenRoutes.Home.route,
-                activeRoute = currentRoute,
-                cardTransitionEnabled = cardTransitionEnabled,
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
-                navMotionSpec = navMotionSpec,
-                animatedVisibilityScope = this
-            ) {
-                ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                    HomeScreen(
-                        viewModel = homeViewModel,
-                        onVideoClick = { request -> navigateToVideoFromHome(request) },
-                        onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
-                        onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
-                        onProfileClick = { navigateTo(ScreenRoutes.Profile.route) },
-                        onLogout = {
-                            coroutineScope.launch {
-                                com.android.purebilibili.core.store.TokenManager.clear(context)
-                                com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
-                                    mid = null,
-                                    isVip = false,
-                                    privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
-                                )
-                                com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
-                                homeViewModel.refresh()
-                            }
-                        },
-                        onSettingsClick = { navigateTo(ScreenRoutes.Settings.route) },
-                        // 🔒 [防抖 + SingleTop] 底栏导航优化
-                        onDynamicClick = { navigateTo(ScreenRoutes.Dynamic.route) },
-                        onHistoryClick = { navigateTo(ScreenRoutes.History.route) },
-                        onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },  //  分区点击
-                        onLiveClick = { roomId, title, uname ->
-                            if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
-                        },
-                        //  [修复] 番剧点击导航，接受类型参数
-                        onBangumiClick = { initialType ->
-                            if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
-                        },
-                        //  分类点击：跳转到分类详情页面
-                        onCategoryClick = { tid, name ->
-                            if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
-                        },
-                        //  [新增] 底栏扩展项目导航
-                        onFavoriteClick = { navigateTo(ScreenRoutes.Favorite.route) },
-                        onLiveListClick = { navigateTo(ScreenRoutes.LiveList.route) },
-                        onWatchLaterClick = { navigateTo(ScreenRoutes.WatchLater.route) },
-                        onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
-                        onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
-                        onStoryClick = { navigateTo(ScreenRoutes.Story.route) },  //  [新增] 竖屏短视频
-                        globalHazeState = mainHazeState,  // [新增] 全局底栏模糊状态
-                        predictiveStableBackRouteMotionEnabled =
-                            shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
-                    )
-                }
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                HomeScreen(
+                    viewModel = homeViewModel,
+                    onVideoClick = { request -> navigateToVideoFromHome(request) },
+                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                    onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
+                    onProfileClick = { navigateTo(ScreenRoutes.Profile.route) },
+                    onLogout = {
+                        coroutineScope.launch {
+                            com.android.purebilibili.core.store.TokenManager.clear(context)
+                            com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
+                                mid = null,
+                                isVip = false,
+                                privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
+                            )
+                            com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
+                            homeViewModel.refresh()
+                        }
+                    },
+                    onSettingsClick = { navigateTo(ScreenRoutes.Settings.route) },
+                    // 🔒 [防抖 + SingleTop] 底栏导航优化
+                    onDynamicClick = { navigateTo(ScreenRoutes.Dynamic.route) },
+                    onHistoryClick = { navigateTo(ScreenRoutes.History.route) },
+                    onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },  //  分区点击
+                    onLiveClick = { roomId, title, uname ->
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                    },
+                    //  [修复] 番剧点击导航，接受类型参数
+                    onBangumiClick = { initialType ->
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
+                    },
+                    //  分类点击：跳转到分类详情页面
+                    onCategoryClick = { tid, name ->
+                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
+                    },
+                    //  [新增] 底栏扩展项目导航
+                    onFavoriteClick = { navigateTo(ScreenRoutes.Favorite.route) },
+                    onLiveListClick = { navigateTo(ScreenRoutes.LiveList.route) },
+                    onWatchLaterClick = { navigateTo(ScreenRoutes.WatchLater.route) },
+                    onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
+                    onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
+                    onStoryClick = { navigateTo(ScreenRoutes.Story.route) },  //  [新增] 竖屏短视频
+                    globalHazeState = mainHazeState,  // [新增] 全局底栏模糊状态
+                    predictiveStableBackRouteMotionEnabled =
+                        shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
+                )
             }
         }
 
@@ -1018,6 +886,34 @@ fun AppNavigation(
                     )
                 ) {
                     VideoPushEnterAction.NO_OP -> EnterTransition.None
+                    VideoPushEnterAction.HERO_EXPAND_FADE -> {
+                        val cardCenter = CardPositionManager.lastClickedCardCenter
+                        val transformOrigin = TransformOrigin(
+                            pivotFractionX = (cardCenter?.x ?: 0.5f).coerceIn(0f, 1f),
+                            pivotFractionY = (cardCenter?.y ?: 0.35f).coerceIn(0f, 1f)
+                        )
+                        // 强化前进进入感：明显一点的放大+淡入，并叠加轻微位移
+                        (scaleIn(
+                            animationSpec = tween(
+                                durationMillis = navMotionSpec.slowFadeDurationMillis,
+                                easing = IOS_RETURN_EASING
+                            ),
+                            initialScale = 0.86f,
+                            transformOrigin = transformOrigin
+                        ) + fadeIn(
+                            animationSpec = tween(
+                                durationMillis = navMotionSpec.slowFadeDurationMillis,
+                                easing = IOS_RETURN_EASING
+                            ),
+                            initialAlpha = 0.35f
+                        ) + slideInHorizontally(
+                            animationSpec = tween(
+                                durationMillis = navMotionSpec.slowFadeDurationMillis,
+                                easing = IOS_RETURN_EASING
+                            ),
+                            initialOffsetX = { fullWidth -> (fullWidth * 0.08f).toInt() }
+                        ))
+                    }
                     VideoPushEnterAction.SOFT_FADE -> {
                         fadeIn(
                             animationSpec = tween(
@@ -1393,17 +1289,8 @@ fun AppNavigation(
                 historyViewModel.loadData()
             }
             
-            VideoSourceBackgroundMotionHost(
-                sourceRoute = ScreenRoutes.History.route,
-                activeRoute = currentRoute,
-                cardTransitionEnabled = cardTransitionEnabled,
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
-                navMotionSpec = navMotionSpec,
-                animatedVisibilityScope = this
-            ) {
-                ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                    CommonListScreen(
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                CommonListScreen(
                     viewModel = historyViewModel,
                     onBack = { navController.popBackStack() },
                     globalHazeState = mainHazeState, // [新增] 传入全局 HazeState
@@ -1493,8 +1380,7 @@ fun AppNavigation(
                             }
                         }
                     }
-                    )
-                }
+                )
             }
         }
 
@@ -1506,17 +1392,8 @@ fun AppNavigation(
             popExitTransition = { slideExitRight(navMotionSpec) }
         ) {
             val favoriteViewModel: FavoriteViewModel = viewModel()
-            VideoSourceBackgroundMotionHost(
-                sourceRoute = ScreenRoutes.Favorite.route,
-                activeRoute = currentRoute,
-                cardTransitionEnabled = cardTransitionEnabled,
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
-                navMotionSpec = navMotionSpec,
-                animatedVisibilityScope = this
-            ) {
-                ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                    CommonListScreen(
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                CommonListScreen(
                     viewModel = favoriteViewModel,
                     onBack = { navController.popBackStack() },
                     globalHazeState = mainHazeState, // [新增] 传入全局 HazeState
@@ -1545,8 +1422,7 @@ fun AppNavigation(
                     onPlayAllAudioClick = { bvid, cid ->
                         navigateToVideo(bvid, cid, "", startAudio = true)
                     }
-                    )
-                }
+                )
             }
         }
         
@@ -1557,25 +1433,15 @@ fun AppNavigation(
             popEnterTransition = { videoCardReturnPopEnterTransition(ScreenRoutes.WatchLater.route) },
             popExitTransition = { slideExitRight(navMotionSpec) }
         ) {
-            VideoSourceBackgroundMotionHost(
-                sourceRoute = ScreenRoutes.WatchLater.route,
-                activeRoute = currentRoute,
-                cardTransitionEnabled = cardTransitionEnabled,
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
-                navMotionSpec = navMotionSpec,
-                animatedVisibilityScope = this
-            ) {
-                ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                    com.android.purebilibili.feature.watchlater.WatchLaterScreen(
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                com.android.purebilibili.feature.watchlater.WatchLaterScreen(
                     onBack = { navController.popBackStack() },
                     onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
                     onPlayAllAudioClick = { bvid, cid ->
                         navigateToVideo(bvid, cid, "", startAudio = true)
                     },
                     globalHazeState = mainHazeState // [新增] 传入全局 HazeState (WatchLaterScreen 需支持)
-                    )
-                }
+                )
             }
         }
         
@@ -1808,19 +1674,7 @@ fun AppNavigation(
             enterTransition = { slideEnterLeft(navMotionSpec) },
             //  进入视频详情页时的退出动画：启用卡片模式时淡出，否则使用标准路由滑出
             exitTransition = {
-                val targetRoute = targetState.destination.route
-                val sharedTransitionReady = CardPositionManager.lastClickedCardBounds != null &&
-                    CardPositionManager.isCardFullyVisible
-                if (
-                    targetRoute?.startsWith("${VideoRoute.base}/") == true &&
-                    shouldUseNoOpSharedElementRouteTransition(
-                        cardTransitionEnabled = cardTransitionEnabled,
-                        sharedTransitionReady = sharedTransitionReady,
-                        predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
-                    )
-                ) {
-                    ExitTransition.None
-                } else if (cardTransitionEnabled) {
+                if (cardTransitionEnabled) {
                     fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis))
                 } else {
                     slideExitLeft(navMotionSpec)
@@ -1833,17 +1687,8 @@ fun AppNavigation(
             val homeState by homeViewModel.uiState.collectAsState()
 
             //  提供 AnimatedVisibilityScope 给 SearchScreen 以支持共享元素过渡
-            VideoSourceBackgroundMotionHost(
-                sourceRoute = ScreenRoutes.Search.route,
-                activeRoute = currentRoute,
-                cardTransitionEnabled = cardTransitionEnabled,
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
-                navMotionSpec = navMotionSpec,
-                animatedVisibilityScope = this
-            ) {
-                ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                    SearchScreen(
+            ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
+                SearchScreen(
                     userFace = homeState.user.face, // 传入头像 URL
                     initialKeyword = effectiveInitialSearchKeyword.orEmpty(),
                     onInitialKeywordConsumed = consumeInitialSearchKeyword,
@@ -1895,8 +1740,7 @@ fun AppNavigation(
                             navController.navigate(ScreenRoutes.Login.route)
                         }
                     }
-                    )
-                }
+                )
             }
         }
 

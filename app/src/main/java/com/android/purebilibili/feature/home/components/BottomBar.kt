@@ -6,6 +6,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -75,9 +76,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.android.purebilibili.R
 import com.android.purebilibili.navigation.ScreenRoutes
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import com.android.purebilibili.core.ui.blur.shouldAllowDirectHazeLiquidGlassFallback
@@ -112,6 +118,7 @@ import io.github.alexzhirkevich.cupertino.icons.filled.*
 import com.android.purebilibili.core.ui.animation.DampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
+import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
@@ -136,6 +143,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as RoundedCornerShap
 import androidx.compose.ui.Modifier.Companion.then
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.effect.liquidGlass
+import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
 import com.android.purebilibili.core.store.LiquidGlassStyle // [New] Top-level enum
 import com.android.purebilibili.core.store.LiquidGlassMode
 import androidx.compose.foundation.isSystemInDarkTheme // [New] Theme detection for adaptive readability
@@ -405,7 +413,7 @@ internal fun resolveKernelSuBottomBarSearchLayout(
     val compactDockWidth = 64.dp
     val collapsedSearchWidth = 64.dp
     val expandedSearchWidth = minOf(
-        260.dp,
+        280.dp,
         (availableWidth - compactDockWidth - gap).coerceAtLeast(176.dp)
     )
     val targetSearchWidth = if (searchExpanded) expandedSearchWidth else collapsedSearchWidth
@@ -419,6 +427,32 @@ internal fun resolveKernelSuBottomBarSearchLayout(
         searchWidth = targetSearchWidth,
         gap = gap
     )
+}
+
+internal fun resolveKernelSuBottomBarSearchHeight(searchExpanded: Boolean): Dp {
+    return if (searchExpanded) 58.dp else 64.dp
+}
+
+internal fun shouldAutoExpandBottomBarSearch(
+    currentItem: BottomNavItem,
+    bottomBarSearchEnabled: Boolean,
+    autoExpandMode: BottomBarSearchAutoExpandMode,
+    homeScrollOffsetPx: Float,
+    topThresholdPx: Float = 32f
+): Boolean {
+    if (!bottomBarSearchEnabled || currentItem != BottomNavItem.HOME) return false
+    return when (autoExpandMode) {
+        BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP -> homeScrollOffsetPx <= topThresholdPx
+        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN -> homeScrollOffsetPx > topThresholdPx
+    }
+}
+
+internal fun shouldExpandBottomBarSearchOnNavItemClick(
+    clickedItem: BottomNavItem,
+    bottomBarSearchEnabled: Boolean,
+    searchExpanded: Boolean
+): Boolean {
+    return bottomBarSearchEnabled && clickedItem == BottomNavItem.HOME && !searchExpanded
 }
 
 internal fun resolveAndroidNativeBottomBarTuning(
@@ -713,6 +747,11 @@ internal data class BottomBarSettlePulseTransform(
     val translationYDp: Float
 )
 
+internal data class BottomBarClickPulseTransform(
+    val scaleX: Float,
+    val scaleY: Float = 1f
+)
+
 private data class BottomBarSettlePulseSnapshot(
     val indicatorPosition: Float,
     val isIndicatorRunning: Boolean,
@@ -754,6 +793,32 @@ internal fun resolveBottomBarSettlePulseTransform(
     )
 }
 
+internal fun resolveBottomBarClickPulseTransform(
+    progress: Float
+): BottomBarClickPulseTransform {
+    val clamped = progress.coerceIn(0f, 1f)
+    val compressionEnd = 0.18f
+    val compressionAmount = 0.055f
+    val reboundAmount = 0.18f
+    val scaleX = when {
+        clamped >= 1f -> 1f
+        clamped <= compressionEnd -> {
+            val pressProgress = (clamped / compressionEnd).coerceIn(0f, 1f)
+            1f - compressionAmount * EaseOut.transform(pressProgress)
+        }
+        else -> {
+            val releaseProgress = ((clamped - compressionEnd) / (1f - compressionEnd)).coerceIn(0f, 1f)
+            val damping = ((1f - releaseProgress) * exp(-3.0 * releaseProgress)).toFloat()
+            val wave = (
+                -compressionAmount * cos(PI * releaseProgress) +
+                    reboundAmount * sin(PI * releaseProgress)
+                ).toFloat()
+            1f + damping * wave
+        }
+    }
+    return BottomBarClickPulseTransform(scaleX = scaleX)
+}
+
 @Composable
 private fun rememberBottomBarSettlePulseKey(
     selectedIndex: Int,
@@ -789,6 +854,25 @@ private fun rememberBottomBarSettlePulseKey(
     }
 
     return pulseKey
+}
+
+@Composable
+private fun rememberBottomBarClickPulseTransform(
+    pulseKey: Int
+): BottomBarClickPulseTransform {
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(pulseKey) {
+        if (pulseKey <= 0) return@LaunchedEffect
+        progress.snapTo(0f)
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 240,
+                easing = LinearEasing
+            )
+        )
+    }
+    return resolveBottomBarClickPulseTransform(progress.value)
 }
 
 @Composable
@@ -1235,6 +1319,7 @@ fun FrostedBottomBar(
             isTransitionRunning = isTransitionRunning,
             forceLowBlurBudget = forceLowBlurBudget,
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit
         )
@@ -1341,6 +1426,7 @@ private fun MaterialBottomBar(
             glassEnabled = glassEnabled,
             haptic = haptic,
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit
         )
@@ -1532,6 +1618,7 @@ private fun MiuixBottomBar(
             isTransitionRunning = isTransitionRunning,
             forceLowBlurBudget = forceLowBlurBudget,
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit
         )
@@ -1719,6 +1806,8 @@ private fun KernelSuAlignedBottomBar(
     isTransitionRunning: Boolean = false,
     forceLowBlurBudget: Boolean = false,
     bottomBarSearchEnabled: Boolean = false,
+    bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
+        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
     onSearchClick: () -> Unit = {},
     onSearchKeywordSubmit: (String) -> Unit = {}
 ) {
@@ -1735,6 +1824,7 @@ private fun KernelSuAlignedBottomBar(
         }
     }
     val selectedIndex = visibleItems.indexOf(currentItem).coerceAtLeast(0)
+    val homeIndex = visibleItems.indexOf(BottomNavItem.HOME)
     val isValidSelection = currentItem in visibleItems
     val isDarkTheme = isSystemInDarkTheme()
     val selectedColor = MaterialTheme.colorScheme.primary
@@ -1779,7 +1869,29 @@ private fun KernelSuAlignedBottomBar(
     )
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var homeClickPulseKey by remember { mutableIntStateOf(0) }
+    val homeClickPulseTransform = rememberBottomBarClickPulseTransform(homeClickPulseKey)
     val searchEnabled = bottomBarSearchEnabled
+    val homeScrollOffset = LocalHomeScrollOffset.current
+    val shouldAutoExpandSearch by remember(searchEnabled, currentItem, homeScrollOffset.floatValue) {
+        derivedStateOf {
+            shouldAutoExpandBottomBarSearch(
+                currentItem = currentItem,
+                bottomBarSearchEnabled = searchEnabled,
+                autoExpandMode = bottomBarSearchAutoExpandMode,
+                homeScrollOffsetPx = homeScrollOffset.floatValue
+            )
+        }
+    }
+    val effectiveSearchExpanded = searchExpanded || shouldAutoExpandSearch
+    LaunchedEffect(currentItem, searchEnabled, shouldAutoExpandSearch, homeScrollOffset.floatValue) {
+        val shouldCollapseManualSearch = !searchEnabled ||
+            currentItem != BottomNavItem.HOME ||
+            (currentItem == BottomNavItem.HOME && !shouldAutoExpandSearch && homeScrollOffset.floatValue > 32f)
+        if (shouldCollapseManualSearch) {
+            searchExpanded = false
+        }
+    }
 
     Box(
         modifier = modifier.fillMaxWidth(),
@@ -1797,7 +1909,7 @@ private fun KernelSuAlignedBottomBar(
                 itemCount = totalItems,
                 minEdgePadding = tuning.outerHorizontalPaddingDp.dp,
                 searchEnabled = searchEnabled,
-                searchExpanded = searchExpanded
+                searchExpanded = effectiveSearchExpanded
             )
             val dockWidth by animateDpAsState(
                 targetValue = targetSearchLayout.dockWidth,
@@ -1823,8 +1935,18 @@ private fun KernelSuAlignedBottomBar(
                 ),
                 label = "bottomBarSearchGap"
             )
+            val searchHeight by animateDpAsState(
+                targetValue = resolveKernelSuBottomBarSearchHeight(
+                    searchExpanded = effectiveSearchExpanded
+                ),
+                animationSpec = tween(
+                    durationMillis = 220,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarSearchHeight"
+            )
             val dockContentAlpha by animateFloatAsState(
-                targetValue = if (searchExpanded) 0f else 1f,
+                targetValue = if (effectiveSearchExpanded) 0f else 1f,
                 animationSpec = tween(
                     durationMillis = 180,
                     easing = AppMotionEasing.Continuity
@@ -1832,7 +1954,7 @@ private fun KernelSuAlignedBottomBar(
                 label = "bottomBarDockContentAlpha"
             )
             val compactHomeAlpha by animateFloatAsState(
-                targetValue = if (searchExpanded) 1f else 0f,
+                targetValue = if (effectiveSearchExpanded) 1f else 0f,
                 animationSpec = tween(
                     durationMillis = 180,
                     easing = AppMotionEasing.Continuity
@@ -1957,7 +2079,8 @@ private fun KernelSuAlignedBottomBar(
                             interactive = false,
                             selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f,
-                            settlePulseKey = if (index == selectedIndex) selectedSettlePulseKey else 0
+                            settlePulseKey = if (index == selectedIndex) selectedSettlePulseKey else 0,
+                            clickPulseKey = if (item == BottomNavItem.HOME) homeClickPulseKey else 0
                         )
                     }
 
@@ -2086,6 +2209,10 @@ private fun KernelSuAlignedBottomBar(
                             .offset(x = contentPadding + indicatorWidth * dampedDragState.value)
                             .graphicsLayer {
                                 translationX = panelOffsetPx
+                                if (selectedIndex == homeIndex) {
+                                    scaleX = homeClickPulseTransform.scaleX
+                                    scaleY = homeClickPulseTransform.scaleY
+                                }
                             }
                             .width(indicatorWidth)
                             .height(56.dp)
@@ -2153,7 +2280,7 @@ private fun KernelSuAlignedBottomBar(
                     )
                 }
 
-                if (!searchExpanded) {
+                if (!effectiveSearchExpanded) {
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
@@ -2184,11 +2311,24 @@ private fun KernelSuAlignedBottomBar(
                             contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
-                                dampedDragState.updateIndex(index)
-                                performMaterialBottomBarTap(
-                                    haptic = haptic,
-                                    onClick = { onItemClick(item) }
+                                val shouldExpandSearchOnly = shouldExpandBottomBarSearchOnNavItemClick(
+                                    clickedItem = item,
+                                    bottomBarSearchEnabled = searchEnabled,
+                                    searchExpanded = effectiveSearchExpanded
                                 )
+                                if (item == BottomNavItem.HOME) {
+                                    homeClickPulseKey += 1
+                                }
+                                if (shouldExpandSearchOnly) {
+                                    haptic(HapticType.LIGHT)
+                                    searchExpanded = true
+                                } else {
+                                    dampedDragState.updateIndex(index)
+                                    performMaterialBottomBarTap(
+                                        haptic = haptic,
+                                        onClick = { onItemClick(item) }
+                                    )
+                                }
                             },
                             interactive = true,
                             onPressChanged = dampedDragState::setPressed,
@@ -2236,13 +2376,16 @@ private fun KernelSuAlignedBottomBar(
                             .matchParentSize()
                             .alpha(compactHomeAlpha)
                             .then(
-                                if (searchExpanded) {
+                                if (effectiveSearchExpanded) {
                                     Modifier.clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
                                     ) {
-                                        haptic(HapticType.LIGHT)
-                                        searchExpanded = false
+                                        homeClickPulseKey += 1
+                                        performMaterialBottomBarTap(
+                                            haptic = haptic,
+                                            onClick = { onItemClick(BottomNavItem.HOME) }
+                                        )
                                     }
                                 } else {
                                     Modifier
@@ -2250,12 +2393,20 @@ private fun KernelSuAlignedBottomBar(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        BottomBarBlendedCupertinoIcon(
-                            item = BottomNavItem.HOME,
-                            unreadCount = 0,
-                            selectedAlpha = 1f,
-                            contentColor = if (currentItem == BottomNavItem.HOME) selectedColor else unselectedColor
-                        )
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = homeClickPulseTransform.scaleX
+                                scaleY = homeClickPulseTransform.scaleY
+                            },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BottomBarBlendedCupertinoIcon(
+                                item = BottomNavItem.HOME,
+                                unreadCount = 0,
+                                selectedAlpha = 1f,
+                                contentColor = if (currentItem == BottomNavItem.HOME) selectedColor else unselectedColor
+                            )
+                        }
                     }
                 }
             }
@@ -2264,8 +2415,8 @@ private fun KernelSuAlignedBottomBar(
                     Spacer(modifier = Modifier.width(searchGap))
                     KernelSuBottomBarSearchCapsule(
                         width = searchWidth,
-                        height = shellHeight,
-                        expanded = searchExpanded,
+                        height = searchHeight,
+                        expanded = effectiveSearchExpanded,
                         query = searchQuery,
                         onQueryChange = { searchQuery = it },
                         onExpandChange = { expanded ->
@@ -2291,7 +2442,8 @@ private fun KernelSuAlignedBottomBar(
                         isTransitionRunning = isTransitionRunning,
                         forceLowBlurBudget = forceLowBlurBudget,
                         contentColor = unselectedColor,
-                        accentColor = selectedColor
+                        accentColor = selectedColor,
+                        haptic = haptic
                     )
                 }
         }
@@ -2319,8 +2471,28 @@ private fun KernelSuBottomBarSearchCapsule(
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
     contentColor: Color,
-    accentColor: Color
+    accentColor: Color,
+    haptic: (HapticType) -> Unit
 ) {
+    var searchClickPulseKey by remember { mutableIntStateOf(0) }
+    var searchLongPressHeld by remember { mutableStateOf(false) }
+    val searchClickPulseTransform = rememberBottomBarClickPulseTransform(searchClickPulseKey)
+    val longPressHorizontalScale by animateFloatAsState(
+        targetValue = if (searchLongPressHeld) 0.94f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.62f,
+            stiffness = 560f
+        ),
+        label = "bottomBarSearchLongPressHorizontalScale"
+    )
+    LaunchedEffect(searchLongPressHeld) {
+        if (!searchLongPressHeld) return@LaunchedEffect
+        haptic(HapticType.MEDIUM)
+        while (searchLongPressHeld) {
+            delay(90L)
+            haptic(HapticType.SELECTION)
+        }
+    }
     val fieldAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = tween(
@@ -2342,6 +2514,10 @@ private fun KernelSuBottomBarSearchCapsule(
         modifier = Modifier
             .width(width)
             .height(height)
+            .graphicsLayer {
+                scaleX = searchClickPulseTransform.scaleX * longPressHorizontalScale
+                scaleY = searchClickPulseTransform.scaleY
+            }
             .kernelSuFloatingDockSurface(
                 shape = shape,
                 backdrop = backdrop,
@@ -2356,11 +2532,26 @@ private fun KernelSuBottomBarSearchCapsule(
             )
             .then(
                 if (!expanded) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        onExpandChange(true)
+                    Modifier.pointerInput(onExpandChange) {
+                        detectTapGestures(
+                            onPress = {
+                                try {
+                                    awaitRelease()
+                                } finally {
+                                    if (searchLongPressHeld) {
+                                        searchLongPressHeld = false
+                                        searchClickPulseKey += 1
+                                    }
+                                }
+                            },
+                            onTap = {
+                                searchClickPulseKey += 1
+                                onExpandChange(true)
+                            },
+                            onLongPress = {
+                                searchLongPressHeld = true
+                            }
+                        )
                     }
                 } else {
                     Modifier
@@ -2386,7 +2577,10 @@ private fun KernelSuBottomBarSearchCapsule(
                             Modifier.clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = onSubmit
+                                onClick = {
+                                    searchClickPulseKey += 1
+                                    onSubmit()
+                                }
                             )
                         } else {
                             Modifier
@@ -2446,7 +2640,8 @@ private fun RowScope.AndroidNativeBottomBarItem(
     onPressChanged: (Boolean) -> Unit = {},
     selectedIconAlpha: Float = if (selected) 1f else 0f,
     scale: Float = 1f,
-    settlePulseKey: Int = 0
+    settlePulseKey: Int = 0,
+    clickPulseKey: Int = 0
 ) {
     val animatedContentColor by animateColorAsState(
         targetValue = if (selected) selectedColor else unselectedColor,
@@ -2460,6 +2655,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     val isPressed by interactionSource.collectIsPressedAsState()
     val density = LocalDensity.current
     val settlePulseTransform = rememberBottomBarSettlePulseTransform(settlePulseKey)
+    val clickPulseTransform = rememberBottomBarClickPulseTransform(clickPulseKey)
     val settlePulseTranslationYPx = with(density) {
         settlePulseTransform.translationYDp.dp.toPx()
     }
@@ -2477,8 +2673,8 @@ private fun RowScope.AndroidNativeBottomBarItem(
             .fillMaxHeight()
             .clip(resolveSharedBottomBarCapsuleShape())
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = scale * clickPulseTransform.scaleX
+                scaleY = scale * clickPulseTransform.scaleY
             }
             .then(
                 if (interactive) {
