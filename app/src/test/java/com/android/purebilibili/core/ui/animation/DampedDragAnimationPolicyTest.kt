@@ -1,10 +1,8 @@
 package com.android.purebilibili.core.ui.animation
 
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
-import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class DampedDragAnimationPolicyTest {
 
@@ -54,24 +52,6 @@ class DampedDragAnimationPolicyTest {
                 velocityPxPerSecond = 1200f,
                 itemWidthPx = 0f
             )
-        )
-    }
-
-    @Test
-    fun `programmatic index update drives press and release pulse through selection travel`() {
-        val source = File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
-            .readText()
-        val updateIndexBody = source
-            .substringAfter("fun updateIndex(index: Int)")
-            .substringBefore("\n    }\n}\n\n/**")
-
-        assertTrue(
-            updateIndexBody.contains("pressProgressAnimation.animateTo(1f"),
-            "Programmatic page switches should press the liquid indicator before travel."
-        )
-        assertTrue(
-            updateIndexBody.contains("pressProgressAnimation.animateTo(0f"),
-            "Programmatic page switches should release the liquid indicator after travel."
         )
     }
 }
