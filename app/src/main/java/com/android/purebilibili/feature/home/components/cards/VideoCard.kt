@@ -199,6 +199,16 @@ fun ElegantVideoCard(
     val smallCornerRadius = iOSCornerRadius.Tiny * cornerRadiusScale  // 4.dp * scale
     val durationBadgeStyle = remember { resolveVideoCardDurationBadgeVisualStyle() }
     val durationText = remember(video.duration) { FormatUtils.formatDuration(video.duration) }
+    val primaryStatText = remember(video.stat.view, video.progress, video.duration) {
+        if (video.stat.view > 0) {
+            FormatUtils.formatStat(video.stat.view.toLong())
+        } else {
+            FormatUtils.formatProgress(video.progress, video.duration)
+        }
+    }
+    val primaryStatBadgeMinWidth = remember(primaryStatText) {
+        resolveVideoCardPrimaryStatBadgeMinWidthDp(primaryStatText).dp
+    }
     val durationBadgeMinWidth = remember(durationText, durationBadgeStyle) {
         resolveVideoCardDurationBadgeMinWidthDp(
             durationText = durationText,
@@ -582,7 +592,7 @@ fun ElegantVideoCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        var viewsOnCoverModifier = Modifier.weight(1f, fill = false)
+                        var viewsOnCoverModifier = Modifier.widthIn(min = primaryStatBadgeMinWidth)
                         if (metadataSharedEnabled) {
                             with(requireNotNull(sharedTransitionScope)) {
                                 viewsOnCoverModifier = viewsOnCoverModifier.sharedBounds(
@@ -608,11 +618,7 @@ fun ElegantVideoCard(
                                 tint = Color.White.copy(alpha = 0.94f)
                             )
                             Text(
-                                text = if (video.stat.view > 0) {
-                                    FormatUtils.formatStat(video.stat.view.toLong())
-                                } else {
-                                    FormatUtils.formatProgress(video.progress, video.duration)
-                                },
+                                text = primaryStatText,
                                 color = Color.White.copy(alpha = 0.94f),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
@@ -1103,11 +1109,7 @@ fun ElegantVideoCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (video.stat.view > 0) {
-                                FormatUtils.formatStat(video.stat.view.toLong())
-                            } else {
-                                FormatUtils.formatProgress(video.progress, video.duration)
-                            },
+                            text = primaryStatText,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
