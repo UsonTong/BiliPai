@@ -388,6 +388,8 @@ internal data class KernelSuBottomBarSearchLayout(
     val gap: Dp
 )
 
+internal fun resolveKernelSuBottomBarSearchCircleSize(): Dp = 64.dp
+
 internal fun resolveKernelSuBottomBarSearchLayout(
     containerWidth: Dp,
     itemCount: Int,
@@ -410,9 +412,10 @@ internal fun resolveKernelSuBottomBarSearchLayout(
 
     val gap = 10.dp
     val availableWidth = (containerWidth - (minEdgePadding * 2)).coerceAtLeast(0.dp)
-    val compactHomeDockSize = 58.dp
-    val minimumDockWidth = 64.dp
-    val collapsedSearchWidth = 64.dp
+    val searchCircleSize = resolveKernelSuBottomBarSearchCircleSize()
+    val compactHomeDockSize = searchCircleSize
+    val minimumDockWidth = searchCircleSize
+    val collapsedSearchWidth = searchCircleSize
     val expandedSearchWidth = minOf(
         280.dp,
         (availableWidth - compactHomeDockSize - gap).coerceAtLeast(176.dp)
@@ -431,7 +434,11 @@ internal fun resolveKernelSuBottomBarSearchLayout(
 }
 
 internal fun resolveKernelSuBottomBarDockHeight(searchExpanded: Boolean): Dp {
-    return if (searchExpanded) 58.dp else 64.dp
+    return if (searchExpanded) {
+        resolveKernelSuBottomBarSearchCircleSize()
+    } else {
+        64.dp
+    }
 }
 
 internal fun resolveKernelSuBottomBarSearchHeight(searchExpanded: Boolean): Dp {

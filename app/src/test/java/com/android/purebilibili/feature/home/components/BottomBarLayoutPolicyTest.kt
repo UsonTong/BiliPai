@@ -91,15 +91,16 @@ class BottomBarLayoutPolicyTest {
             searchExpanded = true
         )
 
-        assertEquals(58.dp, layout.dockWidth)
-        assertEquals(280.dp, layout.searchWidth)
+        assertEquals(resolveKernelSuBottomBarSearchCircleSize(), layout.dockWidth)
+        assertEquals(279.dp, layout.searchWidth)
         assertEquals(10.dp, layout.gap)
     }
 
     @Test
-    fun `kernelsu expanded home dock aligns with slimmer search capsule`() {
+    fun `kernelsu expanded home dock copies search circle size`() {
+        assertEquals(64.dp, resolveKernelSuBottomBarSearchCircleSize())
         assertEquals(64.dp, resolveKernelSuBottomBarDockHeight(searchExpanded = false))
-        assertEquals(58.dp, resolveKernelSuBottomBarDockHeight(searchExpanded = true))
+        assertEquals(resolveKernelSuBottomBarSearchCircleSize(), resolveKernelSuBottomBarDockHeight(searchExpanded = true))
         assertEquals(64.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = false))
         assertEquals(58.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = true))
     }
