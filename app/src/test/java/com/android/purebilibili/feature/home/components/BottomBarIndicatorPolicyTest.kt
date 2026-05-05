@@ -208,7 +208,7 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `moving refraction profile adds panel offset and keeps low theme emphasis`() {
+    fun `moving refraction profile keeps content fixed while indicator carries offset`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 1.32f,
             velocity = 860f,
@@ -216,9 +216,9 @@ class BottomBarIndicatorPolicyTest {
         )
 
         assertTrue(profile.progress > 0f)
-        assertTrue(profile.exportPanelOffsetFraction > 0f)
+        assertEquals(0f, profile.exportPanelOffsetFraction)
         assertTrue(profile.indicatorPanelOffsetFraction > profile.exportPanelOffsetFraction)
-        assertTrue(profile.visiblePanelOffsetFraction > 0f)
+        assertEquals(0f, profile.visiblePanelOffsetFraction)
         assertTrue(profile.forceChromaticAberration)
         assertTrue(profile.visibleSelectionEmphasis > 0.22f)
         assertTrue(profile.visibleSelectionEmphasis < 0.52f)
