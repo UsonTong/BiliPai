@@ -100,6 +100,15 @@ class AppNavigationAppearancePolicyTest {
         assertTrue(capturedLayerSource.contains(".then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)"))
     }
 
+    @Test
+    fun appNavigationRemovesVideoTransitionRealtimeBlurRuntimePath() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
+
+        assertFalse(source.contains("videoTransitionRealtimeBlurEnabled"))
+        assertFalse(source.contains("video_source_background_blur"))
+        assertFalse(source.contains("RenderEffect.createBlurEffect"))
+    }
+
     private fun loadSource(path: String): String {
         val candidates = listOf(
             File(path),

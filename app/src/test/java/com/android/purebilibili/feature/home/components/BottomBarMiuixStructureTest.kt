@@ -83,6 +83,10 @@ class BottomBarMiuixStructureTest {
 
         assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchFieldAlpha\""))
         assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchIconScale\""))
+        assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchLongPressScale\""))
+        assertTrue(searchCapsuleSource.contains("detectTapGestures("))
+        assertTrue(searchCapsuleSource.contains("onLongPress = {"))
+        assertTrue(searchCapsuleSource.contains("haptic(HapticType.SELECTION)"))
         assertTrue(searchCapsuleSource.contains("easing = AppMotionEasing.Continuity"))
         assertTrue(settlePulseSource.contains("animationSpec = tween(durationMillis = 240)"))
         assertFalse(settlePulseSource.contains("AppMotionEasing.Continuity"))

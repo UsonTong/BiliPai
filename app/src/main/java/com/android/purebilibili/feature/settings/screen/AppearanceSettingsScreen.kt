@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
+import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
 import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
@@ -401,6 +402,12 @@ fun AppearanceSettingsContent(
         listOf(
             PlaybackSegmentOption(HomeWallpaperEffectScope.HOME_ONLY, "仅首页"),
             PlaybackSegmentOption(HomeWallpaperEffectScope.GLOBAL, "全局")
+        )
+    }
+    val bottomBarSearchAutoExpandOptions = remember {
+        listOf(
+            PlaybackSegmentOption(BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN, "下滑展开"),
+            PlaybackSegmentOption(BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP, "顶部展开")
         )
     }
     val homeUpBadgesVisible by SettingsManager
@@ -1099,6 +1106,16 @@ fun AppearanceSettingsContent(
                         checked = state.bottomBarSearchEnabled,
                         onCheckedChange = { viewModel.toggleBottomBarSearch(it) },
                         iconTint = iOSTeal
+                    )
+
+                    IOSDivider()
+                    IOSSlidingSegmentedSetting(
+                        title = "搜索框自动展开",
+                        subtitle = "选择回到首页顶部或向下浏览时自动展开",
+                        options = bottomBarSearchAutoExpandOptions,
+                        selectedValue = state.bottomBarSearchAutoExpandMode,
+                        enabled = state.bottomBarSearchEnabled,
+                        onSelectionChange = { viewModel.setBottomBarSearchAutoExpandMode(it) }
                     )
 
                     IOSDivider()

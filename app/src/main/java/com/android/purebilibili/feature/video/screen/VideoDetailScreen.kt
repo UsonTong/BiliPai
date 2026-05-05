@@ -68,7 +68,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
-import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.alpha
@@ -2491,8 +2490,8 @@ fun VideoDetailScreen(
                                 .sharedBounds(
                                     sharedContentState = rememberSharedContentState(key = "video_cover_$bvid"),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                    boundsTransform = { initialBounds, targetBounds ->
-                                        resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                                    boundsTransform = { _, _ ->
+                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
                                     },
                                     clipInOverlayDuringTransition = OverlayClip(
                                         RoundedCornerShape(12.dp)

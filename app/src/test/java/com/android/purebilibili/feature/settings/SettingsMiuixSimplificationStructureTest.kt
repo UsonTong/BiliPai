@@ -30,6 +30,8 @@ class SettingsMiuixSimplificationStructureTest {
         assertTrue(source.contains("底栏液态玻璃"))
         assertFalse(source.contains("安卓原生液态玻璃"))
         assertFalse(source.contains("toggleAndroidNativeLiquidGlass("))
+        assertFalse(source.contains("共享元素背景模糊"))
+        assertFalse(source.contains("toggleVideoTransitionRealtimeBlur("))
         assertTrue(source.contains("MiuixScaffold("))
         assertTrue(source.contains("MiuixSmallTopAppBar("))
     }

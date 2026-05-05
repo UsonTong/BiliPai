@@ -37,6 +37,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 //  共享元素过渡
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.core.spring
 
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
@@ -47,8 +48,6 @@ import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
-import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
-import com.android.purebilibili.core.ui.transition.resolveVideoMetadataSharedBoundsTransformSpec
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.feature.home.resolveHomeCardEnterAnimationEnabledAtMount
@@ -188,9 +187,7 @@ fun StoryVideoCard(
                 .sharedBounds(
                     sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                    boundsTransform = { initialBounds, targetBounds ->
-                        resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
-                    },
+                    boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
                     clipInOverlayDuringTransition = OverlayClip(
                         RoundedCornerShape(cardCornerRadius)
                     )
@@ -364,7 +361,7 @@ fun StoryVideoCard(
                     sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                     boundsTransform = { _, _ ->
-                        resolveVideoMetadataSharedBoundsTransformSpec()
+                        spring(dampingRatio = 0.8f, stiffness = 200f)
                     }
                 )
             }
@@ -425,7 +422,7 @@ fun StoryVideoCard(
                         sharedContentState = rememberSharedContentState(key = "video_up_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                         boundsTransform = { _, _ ->
-                            resolveVideoMetadataSharedBoundsTransformSpec()
+                            spring(dampingRatio = 0.8f, stiffness = 200f)
                         }
                     )
                 }
@@ -449,7 +446,7 @@ fun StoryVideoCard(
                                     sharedContentState = rememberSharedContentState(key = "video_avatar_${video.bvid}"),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                     boundsTransform = { _, _ ->
-                                        resolveVideoMetadataSharedBoundsTransformSpec()
+                                        spring(dampingRatio = 0.8f, stiffness = 200f)
                                     },
                                     clipInOverlayDuringTransition = OverlayClip(CircleShape)
                                 )
@@ -497,7 +494,7 @@ fun StoryVideoCard(
                                     sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
                                     animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                     boundsTransform = { _, _ ->
-                                        resolveVideoMetadataSharedBoundsTransformSpec()
+                                        spring(dampingRatio = 0.8f, stiffness = 200f)
                                     }
                                 )
                             }
@@ -534,7 +531,7 @@ fun StoryVideoCard(
                                      sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),
                                      animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                      boundsTransform = { _, _ ->
-                                         resolveVideoMetadataSharedBoundsTransformSpec()
+                                         spring(dampingRatio = 0.8f, stiffness = 200f)
                                      }
                                  )
                              }

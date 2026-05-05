@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -56,7 +57,6 @@ import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -230,6 +230,10 @@ fun BottomBarLiquidSegmentedControl(
     )
     val selectedTextColor = MaterialTheme.colorScheme.primary
     val unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.78f else 0.42f)
+    val exportTintColor = resolveAndroidNativeExportTintColor(
+        themeColor = selectedTextColor,
+        darkTheme = isDarkTheme
+    )
     LaunchedEffect(safeSelectedIndex) {
         dragState.updateIndex(safeSelectedIndex)
     }
@@ -298,8 +302,7 @@ fun BottomBarLiquidSegmentedControl(
         }
         val tabsBackdrop = rememberLayerBackdrop()
         val containerBackdrop = backdrop ?: tabsBackdrop
-        val combinedBackdrop = rememberCombinedBackdrop(containerBackdrop, tabsBackdrop)
-        val contentBackdrop = if (backdrop != null) combinedBackdrop else tabsBackdrop
+        val contentBackdrop = tabsBackdrop
 
         Box(
             modifier = Modifier
@@ -353,6 +356,7 @@ fun BottomBarLiquidSegmentedControl(
                         this
                     }
                 }
+                .graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))
         ) {
             BottomBarLiquidSegmentedLabels(
                 items = items,

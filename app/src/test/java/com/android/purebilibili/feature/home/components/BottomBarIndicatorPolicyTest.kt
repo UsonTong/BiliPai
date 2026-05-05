@@ -375,6 +375,36 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `click pulse transform rebounds horizontally without vertical lift`() {
+        val pressed = resolveBottomBarClickPulseTransform(progress = 0.18f)
+        val overshoot = resolveBottomBarClickPulseTransform(progress = 0.46f)
+        val settleBack = resolveBottomBarClickPulseTransform(progress = 0.72f)
+        val idle = resolveBottomBarClickPulseTransform(progress = 1f)
+
+        assertEquals(0.945f, pressed.scaleX, 0.001f)
+        assertTrue(pressed.scaleX < 1f)
+        assertTrue(overshoot.scaleX > 1f)
+        assertTrue(overshoot.scaleX >= 1.03f)
+        assertTrue(settleBack.scaleX > 1f)
+        assertTrue(settleBack.scaleX < overshoot.scaleX)
+        assertEquals(1f, pressed.scaleY, 0.001f)
+        assertEquals(1f, overshoot.scaleY, 0.001f)
+        assertEquals(1f, idle.scaleX, 0.001f)
+        assertEquals(1f, idle.scaleY, 0.001f)
+    }
+
+    @Test
+    fun `click pulse release decays without a second compression twitch`() {
+        val rebound = resolveBottomBarClickPulseTransform(progress = 0.46f)
+        val settle = resolveBottomBarClickPulseTransform(progress = 0.68f)
+        val nearlyIdle = resolveBottomBarClickPulseTransform(progress = 0.88f)
+
+        assertTrue(rebound.scaleX > settle.scaleX)
+        assertTrue(settle.scaleX > nearlyIdle.scaleX)
+        assertTrue(nearlyIdle.scaleX >= 1f)
+    }
+
+    @Test
     fun `sliding color transfers continuously from current tab to next tab`() {
         val home = resolveBottomBarItemMotionVisual(
             itemIndex = 0,
