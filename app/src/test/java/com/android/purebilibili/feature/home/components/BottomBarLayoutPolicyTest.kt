@@ -187,6 +187,28 @@ class BottomBarLayoutPolicyTest {
     }
 
     @Test
+    fun `bottom search auto expansion can be disabled`() {
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.DISABLED,
+                homeScrollOffsetPx = 0f
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearch(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.DISABLED,
+                homeScrollOffsetPx = 96f
+            )
+        )
+    }
+
+    @Test
     fun `home icon click expands collapsed search before scrolling to top`() {
         assertEquals(
             true,

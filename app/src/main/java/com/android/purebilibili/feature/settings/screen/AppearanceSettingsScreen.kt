@@ -406,6 +406,7 @@ fun AppearanceSettingsContent(
     }
     val bottomBarSearchAutoExpandOptions = remember {
         listOf(
+            PlaybackSegmentOption(BottomBarSearchAutoExpandMode.DISABLED, "不自动"),
             PlaybackSegmentOption(BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN, "下滑展开"),
             PlaybackSegmentOption(BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP, "顶部展开")
         )

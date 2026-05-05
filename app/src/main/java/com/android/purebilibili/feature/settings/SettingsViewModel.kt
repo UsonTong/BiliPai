@@ -76,7 +76,7 @@ data class SettingsUiState(
     val bottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
-        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+        BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC, // [New]
     val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
@@ -128,7 +128,7 @@ data class ExtraSettings(
     val bottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
-        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+        BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
     val liquidGlassMode: LiquidGlassMode, // [New]

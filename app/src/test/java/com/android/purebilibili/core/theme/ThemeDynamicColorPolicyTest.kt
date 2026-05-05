@@ -40,6 +40,31 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
+    fun `system wallpaper observer only runs when monet dynamic color is active`() {
+        assertEquals(
+            true,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = true,
+                sdkInt = android.os.Build.VERSION_CODES.S
+            )
+        )
+        assertEquals(
+            false,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = false,
+                sdkInt = android.os.Build.VERSION_CODES.S
+            )
+        )
+        assertEquals(
+            false,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = true,
+                sdkInt = android.os.Build.VERSION_CODES.R
+            )
+        )
+    }
+
+    @Test
     fun `static color modes map to plain miuix color scheme modes`() {
         assertEquals(
             ColorSchemeMode.System,
