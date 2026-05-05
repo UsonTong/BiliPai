@@ -444,6 +444,7 @@ internal fun shouldAutoExpandBottomBarSearch(
     return when (autoExpandMode) {
         BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP -> homeScrollOffsetPx <= topThresholdPx
         BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN -> homeScrollOffsetPx > topThresholdPx
+        BottomBarSearchAutoExpandMode.DISABLED -> false
     }
 }
 
@@ -1807,7 +1808,7 @@ private fun KernelSuAlignedBottomBar(
     forceLowBlurBudget: Boolean = false,
     bottomBarSearchEnabled: Boolean = false,
     bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
-        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+        BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     onSearchClick: () -> Unit = {},
     onSearchKeywordSubmit: (String) -> Unit = {}
 ) {
@@ -2314,7 +2315,7 @@ private fun KernelSuAlignedBottomBar(
                                 val shouldExpandSearchOnly = shouldExpandBottomBarSearchOnNavItemClick(
                                     clickedItem = item,
                                     bottomBarSearchEnabled = searchEnabled,
-                                    searchExpanded = effectiveSearchExpanded
+                                    searchExpanded = searchExpanded
                                 )
                                 if (item == BottomNavItem.HOME) {
                                     homeClickPulseKey += 1
@@ -2382,10 +2383,20 @@ private fun KernelSuAlignedBottomBar(
                                         indication = null
                                     ) {
                                         homeClickPulseKey += 1
-                                        performMaterialBottomBarTap(
-                                            haptic = haptic,
-                                            onClick = { onItemClick(BottomNavItem.HOME) }
-                                        )
+                                        if (shouldExpandBottomBarSearchOnNavItemClick(
+                                                clickedItem = BottomNavItem.HOME,
+                                                bottomBarSearchEnabled = searchEnabled,
+                                                searchExpanded = searchExpanded
+                                            )
+                                        ) {
+                                            haptic(HapticType.LIGHT)
+                                            searchExpanded = true
+                                        } else {
+                                            performMaterialBottomBarTap(
+                                                haptic = haptic,
+                                                onClick = { onItemClick(BottomNavItem.HOME) }
+                                            )
+                                        }
                                     }
                                 } else {
                                     Modifier

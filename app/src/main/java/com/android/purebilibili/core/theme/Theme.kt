@@ -2,6 +2,10 @@
 package com.android.purebilibili.core.theme
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -13,13 +17,19 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.android.purebilibili.feature.settings.AppThemeMode
 import com.materialkolor.PaletteStyle
@@ -77,6 +87,13 @@ internal fun resolveEffectiveDynamicColorEnabled(
     amoledDarkTheme: Boolean,
     uiPreset: UiPreset
 ): Boolean = dynamicColorEnabled
+
+internal fun shouldObserveSystemWallpaperForDynamicColor(
+    dynamicColorActive: Boolean,
+    sdkInt: Int
+): Boolean {
+    return dynamicColorActive && sdkInt >= Build.VERSION_CODES.S
+}
 
 internal fun resolveMiuixColorSchemeMode(
     themeMode: AppThemeMode,
@@ -590,6 +607,45 @@ private fun createMd3LightColorScheme(primaryColor: Color) = createStaticMd3Colo
 )
 
 @Composable
+private fun rememberSystemWallpaperRefreshToken(
+    dynamicColorActive: Boolean
+): Int {
+    val context = LocalContext.current
+    var token by remember { mutableIntStateOf(0) }
+    val shouldObserve = shouldObserveSystemWallpaperForDynamicColor(
+        dynamicColorActive = dynamicColorActive,
+        sdkInt = Build.VERSION.SDK_INT
+    )
+
+    DisposableEffect(context, shouldObserve) {
+        if (!shouldObserve) {
+            return@DisposableEffect onDispose { }
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_WALLPAPER_CHANGED) {
+                    token += 1
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_WALLPAPER_CHANGED)
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+        onDispose {
+            runCatching {
+                context.unregisterReceiver(receiver)
+            }
+        }
+    }
+
+    return token
+}
+
+@Composable
 private fun rememberKernelSuStyleColorScheme(
     seedColor: Color,
     darkTheme: Boolean,
@@ -652,9 +708,6 @@ fun PureBiliBiliTheme(
     fontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     content: @Composable () -> Unit
 ) {
-    //  🚀 [修复] 强制监听配置变化 (如更换壁纸触发的资源刷新)
-    // 即使 Activity 不重建，Configuration 也会变化，触发重组从而获取最新的 dynamicColorScheme
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val context = LocalContext.current
     
     //  获取自定义主题色 (默认 iOS 蓝)
@@ -673,8 +726,21 @@ fun PureBiliBiliTheme(
     val miuixTextStyles = remember(fontSizePreset) {
         defaultTextStyles().scaled(fontSizePreset.multiplier)
     }
-    val dynamicLightBaseScheme = if (isDynamicColorActive) dynamicLightColorScheme(context) else null
-    val dynamicDarkBaseScheme = if (isDynamicColorActive) dynamicDarkColorScheme(context) else null
+    val systemWallpaperRefreshToken = rememberSystemWallpaperRefreshToken(isDynamicColorActive)
+    val dynamicLightBaseScheme = if (isDynamicColorActive) {
+        key(systemWallpaperRefreshToken) {
+            dynamicLightColorScheme(context)
+        }
+    } else {
+        null
+    }
+    val dynamicDarkBaseScheme = if (isDynamicColorActive) {
+        key(systemWallpaperRefreshToken) {
+            dynamicDarkColorScheme(context)
+        }
+    } else {
+        null
+    }
     val lightMaterialScheme = rememberKernelSuStyleColorScheme(
         seedColor = customPrimaryColor,
         darkTheme = false,

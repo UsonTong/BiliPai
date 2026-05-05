@@ -317,7 +317,7 @@ data class HomeSettings(
     val isBottomBarLiquidGlassEnabled: Boolean = true,
     val isBottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
-        BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+        BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: LiquidGlassStyle = LiquidGlassStyle.CLASSIC, // [New]
     val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
@@ -349,11 +349,12 @@ data class HomeSettings(
 
 enum class BottomBarSearchAutoExpandMode(val value: Int, val label: String) {
     EXPAND_WHEN_SCROLLING_DOWN(0, "下滑展开"),
-    EXPAND_AT_HOME_TOP(1, "顶部展开");
+    EXPAND_AT_HOME_TOP(1, "顶部展开"),
+    DISABLED(2, "不自动展开");
 
     companion object {
         fun fromValue(value: Int): BottomBarSearchAutoExpandMode =
-            entries.find { it.value == value } ?: EXPAND_WHEN_SCROLLING_DOWN
+            entries.find { it.value == value } ?: EXPAND_AT_HOME_TOP
     }
 }
 
@@ -862,7 +863,7 @@ object SettingsManager {
             isBottomBarSearchEnabled = preferences[KEY_BOTTOM_BAR_SEARCH_ENABLED] ?: false,
             bottomBarSearchAutoExpandMode = BottomBarSearchAutoExpandMode.fromValue(
                 preferences[KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE]
-                    ?: BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN.value
+                    ?: BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP.value
             ),
             androidNativeLiquidGlassEnabled =
                 preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED]
@@ -1996,7 +1997,7 @@ object SettingsManager {
             .map { preferences ->
                 BottomBarSearchAutoExpandMode.fromValue(
                     preferences[KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE]
-                        ?: BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN.value
+                        ?: BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP.value
                 )
             }
 
