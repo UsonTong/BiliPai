@@ -896,9 +896,9 @@ internal fun resolveBottomBarRefractionMotionProfile(
 
     return BottomBarRefractionMotionProfile(
         progress = progress,
-        exportPanelOffsetFraction = 0f,
+        exportPanelOffsetFraction = panelOffsetFraction * 0.5f,
         indicatorPanelOffsetFraction = panelOffsetFraction,
-        visiblePanelOffsetFraction = 0f,
+        visiblePanelOffsetFraction = panelOffsetFraction * 0.25f,
         visibleSelectionEmphasis = lerp(1f, 0.28f, progress),
         exportSelectionEmphasis = lerp(1f, 0.52f, progress),
         exportCaptureWidthScale = 1f,
@@ -1810,7 +1810,8 @@ private fun KernelSuAlignedBottomBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(contentPadding),
+                        .padding(contentPadding)
+                        .graphicsLayer { translationX = panelOffsetPx },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     visibleItems.forEachIndexed { index, item ->
@@ -1869,6 +1870,7 @@ private fun KernelSuAlignedBottomBar(
                         .clearAndSetSemantics {}
                         .alpha(0f)
                         .layerBackdrop(tabsBackdrop)
+                        .graphicsLayer { translationX = panelOffsetPx }
                         .run {
                             if (backdrop != null && glassEnabled) {
                                 drawBackdrop(
@@ -2023,6 +2025,7 @@ private fun KernelSuAlignedBottomBar(
                         .fillMaxSize()
                         .padding(contentPadding)
                         .alpha(0f)
+                        .graphicsLayer { translationX = panelOffsetPx }
                         .horizontalDragGesture(
                             dragState = dampedDragState,
                             itemWidthPx = itemWidthPx
