@@ -812,6 +812,12 @@ internal fun shouldEnableForcedReturnCoverSharedBounds(
         allowBySourceRoute
 }
 
+internal fun shouldUseReturnLandingMotionForForcedReturnCover(
+    forceCoverDuringReturnAnimation: Boolean
+): Boolean {
+    return forceCoverDuringReturnAnimation
+}
+
 internal fun shouldPromoteFirstFrameByPlaybackFallback(
     isFirstFrameRendered: Boolean,
     forceCoverDuringReturnAnimation: Boolean,

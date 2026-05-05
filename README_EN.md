@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-04 · Synced to v8.0.4 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-05 · Synced to v8.0.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.4-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.5-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -431,14 +431,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.4 · 2026-05-04)
+### Latest (v8.0.5 · 2026-05-05)
 
-- 🎵 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: BGM taps now prefer the official Bilibili discovery page instead of immediately opening native music playback.
-- 🎶 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: added the multi-BGM list API path with expand/collapse UI and artist metadata.
-- 🌐 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: WebView now allows official `music.bilibili.com` music-detail pages so discovery pages are not intercepted by native routing.
-- 🏷️ **@Play-count fix**: Home video cover play-count badges now reserve enough width to avoid collapsing into `...` on narrow cards.
-- ✅ Added focused Home-card stats layout tests and reran card-policy plus WebView navigation-policy tests.
-- 🔖 Bumped the app to `8.0.4` with `versionCode` `177`.
+- 🎬 Shared-element video transitions now add an iOS-style source-page shrink/restore motion when entering and returning from video detail.
+- 🌫️ Animation settings now include a shared-element background blur toggle; Android 12+ uses live blur and older versions gracefully keep scale/alpha motion only.
+- 🔎 Bottom-bar search capsule, Dock width, and content fade animations now use fast-out slow-in nonlinear timing while keeping indicator dispersion and settle pulse behavior unchanged.
+- 📱 Refined shared-transition and return behavior across video cards, related videos, portrait controls, and tablet video layouts.
+- ✅ Added focused tests for navigation appearance, source-background motion, settings mapping, and bottom-bar structure policies.
+- 🔖 Bumped the app to `8.0.5` with `versionCode` `178`.
 
 ---
 

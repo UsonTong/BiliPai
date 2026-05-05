@@ -1092,6 +1092,16 @@ fun AppearanceSettingsContent(
                     )
 
                     IOSDivider()
+                    IOSSwitchItem(
+                        icon = CupertinoIcons.Default.MagnifyingGlass,
+                        title = "底栏搜索入口",
+                        subtitle = "在悬浮底栏右侧显示可展开搜索框",
+                        checked = state.bottomBarSearchEnabled,
+                        onCheckedChange = { viewModel.toggleBottomBarSearch(it) },
+                        iconTint = iOSTeal
+                    )
+
+                    IOSDivider()
                     // 触感反馈
                     IOSSwitchItem(
                         icon = CupertinoIcons.Default.HandTap,

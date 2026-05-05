@@ -6,6 +6,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -21,6 +22,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuOpen
 import androidx.compose.material.icons.filled.Bookmark
@@ -54,11 +58,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer  //  晃动动画
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -106,6 +113,7 @@ import com.android.purebilibili.core.ui.animation.DampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
+import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -353,6 +361,66 @@ internal data class AndroidNativeIndicatorSpec(
 internal fun resolveSharedBottomBarCapsuleShape(): androidx.compose.ui.graphics.Shape =
     RoundedCornerShape(percent = 50)
 
+internal fun resolveKernelSuFloatingBottomBarWidth(
+    containerWidth: Dp,
+    itemCount: Int,
+    minEdgePadding: Dp
+): Dp {
+    val safeItemCount = itemCount.coerceAtLeast(1)
+    val contentPadding = 4.dp
+    val preferredWidth = (76.dp * safeItemCount) + (contentPadding * 2)
+    val minimumWidth = (52.dp * safeItemCount) + (contentPadding * 2)
+    val widthCap = (containerWidth - (minEdgePadding * 2)).coerceAtLeast(minimumWidth)
+    return minOf(preferredWidth, widthCap).coerceAtMost(containerWidth)
+}
+
+internal data class KernelSuBottomBarSearchLayout(
+    val dockWidth: Dp,
+    val searchWidth: Dp,
+    val gap: Dp
+)
+
+internal fun resolveKernelSuBottomBarSearchLayout(
+    containerWidth: Dp,
+    itemCount: Int,
+    minEdgePadding: Dp,
+    searchEnabled: Boolean,
+    searchExpanded: Boolean
+): KernelSuBottomBarSearchLayout {
+    val baseDockWidth = resolveKernelSuFloatingBottomBarWidth(
+        containerWidth = containerWidth,
+        itemCount = itemCount,
+        minEdgePadding = minEdgePadding
+    )
+    if (!searchEnabled) {
+        return KernelSuBottomBarSearchLayout(
+            dockWidth = baseDockWidth,
+            searchWidth = 0.dp,
+            gap = 0.dp
+        )
+    }
+
+    val gap = 10.dp
+    val availableWidth = (containerWidth - (minEdgePadding * 2)).coerceAtLeast(0.dp)
+    val compactDockWidth = 64.dp
+    val collapsedSearchWidth = 64.dp
+    val expandedSearchWidth = minOf(
+        260.dp,
+        (availableWidth - compactDockWidth - gap).coerceAtLeast(176.dp)
+    )
+    val targetSearchWidth = if (searchExpanded) expandedSearchWidth else collapsedSearchWidth
+    val targetDockWidth = if (searchExpanded) {
+        compactDockWidth
+    } else {
+        minOf(baseDockWidth, (availableWidth - targetSearchWidth - gap).coerceAtLeast(compactDockWidth))
+    }
+    return KernelSuBottomBarSearchLayout(
+        dockWidth = targetDockWidth,
+        searchWidth = targetSearchWidth,
+        gap = gap
+    )
+}
+
 internal fun resolveAndroidNativeBottomBarTuning(
     blurEnabled: Boolean,
     darkTheme: Boolean
@@ -507,12 +575,7 @@ internal fun resolveAndroidNativeExportTintColor(
     themeColor: Color,
     darkTheme: Boolean
 ): Color {
-    val toned = androidx.compose.ui.graphics.lerp(
-        start = themeColor,
-        stop = if (darkTheme) Color.White else Color.Black,
-        fraction = if (darkTheme) 0.10f else 0.08f
-    )
-    return toned.copy(alpha = if (darkTheme) 0.32f else 0.38f)
+    return themeColor
 }
 
 internal fun resolveAndroidNativePanelOffsetFraction(
@@ -1067,6 +1130,8 @@ fun FrostedBottomBar(
     homeSettings: com.android.purebilibili.core.store.HomeSettings = com.android.purebilibili.core.store.HomeSettings(),
     onHomeDoubleTap: () -> Unit = {},
     onDynamicDoubleTap: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onSearchKeywordSubmit: (String) -> Unit = {},
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
     itemColorIndices: Map<String, Int> = emptyMap(),
     dynamicUnreadCount: Int = 0,
@@ -1096,6 +1161,8 @@ fun FrostedBottomBar(
                 hazeState = hazeState,
                 backdrop = backdrop,
                 homeSettings = homeSettings,
+                onSearchClick = onSearchClick,
+                onSearchKeywordSubmit = onSearchKeywordSubmit,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget
@@ -1115,6 +1182,8 @@ fun FrostedBottomBar(
                 hazeState = hazeState,
                 backdrop = backdrop,
                 homeSettings = homeSettings,
+                onSearchClick = onSearchClick,
+                onSearchKeywordSubmit = onSearchKeywordSubmit,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget
@@ -1164,7 +1233,10 @@ fun FrostedBottomBar(
             hazeState = hazeState,
             motionTier = motionTier,
             isTransitionRunning = isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget
+            forceLowBlurBudget = forceLowBlurBudget,
+            bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            onSearchClick = onSearchClick,
+            onSearchKeywordSubmit = onSearchKeywordSubmit
         )
         return
     }
@@ -1183,6 +1255,8 @@ fun FrostedBottomBar(
         hazeState = hazeState,
         backdrop = backdrop,
         homeSettings = homeSettings,
+        onSearchClick = onSearchClick,
+        onSearchKeywordSubmit = onSearchKeywordSubmit,
         motionTier = motionTier,
         isTransitionRunning = isTransitionRunning,
         forceLowBlurBudget = forceLowBlurBudget
@@ -1204,6 +1278,8 @@ private fun MaterialBottomBar(
     hazeState: HazeState?,
     backdrop: LayerBackdrop?,
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
+    onSearchClick: () -> Unit,
+    onSearchKeywordSubmit: (String) -> Unit,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean
@@ -1263,7 +1339,10 @@ private fun MaterialBottomBar(
             containerColor = containerColor,
             tuning = androidNativeTuning,
             glassEnabled = glassEnabled,
-            haptic = haptic
+            haptic = haptic,
+            bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            onSearchClick = onSearchClick,
+            onSearchKeywordSubmit = onSearchKeywordSubmit
         )
         return
     }
@@ -1390,6 +1469,8 @@ private fun MiuixBottomBar(
     hazeState: HazeState?,
     backdrop: LayerBackdrop?,
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
+    onSearchClick: () -> Unit,
+    onSearchKeywordSubmit: (String) -> Unit,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean
@@ -1449,7 +1530,10 @@ private fun MiuixBottomBar(
             hazeState = hazeState,
             motionTier = motionTier,
             isTransitionRunning = isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget
+            forceLowBlurBudget = forceLowBlurBudget,
+            bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+            onSearchClick = onSearchClick,
+            onSearchKeywordSubmit = onSearchKeywordSubmit
         )
         return
     }
@@ -1633,7 +1717,10 @@ private fun KernelSuAlignedBottomBar(
     hazeState: HazeState? = null,
     motionTier: MotionTier = MotionTier.Normal,
     isTransitionRunning: Boolean = false,
-    forceLowBlurBudget: Boolean = false
+    forceLowBlurBudget: Boolean = false,
+    bottomBarSearchEnabled: Boolean = false,
+    onSearchClick: () -> Unit = {},
+    onSearchKeywordSubmit: (String) -> Unit = {}
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
     val tabsBackdrop = rememberLayerBackdrop()
@@ -1657,6 +1744,8 @@ private fun KernelSuAlignedBottomBar(
         initialIndex = selectedIndex,
         itemCount = totalItems,
         motionSpec = bottomBarMotionSpec,
+        notifyIndexChangedOnReleaseStart = true,
+        holdPressUntilReleaseTargetSettles = true,
         onIndexChanged = { index ->
             when {
                 index in visibleItems.indices -> onItemClick(visibleItems[index])
@@ -1684,6 +1773,13 @@ private fun KernelSuAlignedBottomBar(
     } else {
         null
     }
+    val exportTintColor = resolveAndroidNativeExportTintColor(
+        themeColor = selectedColor,
+        darkTheme = isDarkTheme
+    )
+    var searchExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val searchEnabled = bottomBarSearchEnabled
 
     Box(
         modifier = modifier.fillMaxWidth(),
@@ -1692,15 +1788,58 @@ private fun KernelSuAlignedBottomBar(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    start = tuning.outerHorizontalPaddingDp.dp,
-                    end = tuning.outerHorizontalPaddingDp.dp,
-                    bottom = 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                )
+                .padding(bottom = 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
         ) {
             val shellHeight = 64.dp
             val contentPadding = 4.dp
-            val indicatorWidth = (maxWidth - (contentPadding * 2)) / totalItems
+            val targetSearchLayout = resolveKernelSuBottomBarSearchLayout(
+                containerWidth = maxWidth,
+                itemCount = totalItems,
+                minEdgePadding = tuning.outerHorizontalPaddingDp.dp,
+                searchEnabled = searchEnabled,
+                searchExpanded = searchExpanded
+            )
+            val dockWidth by animateDpAsState(
+                targetValue = targetSearchLayout.dockWidth,
+                animationSpec = tween(
+                    durationMillis = 260,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarDockWidth"
+            )
+            val searchWidth by animateDpAsState(
+                targetValue = targetSearchLayout.searchWidth,
+                animationSpec = tween(
+                    durationMillis = 260,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarSearchWidth"
+            )
+            val searchGap by animateDpAsState(
+                targetValue = targetSearchLayout.gap,
+                animationSpec = tween(
+                    durationMillis = 240,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarSearchGap"
+            )
+            val dockContentAlpha by animateFloatAsState(
+                targetValue = if (searchExpanded) 0f else 1f,
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarDockContentAlpha"
+            )
+            val compactHomeAlpha by animateFloatAsState(
+                targetValue = if (searchExpanded) 1f else 0f,
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = AppMotionEasing.Continuity
+                ),
+                label = "bottomBarCompactHomeAlpha"
+            )
+            val indicatorWidth = (dockWidth - (contentPadding * 2)) / totalItems
             val itemWidthPx = with(density) { indicatorWidth.toPx() }.coerceAtLeast(1f)
             val panelOffsetPx by remember(density, itemWidthPx) {
                 derivedStateOf {
@@ -1743,11 +1882,26 @@ private fun KernelSuAlignedBottomBar(
                 visual.themeWeight
             )
 
-            Box(
+            fun visibleItemContentColor(
+                item: BottomNavItem?,
+                visual: BottomBarItemMotionVisual
+            ): Color = if (glassEnabled) {
+                unselectedColor
+            } else {
+                itemContentColor(item, visual)
+            }
+
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .height(shellHeight)
+                    .align(Alignment.Center),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    modifier = Modifier
+                        .width(dockWidth)
+                        .height(shellHeight)
+                ) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -1778,6 +1932,7 @@ private fun KernelSuAlignedBottomBar(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(contentPadding)
+                        .alpha(dockContentAlpha)
                         .graphicsLayer { translationX = panelOffsetPx },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1786,7 +1941,7 @@ private fun KernelSuAlignedBottomBar(
                             index = index,
                             selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
                         )
-                        val contentColor = itemContentColor(item, visual)
+                        val contentColor = visibleItemContentColor(item, visual)
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
@@ -1811,7 +1966,7 @@ private fun KernelSuAlignedBottomBar(
                             index = visibleItems.size,
                             selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
                         )
-                        val contentColor = itemContentColor(null, visual)
+                        val contentColor = visibleItemContentColor(null, visual)
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
@@ -1866,6 +2021,7 @@ private fun KernelSuAlignedBottomBar(
                                 this
                             }
                         }
+                        .graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))
                 ) {
                     Row(
                         modifier = Modifier
@@ -1878,7 +2034,7 @@ private fun KernelSuAlignedBottomBar(
                                 index = index,
                                 selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
                             )
-                            val contentColor = itemContentColor(item, visual)
+                            val contentColor = Color.White
                             AndroidNativeBottomBarItem(
                                 item = item,
                                 label = resolveBottomNavItemLabel(item),
@@ -1902,7 +2058,7 @@ private fun KernelSuAlignedBottomBar(
                                 index = visibleItems.size,
                                 selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
                             )
-                            val contentColor = itemContentColor(null, visual)
+                            val contentColor = Color.White
                             AndroidNativeBottomBarItem(
                                 item = null,
                                 label = stringResource(R.string.sidebar_toggle),
@@ -1926,6 +2082,7 @@ private fun KernelSuAlignedBottomBar(
                 if (selectedIndex in visibleItems.indices) {
                     Box(
                         modifier = Modifier
+                            .alpha(dockContentAlpha)
                             .offset(x = contentPadding + indicatorWidth * dampedDragState.value)
                             .graphicsLayer {
                                 translationX = panelOffsetPx
@@ -1940,12 +2097,8 @@ private fun KernelSuAlignedBottomBar(
                                         shape = { shellShape },
                                         effects = {
                                             lens(
-                                                refractionHeight = 12.dp.toPx() *
-                                                    motionProgress *
-                                                    refractionMotionProfile.indicatorLensHeightScale,
-                                                refractionAmount = 18.dp.toPx() *
-                                                    motionProgress *
-                                                    refractionMotionProfile.indicatorLensAmountScale,
+                                                refractionHeight = 10.dp.toPx() * motionProgress,
+                                                refractionAmount = 14.dp.toPx() * motionProgress,
                                                 depthEffect = true,
                                                 chromaticAberration = true
                                             )
@@ -2000,24 +2153,25 @@ private fun KernelSuAlignedBottomBar(
                     )
                 }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(contentPadding)
-                        .alpha(0f)
-                        .graphicsLayer { translationX = panelOffsetPx }
-                        .horizontalDragGesture(
-                            dragState = dampedDragState,
-                            itemWidthPx = itemWidthPx
-                        ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (!searchExpanded) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding)
+                            .alpha(0f)
+                            .graphicsLayer { translationX = panelOffsetPx }
+                            .horizontalDragGesture(
+                                dragState = dampedDragState,
+                                itemWidthPx = itemWidthPx
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                     visibleItems.forEachIndexed { index, item ->
                         val visual = itemVisual(
                             index = index,
                             selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
                         )
-                        val contentColor = itemContentColor(item, visual)
+                        val contentColor = visibleItemContentColor(item, visual)
                         AndroidNativeBottomBarItem(
                             item = item,
                             label = resolveBottomNavItemLabel(item),
@@ -2030,6 +2184,7 @@ private fun KernelSuAlignedBottomBar(
                             contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
+                                dampedDragState.updateIndex(index)
                                 performMaterialBottomBarTap(
                                     haptic = haptic,
                                     onClick = { onItemClick(item) }
@@ -2047,7 +2202,7 @@ private fun KernelSuAlignedBottomBar(
                             index = visibleItems.size,
                             selectionEmphasis = refractionMotionProfile.visibleSelectionEmphasis
                         )
-                        val contentColor = itemContentColor(null, visual)
+                        val contentColor = visibleItemContentColor(null, visual)
                         AndroidNativeBottomBarItem(
                             item = null,
                             label = stringResource(R.string.sidebar_toggle),
@@ -2060,6 +2215,7 @@ private fun KernelSuAlignedBottomBar(
                             contentColorOverride = contentColor,
                             iconStyle = iconStyle,
                             onClick = {
+                                dampedDragState.updateIndex(visibleItems.size)
                                 performMaterialBottomBarTap(
                                     haptic = haptic,
                                     onClick = onToggleSidebar
@@ -2071,7 +2227,203 @@ private fun KernelSuAlignedBottomBar(
                             scale = if (glassEnabled) visual.scale else 1f
                         )
                     }
+                    }
                 }
+
+                if (searchEnabled) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .alpha(compactHomeAlpha)
+                            .then(
+                                if (searchExpanded) {
+                                    Modifier.clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        haptic(HapticType.LIGHT)
+                                        searchExpanded = false
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BottomBarBlendedCupertinoIcon(
+                            item = BottomNavItem.HOME,
+                            unreadCount = 0,
+                            selectedAlpha = 1f,
+                            contentColor = if (currentItem == BottomNavItem.HOME) selectedColor else unselectedColor
+                        )
+                    }
+                }
+            }
+
+                if (searchEnabled) {
+                    Spacer(modifier = Modifier.width(searchGap))
+                    KernelSuBottomBarSearchCapsule(
+                        width = searchWidth,
+                        height = shellHeight,
+                        expanded = searchExpanded,
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onExpandChange = { expanded ->
+                            haptic(HapticType.LIGHT)
+                            searchExpanded = expanded
+                        },
+                        onSubmit = {
+                            val keyword = searchQuery.trim()
+                            if (keyword.isEmpty()) {
+                                onSearchClick()
+                            } else {
+                                onSearchKeywordSubmit(keyword)
+                            }
+                        },
+                        shape = shellShape,
+                        backdrop = backdrop,
+                        containerColor = containerColor,
+                        blurEnabled = blurEnabled,
+                        glassEnabled = glassEnabled,
+                        blurRadius = tuning.shellBlurRadiusDp.dp,
+                        hazeState = hazeState,
+                        motionTier = motionTier,
+                        isTransitionRunning = isTransitionRunning,
+                        forceLowBlurBudget = forceLowBlurBudget,
+                        contentColor = unselectedColor,
+                        accentColor = selectedColor
+                    )
+                }
+        }
+    }
+}
+}
+
+@Composable
+private fun KernelSuBottomBarSearchCapsule(
+    width: Dp,
+    height: Dp,
+    expanded: Boolean,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onExpandChange: (Boolean) -> Unit,
+    onSubmit: () -> Unit,
+    shape: androidx.compose.ui.graphics.Shape,
+    backdrop: Backdrop?,
+    containerColor: Color,
+    blurEnabled: Boolean,
+    glassEnabled: Boolean,
+    blurRadius: Dp,
+    hazeState: HazeState?,
+    motionTier: MotionTier,
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean,
+    contentColor: Color,
+    accentColor: Color
+) {
+    val fieldAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 180,
+            easing = AppMotionEasing.Continuity
+        ),
+        label = "bottomBarSearchFieldAlpha"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (expanded) 0.92f else 1f,
+        animationSpec = tween(
+            durationMillis = 180,
+            easing = AppMotionEasing.Continuity
+        ),
+        label = "bottomBarSearchIconScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height)
+            .kernelSuFloatingDockSurface(
+                shape = shape,
+                backdrop = backdrop,
+                containerColor = containerColor,
+                blurEnabled = blurEnabled,
+                glassEnabled = glassEnabled,
+                blurRadius = blurRadius,
+                hazeState = hazeState,
+                motionTier = motionTier,
+                isTransitionRunning = isTransitionRunning,
+                forceLowBlurBudget = forceLowBlurBudget
+            )
+            .then(
+                if (!expanded) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onExpandChange(true)
+                    }
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (expanded) 16.dp else 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center
+        ) {
+            Icon(
+                imageVector = CupertinoIcons.Default.MagnifyingGlass,
+                contentDescription = "搜索",
+                tint = if (expanded) accentColor else contentColor,
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(
+                        if (expanded) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onSubmit
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+            )
+            if (expanded) {
+                Spacer(modifier = Modifier.width(10.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
+                    cursorBrush = SolidColor(accentColor),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+                    modifier = Modifier
+                        .weight(1f)
+                        .alpha(fieldAlpha),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isBlank()) {
+                                Text(
+                                    text = "搜索",
+                                    color = contentColor.copy(alpha = 0.45f),
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
             }
         }
     }

@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -1423,6 +1426,10 @@ private fun VideoPageItem(
                 translationX = panX
                 translationY = panY
             }
+        val density = LocalDensity.current
+        val pageDanmakuTopInset = with(density) {
+            WindowInsets.statusBars.getTop(this).toDp()
+        }
 
         // [核心逻辑]
         // 始终保留 AndroidView 以确保 Surface 准备就绪，但只有当播放器加载了当前视频时才将其绑定或显示
@@ -1489,7 +1496,13 @@ private fun VideoPageItem(
                 videoWidth = exoPlayer.videoSize.width,
                 videoHeight = exoPlayer.videoSize.height,
                 resizeMode = playerViewRef?.resizeMode ?: resolvePortraitPagerResizeMode(),
-                modifier = pageDanmakuModifier
+                modifier = pageDanmakuModifier.then(
+                    if (shouldInsetPortraitDanmakuFromStatusBar(danmakuSurfaceMode)) {
+                        Modifier.padding(top = pageDanmakuTopInset)
+                    } else {
+                        Modifier
+                    }
+                )
             )
         }
 
@@ -2158,7 +2171,13 @@ private fun PortraitDanmakuOverlay(
 internal fun resolvePortraitPagerRepeatMode(): Int = Player.REPEAT_MODE_OFF
 
 internal fun resolvePortraitDanmakuSurfaceMode(currentVideoAspect: Float): PortraitDanmakuSurfaceMode {
-    return PortraitDanmakuSurfaceMode.VideoViewport
+    return PortraitDanmakuSurfaceMode.Page
+}
+
+internal fun shouldInsetPortraitDanmakuFromStatusBar(
+    surfaceMode: PortraitDanmakuSurfaceMode
+): Boolean {
+    return surfaceMode == PortraitDanmakuSurfaceMode.Page
 }
 
 internal fun resolvePortraitDanmakuReadableFontScale(fontScale: Float): Float {
@@ -2200,6 +2219,14 @@ internal fun resolvePortraitPagerFillContainer(): Boolean = false
 
 internal fun resolvePortraitPagerResizeMode(): Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
 
+internal fun resolvePortraitVideoViewportVerticalOffsetDp(
+    currentVideoAspect: Float,
+    fillContainer: Boolean
+): Int {
+    if (fillContainer) return 0
+    return if (currentVideoAspect > 1f) -48 else 0
+}
+
 @Composable
 internal fun PortraitVideoViewportContainer(
     currentVideoAspect: Float,
@@ -2226,6 +2253,12 @@ internal fun PortraitVideoViewportContainer(
                     height = with(density) { viewportSize.height.toDp() }
                 )
                 .align(Alignment.Center)
+                .offset(
+                    y = resolvePortraitVideoViewportVerticalOffsetDp(
+                        currentVideoAspect = currentVideoAspect,
+                        fillContainer = fillContainer
+                    ).dp
+                )
         ) {
             content()
         }

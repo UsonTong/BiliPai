@@ -34,6 +34,8 @@ import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
+import com.android.purebilibili.core.ui.transition.resolveVideoMetadataSharedBoundsTransformSpec
 import com.android.purebilibili.feature.video.ui.FollowBadgeTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
 
@@ -179,7 +181,9 @@ fun RelatedVideoItem(
                         .sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
                             animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
+                            boundsTransform = { initialBounds, targetBounds ->
+                                resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                            },
                             clipInOverlayDuringTransition = OverlayClip(
                                 RoundedCornerShape(12.dp)
                             )
@@ -249,7 +253,7 @@ fun RelatedVideoItem(
                             sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
                             animatedVisibilityScope = animatedVisibilityScope,
                             boundsTransform = { _, _ ->
-                                com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                resolveVideoMetadataSharedBoundsTransformSpec()
                             }
                         )
                     }
@@ -279,7 +283,7 @@ fun RelatedVideoItem(
                                     sharedContentState = rememberSharedContentState(key = "video_up_${video.bvid}"),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     }
                                 )
                             }
@@ -291,7 +295,7 @@ fun RelatedVideoItem(
                                     sharedContentState = rememberSharedContentState(key = "video_up_action_${video.bvid}"),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     }
                                 )
                             }
@@ -326,7 +330,7 @@ fun RelatedVideoItem(
                                                 sharedContentState = rememberSharedContentState(key = "video_avatar_${video.bvid}"),
                                                 animatedVisibilityScope = animatedVisibilityScope,
                                                 boundsTransform = { _, _ ->
-                                                    com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                                    resolveVideoMetadataSharedBoundsTransformSpec()
                                                 },
                                                 clipInOverlayDuringTransition = OverlayClip(androidx.compose.foundation.shape.CircleShape)
                                             )
@@ -367,7 +371,7 @@ fun RelatedVideoItem(
                                     sharedContentState = rememberSharedContentState(key = "video_views_${video.bvid}"),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     }
                                 )
                             }
@@ -386,7 +390,7 @@ fun RelatedVideoItem(
                                     sharedContentState = rememberSharedContentState(key = "video_danmaku_${video.bvid}"),
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     boundsTransform = { _, _ ->
-                                        com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec
+                                        resolveVideoMetadataSharedBoundsTransformSpec()
                                     }
                                 )
                             }

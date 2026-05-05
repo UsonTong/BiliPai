@@ -73,6 +73,7 @@ data class SettingsUiState(
     val hapticFeedbackEnabled: Boolean = true,
     val topBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassEnabled: Boolean = true,
+    val bottomBarSearchEnabled: Boolean = false,
     val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC, // [New]
     val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
@@ -122,6 +123,7 @@ data class ExtraSettings(
     val hapticFeedbackEnabled: Boolean, // [Restored]
     val topBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassEnabled: Boolean = true,
+    val bottomBarSearchEnabled: Boolean = false,
     val androidNativeLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
     val liquidGlassMode: LiquidGlassMode, // [New]
@@ -175,6 +177,7 @@ private data class BaseSettings(
     val hapticFeedbackEnabled: Boolean, // [新增]
     val topBarLiquidGlassEnabled: Boolean,
     val bottomBarLiquidGlassEnabled: Boolean,
+    val bottomBarSearchEnabled: Boolean,
     val androidNativeLiquidGlassEnabled: Boolean,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
     val liquidGlassMode: LiquidGlassMode, // [New]
@@ -263,6 +266,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getHapticFeedbackEnabled(context).asAnyFlow(), // [新增]
         SettingsManager.getTopBarLiquidGlassEnabled(context).asAnyFlow(),
         SettingsManager.getBottomBarLiquidGlassEnabled(context).asAnyFlow(),
+        SettingsManager.getBottomBarSearchEnabled(context).asAnyFlow(),
         SettingsManager.getAndroidNativeLiquidGlassEnabled(context).asAnyFlow(),
         SettingsManager.getLiquidGlassStyle(context).asAnyFlow(), // [New]
         SettingsManager.getLiquidGlassMode(context).asAnyFlow(), // [New]
@@ -283,14 +287,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val hapticFeedback = values[8] as Boolean
         val topBarLiquidGlass = values[9] as Boolean
         val bottomBarLiquidGlass = values[10] as Boolean
-        val androidNativeLiquidGlass = values[11] as Boolean
-        val liquidGlassStyle = values[12] as com.android.purebilibili.core.store.LiquidGlassStyle
-        val liquidGlassMode = values[13] as LiquidGlassMode
-        val liquidGlassStrength = values[14] as Float
-        val liquidGlassProgress = values[15] as Float
-        val tabletUseSidebar = values[16] as Boolean
-        val headerCollapse = values[17] as Boolean
-        val gridColumnCount = values[18] as Int
+        val bottomBarSearch = values[11] as Boolean
+        val androidNativeLiquidGlass = values[12] as Boolean
+        val liquidGlassStyle = values[13] as com.android.purebilibili.core.store.LiquidGlassStyle
+        val liquidGlassMode = values[14] as LiquidGlassMode
+        val liquidGlassStrength = values[15] as Float
+        val liquidGlassProgress = values[16] as Float
+        val tabletUseSidebar = values[17] as Boolean
+        val headerCollapse = values[18] as Boolean
+        val gridColumnCount = values[19] as Int
         
         data class Ui2(
             val f: Boolean,
@@ -304,6 +309,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val h: Boolean,
             val tlg: Boolean,
             val blg: Boolean,
+            val bbs: Boolean,
             val anlg: Boolean,
             val lgs: com.android.purebilibili.core.store.LiquidGlassStyle,
             val lgm: LiquidGlassMode,
@@ -325,6 +331,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedback,
             topBarLiquidGlass,
             bottomBarLiquidGlass,
+            bottomBarSearch,
             androidNativeLiquidGlass,
             liquidGlassStyle,
             liquidGlassMode,
@@ -357,6 +364,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = ui2.h, // [新增]
             topBarLiquidGlassEnabled = ui2.tlg,
             bottomBarLiquidGlassEnabled = ui2.blg,
+            bottomBarSearchEnabled = ui2.bbs,
             androidNativeLiquidGlassEnabled = ui2.anlg,
             liquidGlassStyle = ui2.lgs, // [New]
             liquidGlassMode = ui2.lgm, // [New]
@@ -441,6 +449,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
             topBarLiquidGlassEnabled = extra.topBarLiquidGlassEnabled,
             bottomBarLiquidGlassEnabled = extra.bottomBarLiquidGlassEnabled,
+            bottomBarSearchEnabled = extra.bottomBarSearchEnabled,
             androidNativeLiquidGlassEnabled = extra.androidNativeLiquidGlassEnabled,
             liquidGlassStyle = extra.liquidGlassStyle, // [New]
             liquidGlassMode = extra.liquidGlassMode, // [New]
@@ -494,6 +503,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
             topBarLiquidGlassEnabled = settings.topBarLiquidGlassEnabled,
             bottomBarLiquidGlassEnabled = settings.bottomBarLiquidGlassEnabled,
+            bottomBarSearchEnabled = settings.bottomBarSearchEnabled,
             androidNativeLiquidGlassEnabled = settings.androidNativeLiquidGlassEnabled,
             liquidGlassStyle = settings.liquidGlassStyle, // [New]
             liquidGlassMode = settings.liquidGlassMode, // [New]
@@ -764,6 +774,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             )
             SettingsManager.setBottomBarLiquidGlassEnabled(context, resolved.liquidGlassEnabled)
             SettingsManager.setBottomBarBlurEnabled(context, resolved.bottomBarBlurEnabled)
+        }
+    }
+
+    fun toggleBottomBarSearch(enabled: Boolean) {
+        viewModelScope.launch {
+            SettingsManager.setBottomBarSearchEnabled(context, enabled)
         }
     }
 

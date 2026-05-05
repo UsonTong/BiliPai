@@ -27,4 +27,19 @@ class VideoPlayerCoverPolicyTest {
             )
         )
     }
+
+    @Test
+    fun forcedReturnCoverSharedBounds_usesReturnLandingMotion() {
+        assertTrue(
+            shouldEnableForcedReturnCoverSharedBounds(
+                forceCoverDuringReturnAnimation = true,
+                transitionEnabled = true,
+                hasSharedTransitionScope = true,
+                hasAnimatedVisibilityScope = true,
+                sourceRoute = com.android.purebilibili.navigation.ScreenRoutes.Home.route
+            )
+        )
+        assertTrue(shouldUseReturnLandingMotionForForcedReturnCover(true))
+        assertFalse(shouldUseReturnLandingMotionForForcedReturnCover(false))
+    }
 }

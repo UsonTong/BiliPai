@@ -1,7 +1,6 @@
 package com.android.purebilibili.feature.home.components.cards
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -61,6 +60,8 @@ import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
+import com.android.purebilibili.core.ui.transition.resolveVideoMetadataSharedBoundsTransformSpec
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.core.util.CardPositionManager
@@ -213,7 +214,9 @@ fun CinematicVideoCard(
                     coverModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "video_cover_${video.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                        boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
+                        boundsTransform = { initialBounds, targetBounds ->
+                            resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                        },
                         clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(cardCornerRadius))
                     )
                 }
@@ -264,7 +267,7 @@ fun CinematicVideoCard(
                         titleModifier = titleModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_title_${video.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ -> spring(dampingRatio = 0.8f, stiffness = 200f) }
+                            boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                         )
                     }
                 }
@@ -298,7 +301,7 @@ fun CinematicVideoCard(
                              upNameModifier = upNameModifier.sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = "video_up_${video.bvid}"),
                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ -> spring(dampingRatio = 0.8f, stiffness = 200f) }
+                                boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                              )
                          }
                      }
@@ -316,7 +319,7 @@ fun CinematicVideoCard(
                                          avatarModifier = avatarModifier.sharedBounds(
                                              sharedContentState = rememberSharedContentState(key = "video_avatar_${video.bvid}"),
                                              animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                             boundsTransform = { _, _ -> spring(dampingRatio = 0.8f, stiffness = 200f) },
+                                             boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() },
                                              clipInOverlayDuringTransition = OverlayClip(CircleShape)
                                          )
                                      }

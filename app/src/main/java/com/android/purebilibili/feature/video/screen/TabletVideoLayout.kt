@@ -54,6 +54,7 @@ import androidx.compose.foundation.shape.CircleShape
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCoverSharedBoundsTransformSpec
 
 /**
  * 🖥️ 平板端视频详情页布局
@@ -151,7 +152,9 @@ fun TabletVideoLayout(
                             .sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = "video_cover_$bvid"),
                                 animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = { _, _ -> com.android.purebilibili.core.theme.AnimationSpecs.BiliPaiSpringSpec },
+                                boundsTransform = { initialBounds, targetBounds ->
+                                    resolveVideoCoverSharedBoundsTransformSpec(initialBounds, targetBounds)
+                                },
                                 clipInOverlayDuringTransition = OverlayClip(
                                     RoundedCornerShape(12.dp)
                                 )

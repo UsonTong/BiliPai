@@ -1,5 +1,22 @@
 # Changelog
 
+## v8.0.5 (2026-05-05)
+
+### 版本信息
+- 版本号从 `8.0.4` 升级到 `8.0.5`，`versionCode` 升级到 `178`。
+- 本次为共享元素视频转场、底栏交互动效和首页/视频细节体验维护版本。
+
+### 更新内容
+- **共享元素视频转场**：进入视频详情和返回列表页时，来源页面增加 iOS 式整体收缩/恢复动效；Android 12+ 支持实时背景模糊，低版本自动降级为缩放与透明度过渡。
+- **动画设置**：新增“共享元素背景模糊”开关，关闭后保留共享元素和页面收缩动效，但不再应用实时模糊。
+- **底栏交互**：底栏搜索胶囊、Dock 宽度、内容淡入淡出和搜索图标缩放改为先快后慢的非线性动画，同时保持指示器色散与 settle pulse 原策略不变。
+- **视频与卡片细节**：同步优化视频卡片、相关推荐、竖屏互动栏和平板视频布局的共享转场与返回表现。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationAppearancePolicyTest' --tests 'com.android.purebilibili.core.store.HomeSettingsMappingPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLayoutPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest'`
+- `git diff --check`
+
 ## v8.0.4 (2026-05-04)
 
 ### 版本信息

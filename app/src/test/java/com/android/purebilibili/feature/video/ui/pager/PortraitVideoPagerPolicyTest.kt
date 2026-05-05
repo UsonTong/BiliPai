@@ -185,18 +185,57 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
-    fun portraitDanmakuSurface_keepsLandscapeVideoDanmakuAnchoredToViewport() {
+    fun portraitDanmakuSurface_usesPageLayerSoDanmakuStartsAtScreenTop() {
         assertEquals(
-            PortraitDanmakuSurfaceMode.VideoViewport,
+            PortraitDanmakuSurfaceMode.Page,
             resolvePortraitDanmakuSurfaceMode(currentVideoAspect = 16f / 9f)
         )
     }
 
     @Test
-    fun portraitDanmakuSurface_keepsViewportForPortraitVideo() {
+    fun portraitDanmakuSurface_usesPageLayerForPortraitVideoToo() {
         assertEquals(
-            PortraitDanmakuSurfaceMode.VideoViewport,
+            PortraitDanmakuSurfaceMode.Page,
             resolvePortraitDanmakuSurfaceMode(currentVideoAspect = 9f / 16f)
+        )
+    }
+
+    @Test
+    fun pageDanmakuSurface_isInsetFromStatusBar() {
+        assertTrue(
+            shouldInsetPortraitDanmakuFromStatusBar(PortraitDanmakuSurfaceMode.Page)
+        )
+        assertFalse(
+            shouldInsetPortraitDanmakuFromStatusBar(PortraitDanmakuSurfaceMode.VideoViewport)
+        )
+    }
+
+    @Test
+    fun landscapeVideoViewport_isLiftedSlightlyInFitMode() {
+        assertEquals(
+            -48,
+            resolvePortraitVideoViewportVerticalOffsetDp(
+                currentVideoAspect = 16f / 9f,
+                fillContainer = false
+            )
+        )
+    }
+
+    @Test
+    fun portraitOrFillViewport_keepsCenteredVerticalOffset() {
+        assertEquals(
+            0,
+            resolvePortraitVideoViewportVerticalOffsetDp(
+                currentVideoAspect = 9f / 16f,
+                fillContainer = false
+            )
+        )
+        assertEquals(
+            0,
+            resolvePortraitVideoViewportVerticalOffsetDp(
+                currentVideoAspect = 16f / 9f,
+                fillContainer = true
+            )
         )
     }
 

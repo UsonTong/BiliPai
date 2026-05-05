@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import com.android.purebilibili.core.ui.common.copyOnClick
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
 import com.android.purebilibili.core.ui.components.UserUpBadge
+import com.android.purebilibili.core.ui.transition.resolveVideoMetadataSharedBoundsTransformSpec
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.core.util.CardPositionManager
@@ -233,9 +234,7 @@ fun VideoTitleWithDesc(
                          titleModifier = titleModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_title_${info.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            }
+                            boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                         )
                     }
                 }
@@ -276,9 +275,7 @@ fun VideoTitleWithDesc(
                         viewsModifier = viewsModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_views_${info.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            }
+                            boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                         )
                     }
                 }
@@ -302,9 +299,7 @@ fun VideoTitleWithDesc(
                         danmakuModifier = danmakuModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_danmaku_${info.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            }
+                            boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                         )
                     }
                 }
@@ -558,9 +553,7 @@ fun UpInfoSection(
                         avatarModifier = avatarModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "video_avatar_${info.bvid}"),
                             animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            },
+                            boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() },
                             clipInOverlayDuringTransition = OverlayClip(CircleShape)
                         )
                     }
@@ -607,9 +600,7 @@ fun UpInfoSection(
                             upNameModifier = upNameModifier.sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = "video_up_${info.bvid}"),
                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ ->
-                                    androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                                }
+                                boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() }
                             )
                         }
                     }
@@ -665,9 +656,7 @@ fun UpInfoSection(
                     followActionModifier = followActionModifier.sharedBounds(
                         sharedContentState = rememberSharedContentState(key = "video_up_action_${info.bvid}"),
                         animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                        boundsTransform = { _, _ ->
-                            androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                        },
+                        boundsTransform = { _, _ -> resolveVideoMetadataSharedBoundsTransformSpec() },
                         clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(16.dp))
                     )
                 }

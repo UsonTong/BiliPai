@@ -333,16 +333,16 @@ internal fun resolveMd3TopTabActionIconSize(
 internal fun resolveMd3TopTabActionContentBottomPadding(): Dp = 4.dp
 
 internal fun resolveIosTopTabRowHeight(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) 62.dp else 56.dp
+    52.dp
 
 internal fun resolveIosTopTabActionButtonSize(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) 52.dp else 48.dp
+    if (isFloatingStyle) 46.dp else 44.dp
 
 internal fun resolveIosTopTabActionButtonCorner(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) 24.dp else 22.dp
+    if (isFloatingStyle) 22.dp else 20.dp
 
 internal fun resolveIosTopTabActionIconSize(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) 26.dp else 24.dp
+    if (isFloatingStyle) 23.dp else 22.dp
 
 internal fun performHomeTopBarTap(
     haptic: (HapticType) -> Unit,

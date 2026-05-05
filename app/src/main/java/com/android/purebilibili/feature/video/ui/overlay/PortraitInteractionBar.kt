@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.theme.BiliPink
@@ -136,14 +135,8 @@ private fun InteractionButton(
         Box(
             modifier = Modifier
                 .size(layoutPolicy.iconBackingSizeDp.dp)
-                .shadow(
-                    elevation = 10.dp,
-                    shape = CircleShape,
-                    spotColor = Color.Black.copy(alpha = 0.32f),
-                    ambientColor = Color.Black.copy(alpha = 0.24f)
-                )
                 .background(
-                    color = Color.Black.copy(alpha = 0.34f),
+                    color = Color.Black.copy(alpha = layoutPolicy.iconBackingAlpha),
                     shape = CircleShape
                 )
                 .padding(layoutPolicy.iconBackingInnerPaddingDp.dp),

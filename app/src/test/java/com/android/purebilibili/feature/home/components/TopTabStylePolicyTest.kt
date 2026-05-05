@@ -114,18 +114,27 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `ios top tab tuning uses bottom bar sized indicator footprint`() {
+    fun `ios top tab tuning uses compact indicator footprint`() {
         val tuning = resolveTopTabVisualTuning(UiPreset.IOS)
 
-        assertEquals(44f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
-        assertEquals(22f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
-        assertEquals(1.34f, tuning.nonFloatingIndicatorWidthRatio, 0.001f)
-        assertEquals(90f, tuning.nonFloatingIndicatorMinWidthDp, 0.001f)
+        assertEquals(46f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
+        assertEquals(23f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
+        assertEquals(1.18f, tuning.nonFloatingIndicatorWidthRatio, 0.001f)
+        assertEquals(78f, tuning.nonFloatingIndicatorMinWidthDp, 0.001f)
         assertEquals(0f, tuning.nonFloatingIndicatorHorizontalInsetDp, 0.001f)
         assertEquals(46f, tuning.floatingIndicatorHeightDp, 0.001f)
-        assertEquals(14f, tuning.tabTextSizeSp, 0.001f)
-        assertEquals(18f, tuning.tabTextLineHeightSp, 0.001f)
-        assertEquals(40f, tuning.tabContentMinHeightDp, 0.001f)
+        assertEquals(13f, tuning.tabTextSizeSp, 0.001f)
+        assertEquals(17f, tuning.tabTextLineHeightSp, 0.001f)
+        assertEquals(36f, tuning.tabContentMinHeightDp, 0.001f)
+    }
+
+    @Test
+    fun `md3 capsule top tab tuning also uses compact shape`() {
+        val tuning = resolveTopTabVisualTuning(UiPreset.MD3)
+
+        assertEquals(46f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
+        assertEquals(23f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
+        assertEquals(46f, tuning.floatingIndicatorHeightDp, 0.001f)
     }
 
     @Test
@@ -154,12 +163,13 @@ class TopTabStylePolicyTest {
 
     @Test
     fun `ios top tab icon modes use readable glyph sizes`() {
-        assertEquals(20f, resolveTopTabIconSizeDp(labelMode = 0), 0.001f)
-        assertEquals(24f, resolveTopTabIconSizeDp(labelMode = 1), 0.001f)
-        assertEquals(3f, resolveTopTabIconTextSpacingDp(labelMode = 0), 0.001f)
-        assertEquals(56.dp, resolveIosTopTabRowHeight(isFloatingStyle = false))
-        assertEquals(48.dp, resolveIosTopTabActionButtonSize(isFloatingStyle = false))
-        assertEquals(24.dp, resolveIosTopTabActionIconSize(isFloatingStyle = false))
+        assertEquals(18f, resolveTopTabIconSizeDp(labelMode = 0), 0.001f)
+        assertEquals(22f, resolveTopTabIconSizeDp(labelMode = 1), 0.001f)
+        assertEquals(2f, resolveTopTabIconTextSpacingDp(labelMode = 0), 0.001f)
+        assertEquals(52.dp, resolveIosTopTabRowHeight(isFloatingStyle = false))
+        assertEquals(52.dp, resolveIosTopTabRowHeight(isFloatingStyle = true))
+        assertEquals(44.dp, resolveIosTopTabActionButtonSize(isFloatingStyle = false))
+        assertEquals(22.dp, resolveIosTopTabActionIconSize(isFloatingStyle = false))
     }
 
     @Test
