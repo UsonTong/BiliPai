@@ -192,6 +192,42 @@ class BottomBarColorBindingPolicyTest {
     }
 
     @Test
+    fun `moving floating bottom bar keeps neutral interpolation instead of forced selected tint`() {
+        val unselected = Color(0xFF1F1F1F)
+        val selected = Color(0xFFFF5F9A)
+
+        assertEquals(
+            lerp(unselected, selected, 0.35f),
+            resolveBottomBarFloatingItemContentColor(
+                unselectedColor = unselected,
+                selectedColor = selected,
+                selectionFraction = 0.35f
+            )
+        )
+    }
+
+    @Test
+    fun `floating capture layer does not tint entire export surface`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+            .readText()
+
+        assertFalse(
+            source.contains("ColorFilter.tint(selectedColor)"),
+            "The transparent export layer should stay neutral so refraction keeps the cyan-yellow edge look."
+        )
+    }
+
+    @Test
+    fun `android native floating bottom bar uses wider screen edge padding`() {
+        val tuning = resolveAndroidNativeBottomBarTuning(
+            blurEnabled = true,
+            darkTheme = false
+        )
+
+        assertEquals(32f, tuning.outerHorizontalPaddingDp)
+    }
+
+    @Test
     fun `material docked bottom bar selected icon and text use theme primary`() {
         val themePrimary = Color(0xFF9C27B0)
         val onSurfaceVariant = Color(0xFF5F6368)
