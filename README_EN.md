@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-03 · Synced to v8.0.3 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-04 · Synced to v8.0.4 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.3-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.4-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -431,18 +431,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.3 · 2026-05-03)
+### Latest (v8.0.4 · 2026-05-04)
 
-- 🧭 Merged PR #273 by `chenx-dust` (`b4ae9235`): improved tablet/foldable video and Profile layouts, sidebar affordance sizing, and navigation-bar padding.
-- 🔎 Improved the Search top bar under global wallpaper/glass backgrounds to avoid stacking redundant blur layers.
-- 🏷️ Home cover stats now shrink and ellipsize better for play, comment, online-count, and duration badges.
-- 💬 Command-danmaku interaction prompts can now be dismissed one by one, with better spacing for follow/triple-action cards.
-- ⚡ Tuned long-press speed-lock sensitivity to reduce accidental locks outside fullscreen playback.
-- 🖼️ Fixed Home wallpaper rendering that could show two separated or overlapping images after setting a background.
-- 🎛️ Changed the player-collapse setting to video-orientation options: Off, Portrait, Landscape, and All, so Portrait no longer collapses landscape videos.
-- 🧩 Extracted the portrait inline-player host to reduce `VideoDetailScreen` method size and avoid `MethodTooLarge`.
-- ✅ Added focused tests for tablet/dynamic layout, Search chrome, command danmaku, Home wallpaper rendering, and player-collapse policy.
-- 🔖 Bumped the app to `8.0.3` with `versionCode` `176`.
+- 🎵 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: BGM taps now prefer the official Bilibili discovery page instead of immediately opening native music playback.
+- 🎶 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: added the multi-BGM list API path with expand/collapse UI and artist metadata.
+- 🌐 **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**: WebView now allows official `music.bilibili.com` music-detail pages so discovery pages are not intercepted by native routing.
+- 🏷️ **@Play-count fix**: Home video cover play-count badges now reserve enough width to avoid collapsing into `...` on narrow cards.
+- ✅ Added focused Home-card stats layout tests and reran card-policy plus WebView navigation-policy tests.
+- 🔖 Bumped the app to `8.0.4` with `versionCode` `177`.
 
 ---
 

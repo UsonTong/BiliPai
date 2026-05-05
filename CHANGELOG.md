@@ -1,5 +1,28 @@
 # Changelog
 
+## v8.0.4 (2026-05-04)
+
+### 版本信息
+- 版本号从 `8.0.3` 升级到 `8.0.4`，`versionCode` 升级到 `177`。
+- PR / 提交来源：
+  - **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**：`fix: 修复两个音乐发现的问题`，merge commit `3764f6d4`。
+  - **@本地修复**：首页卡片播放量显示修复，修复提交号随 8.0.4 release commit 生成。
+- 本次为音乐发现页和首页卡片统计显示维护版本。
+
+### 更新内容
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 优先使用 B 站官方 BGM `jumpUrl` 打开“发现音乐”，避免从首页、历史等入口进入视频后点击 BGM 直接进入原生音乐播放。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** WebView 放行 `music.bilibili.com` 官方音乐详情页，避免音乐发现页被原生路由提前拦截。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 接入 `x/copyright-music-publicity/bgm/multiple/music` BGM 列表接口，支持多首背景音乐识别和展开/收起展示。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 视频详情页、平板影院布局和播放状态链路同步传递完整 BGM 列表，保留单首 BGM 兼容展示。
+- **@播放量修复** 首页视频卡片封面底部播放量胶囊增加内容保底宽度，避免在评论数、在线人数和时长同时显示时被挤成 `...`。
+- **@播放量修复** 播放量文本改为一次解析后同时供封面统计和信息区统计复用，并补充卡片统计布局策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.cards.VideoCardCoverStatsLayoutPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.cards.*'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.web.WebViewNavigationPolicyTest'`
+- `git diff --check`
+
 ## v8.0.3 (2026-05-03)
 
 ### 版本信息
