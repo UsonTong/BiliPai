@@ -1,5 +1,22 @@
 # Changelog
 
+## v8.0.6 (2026-05-06)
+
+### 版本信息
+- 版本号从 `8.0.5` 升级到 `8.0.6`，`versionCode` 升级到 `179`。
+- 本次聚焦安卓原生 MD3E 适配和视频/直播方向策略修复。
+
+### 更新内容
+- **@Jay3-yy** 新增安卓原生 `Material 3 Expressive / MD3E` 子风格入口，补齐设置持久化、外观选项、主题 shape / typography / motion 接入，并锁定 Compose Material3 `1.5.0-alpha18`。
+- **@Jay3-yy** 深度适配 MD3E：顶部栏、底栏、首页顶部分类、共享列表、搜索、通用列表和视频设置面板获得更明显的 Expressive 圆角、选中容器、tonal surface 与动效策略。
+- **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 修复平板屏幕旋转体验，移除手机误入平板模式逻辑，并按官方推荐调整屏幕大小检测方式。
+- **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 同步修复视频和直播的方向策略。
+
+### 验证
+- `./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest --tests 'com.android.purebilibili.core.theme.AndroidNativeVariantThemePolicyTest' --tests 'com.android.purebilibili.core.ui.components.AdaptiveListComponentPolicyTest' --tests 'com.android.purebilibili.core.ui.AdaptiveScaffoldWallpaperPolicyTest' --tests 'com.android.purebilibili.feature.home.components.TopTabStylePolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLayoutPolicyTest' --tests 'com.android.purebilibili.feature.search.SearchChromePolicyTest' --tests 'com.android.purebilibili.feature.list.CommonListAppearancePolicyTest' --tests 'com.android.purebilibili.feature.video.ui.components.VideoSettingsPanelActionPolicyTest'`
+- `./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.0.5 (2026-05-05)
 
 ### 版本信息
