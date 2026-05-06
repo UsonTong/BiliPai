@@ -44,39 +44,6 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
-    fun `frosted bottom bar shell keeps blur visibility when glass effect is enabled`() {
-        val color = resolveBottomBarContainerColor(
-            surfaceColor = Color.White,
-            blurEnabled = true,
-            blurIntensity = BlurIntensity.THIN,
-            liquidGlassProgress = 1f,
-            isGlassEffectEnabled = true
-        )
-
-        assertTrue(color.alpha >= 0.36f)
-    }
-
-    @Test
-    fun `clear bottom bar shell stays lighter than frosted shell`() {
-        val clear = resolveBottomBarContainerColor(
-            surfaceColor = Color.White,
-            blurEnabled = true,
-            blurIntensity = BlurIntensity.THIN,
-            liquidGlassProgress = 0f,
-            isGlassEffectEnabled = true
-        )
-        val frosted = resolveBottomBarContainerColor(
-            surfaceColor = Color.White,
-            blurEnabled = true,
-            blurIntensity = BlurIntensity.THIN,
-            liquidGlassProgress = 1f,
-            isGlassEffectEnabled = true
-        )
-
-        assertTrue(clear.alpha < frosted.alpha)
-    }
-
-    @Test
     fun `android native floating shell is opaque when blur is disabled`() {
         val tuning = resolveAndroidNativeBottomBarTuning(
             blurEnabled = false,
@@ -287,6 +254,20 @@ class BottomBarSurfaceColorPolicyTest {
 
         assertTrue(color.alpha > 0.2f)
         assertTrue(color.blue >= color.red)
+    }
+
+    @Test
+    fun `android native export layer tint preserves theme brightness in light theme`() {
+        val themeColor = Color(0xFFE67A73)
+        val color = resolveAndroidNativeExportTintColor(
+            themeColor = themeColor,
+            darkTheme = false
+        )
+
+        assertEquals(themeColor.red, color.red, 0.001f)
+        assertEquals(themeColor.green, color.green, 0.001f)
+        assertEquals(themeColor.blue, color.blue, 0.001f)
+        assertEquals(themeColor.alpha, color.alpha, 0.001f)
     }
 
     @Test

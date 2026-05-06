@@ -7,13 +7,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState //  新增
 import androidx.compose.runtime.getValue //  新增
@@ -24,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavBackStackEntry
@@ -37,6 +36,9 @@ import com.android.purebilibili.feature.article.shouldUseArticleNoOpRouteTransit
 import com.android.purebilibili.feature.home.HomeVideoClickRequest
 import com.android.purebilibili.feature.home.HomeScreen
 import com.android.purebilibili.feature.home.HomeViewModel
+import com.android.purebilibili.feature.home.HomeWallpaperBackdrop
+import com.android.purebilibili.feature.home.resolveHomeWallpaperBackdropAppearance
+import com.android.purebilibili.feature.home.resolveHomeWallpaperUri
 import com.android.purebilibili.feature.login.LoginScreen
 import com.android.purebilibili.feature.profile.ProfileScreen
 import com.android.purebilibili.feature.search.ArticleNavigationTarget
@@ -84,6 +86,7 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.android.purebilibili.core.ui.LocalSetBottomBarVisible
 import com.android.purebilibili.core.ui.LocalBottomBarVisible
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
 import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.softLandingSpring
@@ -96,6 +99,7 @@ import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
 import com.android.purebilibili.core.store.AppNavigationSettings
+import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.resolveEffectiveHomeSettings
 import com.android.purebilibili.core.theme.LocalUiPreset
@@ -474,6 +478,32 @@ fun AppNavigation(
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         val currentBottomNavItem = BottomNavItem.entries.find { it.route == currentRoute } ?: BottomNavItem.HOME
+        val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
+        val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
+        val globalHomeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
+            resolveHomeWallpaperUri(
+                homeWallpaperUri = configuredHomeWallpaperUri,
+                splashWallpaperUri = splashWallpaperUri
+            )
+        }
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
+        val shouldRenderGlobalHomeWallpaper = currentRoute != null &&
+            effectiveHomeSettings.homeWallpaperEffectScope == HomeWallpaperEffectScope.GLOBAL &&
+            currentRoute != ScreenRoutes.Home.route
+        val globalHomeWallpaperAppearance = remember(
+            globalHomeWallpaperUri,
+            effectiveHomeSettings.homeWallpaperEffectMode,
+            shouldRenderGlobalHomeWallpaper,
+            isLightBackground
+        ) {
+            resolveHomeWallpaperBackdropAppearance(
+                hasWallpaper = shouldRenderGlobalHomeWallpaper && globalHomeWallpaperUri.isNotBlank(),
+                effectMode = effectiveHomeSettings.homeWallpaperEffectMode,
+                isDarkTheme = !isLightBackground,
+                isDataSaverActive = false
+            )
+        }
         var previousRouteForStopPolicy by remember { mutableStateOf<String?>(null) }
         var previousVideoBvidForStopPolicy by remember { mutableStateOf<String?>(null) }
 
@@ -611,14 +641,19 @@ fun AppNavigation(
         }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+        LaunchedEffect(currentRoute) {
+            scrollOffsetState.floatValue = 0f
+        }
 
-        // [LayerBackdrop] Create backdrop for bottom bar refraction effect
-        // This captures the NavHost content and allows the bottom bar to refract it
+        // [LayerBackdrop] Create backdrop for bottom bar refraction effect.
+        // Capture the wallpaper and NavHost content together so transparent wallpaper-aware
+        // pages feed the same background into the floating dock as Home.
         val bottomBarBackdrop = rememberLayerBackdrop()
 
         CompositionLocalProvider(
             LocalSetBottomBarVisible provides setBottomBarVisible,
             LocalBottomBarVisible provides finalBottomBarVisible,
+            LocalGlobalWallpaperBackdropVisible provides globalHomeWallpaperAppearance.visible,
             com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel,
             LocalDynamicScrollChannel provides dynamicScrollChannel,
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
@@ -627,17 +662,23 @@ fun AppNavigation(
                 navController.navigateUp()
             }
             Box(modifier = Modifier.fillMaxSize()) {
-            // ===== 内容层 (hazeSource) =====
-            // 这个 Box 包裹所有 NavHost 内容，作为底栏模糊的源
-            // [LayerBackdrop] Apply layerBackdrop to capture content for bottom bar refraction
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .layerBackdrop(bottomBarBackdrop)
-                    // [Fix] 将内容标记为全局底栏模糊的源
-                    // 必须添加 hazeSource，否则底栏的 hazeEffect 无法获取背景内容，导致模糊失效
-                    .then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)
-            ) {
+                // ===== 内容层 (hazeSource) =====
+                // 这个 Box 包裹全局壁纸和所有 NavHost 内容，作为底栏模糊/折射的源
+                // [LayerBackdrop] Apply layerBackdrop before the bottom bar sibling so the dock
+                // captures wallpaper + page content, but never captures itself.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .layerBackdrop(bottomBarBackdrop)
+                        // [Fix] 将内容标记为全局底栏模糊的源
+                        // 必须添加 hazeSource，否则底栏的 hazeEffect 无法获取背景内容，导致模糊失效
+                        .then(if (mainHazeState != null) Modifier.hazeSource(mainHazeState) else Modifier)
+                ) {
+                    HomeWallpaperBackdrop(
+                        wallpaperUri = globalHomeWallpaperUri,
+                        appearance = globalHomeWallpaperAppearance,
+                        baseColor = backgroundColor
+                    )
                 val settingsEnterTransition:
                     AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
                     slideEnterLeft(navMotionSpec)
@@ -1118,29 +1159,19 @@ fun AppNavigation(
                         navigateToVideo(vid, targetCid, "")
                     },
                     onBgmClick = { bgm ->
-                        // 获取当前视频的 cid（在闭包中捕获）
+                        if (bgm.jumpUrl.isNotEmpty()) {
+                            navController.navigate(ScreenRoutes.Web.createRoute(bgm.jumpUrl, "发现音乐"))
+                            return@VideoDetailScreen
+                        }
+
                         val videoCid = backStackEntry.arguments?.getLong("cid") ?: 0L
-                        
-                        android.util.Log.d("BGM_DEBUG", "🎵 musicId=${bgm.musicId}, title=${bgm.musicTitle}")
-                        android.util.Log.d("BGM_DEBUG", "🎵 Using current video: bvid=$bvid, cid=$videoCid")
-                        
-                        // 尝试解析 au 格式 (如 au123456 或纯数字)
                         val auSid = bgm.musicId.removePrefix("au").toLongOrNull()
-                        
+
                         if (auSid != null) {
-                            // au 格式：使用原生音乐详情页
                             navController.navigate(ScreenRoutes.MusicDetail.createRoute(auSid))
                         } else if (bgm.musicId.startsWith("MA") && videoCid > 0) {
-                            // MA 格式：使用当前视频的 bvid 和 cid 获取音频流
-                            // jumpUrl 中的 aid/cid 是 B 站内部 ID，无法用于获取视频流
-                            // 所以直接使用当前正在播放的视频来提取音频
                             val title = bgm.musicTitle.ifEmpty { "背景音乐" }
-                            
-                            android.util.Log.d("BGM_DEBUG", "🎵 Navigating with: bvid=$bvid, cid=$videoCid")
                             navController.navigate(ScreenRoutes.NativeMusic.createRoute(title, bvid, videoCid))
-                        } else if (bgm.jumpUrl.isNotEmpty()) {
-                            // 回退：使用 WebView
-                            navController.navigate(ScreenRoutes.Web.createRoute(bgm.jumpUrl, "背景音乐"))
                         }
                     }
                 )
@@ -1259,7 +1290,6 @@ fun AppNavigation(
             }
             
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-
                 CommonListScreen(
                     viewModel = historyViewModel,
                     onBack = { navController.popBackStack() },
@@ -2509,6 +2539,8 @@ fun AppNavigation(
                                     },
                                     onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                     onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
+                                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                    onSearchKeywordSubmit = navigateToSearchKeyword,
                                     hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                     isFloating = true,
                                     labelMode = bottomBarLabelMode,
@@ -2516,6 +2548,7 @@ fun AppNavigation(
                                     itemColorIndices = bottomBarItemColors,
                                     dynamicUnreadCount = dynamicUnreadCount,
                                     homeSettings = effectiveHomeSettings,
+                                    scrollOffset = scrollOffsetState.floatValue,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                     forceLowBlurBudget = false,
@@ -2545,6 +2578,8 @@ fun AppNavigation(
                                 },
                                 onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                 onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
+                                onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                onSearchKeywordSubmit = navigateToSearchKeyword,
                                 hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                 isFloating = false,
                                 labelMode = bottomBarLabelMode,
@@ -2552,6 +2587,7 @@ fun AppNavigation(
                                 itemColorIndices = bottomBarItemColors,
                                 dynamicUnreadCount = dynamicUnreadCount,
                                 homeSettings = effectiveHomeSettings,
+                                scrollOffset = scrollOffsetState.floatValue,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                 forceLowBlurBudget = false,

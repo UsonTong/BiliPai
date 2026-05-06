@@ -2,7 +2,6 @@ package com.android.purebilibili.feature.home.components
 
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -33,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -51,12 +51,12 @@ import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.animation.horizontalDragGesture
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
+import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
@@ -189,7 +189,6 @@ fun BottomBarLiquidSegmentedControl(
         return
     }
 
-    val liquidGlassStyle = homeSettings.liquidGlassStyle
     val liquidGlassEnabled = resolveSegmentedControlLiquidGlassEnabled(
         storedLiquidGlassEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
         liquidGlassEffectsEnabled = liquidGlassEffectsEnabled,
@@ -213,23 +212,28 @@ fun BottomBarLiquidSegmentedControl(
             }
         }
     )
-    val liquidGlassTuning = remember(liquidGlassStyle) {
-        resolveLiquidGlassTuning(liquidGlassStyle)
-    }
     val containerShape = RoundedCornerShape(height / 2)
     val indicatorShape = resolveSharedBottomBarCapsuleShape()
     val indicatorCorner = indicatorHeight / 2
     val isDarkTheme = isSystemInDarkTheme()
     val surfaceColor = MaterialTheme.colorScheme.surface
-    val containerColor = resolveBottomBarContainerColor(
-        surfaceColor = surfaceColor,
+    val androidNativeTuning = resolveAndroidNativeBottomBarTuning(
         blurEnabled = liquidGlassEnabled,
-        blurIntensity = blurIntensity,
-        liquidGlassProgress = liquidGlassTuning.progress,
-        isGlassEffectEnabled = liquidGlassEnabled
+        darkTheme = isDarkTheme
+    )
+    val containerColor = resolveAndroidNativeFloatingBottomBarContainerColor(
+        surfaceColor = surfaceColor,
+        tuning = androidNativeTuning,
+        glassEnabled = liquidGlassEnabled,
+        blurEnabled = liquidGlassEnabled,
+        blurIntensity = blurIntensity
     )
     val selectedTextColor = MaterialTheme.colorScheme.primary
     val unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.78f else 0.42f)
+    val exportTintColor = resolveAndroidNativeExportTintColor(
+        themeColor = selectedTextColor,
+        darkTheme = isDarkTheme
+    )
     LaunchedEffect(safeSelectedIndex) {
         dragState.updateIndex(safeSelectedIndex)
     }
@@ -244,14 +248,6 @@ fun BottomBarLiquidSegmentedControl(
                 }
             )
             .height(height)
-            .background(containerColor, containerShape)
-            .border(
-                width = 0.6.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(
-                    alpha = if (liquidGlassEnabled) 0.34f else 0.22f
-                ),
-                shape = containerShape
-            )
     ) {
         val contentPadding = containerHorizontalPadding
         val contentVerticalInset = containerVerticalPadding
@@ -306,13 +302,23 @@ fun BottomBarLiquidSegmentedControl(
         }
         val tabsBackdrop = rememberLayerBackdrop()
         val containerBackdrop = backdrop ?: tabsBackdrop
-        val combinedBackdrop = rememberCombinedBackdrop(containerBackdrop, tabsBackdrop)
-        val contentBackdrop = if (backdrop != null) combinedBackdrop else tabsBackdrop
+        val contentBackdrop = tabsBackdrop
 
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(containerColor, containerShape)
+                .kernelSuFloatingDockSurface(
+                    shape = containerShape,
+                    backdrop = backdrop,
+                    containerColor = containerColor,
+                    blurEnabled = liquidGlassEnabled,
+                    glassEnabled = liquidGlassEnabled,
+                    blurRadius = androidNativeTuning.shellBlurRadiusDp.dp,
+                    hazeState = null,
+                    motionTier = MotionTier.Normal,
+                    isTransitionRunning = false,
+                    forceLowBlurBudget = false
+                )
         )
 
         Box(
@@ -329,7 +335,7 @@ fun BottomBarLiquidSegmentedControl(
                             shape = { containerShape },
                             effects = {
                                 vibrancy()
-                                blur(8.dp.toPx())
+                                blur(androidNativeTuning.shellBlurRadiusDp.dp.toPx())
                                 lens(
                                     refractionHeight = 24.dp.toPx() *
                                         motionProgress *
@@ -350,6 +356,7 @@ fun BottomBarLiquidSegmentedControl(
                         this
                     }
                 }
+                .graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))
         ) {
             BottomBarLiquidSegmentedLabels(
                 items = items,

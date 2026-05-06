@@ -8,6 +8,7 @@ import com.android.purebilibili.feature.video.ui.section.resolveHorizontalSeekDe
 import com.android.purebilibili.feature.video.ui.section.rebindPlayerSurfaceIfNeeded
 import com.android.purebilibili.feature.video.ui.section.shouldCommitGestureSeek
 import com.android.purebilibili.feature.video.ui.section.shouldKeepVideoPlaybackAwake
+import com.android.purebilibili.feature.video.usecase.applyPlaybackButtonUserAction
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
 import com.bytedance.danmaku.render.engine.DanmakuView
@@ -938,7 +939,12 @@ fun FullscreenPlayerOverlay(
                             IconButton(
                                 onClick = {
                                     lastInteractionTime = System.currentTimeMillis()
-                                    player?.let { togglePlayerPlaybackFromUserAction(it) }
+                                    player?.let {
+                                        applyPlaybackButtonUserAction(
+                                            player = it,
+                                            isShowingPauseIcon = isPlaying
+                                        )
+                                    }
                                 },
                             ) {
                                 Icon(

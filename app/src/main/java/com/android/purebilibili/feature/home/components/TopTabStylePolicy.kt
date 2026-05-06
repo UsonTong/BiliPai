@@ -19,23 +19,26 @@ enum class TopTabIndicatorStyle {
     MATERIAL
 }
 
+internal const val CompactTopTabIndicatorHeightDp = 46f
+internal const val CompactTopTabIndicatorCornerDp = CompactTopTabIndicatorHeightDp / 2f
+
 data class TopTabVisualTuning(
-    val nonFloatingIndicatorHeightDp: Float = 31f,
-    val nonFloatingIndicatorCornerDp: Float = 14f,
+    val nonFloatingIndicatorHeightDp: Float = CompactTopTabIndicatorHeightDp,
+    val nonFloatingIndicatorCornerDp: Float = CompactTopTabIndicatorCornerDp,
     val nonFloatingIndicatorWidthRatio: Float = 0.72f,
     val nonFloatingIndicatorMinWidthDp: Float = 44f,
     val nonFloatingIndicatorHorizontalInsetDp: Float = 18f,
-    val floatingIndicatorWidthMultiplier: Float = 1.34f,
-    val floatingIndicatorMinWidthDp: Float = 96f,
-    val floatingIndicatorMaxWidthDp: Float = 126f,
-    val floatingIndicatorMaxWidthToItemRatio: Float = 1.34f,
-    val floatingIndicatorHeightDp: Float = 50f,
-    val tabTextSizeSp: Float = 14f,
-    val tabTextLineHeightSp: Float = 18f,
-    val tabContentMinHeightDp: Float = 40f,
-    val tabIconWithTextSizeDp: Float = 20f,
-    val tabIconOnlySizeDp: Float = 24f,
-    val tabIconTextSpacingDp: Float = 3f
+    val floatingIndicatorWidthMultiplier: Float = 1.18f,
+    val floatingIndicatorMinWidthDp: Float = 82f,
+    val floatingIndicatorMaxWidthDp: Float = 112f,
+    val floatingIndicatorMaxWidthToItemRatio: Float = 1.18f,
+    val floatingIndicatorHeightDp: Float = CompactTopTabIndicatorHeightDp,
+    val tabTextSizeSp: Float = 13f,
+    val tabTextLineHeightSp: Float = 17f,
+    val tabContentMinHeightDp: Float = 36f,
+    val tabIconWithTextSizeDp: Float = 18f,
+    val tabIconOnlySizeDp: Float = 22f,
+    val tabIconTextSpacingDp: Float = 2f
 )
 
 data class TopTabVisualState(
@@ -61,22 +64,22 @@ fun resolveTopTabVisualTuning(): TopTabVisualTuning = TopTabVisualTuning()
 fun resolveTopTabVisualTuning(uiPreset: UiPreset): TopTabVisualTuning {
     return when (uiPreset) {
         UiPreset.IOS -> TopTabVisualTuning(
-            nonFloatingIndicatorHeightDp = 44f,
-            nonFloatingIndicatorCornerDp = 22f,
-            nonFloatingIndicatorWidthRatio = 1.34f,
-            nonFloatingIndicatorMinWidthDp = 90f,
+            nonFloatingIndicatorHeightDp = CompactTopTabIndicatorHeightDp,
+            nonFloatingIndicatorCornerDp = CompactTopTabIndicatorCornerDp,
+            nonFloatingIndicatorWidthRatio = 1.18f,
+            nonFloatingIndicatorMinWidthDp = 78f,
             nonFloatingIndicatorHorizontalInsetDp = 0f,
-            floatingIndicatorWidthMultiplier = 1.34f,
-            floatingIndicatorMinWidthDp = 96f,
-            floatingIndicatorMaxWidthDp = 126f,
-            floatingIndicatorMaxWidthToItemRatio = 1.34f,
-            floatingIndicatorHeightDp = 46f,
-            tabTextSizeSp = 14f,
-            tabTextLineHeightSp = 18f,
-            tabContentMinHeightDp = 40f,
-            tabIconWithTextSizeDp = 20f,
-            tabIconOnlySizeDp = 24f,
-            tabIconTextSpacingDp = 3f
+            floatingIndicatorWidthMultiplier = 1.18f,
+            floatingIndicatorMinWidthDp = 82f,
+            floatingIndicatorMaxWidthDp = 112f,
+            floatingIndicatorMaxWidthToItemRatio = 1.18f,
+            floatingIndicatorHeightDp = CompactTopTabIndicatorHeightDp,
+            tabTextSizeSp = 13f,
+            tabTextLineHeightSp = 17f,
+            tabContentMinHeightDp = 36f,
+            tabIconWithTextSizeDp = 18f,
+            tabIconOnlySizeDp = 22f,
+            tabIconTextSpacingDp = 2f
         )
         UiPreset.MD3 -> resolveTopTabVisualTuning()
     }

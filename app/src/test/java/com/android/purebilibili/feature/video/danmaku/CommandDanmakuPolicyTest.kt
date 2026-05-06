@@ -46,6 +46,7 @@ class CommandDanmakuPolicyTest {
         assertNotNull(item)
         assertEquals(CommandDanmakuType.UP, item.type)
         assertEquals("这个视频没有恰饭", item.content)
+        assertEquals(COMMAND_DANMAKU_OVERLAY_DURATION_MS, item.durationMs)
         assertEquals("https://example.com/up.jpg", item.iconUrl)
     }
 
@@ -64,11 +65,27 @@ class CommandDanmakuPolicyTest {
         assertEquals(123L, item.linkAid)
         assertEquals("BV1xx411c7mD", item.linkBvid)
         assertEquals("关联视频", item.linkTitle)
+        assertEquals(COMMAND_DANMAKU_OVERLAY_DURATION_MS, item.durationMs)
         assertEquals("https://example.com/link.png", item.iconUrl)
     }
 
     @Test
-    fun `build attention command item from documented payload`() {
+    fun `build text command item uses three second overlay duration`() {
+        val cmd = commandDm(
+            command = "VIDEO_VOTE_MSG",
+            content = "投票提示"
+        )
+
+        val item = buildCommandDanmakuItem(cmd)
+
+        assertNotNull(item)
+        assertEquals(CommandDanmakuType.TEXT, item.type)
+        assertEquals("投票提示", item.content)
+        assertEquals(COMMAND_DANMAKU_OVERLAY_DURATION_MS, item.durationMs)
+    }
+
+    @Test
+    fun `build attention command item uses three second overlay duration`() {
         val cmd = commandDm(
             command = "#ATTENTION#",
             content = "关注按钮",
@@ -81,7 +98,7 @@ class CommandDanmakuPolicyTest {
         assertNotNull(item)
         assertEquals(CommandDanmakuType.ATTENTION, item.type)
         assertEquals(157818L, item.startTimeMs)
-        assertEquals(6000L, item.durationMs)
+        assertEquals(COMMAND_DANMAKU_OVERLAY_DURATION_MS, item.durationMs)
         assertEquals(240f, item.posX)
         assertEquals(160f, item.posY)
         assertEquals(2, item.attentionType)

@@ -1,17 +1,16 @@
 package com.android.purebilibili.feature.home.components
 
-import com.android.purebilibili.core.ui.blur.BlurSurfaceType
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.readText
-import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeChromeLiquidSurfaceStructureTest {
 
     @Test
-    fun `top header and bottom bar both use shared liquid surface renderer`() {
+    fun `top header uses shared renderer while bottom bar uses ksu renderer only`() {
         val workspaceRoot = generateSequence(
             Paths.get(System.getProperty("user.dir")).toAbsolutePath()
         ) { current ->
@@ -54,10 +53,6 @@ class HomeChromeLiquidSurfaceStructureTest {
             topHeader.readText().contains("hasOuterChromeSurface = !useUnifiedTopPanel")
         )
         assertTrue(
-            "bottom bar should delegate to the shared liquid surface renderer",
-            bottomBar.readText().contains(".appChromeLiquidSurface(")
-        )
-        assertTrue(
             "top tab dock should use the same KSU dock surface renderer as the bottom bar",
             topBar.readText().contains(".kernelSuFloatingDockSurface(")
         )
@@ -86,29 +81,26 @@ class HomeChromeLiquidSurfaceStructureTest {
             topBar.readText().contains("forceChromaticAberration = topTabRefractionProfile.forceChromaticAberration")
         )
         assertTrue(
-            "bottom bar should use the shared floating dock liquid surface style",
-            bottomBar.readText().contains("resolveFloatingDockLiquidSurfaceStyle(")
-        )
-        assertTrue(
             "KSU dock surface should use backdrop vibrancy, blur, and lens like the floating bottom bar",
             bottomBar.readText().contains("internal fun Modifier.kernelSuFloatingDockSurface(") &&
                 bottomBar.readText().contains("vibrancy()") &&
                 bottomBar.readText().contains("lens(24.dp.toPx(), 24.dp.toPx())")
         )
-    }
-
-    @Test
-    fun `floating dock surface style matches bottom bar glass tuning`() {
-        val style = resolveFloatingDockLiquidSurfaceStyle(depthEffect = true)
-
-        assertEquals(BlurSurfaceType.BOTTOM_BAR, style.blurSurfaceType)
-        assertEquals(true, style.depthEffect)
-        assertEquals(0.02f, style.refractionAmountScrollMultiplier, 0.0001f)
-        assertEquals(14f, style.refractionAmountScrollCap, 0.0001f)
-        assertEquals(0.00015f, style.surfaceAlphaScrollMultiplier, 0.00001f)
-        assertEquals(0.04f, style.surfaceAlphaScrollCap, 0.0001f)
-        assertEquals(0.86f, style.darkThemeWhiteOverlayMultiplier, 0.0001f)
-        assertEquals(true, style.useTuningSurfaceAlpha)
-        assertEquals(0.4f, style.hazeBackgroundAlphaMultiplier, 0.0001f)
+        assertFalse(
+            "bottom bar should not keep the old appChromeLiquidSurface renderer",
+            bottomBar.readText().contains(".appChromeLiquidSurface(")
+        )
+        assertFalse(
+            "bottom bar should not keep the old floating dock surface style",
+            bottomBar.readText().contains("resolveFloatingDockLiquidSurfaceStyle(")
+        )
+        assertFalse(
+            "bottom bar should not keep the old LiquidIndicator renderer",
+            bottomBar.readText().contains("LiquidIndicator(")
+        )
+        assertFalse(
+            "bottom bar should not keep the old BottomBarContent renderer",
+            bottomBar.readText().contains("BottomBarContent(")
+        )
     }
 }

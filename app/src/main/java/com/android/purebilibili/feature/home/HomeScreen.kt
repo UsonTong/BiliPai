@@ -189,6 +189,7 @@ fun HomeScreen(
     val homeBackdrop = rememberLayerBackdrop()
 
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
+    val globalScrollOffset = LocalHomeScrollOffset.current
     // [Header] 首页重选/双击回顶时需要强制恢复顶部，避免自动收缩后残留空白区域
     var headerOffsetHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var headerSettleAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -253,6 +254,7 @@ fun HomeScreen(
                     listState.animateScrollToItem(plan.animateTargetIndex)
                 }
                 setHeaderOffsetImmediate(0f)
+                globalScrollOffset.floatValue = 0f
             }
         }
     }
@@ -304,7 +306,8 @@ fun HomeScreen(
                         settledCategory = resolveHomeCategoryForTopTab(
                             index = page,
                             topCategories = topCategories
-                        )
+                        ),
+                        programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
                     )
                 ) {
                     HomePagerSettledAction.NONE -> return@collect
@@ -370,7 +373,12 @@ fun HomeScreen(
                 programmaticPageSwitchInProgress = programmaticPageSwitchInProgress
             )
         ) {
-            pagerState.animateScrollToPage(targetPage)
+            programmaticPageSwitchInProgress = true
+            try {
+                pagerState.animateScrollToPage(targetPage)
+            } finally {
+                programmaticPageSwitchInProgress = false
+            }
         }
     }
 
@@ -621,6 +629,14 @@ fun HomeScreen(
     val isLiquidGlassEnabled = homePerformanceConfig.isAnyLiquidGlassEnabled
     val isDataSaverActive = homePerformanceConfig.isDataSaverActive
     val preloadAheadCount = homePerformanceConfig.preloadAheadCount
+    val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
+    val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
+    val homeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
+        resolveHomeWallpaperUri(
+            homeWallpaperUri = configuredHomeWallpaperUri,
+            splashWallpaperUri = splashWallpaperUri
+        )
+    }
 
     val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsState(
         initial = AppNavigationSettings()
@@ -760,6 +776,19 @@ fun HomeScreen(
     // 当使用滑动动画时，Theme.kt 的 SideEffect 可能不会重新执行
     val backgroundColor = MaterialTheme.colorScheme.background
     val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
+    val homeWallpaperBackdropAppearance = remember(
+        homeWallpaperUri,
+        homeSettings.homeWallpaperEffectMode,
+        isLightBackground,
+        isDataSaverActive
+    ) {
+        resolveHomeWallpaperBackdropAppearance(
+            hasWallpaper = homeWallpaperUri.isNotBlank(),
+            effectMode = homeSettings.homeWallpaperEffectMode,
+            isDarkTheme = !isLightBackground,
+            isDataSaverActive = isDataSaverActive
+        )
+    }
     
     if (!view.isInEditMode) {
         SideEffect {
@@ -811,6 +840,7 @@ fun HomeScreen(
                         listState.animateScrollToItem(0)
                     } 
                     setHeaderOffsetImmediate(0f)
+                    globalScrollOffset.floatValue = 0f
                 }
             }
             BottomNavItem.DYNAMIC -> onDynamicClick()
@@ -1007,7 +1037,6 @@ fun HomeScreen(
     val bottomBarVisibleState = LocalSetBottomBarVisible.current
     
     // [Feature] Global Scroll Offset for Liquid Glass
-    val globalScrollOffset = LocalHomeScrollOffset.current
     val activeGridState = gridStates[state.currentCategory]
     val canRevealHeader by remember(activeGridState) {
         derivedStateOf {
@@ -1111,6 +1140,7 @@ fun HomeScreen(
                 }
                 recommendGridState.animateScrollToItem(0)
                 setHeaderOffsetImmediate(0f)
+                globalScrollOffset.floatValue = 0f
                 todayWatchStartupRevealHandled = true
             }
             TodayWatchStartupRevealDecision.SKIP -> {
@@ -1142,6 +1172,11 @@ fun HomeScreen(
                             // 首页使用 Pager + Lazy 子层，source 挂在外层容器更稳定。
                             .hazeSource(state = hazeState)
                     ) {
+                    HomeWallpaperBackdrop(
+                        wallpaperUri = homeWallpaperUri,
+                        appearance = homeWallpaperBackdropAppearance,
+                        baseColor = MaterialTheme.colorScheme.background
+                    )
                     // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(
                             state = pagerState,
@@ -1304,6 +1339,8 @@ fun HomeScreen(
                                      compactStatsOnCover = homeSettings.compactVideoStatsOnCover,
                                      showCoverGlassBadges = homeSettings.showHomeCoverGlassBadges,
                                      showInfoGlassBadges = homeSettings.showHomeInfoGlassBadges,
+                                     wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
+                                     wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
                                      showUpBadges = homeSettings.showHomeUpBadges,
                                      showDurationBadges = homeSettings.showHomeVideoDurationBadges,
                                      oldContentAnchorBvid = if (shouldShowRecommendOldContentDivider(
@@ -1429,9 +1466,14 @@ fun HomeScreen(
                     if (shouldSnapHomeTopTabSelection(pagerState.currentPage, index)) {
                         coroutineScope.launch {
                             programmaticPageSwitchInProgress = true
-                            pagerState.scrollToPage(index)
-                            programmaticPageSwitchInProgress = false
+                            try {
+                                pagerState.scrollToPage(index)
+                            } finally {
+                                programmaticPageSwitchInProgress = false
+                            }
                         }
+                    } else if (pagerState.currentPage != index && selectedCategory != state.currentCategory) {
+                        programmaticPageSwitchInProgress = true
                     }
                     viewModel.switchCategory(selectedCategory)
                 }
@@ -1448,6 +1490,7 @@ fun HomeScreen(
                 coroutineScope.launch {
                     gridStates[state.currentCategory]?.animateScrollToItem(0)
                     setHeaderOffsetImmediate(0f) // [Refinement] Reset header on double tap
+                    globalScrollOffset.floatValue = 0f
                 }
             },
             isRefreshing = isRefreshing,
@@ -1895,6 +1938,7 @@ fun HomeScreen(
                         setHeaderOffsetImmediate(0f)
                         gridStates[state.currentCategory]?.animateScrollToItem(0)
                         setHeaderOffsetImmediate(0f)
+                        globalScrollOffset.floatValue = 0f
                     }
                 },
                 hazeState = if (isBottomBarBlurEnabled) hazeState else null,
@@ -1949,11 +1993,11 @@ internal fun resolveReturnAnimationSuppressionDurationMs(
     isQuickReturnFromDetail: Boolean
 ): Long {
     if (cardTransitionEnabled && isQuickReturnFromDetail) {
-        return if (isTabletLayout) 500L else 380L
+        return if (isTabletLayout) 540L else 420L
     }
     if (cardTransitionEnabled) {
-        if (!cardAnimationEnabled) return if (isTabletLayout) 420L else 360L
-        return if (isTabletLayout) 420L else 360L
+        if (!cardAnimationEnabled) return if (isTabletLayout) 460L else 400L
+        return if (isTabletLayout) 460L else 400L
     }
     if (!cardAnimationEnabled) return 220L
     return if (isTabletLayout) 220L else 240L
@@ -1964,6 +2008,6 @@ internal fun resolveBottomBarRestoreDelayMs(
     isQuickReturnFromDetail: Boolean
 ): Long {
     if (!cardTransitionEnabled) return 150L
-    if (isQuickReturnFromDetail) return 300L
-    return 360L
+    if (isQuickReturnFromDetail) return 340L
+    return 380L
 }

@@ -27,6 +27,8 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.isBottomBarBlurEnabled)
         assertTrue(result.isTopBarLiquidGlassEnabled)
         assertTrue(result.isBottomBarLiquidGlassEnabled)
+        assertFalse(result.isBottomBarSearchEnabled)
+        assertEquals(BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP, result.bottomBarSearchAutoExpandMode)
         assertFalse(result.androidNativeLiquidGlassEnabled)
         assertTrue(result.isLiquidGlassEnabled)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
@@ -39,6 +41,8 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.smartVisualGuardEnabled)
         assertTrue(result.compactVideoStatsOnCover)
         assertTrue(result.showHomeVideoDurationBadges)
+        assertEquals(HomeWallpaperEffectMode.SOFT_BLUR, result.homeWallpaperEffectMode)
+        assertEquals(HomeWallpaperEffectScope.HOME_ONLY, result.homeWallpaperEffectScope)
         assertFalse(result.lowQualityHomeCoverInDataSaver)
         assertTrue(result.showHomeUpBadges)
         assertFalse(result.easterEggEnabled)
@@ -57,6 +61,8 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("bottom_bar_blur_enabled") to false,
             booleanPreferencesKey("top_bar_liquid_glass_enabled") to false,
             booleanPreferencesKey("bottom_bar_liquid_glass_enabled") to false,
+            booleanPreferencesKey("bottom_bar_search_enabled") to true,
+            intPreferencesKey("bottom_bar_search_auto_expand_mode") to BottomBarSearchAutoExpandMode.DISABLED.value,
             booleanPreferencesKey("android_native_liquid_glass_enabled") to true,
             intPreferencesKey("liquid_glass_style") to LiquidGlassStyle.IOS26.value,
             intPreferencesKey("grid_column_count") to 4,
@@ -67,6 +73,8 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("smart_visual_guard_enabled") to false,
             booleanPreferencesKey("compact_video_stats_on_cover") to false,
             booleanPreferencesKey("home_video_duration_badges_visible") to false,
+            intPreferencesKey("home_wallpaper_effect_mode") to HomeWallpaperEffectMode.STRONG_BLUR.value,
+            intPreferencesKey("home_wallpaper_effect_scope") to HomeWallpaperEffectScope.GLOBAL.value,
             booleanPreferencesKey("low_quality_home_cover_in_data_saver") to true,
             booleanPreferencesKey("home_up_badges_visible") to false,
             booleanPreferencesKey("easter_egg_enabled") to true,
@@ -85,6 +93,8 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.isBottomBarBlurEnabled)
         assertFalse(result.isTopBarLiquidGlassEnabled)
         assertFalse(result.isBottomBarLiquidGlassEnabled)
+        assertTrue(result.isBottomBarSearchEnabled)
+        assertEquals(BottomBarSearchAutoExpandMode.DISABLED, result.bottomBarSearchAutoExpandMode)
         assertTrue(result.androidNativeLiquidGlassEnabled)
         assertFalse(result.isLiquidGlassEnabled)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
@@ -99,6 +109,8 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.smartVisualGuardEnabled)
         assertFalse(result.compactVideoStatsOnCover)
         assertFalse(result.showHomeVideoDurationBadges)
+        assertEquals(HomeWallpaperEffectMode.STRONG_BLUR, result.homeWallpaperEffectMode)
+        assertEquals(HomeWallpaperEffectScope.GLOBAL, result.homeWallpaperEffectScope)
         assertTrue(result.lowQualityHomeCoverInDataSaver)
         assertFalse(result.showHomeUpBadges)
         assertTrue(result.easterEggEnabled)

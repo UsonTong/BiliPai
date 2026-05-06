@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 import com.android.purebilibili.core.ui.animation.DissolveAnimationPreset
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve
@@ -105,6 +106,8 @@ internal fun HomeCategoryPageContent(
     compactStatsOnCover: Boolean = true,
     showCoverGlassBadges: Boolean = true,
     showInfoGlassBadges: Boolean = true,
+    wallpaperTintEnabled: Boolean = false,
+    wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     showUpBadges: Boolean = true,
     showDurationBadges: Boolean = true,
     oldContentAnchorBvid: String? = null,
@@ -357,6 +360,8 @@ internal fun HomeCategoryPageContent(
                                         compactStatsOnCover = compactStatsOnCover,
                                         showCoverGlassBadges = showCoverGlassBadges,
                                         showInfoGlassBadges = showInfoGlassBadges,
+                                        wallpaperTintEnabled = wallpaperTintEnabled,
+                                        wallpaperEffectMode = wallpaperEffectMode,
                                         showUpBadge = showUpBadges,
                                         showDurationBadge = showDurationBadges,
                                         showOnlineCount = showOnlineCount,

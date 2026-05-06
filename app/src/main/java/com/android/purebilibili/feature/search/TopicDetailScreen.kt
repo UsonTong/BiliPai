@@ -47,6 +47,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.LoadingAnimation
+import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.util.FormatUtils
@@ -85,7 +86,7 @@ fun TopicDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .globalWallpaperAwareBackground()
                 .padding(padding)
         ) {
             when {

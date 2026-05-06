@@ -64,6 +64,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "触感反馈",
             "震动",
             "haptic",
+            "底栏搜索",
+            "底栏搜索入口",
+            "搜索入口",
+            "悬浮搜索",
             "模糊",
             "皮肤",
             "玻璃",
@@ -86,6 +90,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "dpi",
             "开屏",
             "开屏壁纸",
+            "自定义壁纸",
+            "相册壁纸",
+            "首页壁纸",
+            "首页壁纸效果",
             "随机壁纸",
             "开屏图标动画",
             "应用图标",
@@ -153,7 +161,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "互动按钮",
             "观看人数",
             "底部进度条",
-            "竖屏播放器缩小",
+            "播放器缩小策略",
             "上滑隐藏播放器",
             "竖屏上滑进入全屏",
             "中部滑动切换全屏",
@@ -371,25 +379,25 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "开屏壁纸 / 启动画面",
-        subtitle = "开屏壁纸、随机壁纸、开屏图标动画",
+        subtitle = "开屏壁纸、自定义壁纸、随机壁纸、开屏图标动画",
         section = "外观设置",
-        aliases = listOf("开屏壁纸", "启动画面", "随机壁纸", "开屏图标动画", "启动壁纸"),
+        aliases = listOf("开屏壁纸", "自定义壁纸", "相册壁纸", "启动画面", "随机壁纸", "开屏图标动画", "启动壁纸"),
         focusId = SettingsSearchFocusIds.APPEARANCE_SPLASH
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "动画与效果 / 触感反馈",
-        subtitle = "动画、预测性返回、触感反馈",
+        subtitle = "动画、预测性返回、触感反馈、底栏搜索入口",
         section = "外观设置",
-        aliases = listOf("动画与效果", "预测性返回", "预测性返回手势", "触感反馈", "动画设置", "应用图标"),
+        aliases = listOf("动画与效果", "预测性返回", "预测性返回手势", "触感反馈", "动画设置", "应用图标", "底栏搜索", "底栏搜索入口", "搜索入口", "悬浮搜索"),
         focusId = SettingsSearchFocusIds.APPEARANCE_PERSONALIZATION
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "首页展示",
-        subtitle = "展示样式、玻璃样式、UP主标识",
+        subtitle = "展示样式、首页壁纸效果、玻璃样式、UP主标识",
         section = "外观设置",
-        aliases = listOf("首页展示", "展示样式", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
+        aliases = listOf("首页展示", "展示样式", "首页壁纸", "首页壁纸效果", "原图壁纸", "壁纸模糊", "强模糊", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
         focusId = SettingsSearchFocusIds.APPEARANCE_HOME
     ),
     SettingsSearchEntry(
@@ -426,10 +434,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK,
-        title = "自动连播 / 双击点赞 / 字幕 / 竖屏播放器缩小",
+        title = "自动连播 / 双击点赞 / 字幕 / 播放器缩小策略",
         subtitle = "交互",
         section = "播放设置",
-        aliases = listOf("自动连播", "自动播放下一个", "双击点赞", "字幕", "自动启用字幕", "ai总结", "竖屏播放器缩小", "简介缩小", "评论缩小", "上滑隐藏播放器", "点击视频直接播放"),
+        aliases = listOf("自动连播", "自动播放下一个", "双击点赞", "字幕", "自动启用字幕", "ai总结", "播放器缩小策略", "竖屏视频缩小", "横屏视频缩小", "上滑隐藏播放器", "点击视频直接播放"),
         focusId = SettingsSearchFocusIds.PLAYBACK_INTERACTION
     ),
     SettingsSearchEntry(

@@ -332,6 +332,7 @@ fun VideoPlayerSection(
     onSecondCodecChange: (String) -> Unit = {},
     currentAudioQuality: Int = -1,
     onAudioQualityChange: (Int) -> Unit = {},
+    onPlaybackSpeedChange: (Float) -> Boolean = { false },
     // [New] Audio Language
     onAudioLangChange: (String) -> Unit = {},
     // 👀 [新增] 在线观看人数
@@ -464,6 +465,9 @@ fun VideoPlayerSection(
     var longPressSpeedLocked by remember(bvid) { mutableStateOf(false) }
     var lockedLongPressSpeed by remember(bvid) { mutableFloatStateOf(1.0f) }
     var longPressSpeedEndedAtMs by remember { mutableLongStateOf(0L) }
+    val longPressSpeedLockSensitivity = remember(isFullscreen) {
+        resolveLongPressSpeedLockSensitivityPolicy(isFullscreen = isFullscreen)
+    }
     var isMultiTouchActive by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackVisible by remember { mutableStateOf(false) }
     var twoFingerSpeedFeedbackRevision by remember { mutableIntStateOf(0) }
@@ -582,10 +586,24 @@ fun VideoPlayerSection(
                 lockedLongPressSpeed = lockedLongPressSpeed
             )
         ) {
-            playerState.player.playbackParameters = PlaybackParameters(
-                lockedLongPressSpeed,
-                1.0f
+            playerState.player.playbackParameters = resolveSpeedSafePlaybackParameters(
+                requestedSpeed = lockedLongPressSpeed,
+                currentAudioQuality = currentAudioQuality
             )
+        }
+    }
+
+    LaunchedEffect(playerState.player, currentAudioQuality) {
+        val currentParameters = playerState.player.playbackParameters
+        val safeParameters = resolveSpeedSafePlaybackParameters(
+            requestedSpeed = currentParameters.speed,
+            currentAudioQuality = currentAudioQuality
+        )
+        if (
+            abs(currentParameters.speed - safeParameters.speed) > 0.001f ||
+            abs(currentParameters.pitch - safeParameters.pitch) > 0.001f
+        ) {
+            playerState.player.playbackParameters = safeParameters
         }
     }
 
@@ -917,7 +935,12 @@ fun VideoPlayerSection(
             longPressSpeedLocked = false
             lockedLongPressSpeed = speed
         }
-        playerState.player.setPlaybackSpeed(speed)
+        if (!onPlaybackSpeedChange(speed)) {
+            playerState.player.playbackParameters = resolveSpeedSafePlaybackParameters(
+                requestedSpeed = speed,
+                currentAudioQuality = currentAudioQuality
+            )
+        }
     }
 
     var rootModifier = Modifier
@@ -1012,10 +1035,14 @@ fun VideoPlayerSection(
                                 containerWidthPx = size.width.toFloat(),
                                 containerHeightPx = size.height.toFloat()
                             )
-                            if (abs(playerState.player.playbackParameters.speed - resolvedSpeed) > 0.001f) {
+                            val effectiveSpeed = resolveEffectivePlaybackSpeed(
+                                requestedSpeed = resolvedSpeed,
+                                currentAudioQuality = currentAudioQuality
+                            )
+                            if (abs(playerState.player.playbackParameters.speed - effectiveSpeed) > 0.001f) {
                                 applyExplicitPlaybackSpeedChange(resolvedSpeed)
                             }
-                            twoFingerFeedbackSpeed = resolvedSpeed
+                            twoFingerFeedbackSpeed = effectiveSpeed
                             twoFingerSpeedFeedbackVisible = true
                             twoFingerSpeedFeedbackRevision++
                             event.changes.forEach { change ->
@@ -1217,14 +1244,17 @@ fun VideoPlayerSection(
                                     return@detectDragGestures
                                 }
                                 totalDragDistanceY += dragAmount.y
-                                val lockZoneHeightPx = LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp.toPx()
+                                val lockZoneHeightPx = longPressSpeedLockSensitivity.lockZoneHeightDp.dp.toPx()
+                                val minLockDragDistancePx = longPressSpeedLockSensitivity.minDragDistanceDp.dp.toPx()
                                 if (
                                     shouldLockLongPressSpeedInTargetZone(
                                         isLongPressing = isLongPressing,
                                         alreadyLocked = longPressSpeedLocked,
                                         currentPointerY = change.position.y,
                                         containerHeightPx = size.height.toFloat(),
-                                        lockZoneHeightPx = lockZoneHeightPx
+                                        lockZoneHeightPx = lockZoneHeightPx,
+                                        accumulatedDragYPx = totalDragDistanceY,
+                                        minDragDistancePx = minLockDragDistancePx
                                     )
                                 ) {
                                     longPressSpeedLocked = true
@@ -1388,7 +1418,8 @@ fun VideoPlayerSection(
                 currentAudioQuality,
                 hasShownHiResCompatHint,
                 scale,
-                isMultiTouchActive
+                isMultiTouchActive,
+                isFullscreen
             ) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
@@ -1412,14 +1443,17 @@ fun VideoPlayerSection(
                             return@detectDragGesturesAfterLongPress
                         }
                         totalDragDistanceY += dragAmount.y
-                        val lockZoneHeightPx = LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp.toPx()
+                        val lockZoneHeightPx = longPressSpeedLockSensitivity.lockZoneHeightDp.dp.toPx()
+                        val minLockDragDistancePx = longPressSpeedLockSensitivity.minDragDistanceDp.dp.toPx()
                         if (
                             shouldLockLongPressSpeedInTargetZone(
                                 isLongPressing = isLongPressing,
                                 alreadyLocked = longPressSpeedLocked,
                                 currentPointerY = change.position.y,
                                 containerHeightPx = size.height.toFloat(),
-                                lockZoneHeightPx = lockZoneHeightPx
+                                lockZoneHeightPx = lockZoneHeightPx,
+                                accumulatedDragYPx = totalDragDistanceY,
+                                minDragDistancePx = minLockDragDistancePx
                             )
                         ) {
                             longPressSpeedLocked = true
@@ -3121,7 +3155,7 @@ fun VideoPlayerSection(
                 val lockZoneVisual = resolveLongPressSpeedLockZoneVisualPolicy()
                 val zoneModifier = Modifier
                     .fillMaxWidth()
-                    .height(LONG_PRESS_SPEED_LOCK_ZONE_HEIGHT_DP.dp)
+                    .height(longPressSpeedLockSensitivity.lockZoneHeightDp.dp)
                 val markerColor = MaterialTheme.colorScheme.primary
                 Box(modifier = zoneModifier.align(Alignment.TopCenter)) {
                     Box(

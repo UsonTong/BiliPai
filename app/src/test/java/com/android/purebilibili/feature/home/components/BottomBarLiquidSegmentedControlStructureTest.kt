@@ -135,12 +135,16 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("BottomBarMotionProfile.ANDROID_NATIVE_FLOATING"))
         assertFalse(source.contains("BottomBarMotionProfile.IOS_FLOATING"))
         assertTrue(source.contains("resolveBottomBarRefractionMotionProfile("))
-        assertTrue(source.contains(".background(containerColor, containerShape)"))
+        assertTrue(source.contains(".kernelSuFloatingDockSurface("))
+        assertTrue(source.contains("blurRadius = androidNativeTuning.shellBlurRadiusDp.dp"))
+        assertTrue(source.contains("blur(androidNativeTuning.shellBlurRadiusDp.dp.toPx())"))
+        assertFalse(source.contains("blur(8.dp.toPx())"))
+        assertFalse(source.contains(".border("))
         assertTrue(source.contains("BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_HEIGHT_DP = 58"))
         assertTrue(source.contains("BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP = 56"))
         assertTrue(source.contains("dragState.dragOffset / itemWidthPx"))
         assertTrue(source.contains("resolveBottomBarItemMotionVisual("))
-        assertTrue(source.contains("rememberCombinedBackdrop("))
+        assertFalse(source.contains("rememberCombinedBackdrop("))
         assertTrue(source.contains("drawBackdrop("))
         assertTrue(source.contains("Highlight.Default.copy(alpha = motionProgress)"))
         assertTrue(source.contains("Shadow(alpha = if (liquidGlassEnabled) motionProgress else 0f)"))
@@ -155,8 +159,11 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertFalse(source.contains("shellBackdrop"))
         assertTrue(source.contains("val tabsBackdrop = rememberLayerBackdrop()"))
         assertTrue(source.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(source.contains("val combinedBackdrop = rememberCombinedBackdrop(containerBackdrop, tabsBackdrop)"))
-        assertTrue(source.contains("val contentBackdrop = if (backdrop != null) combinedBackdrop else tabsBackdrop"))
+        assertTrue(source.contains("val exportTintColor = resolveAndroidNativeExportTintColor("))
+        assertTrue(source.contains(".graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))"))
+        assertTrue(source.contains("val contentBackdrop = tabsBackdrop"))
+        assertFalse(source.contains("val combinedBackdrop = rememberCombinedBackdrop(containerBackdrop, tabsBackdrop)"))
+        assertFalse(source.contains("val contentBackdrop = if (backdrop != null) combinedBackdrop else tabsBackdrop"))
         assertTrue(source.contains("if (shouldDrawSegmentedControlIndicatorBackdrop("))
         assertFalse(source.contains("val contentBackdrop = if (backdrop != null) combinedBackdrop else null"))
         assertFalse(source.contains("if (liquidGlassEnabled && contentBackdrop != null)"))
@@ -220,6 +227,25 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertFalse(source.contains("indicatorWidthMultiplier = 0.92f"))
         assertFalse(source.contains("maxScale = 1.06f"))
         assertFalse(source.contains(".offset(x = segmentWidth * dragState.value)"))
+    }
+
+    @Test
+    fun `common list and dynamic tabs pass page backdrop into segmented control`() {
+        val commonList = loadSource("app/src/main/java/com/android/purebilibili/feature/list/CommonListScreen.kt")
+        val dynamicScreen = loadSource("app/src/main/java/com/android/purebilibili/feature/dynamic/DynamicScreen.kt")
+        val dynamicTopBar = loadSource("app/src/main/java/com/android/purebilibili/feature/dynamic/components/DynamicTopBar.kt")
+        val iosSegmented = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/IOSSlidingSegmentedControl.kt")
+
+        assertTrue(commonList.contains("val commonListChromeBackdrop = rememberLayerBackdrop()"))
+        assertTrue(commonList.contains(".layerBackdrop(commonListChromeBackdrop)"))
+        assertTrue(commonList.contains("backdrop = commonListChromeBackdrop"))
+        assertTrue(dynamicScreen.contains("val dynamicChromeBackdrop = rememberLayerBackdrop()"))
+        assertTrue(dynamicScreen.contains(".layerBackdrop(dynamicChromeBackdrop)"))
+        assertTrue(dynamicScreen.contains("backdrop = dynamicChromeBackdrop"))
+        assertTrue(dynamicTopBar.contains("backdrop: Backdrop? = null"))
+        assertTrue(dynamicTopBar.contains("backdrop = backdrop"))
+        assertTrue(iosSegmented.contains("backdrop: Backdrop? = null"))
+        assertTrue(iosSegmented.contains("backdrop = backdrop"))
     }
 
     @Test

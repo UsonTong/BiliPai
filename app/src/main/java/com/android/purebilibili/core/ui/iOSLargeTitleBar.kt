@@ -84,6 +84,19 @@ fun iOSLargeTitleBar(
         animationSpec = spring(stiffness = 300f),
         label = "blur_alpha"
     )
+    val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val collapsedHazeBackgroundColor = resolveGlobalWallpaperChromeColor(
+        requestedColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f * blurAlpha),
+        defaultBackgroundColor = MaterialTheme.colorScheme.background,
+        defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
+    val collapsedFallbackBackgroundColor = resolveGlobalWallpaperChromeColor(
+        requestedColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        defaultBackgroundColor = MaterialTheme.colorScheme.background,
+        defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
 
     Box(
         modifier = Modifier
@@ -98,9 +111,7 @@ fun iOSLargeTitleBar(
                     .height(56.dp)
                     .alpha(blurAlpha)
                     .unifiedBlur(hazeState)  //  版本自适应模糊
-                    .background(
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f * blurAlpha)
-                    )
+                    .background(collapsedHazeBackgroundColor)
             )
         } else if (blurAlpha > 0.01f) {
             // 无 Haze 时使用半透明背景
@@ -109,7 +120,7 @@ fun iOSLargeTitleBar(
                     .fillMaxWidth()
                     .height(56.dp)
                     .alpha(blurAlpha)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    .background(collapsedFallbackBackgroundColor)
             )
         }
         
