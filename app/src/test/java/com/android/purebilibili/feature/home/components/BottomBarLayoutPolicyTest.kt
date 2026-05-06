@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -22,6 +23,25 @@ class BottomBarLayoutPolicyTest {
         assertTrue(policy.maxBarWidth.value > 340f)
         assertTrue(policy.horizontalPadding.value < 26f)
         assertTrue(perItemWidth.value >= 52f)
+    }
+
+    @Test
+    fun `android native md3e bottom bar tuning uses expressive container and indicator`() {
+        val material3 = resolveAndroidNativeBottomBarTuning(
+            blurEnabled = false,
+            darkTheme = false,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3
+        )
+        val expressive = resolveAndroidNativeBottomBarTuning(
+            blurEnabled = false,
+            darkTheme = false,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+        )
+
+        assertTrue(expressive.cornerRadiusDp > material3.cornerRadiusDp)
+        assertTrue(expressive.outerHorizontalPaddingDp > material3.outerHorizontalPaddingDp)
+        assertTrue(expressive.indicatorHeightDp > material3.indicatorHeightDp)
+        assertTrue(expressive.indicatorLensRadiusDp > material3.indicatorLensRadiusDp)
     }
 
     @Test
@@ -154,6 +174,31 @@ class BottomBarLayoutPolicyTest {
                 bottomBarSearchEnabled = false,
                 autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
                 homeScrollOffsetPx = 0f
+            )
+        )
+    }
+
+    @Test
+    fun `bottom search entry only renders on searchable home item`() {
+        assertEquals(
+            true,
+            resolveBottomBarSearchEnabledForItem(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true
+            )
+        )
+        assertEquals(
+            false,
+            resolveBottomBarSearchEnabledForItem(
+                currentItem = BottomNavItem.DYNAMIC,
+                bottomBarSearchEnabled = true
+            )
+        )
+        assertEquals(
+            false,
+            resolveBottomBarSearchEnabledForItem(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = false
             )
         )
     }

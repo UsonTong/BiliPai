@@ -48,6 +48,7 @@ import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSOrange
 import com.android.purebilibili.core.theme.iOSPurple
 import com.android.purebilibili.core.theme.iOSTeal
+import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 
 /**
@@ -331,7 +332,10 @@ private fun PermissionItem(
     onOpenSettings: (() -> Unit)?
 ) {
     val uiPreset = LocalUiPreset.current
-    val visualSpec = remember(uiPreset) { resolveAdaptiveListComponentVisualSpec(uiPreset) }
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val visualSpec = remember(uiPreset, androidNativeVariant) {
+        resolveAdaptiveListComponentVisualSpec(uiPreset, androidNativeVariant)
+    }
     val effectiveIconTint = rememberAdaptiveSemanticIconTint(info.iconTint, uiPreset)
     val grantedTint = rememberAdaptiveSemanticIconTint(iOSGreen, uiPreset)
     val deniedTint = rememberAdaptiveSemanticIconTint(com.android.purebilibili.core.theme.iOSRed, uiPreset)

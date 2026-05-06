@@ -107,7 +107,7 @@ fun AppearanceSettingsScreen(
     }
     
     val useMaterialAndroidChrome =
-        state.uiPreset == UiPreset.MD3 && state.androidNativeVariant == AndroidNativeVariant.MATERIAL3
+        state.uiPreset == UiPreset.MD3 && state.androidNativeVariant != AndroidNativeVariant.MIUIX
 
     if (useMaterialAndroidChrome) {
         Scaffold(
@@ -263,18 +263,26 @@ fun AppearanceSettingsContent(
     val uiPresetIosSummary = stringResource(R.string.appearance_ui_preset_ios_summary)
     val uiPresetAndroidMaterialTitle = stringResource(R.string.appearance_ui_preset_android_material_title)
     val uiPresetAndroidMaterialSummary = stringResource(R.string.appearance_ui_preset_android_material_summary)
+    val uiPresetAndroidMaterialExpressiveTitle =
+        stringResource(R.string.appearance_ui_preset_android_material_expressive_title)
+    val uiPresetAndroidMaterialExpressiveSummary =
+        stringResource(R.string.appearance_ui_preset_android_material_expressive_summary)
     val uiPresetAndroidMiuixTitle = stringResource(R.string.appearance_ui_preset_android_miuix_title)
     val uiPresetAndroidMiuixSummary = stringResource(R.string.appearance_ui_preset_android_miuix_summary)
     val androidNativeVariantTitle = stringResource(R.string.appearance_android_native_variant_title)
     val androidNativeVariantSubtitle = stringResource(R.string.appearance_android_native_variant_subtitle)
     val androidNativeVariantMaterialLabel = stringResource(R.string.appearance_android_native_variant_material3)
+    val androidNativeVariantMaterialExpressiveLabel =
+        stringResource(R.string.appearance_android_native_variant_material3_expressive)
     val androidNativeVariantMiuixLabel = stringResource(R.string.appearance_android_native_variant_miuix)
     val androidNativeVariantOptions = remember(
         androidNativeVariantMaterialLabel,
+        androidNativeVariantMaterialExpressiveLabel,
         androidNativeVariantMiuixLabel
     ) {
         resolveAndroidNativeVariantSegmentOptions(
             material3Label = androidNativeVariantMaterialLabel,
+            material3ExpressiveLabel = androidNativeVariantMaterialExpressiveLabel,
             miuixLabel = androidNativeVariantMiuixLabel
         )
     }
@@ -285,6 +293,8 @@ fun AppearanceSettingsContent(
         uiPresetIosSummary,
         uiPresetAndroidMaterialTitle,
         uiPresetAndroidMaterialSummary,
+        uiPresetAndroidMaterialExpressiveTitle,
+        uiPresetAndroidMaterialExpressiveSummary,
         uiPresetAndroidMiuixTitle,
         uiPresetAndroidMiuixSummary
     ) {
@@ -295,6 +305,8 @@ fun AppearanceSettingsContent(
             iosSummary = uiPresetIosSummary,
             materialTitle = uiPresetAndroidMaterialTitle,
             materialSummary = uiPresetAndroidMaterialSummary,
+            materialExpressiveTitle = uiPresetAndroidMaterialExpressiveTitle,
+            materialExpressiveSummary = uiPresetAndroidMaterialExpressiveSummary,
             miuixTitle = uiPresetAndroidMiuixTitle,
             miuixSummary = uiPresetAndroidMiuixSummary
         )

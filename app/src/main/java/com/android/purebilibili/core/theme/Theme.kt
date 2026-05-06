@@ -9,7 +9,9 @@ import android.content.IntentFilter
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -694,6 +696,7 @@ private fun rememberKernelSuStyleColorScheme(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PureBiliBiliTheme(
     uiPreset: UiPreset = UiPreset.IOS,
@@ -723,6 +726,13 @@ fun PureBiliBiliTheme(
         uiPreset = uiPreset,
         androidNativeVariant = androidNativeVariant
     ).scaled(fontSizePreset.multiplier)
+    val materialMotionScheme = remember(uiPreset, androidNativeVariant) {
+        if (shouldUseMaterialExpressiveMotionScheme(uiPreset, androidNativeVariant)) {
+            MotionScheme.expressive()
+        } else {
+            MotionScheme.standard()
+        }
+    }
     val miuixTextStyles = remember(fontSizePreset) {
         defaultTextStyles().scaled(fontSizePreset.multiplier)
     }
@@ -819,6 +829,7 @@ fun PureBiliBiliTheme(
                 colorScheme = materialColorScheme,
                 typography = materialTypography,
                 shapes = shapes,
+                motionScheme = materialMotionScheme,
                 content = content
             )
         }

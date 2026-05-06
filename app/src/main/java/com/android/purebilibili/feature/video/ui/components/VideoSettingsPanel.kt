@@ -210,11 +210,13 @@ fun VideoSettingsPanel(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val panelSpec = rememberVideoSettingsPanelVisualSpec()
+    val androidNativeVariant = LocalAndroidNativeVariant.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val actionPolicy = remember(configuration.screenWidthDp) {
+    val actionPolicy = remember(configuration.screenWidthDp, androidNativeVariant) {
         resolveVideoSettingsPanelActionPolicy(
-            widthDp = configuration.screenWidthDp
+            widthDp = configuration.screenWidthDp,
+            androidNativeVariant = androidNativeVariant
         )
     }
     val scope = rememberCoroutineScope()

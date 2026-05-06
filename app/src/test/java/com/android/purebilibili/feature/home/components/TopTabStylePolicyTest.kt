@@ -117,12 +117,12 @@ class TopTabStylePolicyTest {
     fun `ios top tab tuning uses compact indicator footprint`() {
         val tuning = resolveTopTabVisualTuning(UiPreset.IOS)
 
-        assertEquals(46f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
-        assertEquals(23f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
+        assertEquals(40f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
+        assertEquals(20f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
         assertEquals(1.18f, tuning.nonFloatingIndicatorWidthRatio, 0.001f)
         assertEquals(78f, tuning.nonFloatingIndicatorMinWidthDp, 0.001f)
         assertEquals(0f, tuning.nonFloatingIndicatorHorizontalInsetDp, 0.001f)
-        assertEquals(46f, tuning.floatingIndicatorHeightDp, 0.001f)
+        assertEquals(40f, tuning.floatingIndicatorHeightDp, 0.001f)
         assertEquals(13f, tuning.tabTextSizeSp, 0.001f)
         assertEquals(17f, tuning.tabTextLineHeightSp, 0.001f)
         assertEquals(36f, tuning.tabContentMinHeightDp, 0.001f)
@@ -132,9 +132,9 @@ class TopTabStylePolicyTest {
     fun `md3 capsule top tab tuning also uses compact shape`() {
         val tuning = resolveTopTabVisualTuning(UiPreset.MD3)
 
-        assertEquals(46f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
-        assertEquals(23f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
-        assertEquals(46f, tuning.floatingIndicatorHeightDp, 0.001f)
+        assertEquals(40f, tuning.nonFloatingIndicatorHeightDp, 0.001f)
+        assertEquals(20f, tuning.nonFloatingIndicatorCornerDp, 0.001f)
+        assertEquals(40f, tuning.floatingIndicatorHeightDp, 0.001f)
     }
 
     @Test
@@ -229,6 +229,21 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `android native md3e top tabs should use expressive selected container styling`() {
+        val spec = resolveMd3TopTabVisualSpec(
+            isFloatingStyle = false,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+        )
+
+        assertEquals(52.dp, spec.rowHeight)
+        assertEquals(34.dp, spec.selectedCapsuleHeight)
+        assertEquals(17.dp, spec.selectedCapsuleCornerRadius)
+        assertEquals(2.dp, spec.selectedCapsuleTonalElevation)
+        assertEquals(12.dp, spec.itemHorizontalPadding)
+        assertEquals(15.sp, spec.labelTextSize)
+    }
+
+    @Test
     fun `android native miuix text tabs should use native miuix row while icon modes stay shared`() {
         assertTrue(
             shouldUseNativeMiuixTopTabRow(
@@ -299,6 +314,31 @@ class TopTabStylePolicyTest {
             resolveMd3TopTabSelectedLabelColor(
                 colorScheme = colorScheme,
                 androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
+    }
+
+    @Test
+    fun `android native md3e top tabs should use primary container emphasis`() {
+        val colorScheme = lightColorScheme(
+            primary = Color(0xFF2D6A4F),
+            primaryContainer = Color(0xFFD7F4E3),
+            onPrimaryContainer = Color(0xFF062015),
+            onSurfaceVariant = Color(0xFF6A5E61)
+        )
+
+        assertEquals(
+            colorScheme.primaryContainer,
+            resolveMd3TopTabSelectedContainerColor(
+                colorScheme = colorScheme,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+            )
+        )
+        assertEquals(
+            colorScheme.onPrimaryContainer,
+            resolveMd3TopTabSelectedIconColor(
+                colorScheme = colorScheme,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
             )
         )
     }

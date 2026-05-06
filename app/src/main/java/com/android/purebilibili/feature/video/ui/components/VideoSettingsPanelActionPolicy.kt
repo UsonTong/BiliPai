@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.video.ui.components
 
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+
 data class VideoSettingsPanelActionPolicy(
     val rowItemSpacingDp: Int,
     val pillHeightDp: Int,
@@ -9,9 +11,10 @@ data class VideoSettingsPanelActionPolicy(
 )
 
 fun resolveVideoSettingsPanelActionPolicy(
-    widthDp: Int
+    widthDp: Int,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): VideoSettingsPanelActionPolicy {
-    return when {
+    val basePolicy = when {
         widthDp >= 840 -> VideoSettingsPanelActionPolicy(
             rowItemSpacingDp = 12,
             pillHeightDp = 50,
@@ -33,5 +36,16 @@ fun resolveVideoSettingsPanelActionPolicy(
             pillHorizontalPaddingDp = 14,
             pillIconSizeDp = 18
         )
+    }
+    return if (androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE) {
+        basePolicy.copy(
+            rowItemSpacingDp = basePolicy.rowItemSpacingDp.coerceAtLeast(12),
+            pillHeightDp = basePolicy.pillHeightDp.coerceAtLeast(50),
+            pillMinWidthDp = basePolicy.pillMinWidthDp.coerceAtLeast(124),
+            pillHorizontalPaddingDp = basePolicy.pillHorizontalPaddingDp.coerceAtLeast(16),
+            pillIconSizeDp = basePolicy.pillIconSizeDp.coerceAtLeast(19)
+        )
+    } else {
+        basePolicy
     }
 }

@@ -29,11 +29,14 @@
     <string name="appearance_ui_preset_ios_summary">保留更明顯的玻璃感、圓角，以及 iOS 風格圖示與互動細節。</string>
     <string name="appearance_ui_preset_android_material_title">Android 原生 · Material 3</string>
     <string name="appearance_ui_preset_android_material_summary">使用更標準的 Material 3 導航、圖示、頂欄與清單語義，保留目前 Android 原生分支的互動節奏。</string>
+    <string name="appearance_ui_preset_android_material_expressive_title">Android 原生 · Material 3 Expressive</string>
+    <string name="appearance_ui_preset_android_material_expressive_summary">使用官方 Material 3 Expressive 動效、圓角與元件預設值，讓 Android 原生分支更貼近 Android 16 的表現式視覺。</string>
     <string name="appearance_ui_preset_android_miuix_title">Android 原生 · Miuix</string>
     <string name="appearance_ui_preset_android_miuix_summary">保留 Android 資訊架構，但把頂欄與局部容器切換為更貼近小米系統語義的 Miuix 元件風格。</string>
     <string name="appearance_android_native_variant_title">Android 原生風格</string>
-    <string name="appearance_android_native_variant_subtitle">在 Material 3 與 Miuix 兩種 Android 原生子風格之間切換</string>
+    <string name="appearance_android_native_variant_subtitle">在 Material 3、MD3E 與 Miuix Android 原生子風格之間切換</string>
     <string name="appearance_android_native_variant_material3">Material 3</string>
+    <string name="appearance_android_native_variant_material3_expressive">MD3E</string>
     <string name="appearance_android_native_variant_miuix">Miuix</string>
     <string name="appearance_theme_mode_title">主題模式</string>
     <string name="appearance_theme_mode_subtitle">支援點擊或左右滑動切換</string>

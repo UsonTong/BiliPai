@@ -7,6 +7,7 @@ import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.store.resolveHomeHeaderBlurEnabled
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
 
 internal data class CommonListVideoCardAppearance(
     val glassEnabled: Boolean,
@@ -77,6 +78,25 @@ internal fun resolveCommonListFavoriteHeaderLayout(
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): CommonListFavoriteHeaderLayout {
     return when {
+        isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> {
+            CommonListFavoriteHeaderLayout(
+                searchBarHeightDp = 56,
+                searchBarHorizontalPaddingDp = 18,
+                searchBarVerticalPaddingDp = 8,
+                browseToggleHeightDp = 44,
+                browseToggleIndicatorHeightDp = 40,
+                browseToggleLabelFontSizeSp = 15,
+                browseToggleHorizontalPaddingDp = 18,
+                browseToggleTopPaddingDp = 4,
+                folderChipMinHeightDp = 40,
+                folderChipHorizontalPaddingDp = 14,
+                folderChipRowHorizontalPaddingDp = 18,
+                folderChipRowTopPaddingDp = 8,
+                folderChipSpacingDp = 10,
+                headerBottomPaddingDp = 8,
+                headerBackgroundAlphaMultiplier = 0.9f
+            )
+        }
         uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> {
             CommonListFavoriteHeaderLayout(
                 searchBarHeightDp = 46,

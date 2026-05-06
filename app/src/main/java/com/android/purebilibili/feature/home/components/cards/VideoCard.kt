@@ -269,6 +269,9 @@ fun ElegantVideoCard(
     }
     val showHistoryProgressBar = historyProgressState.showProgressBar
     val historyProgressFraction = historyProgressState.progressFraction
+    val historyProgressBarColor = resolveVideoCardHistoryProgressBarColor(
+        themePrimary = MaterialTheme.colorScheme.primary
+    )
     
     //  [新增] 长按删除菜单状态
     var showDismissMenu by remember { mutableStateOf(false) }
@@ -573,7 +576,7 @@ fun ElegantVideoCard(
                             .align(Alignment.BottomStart)
                             .fillMaxWidth(historyProgressFraction)
                             .height(2.dp)
-                            .background(BiliPink)
+                            .background(historyProgressBarColor)
                     )
                 }
             }

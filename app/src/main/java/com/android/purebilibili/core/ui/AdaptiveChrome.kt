@@ -27,6 +27,8 @@ import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
+import com.android.purebilibili.core.theme.resolveAndroidNativeChromeTokens
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
@@ -50,7 +52,47 @@ enum class AdaptiveTopAppBarStyle {
     LARGE
 }
 
+data class AdaptiveTopAppBarChromeSpec(
+    val containerCornerRadiusDp: Int,
+    val scrolledContainerAlpha: Float,
+    val scrolledTonalElevationDp: Int,
+    val motionScale: Float
+)
+
 val LocalGlobalWallpaperBackdropVisible = compositionLocalOf { false }
+
+fun resolveAdaptiveTopAppBarChromeSpec(
+    uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
+): AdaptiveTopAppBarChromeSpec {
+    val chromeTokens = resolveAndroidNativeChromeTokens(uiPreset, androidNativeVariant)
+    return when {
+        isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> AdaptiveTopAppBarChromeSpec(
+            containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            scrolledContainerAlpha = 0.94f,
+            scrolledTonalElevationDp = 2,
+            motionScale = chromeTokens.motionScale
+        )
+        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> AdaptiveTopAppBarChromeSpec(
+            containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            scrolledContainerAlpha = 1f,
+            scrolledTonalElevationDp = 0,
+            motionScale = chromeTokens.motionScale
+        )
+        uiPreset == UiPreset.MD3 -> AdaptiveTopAppBarChromeSpec(
+            containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            scrolledContainerAlpha = 1f,
+            scrolledTonalElevationDp = 0,
+            motionScale = chromeTokens.motionScale
+        )
+        else -> AdaptiveTopAppBarChromeSpec(
+            containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            scrolledContainerAlpha = 1f,
+            scrolledTonalElevationDp = 0,
+            motionScale = chromeTokens.motionScale
+        )
+    }
+}
 
 fun resolveAdaptiveScaffoldContainerColor(
     requestedContainerColor: Color,
@@ -157,7 +199,10 @@ fun AdaptiveTopAppBar(
     style: AdaptiveTopAppBarStyle = AdaptiveTopAppBarStyle.SMALL,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
+    val uiPreset = LocalUiPreset.current
+    val androidNativeVariant = LocalAndroidNativeVariant.current
     val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val chromeSpec = resolveAdaptiveTopAppBarChromeSpec(uiPreset, androidNativeVariant)
     val effectiveColors = if (globalWallpaperVisible) {
         colors.copy(
             containerColor = resolveGlobalWallpaperChromeColor(
@@ -176,19 +221,28 @@ fun AdaptiveTopAppBar(
     } else {
         colors
     }
+    val topAppBarColors = if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) && !globalWallpaperVisible) {
+        effectiveColors.copy(
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
+                alpha = chromeSpec.scrolledContainerAlpha
+            )
+        )
+    } else {
+        effectiveColors
+    }
 
     if (rememberIsNativeMiuixEnabled()) {
         val navigationContent =
             @Composable {
                 CompositionLocalProvider(
-                    LocalContentColor provides effectiveColors.navigationIconContentColor
+                    LocalContentColor provides topAppBarColors.navigationIconContentColor
                 ) {
                     navigationIcon()
                 }
             }
         val actionsContent: @Composable RowScope.() -> Unit = {
             CompositionLocalProvider(
-                LocalContentColor provides effectiveColors.actionIconContentColor
+                LocalContentColor provides topAppBarColors.actionIconContentColor
             ) {
                 actions()
             }
@@ -199,7 +253,7 @@ fun AdaptiveTopAppBar(
                     title = title,
                     largeTitle = largeTitle,
                     modifier = modifier,
-                    color = effectiveColors.containerColor,
+                    color = topAppBarColors.containerColor,
                     navigationIcon = navigationContent,
                     actions = actionsContent
                 )
@@ -210,7 +264,7 @@ fun AdaptiveTopAppBar(
                 MiuixSmallTopAppBar(
                     title = title,
                     modifier = modifier,
-                    color = effectiveColors.containerColor,
+                    color = topAppBarColors.containerColor,
                     navigationIcon = navigationContent,
                     actions = actionsContent
                 )
@@ -226,7 +280,7 @@ fun AdaptiveTopAppBar(
                 title = { Text(title) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = effectiveColors,
+                colors = topAppBarColors,
                 scrollBehavior = scrollBehavior
             )
         }
@@ -237,7 +291,7 @@ fun AdaptiveTopAppBar(
                 title = { Text(title) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = effectiveColors,
+                colors = topAppBarColors,
                 scrollBehavior = scrollBehavior
             )
         }
@@ -248,7 +302,7 @@ fun AdaptiveTopAppBar(
                 title = { Text(largeTitle, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = navigationIcon,
                 actions = actions,
-                colors = effectiveColors,
+                colors = topAppBarColors,
                 scrollBehavior = scrollBehavior
             )
         }

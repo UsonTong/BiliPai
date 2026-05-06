@@ -139,6 +139,18 @@ internal fun resolveHomeTopLinkedBottomBarAppearance(
     )
 }
 
+internal fun resolveHomeTopChromeLiquidGlassEnabled(
+    homeSettings: HomeSettings?,
+    uiPreset: UiPreset
+): Boolean {
+    val resolvedHomeSettings = homeSettings ?: HomeSettings()
+    return resolveEffectiveLiquidGlassEnabled(
+        requestedEnabled = resolvedHomeSettings.isTopBarLiquidGlassEnabled,
+        uiPreset = uiPreset,
+        androidNativeLiquidGlassEnabled = resolvedHomeSettings.androidNativeLiquidGlassEnabled
+    )
+}
+
 internal fun resolveHomeTopChromeMaterialMode(
     isHeaderBlurEnabled: Boolean,
     isBottomBarBlurEnabled: Boolean,
@@ -1004,8 +1016,8 @@ internal fun resolveHomeTopUnifiedPanelDividerAlpha(
     renderMode: HomeTopChromeRenderMode
 ): Float {
     return when (renderMode) {
-        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP -> 0.14f
-        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> 0.16f
+        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> 0f
         HomeTopChromeRenderMode.BLUR -> 0.18f
         HomeTopChromeRenderMode.PLAIN -> 0.12f
     }
@@ -1186,11 +1198,9 @@ fun iOSHomeHeader(
     val searchContainerShape = resolveHomeTopSearchContainerShape(uiPreset, androidNativeVariant)
     val searchIcon = if (uiPreset == UiPreset.MD3) Icons.Outlined.Search else CupertinoIcons.Default.MagnifyingGlass
     val settingsIcon = rememberAppSettingsIcon()
-    val topChromeLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
-        requestedEnabled = homeSettings?.isTopBarLiquidGlassEnabled == true ||
-            linkedBottomBarAppearance.liquidGlassEnabled,
-        uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = homeSettings?.androidNativeLiquidGlassEnabled == true
+    val topChromeLiquidGlassEnabled = resolveHomeTopChromeLiquidGlassEnabled(
+        homeSettings = homeSettings,
+        uiPreset = uiPreset
     )
 
     // 状态栏高度
@@ -1937,7 +1947,8 @@ fun iOSHomeHeader(
                                                     liquidGlassTuning = liquidGlassTuning,
                                                     motionTier = motionTier,
                                                     isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
-                                                    forceLowBlurBudget = forceLowBlurBudget
+                                                    forceLowBlurBudget = forceLowBlurBudget,
+                                                    drawShellLens = false
                                                 )
                                             } else {
                                                 Modifier.homeTopChromeSurface(
@@ -2078,7 +2089,8 @@ fun iOSHomeHeader(
                                                         liquidGlassTuning = liquidGlassTuning,
                                                         motionTier = motionTier,
                                                         isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
-                                                        forceLowBlurBudget = forceLowBlurBudget
+                                                        forceLowBlurBudget = forceLowBlurBudget,
+                                                        drawShellLens = false
                                                     )
                                             } else {
                                                 Modifier.background(
@@ -2255,6 +2267,9 @@ fun iOSHomeHeader(
                             edgeToEdge = integratedCollapsedTopBar,
                             hasOuterChromeSurface = !useUnifiedTopPanel,
                             interactionBudget = interactionBudget,
+                            motionTier = motionTier,
+                            isTransitionRunning = isTransitionRunning,
+                            forceLowBlurBudget = forceLowBlurBudget,
                             isViewportSyncEnabled = isTopTabViewportSyncEnabled
                         )
                     }

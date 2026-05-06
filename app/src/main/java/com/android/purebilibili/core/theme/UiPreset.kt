@@ -13,7 +13,8 @@ enum class UiPreset(val value: Int, val label: String) {
 
 enum class AndroidNativeVariant(val value: Int, val label: String) {
     MATERIAL3(0, "Material 3"),
-    MIUIX(1, "Miuix");
+    MIUIX(1, "Miuix"),
+    MATERIAL3_EXPRESSIVE(2, "Material 3 Expressive");
 
     companion object {
         fun fromValue(value: Int): AndroidNativeVariant {

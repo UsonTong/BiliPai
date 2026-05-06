@@ -40,9 +40,20 @@ class HomeChromeLiquidSurfaceStructureTest {
             "top header should delegate to the shared liquid surface renderer",
             topHeader.readText().contains(".appChromeLiquidSurface(")
         )
+        val topHeaderSource = topHeader.readText()
+        val topHeaderMatchedSurfaceCalls = Regex("""\.homeTopBottomBarMatchedSurface\(""")
+            .findAll(topHeaderSource)
+            .count()
+        val topHeaderDisabledShellLensCalls = Regex("""drawShellLens\s*=\s*false""")
+            .findAll(topHeaderSource)
+            .count()
         assertTrue(
-            "top search pill should use the same matched dock surface helper as the bottom bar",
-            topHeader.readText().contains(".homeTopBottomBarMatchedSurface(")
+            "top header should use the same matched dock surface helper as the bottom bar",
+            topHeaderMatchedSurfaceCalls > 0
+        )
+        assertTrue(
+            "all matched top header controls should disable the full-shell lens that creates a center refraction seam",
+            topHeaderDisabledShellLensCalls >= topHeaderMatchedSurfaceCalls
         )
         assertTrue(
             "matched top dock helper should use the KSU floating dock renderer, not the generic chrome renderer",
@@ -50,7 +61,7 @@ class HomeChromeLiquidSurfaceStructureTest {
         )
         assertTrue(
             "top tab row should render its own dock surface when embedded in the unified top panel",
-            topHeader.readText().contains("hasOuterChromeSurface = !useUnifiedTopPanel")
+            topHeaderSource.contains("hasOuterChromeSurface = !useUnifiedTopPanel")
         )
         assertTrue(
             "top tab dock should use the same KSU dock surface renderer as the bottom bar",
@@ -59,6 +70,19 @@ class HomeChromeLiquidSurfaceStructureTest {
         assertTrue(
             "top tab inner dock should use the KSU dock surface renderer",
             topBar.readText().contains(".kernelSuFloatingDockSurface(")
+        )
+        assertTrue(
+            "top tab dock should reuse bottom-bar tuning and container color",
+            topBar.readText().contains("resolveAndroidNativeBottomBarTuning(") &&
+                topBar.readText().contains("resolveAndroidNativeFloatingBottomBarContainerColor(")
+        )
+        assertTrue(
+            "top tab dock should disable the full-shell lens that creates a center refraction seam",
+            topBar.readText().contains("drawShellLens = false")
+        )
+        assertFalse(
+            "top tab dock should not switch sampling off during feed scroll",
+            topBar.readText().contains("shouldSampleTopTabDockBackdrop(")
         )
         assertTrue(
             "top tab floating indicator should keep manual row scroll out of LiquidIndicator viewport clamp",
@@ -84,6 +108,8 @@ class HomeChromeLiquidSurfaceStructureTest {
             "KSU dock surface should use backdrop vibrancy, blur, and lens like the floating bottom bar",
             bottomBar.readText().contains("internal fun Modifier.kernelSuFloatingDockSurface(") &&
                 bottomBar.readText().contains("vibrancy()") &&
+                bottomBar.readText().contains("drawShellLens: Boolean = true") &&
+                bottomBar.readText().contains("glassEnabled && drawShellLens") &&
                 bottomBar.readText().contains("lens(24.dp.toPx(), 24.dp.toPx())")
         )
         assertFalse(

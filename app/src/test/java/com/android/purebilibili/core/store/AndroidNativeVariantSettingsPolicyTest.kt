@@ -29,6 +29,10 @@ class AndroidNativeVariantSettingsPolicyTest {
             resolveAndroidNativeVariantPreferenceValue(AndroidNativeVariant.MATERIAL3.value)
         )
         assertEquals(
+            AndroidNativeVariant.MATERIAL3_EXPRESSIVE,
+            resolveAndroidNativeVariantPreferenceValue(AndroidNativeVariant.MATERIAL3_EXPRESSIVE.value)
+        )
+        assertEquals(
             AndroidNativeVariant.MIUIX,
             resolveAndroidNativeVariantPreferenceValue(AndroidNativeVariant.MIUIX.value)
         )

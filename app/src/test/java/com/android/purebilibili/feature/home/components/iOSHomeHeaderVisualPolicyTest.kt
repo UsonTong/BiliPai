@@ -76,6 +76,21 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `liquid glass unified top panel does not draw a center divider`() {
+        assertEquals(
+            0f,
+            resolveHomeTopUnifiedPanelDividerAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP),
+            0.0001f
+        )
+        assertEquals(
+            0f,
+            resolveHomeTopUnifiedPanelDividerAlpha(HomeTopChromeRenderMode.LIQUID_GLASS_HAZE),
+            0.0001f
+        )
+        assertTrue(resolveHomeTopUnifiedPanelDividerAlpha(HomeTopChromeRenderMode.BLUR) > 0f)
+    }
+
+    @Test
     fun `search content export layer stays disabled to avoid scroll flicker`() {
         val active = resolveHomeTopSearchRefractionLayerPolicy(
             renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
@@ -679,6 +694,30 @@ class iOSHomeHeaderVisualPolicyTest {
         assertTrue(appearance.isFloating)
         assertTrue(appearance.blurEnabled)
         assertFalse(appearance.liquidGlassEnabled)
+    }
+
+    @Test
+    fun `top chrome liquid glass setting is independent from bottom bar liquid glass`() {
+        assertFalse(
+            resolveHomeTopChromeLiquidGlassEnabled(
+                homeSettings = HomeSettings(
+                    isTopBarLiquidGlassEnabled = false,
+                    isBottomBarLiquidGlassEnabled = true,
+                    androidNativeLiquidGlassEnabled = true
+                ),
+                uiPreset = UiPreset.MD3
+            )
+        )
+        assertTrue(
+            resolveHomeTopChromeLiquidGlassEnabled(
+                homeSettings = HomeSettings(
+                    isTopBarLiquidGlassEnabled = true,
+                    isBottomBarLiquidGlassEnabled = false,
+                    androidNativeLiquidGlassEnabled = true
+                ),
+                uiPreset = UiPreset.MD3
+            )
+        )
     }
 
     @Test

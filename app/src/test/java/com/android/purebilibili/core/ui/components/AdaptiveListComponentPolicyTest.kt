@@ -58,6 +58,29 @@ class AdaptiveListComponentPolicyTest {
     }
 
     @Test
+    fun `android native md3e variant should use expressive grouped list geometry`() {
+        val spec = resolveAdaptiveListComponentVisualSpec(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+        )
+        val rowSpec = resolveAdaptiveListRowVisualSpec(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+        )
+
+        assertEquals(22, spec.sectionStartPaddingDp)
+        assertEquals(30, spec.groupCornerRadiusDp)
+        assertEquals(4, spec.groupTonalElevationDp)
+        assertEquals(42, spec.iconContainerSizeDp)
+        assertEquals(0.18f, spec.iconBackgroundAlpha, 0.0001f)
+        assertEquals(58, spec.searchBarHeightDp)
+        assertEquals(30, spec.searchBarCornerRadiusDp)
+        assertEquals(20, rowSpec.insideHorizontalPaddingDp)
+        assertEquals(18, rowSpec.insideVerticalPaddingDp)
+        assertEquals(18, rowSpec.trailingIconSizeDp)
+    }
+
+    @Test
     fun `md3 preset should keep roomier shared list row spacing`() {
         val spec = resolveAdaptiveListRowVisualSpec(
             uiPreset = UiPreset.MD3,
@@ -208,6 +231,34 @@ class AdaptiveListComponentPolicyTest {
                 colorScheme = colorScheme,
                 fallbackColor = Color.White,
                 androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
+    }
+
+    @Test
+    fun `android native md3e variant should use higher expressive container tones`() {
+        val colorScheme = lightColorScheme(
+            surfaceContainer = Color(0xFFF0EBF4),
+            surfaceContainerLow = Color(0xFFF4F0F8),
+            surfaceContainerHigh = Color(0xFFECE6F0)
+        )
+
+        assertEquals(
+            colorScheme.surfaceContainerHigh,
+            resolveAdaptiveGroupContainerColor(
+                uiPreset = UiPreset.MD3,
+                colorScheme = colorScheme,
+                fallbackColor = Color.White,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+            )
+        )
+        assertEquals(
+            colorScheme.surfaceContainerHigh,
+            resolveAdaptiveSearchBarContainerColor(
+                uiPreset = UiPreset.MD3,
+                colorScheme = colorScheme,
+                fallbackColor = Color.White,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
             )
         )
     }

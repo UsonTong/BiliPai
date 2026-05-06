@@ -54,6 +54,8 @@ import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSYellow
+import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
+import com.android.purebilibili.core.theme.resolveAndroidNativeChromeTokens
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import io.github.alexzhirkevich.cupertino.CupertinoSwitch
@@ -104,7 +106,23 @@ internal fun resolveAdaptiveListComponentVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AdaptiveListComponentVisualSpec {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+    return if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
+        val chromeTokens = resolveAndroidNativeChromeTokens(uiPreset, androidNativeVariant)
+        AdaptiveListComponentVisualSpec(
+            sectionStartPaddingDp = 22,
+            groupCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            groupTonalElevationDp = chromeTokens.tonalSurfaceElevationDp,
+            iconCornerRadiusDp = 14,
+            iconContainerSizeDp = 42,
+            iconGlyphSizeDp = 22,
+            iconBackgroundAlpha = 0.18f,
+            gridCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
+            searchBarCornerRadiusDp = chromeTokens.pillCornerRadiusDp,
+            searchBarHeightDp = 58,
+            dividerThicknessDp = 0f,
+            dividerStartIndentDp = 22
+        )
+    } else if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         AdaptiveListComponentVisualSpec(
             sectionStartPaddingDp = 18,
             groupCornerRadiusDp = 20,
@@ -156,7 +174,14 @@ internal fun resolveAdaptiveListRowVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AdaptiveListRowVisualSpec {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+    return if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
+        AdaptiveListRowVisualSpec(
+            insideHorizontalPaddingDp = 20,
+            insideVerticalPaddingDp = 18,
+            trailingIconSizeDp = 18,
+            trailingSpacingDp = 8
+        )
+    } else if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         AdaptiveListRowVisualSpec(
             insideHorizontalPaddingDp = 16,
             insideVerticalPaddingDp = 14,
@@ -188,10 +213,10 @@ internal fun resolveAdaptiveGroupContainerColor(
     globalWallpaperVisible: Boolean = false
 ): Color {
     val resolvedColor = if (uiPreset == UiPreset.MD3) {
-        if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
-            colorScheme.surfaceContainer
-        } else {
-            colorScheme.surfaceContainerLow
+        when {
+            isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.surfaceContainerHigh
+            androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.surfaceContainer
+            else -> colorScheme.surfaceContainerLow
         }
     } else {
         fallbackColor
@@ -212,10 +237,10 @@ internal fun resolveAdaptiveSearchBarContainerColor(
     globalWallpaperVisible: Boolean = false
 ): Color {
     val resolvedColor = if (uiPreset == UiPreset.MD3) {
-        if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
-            colorScheme.surfaceContainer
-        } else {
-            colorScheme.surfaceContainerHigh
+        when {
+            isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.surfaceContainerHigh
+            androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.surfaceContainer
+            else -> colorScheme.surfaceContainerHigh
         }
     } else {
         fallbackColor
@@ -597,14 +622,20 @@ fun IOSGroup(
         shape = appliedShape,
         color = resolvedContainerColor,
         shadowElevation = if (uiPreset == UiPreset.MD3) 0.dp else 0.dp,
-        tonalElevation = if (uiPreset == UiPreset.MD3) 0.dp else visualSpec.groupTonalElevationDp.dp,
+        tonalElevation = if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
+            visualSpec.groupTonalElevationDp.dp
+        } else if (uiPreset == UiPreset.MD3) {
+            0.dp
+        } else {
+            visualSpec.groupTonalElevationDp.dp
+        },
         border = if (uiPreset == UiPreset.MD3) {
             androidx.compose.foundation.BorderStroke(
                 0.8.dp,
-                if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
-                    colorScheme.outline.copy(alpha = 0.22f)
-                } else {
-                    colorScheme.outlineVariant.copy(alpha = 0.6f)
+                when {
+                    isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.outlineVariant.copy(alpha = 0.36f)
+                    androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.outline.copy(alpha = 0.22f)
+                    else -> colorScheme.outlineVariant.copy(alpha = 0.6f)
                 }
             )
         } else {
@@ -961,7 +992,10 @@ fun IOSDivider(
     startIndent: androidx.compose.ui.unit.Dp = 66.dp
 ) {
     val uiPreset = LocalUiPreset.current
-    val visualSpec = remember(uiPreset) { resolveAdaptiveListComponentVisualSpec(uiPreset) }
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val visualSpec = remember(uiPreset, androidNativeVariant) {
+        resolveAdaptiveListComponentVisualSpec(uiPreset, androidNativeVariant)
+    }
     if (visualSpec.dividerThicknessDp <= 0f) return
 
     Box(
@@ -985,7 +1019,10 @@ fun IOSGridItem(
     modifier: Modifier = Modifier
 ) {
     val uiPreset = LocalUiPreset.current
-    val visualSpec = remember(uiPreset) { resolveAdaptiveListComponentVisualSpec(uiPreset) }
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val visualSpec = remember(uiPreset, androidNativeVariant) {
+        resolveAdaptiveListComponentVisualSpec(uiPreset, androidNativeVariant)
+    }
     val effectiveIconTint = rememberAdaptiveSemanticIconTint(iconTint, uiPreset)
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val itemCornerRadius = if (uiPreset == UiPreset.MD3) visualSpec.gridCornerRadiusDp.dp else iOSCornerRadius.Medium * cornerRadiusScale

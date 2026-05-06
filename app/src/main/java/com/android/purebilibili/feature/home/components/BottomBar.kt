@@ -460,6 +460,13 @@ internal fun shouldAutoExpandBottomBarSearch(
     }
 }
 
+internal fun resolveBottomBarSearchEnabledForItem(
+    currentItem: BottomNavItem,
+    bottomBarSearchEnabled: Boolean
+): Boolean {
+    return bottomBarSearchEnabled && currentItem == BottomNavItem.HOME
+}
+
 internal enum class BottomBarSearchExpansionOverride {
     FOLLOW_AUTO,
     EXPANDED,
@@ -498,8 +505,21 @@ internal fun resolveBottomBarSearchExpansionOverrideOnNavItemClick(
 
 internal fun resolveAndroidNativeBottomBarTuning(
     blurEnabled: Boolean,
-    darkTheme: Boolean
+    darkTheme: Boolean,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AndroidNativeBottomBarTuning {
+    if (androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE) {
+        return AndroidNativeBottomBarTuning(
+            cornerRadiusDp = 38f,
+            shellShadowElevationDp = if (darkTheme) 0.8f else 1.1f,
+            shellBlurRadiusDp = if (blurEnabled) 14f else 0f,
+            shellSurfaceAlpha = if (blurEnabled) 0.46f else 1f,
+            outerHorizontalPaddingDp = 22f,
+            innerHorizontalPaddingDp = 6f,
+            indicatorHeightDp = 60f,
+            indicatorLensRadiusDp = 28f
+        )
+    }
     return AndroidNativeBottomBarTuning(
         cornerRadiusDp = 32f,
         shellShadowElevationDp = if (darkTheme) 0.6f else 0.8f,
@@ -563,6 +583,7 @@ internal fun Modifier.kernelSuFloatingDockSurface(
     containerColor: Color,
     blurEnabled: Boolean,
     glassEnabled: Boolean,
+    drawShellLens: Boolean = true,
     blurRadius: Dp,
     hazeState: HazeState?,
     motionTier: MotionTier,
@@ -601,7 +622,7 @@ internal fun Modifier.kernelSuFloatingDockSurface(
                         if (glassEnabled || (blurEnabled && !useHazeBlur)) {
                             vibrancy()
                             blur(blurRadius.toPx())
-                            if (glassEnabled) {
+                            if (glassEnabled && drawShellLens) {
                                 lens(24.dp.toPx(), 24.dp.toPx())
                             }
                         }
@@ -1420,7 +1441,8 @@ private fun MaterialBottomBar(
     )
     val androidNativeTuning = resolveAndroidNativeBottomBarTuning(
         blurEnabled = glassEnabled || blurEnabled,
-        darkTheme = isSystemInDarkTheme()
+        darkTheme = isSystemInDarkTheme(),
+        androidNativeVariant = LocalAndroidNativeVariant.current
     )
     val blurIntensity = currentUnifiedBlurIntensity()
     val baseSurfaceColor = if (isFloating) {
@@ -1613,7 +1635,8 @@ private fun MiuixBottomBar(
     )
     val tuning = resolveAndroidNativeBottomBarTuning(
         blurEnabled = glassEnabled || blurEnabled,
-        darkTheme = isSystemInDarkTheme()
+        darkTheme = isSystemInDarkTheme(),
+        androidNativeVariant = AndroidNativeVariant.MIUIX
     )
     val blurIntensity = currentUnifiedBlurIntensity()
     val baseSurfaceColor = if (isFloating) {
@@ -1914,7 +1937,10 @@ private fun KernelSuAlignedBottomBar(
     var searchQuery by remember { mutableStateOf("") }
     var homeClickPulseKey by remember { mutableIntStateOf(0) }
     val homeClickPulseTransform = rememberBottomBarClickPulseTransform(homeClickPulseKey)
-    val searchEnabled = bottomBarSearchEnabled
+    val searchEnabled = resolveBottomBarSearchEnabledForItem(
+        currentItem = currentItem,
+        bottomBarSearchEnabled = bottomBarSearchEnabled
+    )
     val homeScrollOffset = LocalHomeScrollOffset.current
     val shouldAutoExpandSearch by remember(searchEnabled, currentItem, homeScrollOffset.floatValue) {
         derivedStateOf {
@@ -2733,10 +2759,18 @@ private fun RowScope.AndroidNativeBottomBarItem(
     val settlePulseTranslationYPx = with(density) {
         settlePulseTransform.translationYDp.dp.toPx()
     }
+    val currentOnPressChanged by rememberUpdatedState(onPressChanged)
 
     LaunchedEffect(isPressed, interactive) {
         if (interactive) {
             onPressChanged(isPressed)
+        }
+    }
+    DisposableEffect(interactive) {
+        onDispose {
+            if (interactive) {
+                currentOnPressChanged(false)
+            }
         }
     }
 

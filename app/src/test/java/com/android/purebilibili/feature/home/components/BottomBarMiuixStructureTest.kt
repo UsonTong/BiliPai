@@ -19,7 +19,7 @@ class BottomBarMiuixStructureTest {
         assertTrue(source.contains("resolveKernelSuFloatingBottomBarWidth("))
         assertTrue(kernelSuRendererSource.contains("resolveKernelSuBottomBarSearchLayout("))
         assertTrue(kernelSuRendererSource.contains("KernelSuBottomBarSearchCapsule("))
-        assertTrue(source.contains("val collapsedSearchWidth = 64.dp"))
+        assertTrue(source.contains("val collapsedSearchWidth = searchCircleSize"))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockWidth\""))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarSearchWidth\""))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockContentAlpha\""))
@@ -38,7 +38,7 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("notifyIndexChangedOnReleaseStart = true"))
         assertTrue(kernelSuRendererSource.contains("holdPressUntilReleaseTargetSettles = true"))
         assertTrue(kernelSuRendererSource.contains("dampedDragState.updateIndex(index)"))
-        assertTrue(kernelSuRendererSource.contains("if (searchExpanded) {\n                                    Modifier.clickable("))
+        assertTrue(kernelSuRendererSource.contains("if (effectiveSearchExpanded) {\n                                    Modifier.clickable("))
         assertTrue(kernelSuRendererSource.contains("ColorFilter.tint(exportTintColor)"))
         assertTrue(kernelSuRendererSource.contains("val contentColor = Color.White"))
         assertTrue(kernelSuRendererSource.contains("if (glassEnabled) {\n                unselectedColor"))
@@ -83,7 +83,7 @@ class BottomBarMiuixStructureTest {
 
         assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchFieldAlpha\""))
         assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchIconScale\""))
-        assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchLongPressScale\""))
+        assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchLongPressHorizontalScale\""))
         assertTrue(searchCapsuleSource.contains("detectTapGestures("))
         assertTrue(searchCapsuleSource.contains("onLongPress = {"))
         assertTrue(searchCapsuleSource.contains("haptic(HapticType.SELECTION)"))
@@ -107,7 +107,7 @@ class BottomBarMiuixStructureTest {
         val tintCaptureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
         val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = contentBackdrop")
         val hitOverlayIndex = kernelSuRendererSource.indexOf(
-            "if (!searchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(contentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
+            "if (!effectiveSearchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(contentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
             startIndex = indicatorIndex
         )
 
@@ -128,6 +128,8 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("onPressChanged = dampedDragState::setPressed"))
         assertTrue(androidItemSource.contains("collectIsPressedAsState()"))
         assertTrue(androidItemSource.contains("LaunchedEffect(isPressed, interactive)"))
+        assertTrue(androidItemSource.contains("DisposableEffect(interactive)"))
+        assertTrue(androidItemSource.contains("currentOnPressChanged(false)"))
     }
 
     @Test

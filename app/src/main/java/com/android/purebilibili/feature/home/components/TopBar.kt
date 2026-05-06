@@ -520,7 +520,8 @@ internal fun Modifier.homeTopBottomBarMatchedSurface(
     liquidGlassTuning: LiquidGlassTuning?,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean
+    forceLowBlurBudget: Boolean,
+    drawShellLens: Boolean = true
 ): Modifier = composed {
     val isGlassEnabled = renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP ||
         renderMode == HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
@@ -541,6 +542,7 @@ internal fun Modifier.homeTopBottomBarMatchedSurface(
         containerColor = containerColor,
         blurEnabled = isBlurEnabled,
         glassEnabled = isGlassEnabled,
+        drawShellLens = drawShellLens,
         blurRadius = 12.dp,
         hazeState = hazeState,
         motionTier = motionTier,
@@ -556,8 +558,9 @@ private fun TopTabDockSurface(
     shape: Shape,
     hazeState: HazeState?,
     backdrop: LayerBackdrop?,
-    liquidGlassStyle: LiquidGlassStyle,
-    liquidGlassTuning: LiquidGlassTuning?,
+    motionTier: MotionTier,
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -580,6 +583,20 @@ private fun TopTabDockSurface(
             allowHazeLiquidGlassFallback = shouldAllowDirectHazeLiquidGlassFallback(Build.VERSION.SDK_INT)
         )
     }
+    val isGlassEnabled = dockRenderMode == HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP ||
+        dockRenderMode == HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
+    val isBlurEnabled = dockRenderMode != HomeTopChromeRenderMode.PLAIN
+    val tuning = resolveAndroidNativeBottomBarTuning(
+        blurEnabled = isGlassEnabled || isBlurEnabled,
+        darkTheme = isSystemInDarkTheme()
+    )
+    val containerColor = resolveAndroidNativeFloatingBottomBarContainerColor(
+        surfaceColor = MaterialTheme.colorScheme.surfaceContainer,
+        tuning = tuning,
+        glassEnabled = isGlassEnabled,
+        blurEnabled = isBlurEnabled,
+        blurIntensity = currentUnifiedBlurIntensity()
+    )
 
     Box(
         modifier = modifier
@@ -588,16 +605,18 @@ private fun TopTabDockSurface(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .homeTopBottomBarMatchedSurface(
-                    renderMode = dockRenderMode,
+                .kernelSuFloatingDockSurface(
                     shape = shape,
-                    hazeState = hazeState,
                     backdrop = backdrop,
-                    liquidGlassStyle = liquidGlassStyle,
-                    liquidGlassTuning = liquidGlassTuning,
-                    motionTier = MotionTier.Normal,
-                    isTransitionRunning = false,
-                    forceLowBlurBudget = false
+                    containerColor = containerColor,
+                    blurEnabled = isBlurEnabled,
+                    glassEnabled = isGlassEnabled,
+                    drawShellLens = false,
+                    blurRadius = tuning.shellBlurRadiusDp.dp,
+                    hazeState = hazeState,
+                    motionTier = motionTier,
+                    isTransitionRunning = isTransitionRunning,
+                    forceLowBlurBudget = forceLowBlurBudget
                 )
         )
         Box(modifier = Modifier.fillMaxSize(), content = content)
@@ -624,6 +643,9 @@ fun CategoryTabRow(
     edgeToEdge: Boolean = false,
     hasOuterChromeSurface: Boolean = false,
     interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
     isViewportSyncEnabled: Boolean = true
 ) {
     val uiPreset = LocalUiPreset.current
@@ -675,10 +697,11 @@ fun CategoryTabRow(
             labelMode = labelMode,
             isFloatingStyle = isFloatingStyle,
             isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
-            liquidGlassStyle = liquidGlassStyle,
-            liquidGlassTuning = resolvedLiquidGlassTuning,
             hazeState = hazeState,
             backdrop = backdrop,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
             hasOuterChromeSurface = hasOuterChromeSurface
         )
         return
@@ -731,8 +754,9 @@ fun CategoryTabRow(
             shape = dockShape,
             hazeState = hazeState,
             backdrop = backdrop,
-            liquidGlassStyle = liquidGlassStyle,
-            liquidGlassTuning = resolvedLiquidGlassTuning,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
             modifier = Modifier
                 .fillMaxSize()
         ) {
@@ -1117,10 +1141,11 @@ private fun Md3CategoryTabRow(
     labelMode: Int,
     isFloatingStyle: Boolean,
     isLiquidGlassEnabled: Boolean,
-    liquidGlassStyle: LiquidGlassStyle,
-    liquidGlassTuning: LiquidGlassTuning?,
     hazeState: HazeState?,
     backdrop: LayerBackdrop?,
+    motionTier: MotionTier,
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean,
     hasOuterChromeSurface: Boolean
 ) {
     val uiPreset = LocalUiPreset.current
@@ -1225,8 +1250,9 @@ private fun Md3CategoryTabRow(
             shape = dockShape,
             hazeState = hazeState,
             backdrop = backdrop,
-            liquidGlassStyle = liquidGlassStyle,
-            liquidGlassTuning = liquidGlassTuning,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
             modifier = Modifier.fillMaxSize()
         ) {
             Row(

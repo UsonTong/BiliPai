@@ -44,6 +44,20 @@ class SearchChromePolicyTest {
     }
 
     @Test
+    fun `md3e variant should use expressive search chrome`() {
+        val spec = resolveSearchChromeVisualSpec(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
+        )
+
+        assertEquals(56, spec.inputHeightDp)
+        assertEquals(30, spec.inputCornerRadiusDp)
+        assertEquals(24, spec.actionContainerCornerRadiusDp)
+        assertTrue(spec.useFilledSearchAction)
+        assertEquals(28, spec.suggestionContainerCornerRadiusDp)
+    }
+
+    @Test
     fun `global wallpaper makes search top bar transparent`() {
         assertEquals(
             Color.Transparent,

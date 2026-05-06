@@ -405,7 +405,8 @@ private fun FeedDynamicTabVisibilityItem(
     iconTint: Color
 ) {
     val uiPreset = LocalUiPreset.current
-    val visualSpec = resolveAdaptiveListComponentVisualSpec(uiPreset)
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val visualSpec = resolveAdaptiveListComponentVisualSpec(uiPreset, androidNativeVariant)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -489,7 +490,8 @@ private fun FeedSwitchItem(
     iconTint: Color
 ) {
     val uiPreset = LocalUiPreset.current
-    val visualSpec = resolveAdaptiveListComponentVisualSpec(uiPreset)
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val visualSpec = resolveAdaptiveListComponentVisualSpec(uiPreset, androidNativeVariant)
     Row(
         modifier = Modifier
             .fillMaxWidth()
