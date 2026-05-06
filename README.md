@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-05-05 · 文档已同步至 v8.0.5（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-06 · 文档已同步至 v8.0.6（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.5-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.6-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -610,14 +610,13 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.5 · 2026-05-05)
+### 最近更新 (v8.0.6 · 2026-05-06)
 
-- 🎬 视频详情共享元素转场重做：进入/返回支持来源页整体收缩与恢复，封面、标题和元信息使用分角色动效。
-- 🌫️ 新增“共享元素背景模糊”开关；Android 12+ 可实时模糊，未就绪或预测返回场景自动降级。
-- 🔎 底栏搜索胶囊、Dock 宽度和内容淡入淡出改为先快后慢，指示器色散与 settle pulse 不变。
-- 📱 视频卡片、相关推荐、竖屏互动栏、竖屏 pager、视频信息区和平板布局统一转场参数。
-- 🧭 顶部 tab 和底栏释放回弹细节收敛，补充导航、设置、底栏、顶栏和视频布局策略测试。
-- 🔖 版本号升级到 `8.0.5`，`versionCode` 升级到 `178`。
+- 🎨 **@Jay3-yy** 新增安卓原生 MD3E / Material 3 Expressive 子风格，接入主题 shape、typography、motion 与外观设置。
+- 🧩 **@Jay3-yy** 深度适配顶部栏、底栏、首页顶部分类、共享列表、搜索、通用列表和视频设置面板的 MD3E 策略。
+- 🔄 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 修复平板屏幕旋转体验，调整屏幕大小检测方式。
+- 📺 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 同步修复视频和直播方向策略。
+- 🔖 版本号升级到 `8.0.6`，`versionCode` 升级到 `179`。
 
 ### 历史版本
 

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-05 · Synced to v8.0.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-06 · Synced to v8.0.6 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.5-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.6-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -431,14 +431,13 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.5 · 2026-05-05)
+### Latest (v8.0.6 · 2026-05-06)
 
-- 🎬 Reworked video-detail shared transitions with source-page shrink/restore motion and separate timing for cover, title, and metadata.
-- 🌫️ Added a shared-element background blur toggle; Android 12+ can use live blur, while unready or predictive-return cases degrade cleanly.
-- 🔎 Bottom-bar search capsule, Dock width, and content fades now use fast-out slow-in timing without changing indicator dispersion or settle pulse behavior.
-- 📱 Unified shared-transition parameters across video cards, related videos, portrait controls, portrait pager, info sections, and tablet layouts.
-- 🧭 Tightened top-tab and bottom-bar release details, with focused tests for navigation, settings, bottom bar, top tabs, and video layout policies.
-- 🔖 Bumped the app to `8.0.5` with `versionCode` `178`.
+- 🎨 **@Jay3-yy** Added the Android-native MD3E / Material 3 Expressive sub-style with theme shape, typography, motion, and appearance-settings support.
+- 🧩 **@Jay3-yy** Deepened MD3E policy coverage for top bars, bottom bar, home tabs, shared lists, search, common lists, and the video settings panel.
+- 🔄 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** Fixed tablet rotation behavior and aligned screen-size detection with Android guidance.
+- 📺 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** Fixed video and live orientation policies.
+- 🔖 Bumped the app to `8.0.6` with `versionCode` `179`.
 
 ---
 
