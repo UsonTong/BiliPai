@@ -81,4 +81,20 @@ class HomeBottomBarScrollPolicyTest {
         assertNull(update.visibilityIntent)
         assertEquals(HomeBottomBarScrollState(firstVisibleItem = 4, scrollOffset = 60), update.state)
     }
+
+    @Test
+    fun chromeScrollOffset_usesCurrentOffsetAtTopAndSaturatesPastFirstItem() {
+        assertEquals(
+            0f,
+            resolveBottomBarChromeScrollOffset(firstVisibleItem = 0, scrollOffset = 0)
+        )
+        assertEquals(
+            72f,
+            resolveBottomBarChromeScrollOffset(firstVisibleItem = 0, scrollOffset = 72)
+        )
+        assertEquals(
+            1000f,
+            resolveBottomBarChromeScrollOffset(firstVisibleItem = 1, scrollOffset = 0)
+        )
+    }
 }

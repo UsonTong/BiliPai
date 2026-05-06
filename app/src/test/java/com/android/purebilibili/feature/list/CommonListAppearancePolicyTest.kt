@@ -4,6 +4,7 @@ import com.android.purebilibili.core.store.HomeHeaderBlurMode
 import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -56,6 +57,32 @@ class CommonListAppearancePolicyTest {
     }
 
     @Test
+    fun commonListHeaderLocalBlur_isDisabledWhenGlobalWallpaperIsVisible() {
+        assertFalse(
+            shouldUseCommonListHeaderLocalBlur(
+                headerBlurEnabled = true,
+                globalWallpaperVisible = true
+            )
+        )
+    }
+
+    @Test
+    fun commonListHeaderLocalBlur_remainsEnabledWithoutGlobalWallpaper() {
+        assertTrue(
+            shouldUseCommonListHeaderLocalBlur(
+                headerBlurEnabled = true,
+                globalWallpaperVisible = false
+            )
+        )
+    }
+
+    @Test
+    fun commonListViewportTopPadding_keepsScrollableContentBelowHeader() {
+        assertEquals(148.dp, resolveCommonListViewportTopPadding(148.dp))
+        assertEquals(0.dp, resolveCommonListViewportTopPadding((-12).dp))
+    }
+
+    @Test
     fun iosFavoriteHeaderLayout_prefersCompactSearchAndChips() {
         val layout = resolveCommonListFavoriteHeaderLayout(
             uiPreset = UiPreset.IOS
@@ -63,6 +90,8 @@ class CommonListAppearancePolicyTest {
 
         assertEquals(36, layout.searchBarHeightDp)
         assertEquals(34, layout.browseToggleHeightDp)
+        assertEquals(30, layout.browseToggleIndicatorHeightDp)
+        assertEquals(14, layout.browseToggleLabelFontSizeSp)
         assertEquals(32, layout.folderChipMinHeightDp)
         assertTrue(layout.headerBackgroundAlphaMultiplier < 1f)
     }
@@ -75,6 +104,8 @@ class CommonListAppearancePolicyTest {
         )
 
         assertEquals(48, layout.searchBarHeightDp)
+        assertEquals(34, layout.browseToggleIndicatorHeightDp)
+        assertEquals(14, layout.browseToggleLabelFontSizeSp)
         assertEquals(36, layout.folderChipMinHeightDp)
         assertTrue(layout.headerBackgroundAlphaMultiplier < 1f)
     }

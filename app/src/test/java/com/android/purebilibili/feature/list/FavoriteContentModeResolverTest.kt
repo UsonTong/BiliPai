@@ -48,6 +48,18 @@ class FavoriteContentModeResolverTest {
             "Favorite page should pass its already-collected Android native glass setting into the top segmented control"
         )
         assertTrue(
+            listSource.contains("height = favoriteHeaderLayout.browseToggleHeightDp.dp"),
+            "Favorite page should use the compact header segmented-control height instead of the bottom-bar default"
+        )
+        assertTrue(
+            listSource.contains("indicatorHeight = favoriteHeaderLayout.browseToggleIndicatorHeightDp.dp"),
+            "Favorite page should size the selected indicator from the header layout policy"
+        )
+        assertTrue(
+            listSource.contains("labelFontSize = favoriteHeaderLayout.browseToggleLabelFontSizeSp.sp"),
+            "Favorite page should size segmented labels from the header layout policy"
+        )
+        assertTrue(
             segmentedSource.contains("forceLiquidIndicator: Boolean = false"),
             "Shared iOS segmented control should expose an explicit liquid-indicator override"
         )

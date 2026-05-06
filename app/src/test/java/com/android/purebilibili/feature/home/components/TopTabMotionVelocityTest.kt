@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -97,13 +98,13 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
-    fun `indicator clamp shift ignores manual top tab row scroll`() {
+    fun `indicator clamp shift follows manual top tab row scroll`() {
         val shift = resolveTopTabIndicatorViewportClampShiftPx(
             rowScrollOffsetPx = 240f,
             indicatorPanelOffsetPx = 8f
         )
 
-        assertEquals(-8f, shift, 0.0001f)
+        assertEquals(232f, shift, 0.0001f)
     }
 
     @Test
@@ -116,19 +117,38 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
-    fun `top tab neutral indicator color matches bottom bar moving surface`() {
+    fun `top tab neutral indicator color stays muted over wallpaper`() {
         assertEquals(
-            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = false).copy(alpha = 0.5f),
-            resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.5f)
+            Color(0xFFEAF2EF).copy(alpha = 0.42f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = false, alpha = 0.42f)
         )
         assertEquals(
-            resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme = true).copy(alpha = 0.5f),
-            resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.5f)
+            Color(0xFFE1E8E5).copy(alpha = 0.38f),
+            resolveTopTabNeutralIndicatorColor(isDarkTheme = true, alpha = 0.38f)
         )
     }
 
     @Test
-    fun `follow scroll moves right while indicator approaches hidden top tab`() {
+    fun `top tab neutral indicator alpha avoids bottom bar opacity floor`() {
+        assertEquals(
+            0.42f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = false, configuredAlpha = 0.16f),
+            0.001f
+        )
+        assertEquals(
+            0.38f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = true, configuredAlpha = 0.16f),
+            0.001f
+        )
+        assertEquals(
+            0.72f,
+            resolveTopTabNeutralIndicatorTintAlpha(isDarkTheme = false, configuredAlpha = 0.72f),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `follow scroll centers selected item on item boundaries while moving right`() {
         val target = resolveTopTabFollowScrollTarget(
             indicatorPosition = 4.2f,
             itemWidthPx = 100f,
@@ -140,11 +160,11 @@ class TopTabMotionVelocityTest {
             edgeBufferPx = 20f
         )
 
-        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 2, firstVisibleItemScrollOffsetPx = 40), target)
+        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 3, firstVisibleItemScrollOffsetPx = 0), target)
     }
 
     @Test
-    fun `follow scroll moves left while indicator returns toward hidden top tab`() {
+    fun `follow scroll centers selected item on item boundaries while moving left`() {
         val target = resolveTopTabFollowScrollTarget(
             indicatorPosition = 1f,
             itemWidthPx = 100f,
@@ -156,6 +176,22 @@ class TopTabMotionVelocityTest {
             edgeBufferPx = 20f
         )
 
-        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 0, firstVisibleItemScrollOffsetPx = 80), target)
+        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 0, firstVisibleItemScrollOffsetPx = 0), target)
+    }
+
+    @Test
+    fun `follow scroll keeps middle selected category in the center slot`() {
+        val target = resolveTopTabFollowScrollTarget(
+            indicatorPosition = 3f,
+            itemWidthPx = 100f,
+            itemCount = 8,
+            viewportWidthPx = 500f,
+            currentFirstVisibleItemIndex = 0,
+            currentFirstVisibleItemScrollOffsetPx = 0,
+            maxScrollPx = 300f,
+            edgeBufferPx = 20f
+        )
+
+        assertEquals(TopTabScrollTarget(firstVisibleItemIndex = 1, firstVisibleItemScrollOffsetPx = 0), target)
     }
 }

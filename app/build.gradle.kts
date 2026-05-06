@@ -77,8 +77,8 @@ android {
         targetSdk = 35  // 保持35以避免Android 16的新运行时行为
         // 🔥🔥 [版本号] 发布新版前记得更新！格式：versionCode +1, versionName 递增
         // 更新日志：CHANGELOG.md
-        versionCode = 174
-        versionName = "8.0.1"
+        versionCode = 178
+        versionName = "8.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -265,6 +265,7 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-android:$miuixVersion")
     // 图标扩展库 (全屏、设置图标等)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.animation:animation")
 
     // --- 2. Network (网络请求) ---
     implementation("com.squareup.retrofit2:retrofit:2.12.0")

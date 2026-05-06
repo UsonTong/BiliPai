@@ -51,8 +51,11 @@ import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.BiliGradientButton
 import com.android.purebilibili.core.ui.ComfortablePullToRefreshBox
 import com.android.purebilibili.core.ui.EmptyState
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.LoadingAnimation
+import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
+import com.android.purebilibili.core.ui.resolveGlobalWallpaperChromeColor
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.responsiveContentWidth
@@ -71,6 +74,8 @@ import com.android.purebilibili.feature.dynamic.components.DynamicDisplayMode
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentSheet
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
 import com.android.purebilibili.feature.dynamic.components.DynamicSubReplyPreviewHost
+import com.android.purebilibili.feature.home.LocalHomeScrollOffset
+import com.android.purebilibili.feature.home.policy.resolveBottomBarChromeScrollOffset
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -84,6 +89,8 @@ import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 val LocalDynamicScrollChannel = compositionLocalOf<Channel<Unit>?> { null }
 
@@ -160,6 +167,7 @@ fun DynamicScreen(
 
     //  [Haze] 模糊状态
     val hazeState = rememberRecoverableHazeState()
+    val dynamicChromeBackdrop = rememberLayerBackdrop()
     val scope = rememberCoroutineScope()
 
     val density = LocalDensity.current
@@ -357,6 +365,7 @@ fun DynamicScreen(
 
     // [Feature] BottomBar Scroll Hiding for Dynamic Screen
     val setBottomBarVisible = com.android.purebilibili.core.ui.LocalSetBottomBarVisible.current
+    val bottomBarChromeScrollOffset = LocalHomeScrollOffset.current
 
     suspend fun scrollDynamicFeedToTop(refreshWhenAlreadyAtTop: Boolean) {
         val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 50
@@ -413,6 +422,10 @@ fun DynamicScreen(
              }
              lastFirstVisibleItem = firstVisibleItem
              lastScrollOffset = scrollOffset
+             bottomBarChromeScrollOffset.value = resolveBottomBarChromeScrollOffset(
+                 firstVisibleItem = firstVisibleItem,
+                 scrollOffset = scrollOffset
+             )
         }
     }
 
@@ -420,6 +433,7 @@ fun DynamicScreen(
     DisposableEffect(Unit) {
         onDispose {
             setBottomBarVisible(true)
+            bottomBarChromeScrollOffset.value = 0f
         }
     }
 
@@ -429,7 +443,11 @@ fun DynamicScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             // 背景层 - 自适应 MaterialTheme
-            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .globalWallpaperAwareBackground()
+            ) {
                  // 移除光晕 Canvas，保持纯净背景
             }
 
@@ -528,6 +546,7 @@ fun DynamicScreen(
                                             likedDynamics = likedDynamics,
                                             modifier = Modifier
                                                 .then(dynamicTabSwipeModifier)
+                                                .layerBackdrop(dynamicChromeBackdrop)
                                                 .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用（全局源由根层提供）
                                         )
                                     }
@@ -543,6 +562,7 @@ fun DynamicScreen(
                                     displayMode = displayMode,
                                     onDisplayModeChange = { viewModel.setDisplayMode(it) },
                                     hazeState = hazeState, // 传入 hazeState
+                                    backdrop = dynamicChromeBackdrop,
                                     modifier = Modifier.align(Alignment.TopCenter)
                                 )
                             }
@@ -618,6 +638,7 @@ fun DynamicScreen(
                                          likedDynamics = likedDynamics,
                                          modifier = Modifier
                                              .then(dynamicTabSwipeModifier)
+                                             .layerBackdrop(dynamicChromeBackdrop)
                                              .hazeSource(hazeState) // 本地 hazeSource - 顶栏使用（全局源由根层提供）
                                      )
                                  }
@@ -627,13 +648,19 @@ fun DynamicScreen(
                                  // 获取模糊设置
                                  val blurIntensity = currentUnifiedBlurIntensity()
                                  val backgroundAlpha = BlurStyles.getBackgroundAlpha(blurIntensity)
-                                 val headerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+                                 val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+                                 val headerColor = resolveGlobalWallpaperChromeColor(
+                                     requestedColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
+                                     defaultBackgroundColor = MaterialTheme.colorScheme.background,
+                                     defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+                                     globalWallpaperVisible = globalWallpaperVisible
+                                 )
 
                                  // 应用模糊效果到顶部整体区域
                                  Column(
                                      modifier = Modifier
                                          .fillMaxWidth()
-                                         .unifiedBlur(hazeState)
+                                         .then(if (globalWallpaperVisible) Modifier else Modifier.unifiedBlur(hazeState))
                                          .background(headerColor)
                                  ) {
                                      // 顶栏 - 移除其自带的模糊，使用透明背景
@@ -646,7 +673,8 @@ fun DynamicScreen(
                                          },
                                          displayMode = displayMode,
                                          onDisplayModeChange = { viewModel.setDisplayMode(it) },
-                                         hazeState = null // 禁用内部模糊，由外层统一处理
+                                         hazeState = null, // 禁用内部模糊，由外层统一处理
+                                         backdrop = dynamicChromeBackdrop
                                      )
 
                                      //  横向 UP 主列表

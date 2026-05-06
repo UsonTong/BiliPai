@@ -39,7 +39,7 @@ class PlaybackSettingsSelectionPolicyTest {
     @Test
     fun `md3 segmented labels should shrink for crowded language options`() {
         assertEquals(
-            13f,
+            14f,
             resolveMd3SegmentedLabelFontSizeSp(
                 optionCount = 4,
                 longestLabelLength = "English".length
@@ -47,10 +47,26 @@ class PlaybackSettingsSelectionPolicyTest {
             0.001f
         )
         assertEquals(
-            15f,
+            16f,
             resolveMd3SegmentedLabelFontSizeSp(
                 optionCount = 3,
                 longestLabelLength = "HEVC".length
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `ios liquid segmented control default label size matches tall indicator`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/IOSSlidingSegmentedControl.kt")
+
+        assertTrue(source.contains("labelFontSize: TextUnit = 14.sp"))
+        assertFalse(source.contains("labelFontSize: TextUnit = 12.sp"))
+        assertEquals(
+            13f,
+            resolveMd3SegmentedLabelFontSizeSp(
+                optionCount = 5,
+                longestLabelLength = "跟随系统".length
             ),
             0.001f
         )
@@ -196,7 +212,7 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
-    fun `resolvePortraitPlayerCollapseModeSegmentOptions should expose all scroll collapse modes`() {
+    fun `resolvePortraitPlayerCollapseModeSegmentOptions should expose orientation strategy modes`() {
         val modes = resolvePortraitPlayerCollapseModeSegmentOptions().map { it.value }
         assertEquals(
             listOf(
@@ -207,6 +223,7 @@ class PlaybackSettingsSelectionPolicyTest {
             ),
             modes
         )
+        assertEquals(listOf("关闭", "竖屏", "横屏", "全部"), resolvePortraitPlayerCollapseModeSegmentOptions().map { it.label })
     }
 
     @Test
@@ -219,5 +236,15 @@ class PlaybackSettingsSelectionPolicyTest {
 
         assertTrue(block.contains("AppAdaptiveSwitch("))
         assertFalse(Regex("""(?m)^\s*Switch\(""").containsMatchIn(block))
+    }
+
+    private fun loadSource(path: String): String {
+        val candidates = listOf(
+            File(path),
+            File("app", path.removePrefix("app/")),
+            File(path.removePrefix("app/")),
+            File("..", path)
+        )
+        return candidates.first { it.exists() }.readText()
     }
 }

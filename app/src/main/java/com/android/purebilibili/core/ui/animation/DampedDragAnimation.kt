@@ -14,6 +14,8 @@ import com.android.purebilibili.core.ui.motion.BottomBarMotionSpec
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -62,7 +64,9 @@ internal class DampedDragAnimationState(
     private val itemCount: Int,
     private val scope: CoroutineScope,
     private val onIndexChanged: (Int) -> Unit,
-    private val motionSpec: BottomBarMotionSpec
+    private val motionSpec: BottomBarMotionSpec,
+    private val notifyIndexChangedOnReleaseStart: Boolean = false,
+    private val holdPressUntilReleaseTargetSettles: Boolean = false
 ) {
     /** 当前动画值（浮点索引，用于平滑过渡） */
     private val animatable = Animatable(initialIndex.toFloat())
@@ -235,6 +239,9 @@ internal class DampedDragAnimationState(
             )
         targetIndex = releaseTargetIndex
         desiredValue = releaseTargetIndex.toFloat()
+        if (notifyIndexChanged && notifyIndexChangedOnReleaseStart) {
+            onIndexChanged(releaseTargetIndex)
+        }
         
         selectionJob?.cancel()
         selectionJob = scope.launch {
@@ -246,7 +253,7 @@ internal class DampedDragAnimationState(
             )
             if (generation == motionGeneration) {
                 velocityPxPerSecond = 0f
-                if (notifyIndexChanged) {
+                if (notifyIndexChanged && !notifyIndexChangedOnReleaseStart) {
                     onIndexChanged(releaseTargetIndex)
                 }
             }
@@ -254,6 +261,12 @@ internal class DampedDragAnimationState(
         // 释放按压缩放 — 参考 LiquidBottomTabs release()
         pressJob?.cancel()
         pressJob = scope.launch {
+            if (holdPressUntilReleaseTargetSettles) {
+                val threshold = ((itemCount - 1).toFloat() * 0.025f).coerceAtLeast(0.001f)
+                snapshotFlow { animatable.value }
+                    .filter { abs(it - releaseTargetIndex.toFloat()) < threshold }
+                    .first()
+            }
             pressProgressAnimation.animateTo(0f, motionSpec.drag.pressSpring.toSpringSpec())
         }
         // 偏移量归零 — 弹性回弹
@@ -274,7 +287,14 @@ internal class DampedDragAnimationState(
         // [Fix] Check actual value distance. 
         // If targetIndex matches but we are stuck at an offset (e.g. 2.8 vs 3.0 via snapTo), 
         // we MUST force restart the animation.
-        if (index == targetIndex && (isRunning || abs(value - index.toFloat()) < 0.005f)) return
+        if (
+            index == targetIndex &&
+            (
+                isRunning ||
+                    abs(value - index.toFloat()) < 0.005f ||
+                    abs(desiredValue - index.toFloat()) < 0.005f
+                )
+        ) return
         val generation = startNewMotion()
         selectionJob?.cancel()
         positionJob?.cancel()
@@ -299,18 +319,27 @@ internal fun rememberDampedDragAnimationState(
     initialIndex: Int,
     itemCount: Int,
     onIndexChanged: (Int) -> Unit,
-    motionSpec: BottomBarMotionSpec = resolveBottomBarMotionSpec()
+    motionSpec: BottomBarMotionSpec = resolveBottomBarMotionSpec(),
+    notifyIndexChangedOnReleaseStart: Boolean = false,
+    holdPressUntilReleaseTargetSettles: Boolean = false
 ): DampedDragAnimationState {
     val scope = rememberCoroutineScope()
     val currentOnIndexChanged by rememberUpdatedState(onIndexChanged)
     
-    return remember(itemCount, motionSpec) {
+    return remember(
+        itemCount,
+        motionSpec,
+        notifyIndexChangedOnReleaseStart,
+        holdPressUntilReleaseTargetSettles
+    ) {
         DampedDragAnimationState(
             initialIndex = initialIndex,
             itemCount = itemCount,
             scope = scope,
             onIndexChanged = { currentOnIndexChanged(it) },
-            motionSpec = motionSpec
+            motionSpec = motionSpec,
+            notifyIndexChangedOnReleaseStart = notifyIndexChangedOnReleaseStart,
+            holdPressUntilReleaseTargetSettles = holdPressUntilReleaseTargetSettles
         )
     }
 }

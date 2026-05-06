@@ -13,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,11 +30,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -84,9 +88,14 @@ internal fun CommandDanmakuOverlay(
             kotlinx.coroutines.delay(80)
         }
     }
+    val itemIdentity = remember(items) { items.joinToString(separator = "|") { it.id } }
+    var dismissedIds by remember(itemIdentity) { mutableStateOf(emptySet<String>()) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val active = items.filter { currentPosition in it.startTimeMs..(it.startTimeMs + it.durationMs) }
+        val active = items.filter {
+            it.id !in dismissedIds &&
+                currentPosition in it.startTimeMs..(it.startTimeMs + it.durationMs)
+        }
         active.forEach { item ->
             key(item.id) {
                 CommandDanmakuCard(
@@ -94,7 +103,10 @@ internal fun CommandDanmakuOverlay(
                     containerWidth = constraints.maxWidth,
                     containerHeight = constraints.maxHeight,
                     onFollowClick = onFollowClick,
-                    onTripleClick = onTripleClick
+                    onTripleClick = onTripleClick,
+                    onDismiss = {
+                        dismissedIds = dismissedIds + item.id
+                    }
                 )
             }
         }
@@ -107,7 +119,8 @@ private fun CommandDanmakuCard(
     containerWidth: Int,
     containerHeight: Int,
     onFollowClick: () -> Unit,
-    onTripleClick: () -> Unit
+    onTripleClick: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val (xRatio, yRatio) = when (item.type) {
         CommandDanmakuType.ATTENTION -> mapAttentionPosition(item.posX, item.posY)
@@ -132,9 +145,17 @@ private fun CommandDanmakuCard(
         contentColor = Color.White,
         shape = RoundedCornerShape(8.dp)
     ) {
-        when (item.type) {
-            CommandDanmakuType.ATTENTION -> AttentionCommandCard(item, onFollowClick, onTripleClick)
-            else -> InfoCommandCard(item)
+        Box {
+            when (item.type) {
+                CommandDanmakuType.ATTENTION -> AttentionCommandCard(item, onFollowClick, onTripleClick)
+                else -> InfoCommandCard(item)
+            }
+            CommandDanmakuCloseButton(
+                onDismiss = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(2.dp)
+            )
         }
     }
 }
@@ -142,7 +163,7 @@ private fun CommandDanmakuCard(
 @Composable
 private fun InfoCommandCard(item: CommandDanmakuItem) {
     Row(
-        modifier = Modifier.padding(8.dp),
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 34.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (item.iconUrl.isNotBlank()) {
@@ -187,7 +208,7 @@ private fun AttentionCommandCard(
     }
 
     Column(
-        modifier = Modifier.padding(8.dp),
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 34.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (item.iconUrl.isNotBlank()) {
@@ -233,6 +254,27 @@ private fun AttentionCommandCard(
         CommandTripleActionBurst(
             triggerKey = tripleBurstKey,
             modifier = Modifier.padding(top = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun CommandDanmakuCloseButton(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onDismiss,
+        modifier = modifier.size(30.dp),
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = Color.Black.copy(alpha = 0.34f),
+            contentColor = Color.White
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Close,
+            contentDescription = "关闭提示",
+            modifier = Modifier.size(16.dp)
         )
     }
 }
@@ -319,7 +361,7 @@ private fun CommandTripleActionIcon(
                 scaleY = 0.88f + 0.12f * progress
             }
     ) {
-        androidx.compose.foundation.layout.Box(
+        Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
         ) {

@@ -74,8 +74,8 @@ fun TipsSettingsScreen(
             TipEntry(
                 icon = CupertinoIcons.Filled.HandDraw,
                 iconTint = iOSBlue,
-                title = "1. 摸鱼模式：竖屏滚动缩小播放器",
-                content = "在播放设置里把「竖屏播放器缩小」设为简介、评论或全部后，对应页面向下滚动会缩小画面。"
+                title = "1. 摸鱼模式：播放器缩小策略",
+                content = "在播放设置里把「播放器缩小策略」设为竖屏、横屏或全部后，对应视频方向使用缩小播放器策略。"
             ),
             TipEntry(
                 icon = CupertinoIcons.Default.ChevronUp,

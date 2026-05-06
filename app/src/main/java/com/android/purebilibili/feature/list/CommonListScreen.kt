@@ -75,7 +75,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
+import com.android.purebilibili.feature.home.LocalHomeScrollOffset
+import com.android.purebilibili.feature.home.policy.resolveBottomBarChromeScrollOffset
 import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
+import com.android.purebilibili.core.ui.resolveGlobalWallpaperChromeColor
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.ui.animation.DissolveAnimationPreset
@@ -110,6 +114,8 @@ import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 internal enum class FavoriteContentMode {
     BASE_LIST,
@@ -217,44 +223,17 @@ fun CommonListScreen(
     
     // [Feature] BottomBar Scroll Hiding for CommonListScreen (History/Favorite)
     val setBottomBarVisible = com.android.purebilibili.core.ui.LocalSetBottomBarVisible.current
+    val bottomBarChromeScrollOffset = LocalHomeScrollOffset.current
     
     // 监听列表滚动实现底栏自动隐藏/显示
     var lastFirstVisibleItem by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var lastScrollOffset by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     
-    LaunchedEffect(primaryGridState) {
-        snapshotFlow { 
-            Pair(primaryGridState.firstVisibleItemIndex, primaryGridState.firstVisibleItemScrollOffset) 
-        }
-        .distinctUntilChanged()
-        .collect { (firstVisibleItem, scrollOffset) ->
-             // 顶部始终显示
-             if (firstVisibleItem == 0 && scrollOffset < 100) {
-                 setBottomBarVisible(true)
-             } else {
-                 val isScrollingDown = when {
-                     firstVisibleItem > lastFirstVisibleItem -> true
-                     firstVisibleItem < lastFirstVisibleItem -> false
-                     else -> scrollOffset > lastScrollOffset + 50
-                 }
-                 val isScrollingUp = when {
-                     firstVisibleItem < lastFirstVisibleItem -> true
-                     firstVisibleItem > lastFirstVisibleItem -> false
-                     else -> scrollOffset < lastScrollOffset - 50
-                 }
-                 
-                 if (isScrollingDown) setBottomBarVisible(false)
-                 if (isScrollingUp) setBottomBarVisible(true)
-             }
-             lastFirstVisibleItem = firstVisibleItem
-             lastScrollOffset = scrollOffset
-        }
-    }
-    
     // 离开页面时恢复底栏显示
     DisposableEffect(Unit) {
         onDispose {
             setBottomBarVisible(true)
+            bottomBarChromeScrollOffset.value = 0f
         }
     }
     
@@ -361,6 +340,46 @@ fun CommonListScreen(
             }
         }
     }
+    LaunchedEffect(activeCommonListScrollState) {
+        snapshotFlow {
+            when (val scrollState = activeCommonListScrollState()) {
+                is CommonListScrollState.Grid -> Pair(
+                    scrollState.state.firstVisibleItemIndex,
+                    scrollState.state.firstVisibleItemScrollOffset
+                )
+                is CommonListScrollState.List -> Pair(
+                    scrollState.state.firstVisibleItemIndex,
+                    scrollState.state.firstVisibleItemScrollOffset
+                )
+            }
+        }
+            .distinctUntilChanged()
+            .collect { (firstVisibleItem, scrollOffset) ->
+                if (firstVisibleItem == 0 && scrollOffset < 100) {
+                    setBottomBarVisible(true)
+                } else {
+                    val isScrollingDown = when {
+                        firstVisibleItem > lastFirstVisibleItem -> true
+                        firstVisibleItem < lastFirstVisibleItem -> false
+                        else -> scrollOffset > lastScrollOffset + 50
+                    }
+                    val isScrollingUp = when {
+                        firstVisibleItem < lastFirstVisibleItem -> true
+                        firstVisibleItem > lastFirstVisibleItem -> false
+                        else -> scrollOffset < lastScrollOffset - 50
+                    }
+
+                    if (isScrollingDown) setBottomBarVisible(false)
+                    if (isScrollingUp) setBottomBarVisible(true)
+                }
+                lastFirstVisibleItem = firstVisibleItem
+                lastScrollOffset = scrollOffset
+                bottomBarChromeScrollOffset.value = resolveBottomBarChromeScrollOffset(
+                    firstVisibleItem = firstVisibleItem,
+                    scrollOffset = scrollOffset
+                )
+            }
+    }
     val shouldShowBackToTop by remember {
         derivedStateOf {
             when (val scrollState = activeCommonListScrollState()) {
@@ -414,6 +433,7 @@ fun CommonListScreen(
     
     // [Fix] 这里的模糊冲突核心：顶栏需要自己的独立 HazeState
     val localHazeState = com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState()
+    val commonListChromeBackdrop = rememberLayerBackdrop()
     
     // 🔍 搜索状态
     var searchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
@@ -454,17 +474,30 @@ fun CommonListScreen(
     } else {
         backgroundAlpha
     }
+    val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val shouldUseHeaderLocalBlur = shouldUseCommonListHeaderLocalBlur(
+        headerBlurEnabled = isHeaderBlurEnabled,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
+    val headerBackgroundColor = resolveGlobalWallpaperChromeColor(
+        requestedColor = MaterialTheme.colorScheme.surface.copy(
+            alpha = if (isHeaderBlurEnabled) headerBackgroundAlpha else 1f
+        ),
+        defaultBackgroundColor = MaterialTheme.colorScheme.background,
+        defaultSurfaceColor = MaterialTheme.colorScheme.surface,
+        globalWallpaperVisible = globalWallpaperVisible
+    )
     
     // 决定顶栏背景 (使用私有的 localHazeState)
-    val topBarBackgroundModifier = if (isHeaderBlurEnabled) {
+    val topBarBackgroundModifier = if (shouldUseHeaderLocalBlur) {
         Modifier
             .fillMaxWidth()
             .unifiedBlur(localHazeState)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = headerBackgroundAlpha))
+            .background(headerBackgroundColor)
     } else {
         Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(headerBackgroundColor)
     }
 
     val playFavoriteVideo: (List<VideoItem>, String, Long, String) -> Unit =
@@ -495,6 +528,7 @@ fun CommonListScreen(
             // [Haze Audit] 全局源已在 AppNavigation 根层提供，这里仅保留本地源
             val contentModifier = Modifier
                 .fillMaxSize()
+                .layerBackdrop(commonListChromeBackdrop)
                 .hazeSource(state = localHazeState)
 
             Box(modifier = contentModifier) {
@@ -844,6 +878,10 @@ fun CommonListScreen(
                                 top = favoriteHeaderLayout.browseToggleTopPaddingDp.dp
                             ),
                             forceLiquidIndicator = homeSettings.androidNativeLiquidGlassEnabled,
+                            height = favoriteHeaderLayout.browseToggleHeightDp.dp,
+                            indicatorHeight = favoriteHeaderLayout.browseToggleIndicatorHeightDp.dp,
+                            labelFontSize = favoriteHeaderLayout.browseToggleLabelFontSizeSp.sp,
+                            backdrop = commonListChromeBackdrop,
                             onSelectionChange = { section ->
                                 favoriteBrowseSection = section
                                 searchQuery = ""
@@ -1050,27 +1088,30 @@ private fun CommonListContent(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState? = null
 ) {
     val resolvedGridState = gridState ?: rememberLazyGridState()
+    val viewportModifier = Modifier
+        .fillMaxSize()
+        .padding(top = resolveCommonListViewportTopPadding(padding.calculateTopPadding()))
     if (isLoading && items.isEmpty()) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             contentPadding = PaddingValues(
                 start = spacing,
                 end = spacing,
-                top = padding.calculateTopPadding() + spacing,
+                top = spacing,
                 bottom = padding.calculateBottomPadding() + spacing
             ),
             horizontalArrangement = Arrangement.spacedBy(spacing),
             verticalArrangement = Arrangement.spacedBy(spacing),
-            modifier = Modifier.fillMaxSize()
+            modifier = viewportModifier
         ) {
             items(columns * 4) { VideoGridItemSkeleton() }
         }
     } else if (error != null && items.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(viewportModifier, contentAlignment = Alignment.Center) {
             Text(text = error, color = Color.Gray)
         }
     } else if (items.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = viewportModifier, contentAlignment = Alignment.Center) {
              Text("暂无数据", color = Color.Gray)
         }
     } else {
@@ -1085,7 +1126,7 @@ private fun CommonListContent(
         }
 
         if (filteredItems.isEmpty() && searchQuery.isNotEmpty()) {
-             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+             Box(viewportModifier, contentAlignment = Alignment.Center) {
                 Text("没有找到相关视频", color = Color.Gray)
              }
         } else {
@@ -1108,12 +1149,12 @@ private fun CommonListContent(
                 contentPadding = PaddingValues(
                     start = spacing,
                     end = spacing,
-                    top = padding.calculateTopPadding() + spacing,
+                    top = spacing,
                     bottom = padding.calculateBottomPadding() + spacing + 80.dp 
                 ),
                 horizontalArrangement = Arrangement.spacedBy(spacing),
                 verticalArrangement = Arrangement.spacedBy(spacing),
-                modifier = Modifier.fillMaxSize()
+                modifier = viewportModifier
             ) {
                  itemsIndexed(
                     items = filteredItems,

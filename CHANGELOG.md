@@ -1,5 +1,91 @@
 # Changelog
 
+## v8.0.5 (2026-05-05)
+
+### 版本信息
+- 版本号从 `8.0.4` 升级到 `8.0.5`，`versionCode` 升级到 `178`。
+- 本次聚焦首页到视频详情的共享元素转场、首页导航动效，以及竖屏/平板播放布局一致性。
+
+### 更新内容
+- **共享元素详情转场**：封面、标题和元信息拆分动效角色，进入、返回和元信息跟随分别使用更合适的 spring 参数。
+- **来源页背景动效**：从首页、历史、搜索、收藏、稍后再看等视频卡片进入详情或返回时，来源页整体收缩/恢复；Android 12+ 可叠加实时模糊。
+- **转场降级策略**：共享元素未就绪、卡片转场关闭或 predictive-stable 场景下自动降级，避免返回抖动和重复 blur。
+- **动画设置**：新增“共享元素背景模糊”开关，并接入设置搜索、ViewModel、DataStore 映射和导航外观模型。
+- **视频入口覆盖**：首页多种卡片、相关推荐、竖屏互动栏、竖屏 pager、视频信息区和平板视频布局同步接入新的共享转场参数。
+- **底栏动效**：搜索胶囊、Dock 宽度、内容淡入淡出和搜索图标缩放改为先快后慢；指示器色散与 settle pulse 保持原策略。
+- **首页导航细节**：底栏释放时更早切换目标项并等待回弹收束，顶部 tab 指示器尺寸和图标/文字间距同步压缩。
+- **测试覆盖**：补充导航转场、共享元素策略、设置映射、底栏结构、顶栏样式、竖屏互动栏和平板/封面策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationAppearancePolicyTest' --tests 'com.android.purebilibili.core.store.HomeSettingsMappingPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLayoutPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest'`
+- `git diff --check`
+
+## v8.0.4 (2026-05-04)
+
+### 版本信息
+- 版本号从 `8.0.3` 升级到 `8.0.4`，`versionCode` 升级到 `177`。
+- PR / 提交来源：
+  - **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)**：`fix: 修复两个音乐发现的问题`，merge commit `3764f6d4`。
+  - **@本地修复**：首页卡片播放量显示修复，修复提交号随 8.0.4 release commit 生成。
+- 本次为音乐发现页和首页卡片统计显示维护版本。
+
+### 更新内容
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 优先使用 B 站官方 BGM `jumpUrl` 打开“发现音乐”，避免从首页、历史等入口进入视频后点击 BGM 直接进入原生音乐播放。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** WebView 放行 `music.bilibili.com` 官方音乐详情页，避免音乐发现页被原生路由提前拦截。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 接入 `x/copyright-music-publicity/bgm/multiple/music` BGM 列表接口，支持多首背景音乐识别和展开/收起展示。
+- **[@UsonTong](https://github.com/UsonTong) [#281](https://github.com/jay3-yy/BiliPai/pull/281)** 视频详情页、平板影院布局和播放状态链路同步传递完整 BGM 列表，保留单首 BGM 兼容展示。
+- **@播放量修复** 首页视频卡片封面底部播放量胶囊增加内容保底宽度，避免在评论数、在线人数和时长同时显示时被挤成 `...`。
+- **@播放量修复** 播放量文本改为一次解析后同时供封面统计和信息区统计复用，并补充卡片统计布局策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.cards.VideoCardCoverStatsLayoutPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.cards.*'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.web.WebViewNavigationPolicyTest'`
+- `git diff --check`
+
+## v8.0.3 (2026-05-03)
+
+### 版本信息
+- 版本号从 `8.0.2` 升级到 `8.0.3`，`versionCode` 升级到 `176`。
+- PR / 提交来源：
+  - PR #273：`refactor: 更好的平板/折叠屏体验，修复 UI 问题`，作者 `chenx-dust`，merge commit `b4ae9235`。
+  - 直接提交：`Fix wallpaper and video interaction UI`，作者 [`Jay3-yy`](https://github.com/jay3-yy)，commit `cf300988`。
+  - 本次维护提交：作者 [`Jay3-yy`](https://github.com/jay3-yy)，提交号随 8.0.3 release commit 生成。
+- 本次为平板/折叠屏体验、视频交互、首页背景和播放器设置维护版本。
+
+### 更新内容
+- 合入 PR #273：优化平板/折叠屏视频页与“我的”页面空间利用率，调整平板影院布局、侧边栏展开按钮和导航栏 padding，减少大屏布局压缩与留白问题。
+- 优化全局壁纸/玻璃背景下的搜索顶栏显示，避免已有全局壁纸时重复叠加搜索顶栏模糊层；补齐搜索顶栏颜色与模糊策略测试。
+- 优化首页卡片封面统计标签布局，播放量、评论/弹幕、在线人数和时长标签在窄宽度下改用可收缩/省略策略，减少封面信息挤压。
+- 优化命令弹幕交互提示：支持关闭单条提示，调整关注/一键三连卡片留白和覆盖区域，避免提示遮挡过久。
+- 调整长按倍速锁定灵敏度，区分全屏和非全屏场景，降低普通竖屏播放中误触锁定的概率。
+- 修复首页背景图片设置后可能出现两张图片上下分离或重叠的问题，背景层改为单图渲染，避免同一 URI 被重复加载叠放。
+- 播放设置中的播放器缩小选项改为视频方向策略：`关闭 / 竖屏 / 横屏 / 全部`，并按当前视频横竖屏过滤，避免选择“竖屏”后横屏视频仍触发缩小。
+- 拆出竖屏内联播放器宿主组件，降低 `VideoDetailScreen` 主 Composable 方法体积，避免 Kotlin 编译时触发 `MethodTooLarge`。
+- 补充平板/动态、搜索顶栏、命令弹幕、播放器策略、首页背景渲染和竖屏策略行为的目标单元测试。
+
+### 验证
+- PR #273 已随 merge commit `b4ae9235` 合入主分支。
+- `cf300988` 已随主分支包含动态、搜索、命令弹幕和播放器交互相关测试。
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.PortraitDetailPresentationPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.VideoDetailPlayerCollapsePolicyTest' --tests 'com.android.purebilibili.feature.home.HomeGlassVisualPolicyTest'`
+
+## v8.0.2 (2026-05-01)
+
+### 版本信息
+- 版本号从 `8.0.1` 升级到 `8.0.2`，`versionCode` 升级到 `175`。
+- 本次为全局壁纸、液态玻璃和播放体验维护版本，重点修复跨页面玻璃采样、设置分段控件字号、首页文字可读性和音频倍速失真。
+
+### 更新内容
+- 外观设置补齐首页壁纸作用范围，可选择仅首页使用或全局页面复用同一壁纸背景；全局模式下默认背景层透明显示，让动态、收藏、历史、设置等页面共享壁纸氛围。
+- 统一首页、动态、收藏、历史等页面的液态玻璃底栏采样源，底栏会同时捕获全局壁纸和页面内容；清理旧底栏玻璃渲染残留，底栏外壳、隐藏文字捕获层和分段控件使用同一套模糊参数。
+- 设置等页面的液态分段控件默认字号提升到 `14sp`，MD3 多选项 segmented control 字号同步上调，改善指示器内文字偏小和比例不协调的问题。
+- 首页视频卡片 UP 主名称、UP 标识、UP 元信息和发布时间改用 `onSurface` 派生颜色，浅色模式下更接近黑色，深色模式下自动适配高对比前景色。
+- 修复音频/听视频倍速播放时的失真问题，倍速切换后保持更稳定的音频输出。
+
+### 验证
+- 通过全局壁纸、底栏玻璃结构、设置分段控件和首页卡片元信息相关目标单测。
+
 ## v8.0.1 (2026-05-01)
 
 ### 版本信息

@@ -40,6 +40,31 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
+    fun `system wallpaper observer only runs when monet dynamic color is active`() {
+        assertEquals(
+            true,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = true,
+                sdkInt = android.os.Build.VERSION_CODES.S
+            )
+        )
+        assertEquals(
+            false,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = false,
+                sdkInt = android.os.Build.VERSION_CODES.S
+            )
+        )
+        assertEquals(
+            false,
+            shouldObserveSystemWallpaperForDynamicColor(
+                dynamicColorActive = true,
+                sdkInt = android.os.Build.VERSION_CODES.R
+            )
+        )
+    }
+
+    @Test
     fun `static color modes map to plain miuix color scheme modes`() {
         assertEquals(
             ColorSchemeMode.System,
@@ -178,5 +203,19 @@ class ThemeDynamicColorPolicyTest {
         assertTrue(calculateContrastRatio(scheme.onTertiary, scheme.tertiary) >= 4.5f)
         assertNotEquals(Color(0xFF121212), scheme.background)
         assertNotEquals(Color(0xFF1E1E1E), scheme.surface)
+    }
+
+    @Test
+    fun `static md3 dark scheme preserves selected theme color as primary`() {
+        val selectedThemeColor = Color(0xFF007AFF)
+
+        val scheme = createStaticMd3ColorScheme(
+            primaryColor = selectedThemeColor,
+            darkTheme = true,
+            amoledDarkTheme = false
+        )
+
+        assertEquals(selectedThemeColor, scheme.primary)
+        assertTrue(calculateContrastRatio(scheme.onPrimary, scheme.primary) >= 4.5f)
     }
 }

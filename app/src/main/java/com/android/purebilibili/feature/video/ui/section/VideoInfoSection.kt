@@ -45,7 +45,6 @@ import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.feature.video.ui.FollowButtonTone
 import com.android.purebilibili.feature.video.ui.FollowTextTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
-import androidx.compose.ui.platform.LocalUriHandler
 
 
 /**
@@ -169,6 +168,7 @@ fun VideoTitleWithDesc(
     info: ViewInfo,
     videoTags: List<VideoTag> = emptyList(),  //  视频标签
     bgmInfo: BgmInfo? = null, // [新增] BGM 信息
+    bgmInfoList: List<BgmInfo> = emptyList(),
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
@@ -381,12 +381,24 @@ fun VideoTitleWithDesc(
         }
 
         // [新增] BGM Info Row
-        if (bgmInfo != null) {
+        val displayBgmList = remember(bgmInfo, bgmInfoList) {
+            if (bgmInfoList.size > 1) bgmInfoList
+            else if (bgmInfo != null) listOf(bgmInfo)
+            else emptyList()
+        }
+        if (displayBgmList.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            BgmInfoRow(
-                bgmInfo = bgmInfo,
-                onBgmClick = onBgmClick
-            )
+            if (displayBgmList.size == 1) {
+                BgmInfoRow(
+                    bgmInfo = displayBgmList.first(),
+                    onBgmClick = onBgmClick
+                )
+            } else {
+                BgmInfoListRow(
+                    bgmList = displayBgmList,
+                    onBgmClick = onBgmClick
+                )
+            }
         }
         
         //  Description - 默认隐藏，展开后显示
@@ -527,7 +539,6 @@ fun UpInfoSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -870,33 +881,33 @@ fun BgmInfoRow(
     bgmInfo: BgmInfo,
     onBgmClick: (BgmInfo) -> Unit = {}
 ) {
-    val uriHandler = LocalUriHandler.current
-    
     Surface(
         // Optimization: Use primary color with very low alpha for a subtle, branded look
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                if (bgmInfo.jumpUrl.isNotEmpty() || bgmInfo.musicId.isNotEmpty()) {
-                    onBgmClick(bgmInfo)
-                }
-            }
+            .clickable { onBgmClick(bgmInfo) }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = CupertinoIcons.Default.MusicNote, 
+                imageVector = CupertinoIcons.Default.MusicNote,
                 contentDescription = "BGM",
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = bgmInfo.musicTitle.ifEmpty { "发现音乐" },
+                text = buildString {
+                    append(bgmInfo.musicTitle.ifEmpty { "发现音乐" })
+                    if (bgmInfo.actor.isNotBlank()) {
+                        append(" - ")
+                        append(bgmInfo.actor)
+                    }
+                },
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Medium
                 ),
@@ -905,13 +916,76 @@ fun BgmInfoRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (bgmInfo.jumpUrl.isNotEmpty()) {
+        }
+    }
+}
+
+@Composable
+fun BgmInfoListRow(
+    bgmList: List<BgmInfo>,
+    onBgmClick: (BgmInfo) -> Unit = {}
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val displayList = if (expanded) bgmList else bgmList.take(2)
+
+    Surface(
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(
-                    imageVector = CupertinoIcons.Default.ChevronForward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    imageVector = CupertinoIcons.Default.MusicNote,
+                    contentDescription = "BGM",
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                     modifier = Modifier.size(14.dp)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "发现 ${bgmList.size} 首音乐",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                    modifier = Modifier.weight(1f)
+                )
+                if (bgmList.size > 2) {
+                    Text(
+                        text = if (expanded) "收起" else "展开",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        modifier = Modifier.clickable { expanded = !expanded }
+                    )
+                }
+            }
+            displayList.forEach { bgm ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onBgmClick(bgm) }
+                        .padding(start = 22.dp, top = 2.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = buildString {
+                            append(bgm.musicTitle.ifEmpty { "未知音乐" })
+                            if (bgm.actor.isNotBlank()) {
+                                append(" - ")
+                                append(bgm.actor)
+                            }
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

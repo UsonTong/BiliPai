@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components.cards
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -64,5 +65,17 @@ class VideoCardScrollLiteVisualPolicyTest {
 
         assertEquals(3f, policy.coverShadowElevationDp, 0.0001f)
         assertTrue(policy.showSecondaryStatsRow)
+    }
+
+    @Test
+    fun `home video metadata uses on surface colors for readable up and publish text`() {
+        val onSurface = Color(0xFF1D1B20)
+        val colors = resolveHomeVideoCardMetadataColors(onSurface)
+
+        assertEquals(onSurface, colors.upNameColor)
+        assertEquals(onSurface.copy(alpha = 0.82f), colors.upMetaColor)
+        assertEquals(onSurface.copy(alpha = 0.68f), colors.upBadgeTextColor)
+        assertEquals(onSurface.copy(alpha = 0.10f), colors.upBadgeBackgroundColor)
+        assertEquals(onSurface.copy(alpha = 0.72f), colors.publishTimeColor)
     }
 }

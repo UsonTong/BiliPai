@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <sub>最后更新：2026-05-01 · 文档已同步至 v8.0.1（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
+  <sub>最后更新：2026-05-05 · 文档已同步至 v8.0.5（以 <a href="CHANGELOG.md">CHANGELOG</a> 与源码为准）</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.5-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -610,15 +610,14 @@ app/src/main/java/com/android/purebilibili
 
 查看完整更新记录：[CHANGELOG.md](CHANGELOG.md)
 
-### 最近更新 (v8.0.1 · 2026-05-01)
+### 最近更新 (v8.0.5 · 2026-05-05)
 
-- 🧠 优化「今日推荐单」算法：新增轻松/学习模式聚焦评分、主题去重、偏好 UP 分组和“不感兴趣”负反馈降权。
-- 📊 今日推荐单设置页新增“推荐依据”，展示当前模式侧重点、近期偏好 UP、最近不感兴趣样本和已降权信号。
-- 🔌 新增内置「CDN 属地优选」插件，默认关闭，面向 CDN 线路不稳定、跨地区网络或海外出口用户。
-- 🛠️ 修复 CDN 插件海外 catalog 与旧缓存 host 导致播放异常的问题，始终保留原始播放 URL 作为回退线路。
-- 📚 同步插件开发入口：[JSON / 外部插件开发](docs/PLUGIN_DEVELOPMENT.md) · [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) · [Plugin SDK 中文文档](plugins/sdk/README.md)。
-- 🧩 插件中心区分内置插件能力与外部插件授权文案，官方内置插件作者统一为 `BiliPai项目组`。
-- 🔖 版本号升级到 `8.0.1`，`versionCode` 升级到 `174`。
+- 🎬 视频详情共享元素转场重做：进入/返回支持来源页整体收缩与恢复，封面、标题和元信息使用分角色动效。
+- 🌫️ 新增“共享元素背景模糊”开关；Android 12+ 可实时模糊，未就绪或预测返回场景自动降级。
+- 🔎 底栏搜索胶囊、Dock 宽度和内容淡入淡出改为先快后慢，指示器色散与 settle pulse 不变。
+- 📱 视频卡片、相关推荐、竖屏互动栏、竖屏 pager、视频信息区和平板布局统一转场参数。
+- 🧭 顶部 tab 和底栏释放回弹细节收敛，补充导航、设置、底栏、顶栏和视频布局策略测试。
+- 🔖 版本号升级到 `8.0.5`，`versionCode` 升级到 `178`。
 
 ### 历史版本
 

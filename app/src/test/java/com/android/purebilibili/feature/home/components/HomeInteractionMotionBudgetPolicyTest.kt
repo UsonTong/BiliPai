@@ -109,8 +109,8 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
-    fun topTabTapPolicy_usesImmediatePageSwitchWhenTargetChanges() {
-        assertTrue(shouldSnapHomeTopTabSelection(currentPage = 0, targetPage = 1))
+    fun topTabTapPolicy_keepsPagerAnimationWhenTargetChanges() {
+        assertFalse(shouldSnapHomeTopTabSelection(currentPage = 0, targetPage = 1))
         assertFalse(shouldSnapHomeTopTabSelection(currentPage = 2, targetPage = 2))
     }
 
