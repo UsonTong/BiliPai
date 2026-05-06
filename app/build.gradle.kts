@@ -346,7 +346,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-process:$lifecycleVersion")  // 🔋 ProcessLifecycleOwner 后台检测
     implementation("androidx.metrics:metrics-performance:1.0.0")
-    
+    implementation("androidx.window:window")
+
     // --- 8.1 WorkManager (后台下载任务) ---
     implementation("androidx.work:work-runtime-ktx:2.11.2")
     // --- 8.2 DLNA & Local Proxy (投屏) ---
