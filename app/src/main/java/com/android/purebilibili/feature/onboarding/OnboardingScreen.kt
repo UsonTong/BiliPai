@@ -58,23 +58,100 @@ fun OnboardingScreen(
             .fillMaxSize()
             .testTag("onboarding_root")
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .systemBarsPadding() 
-        ) {
-            
-            // --- Top Content (Pager) ---
+        Scaffold(
+            bottomBar = {
+                // --- Bottom Control Area ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .padding(bottom = 48.dp)
+                        .navigationBarsPadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(32.dp)
+                ) {
+                    // iOS-style Page Indicator
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(4) { iteration ->
+                            val isSelected = pagerState.currentPage == iteration
+                            // Animate width for the selected indicator
+                            val width by animateDpAsState(
+                                targetValue = if (isSelected) 24.dp else 8.dp,
+                                label = "indicatorWidth"
+                            )
+                            val color = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+
+                            Box(
+                                modifier = Modifier
+                                    .height(8.dp)
+                                    .width(width)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                        }
+                    }
+
+                    // Action Button Area (Keeps layout stable)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = pagerState.currentPage == 3,
+                            enter = fadeIn() + scaleIn(),
+                            exit = fadeOut() + scaleOut()
+                        ) {
+                            val isLastPage = pagerState.currentPage == lastPage
+                            val actionColors =
+                                com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors(
+                                    MaterialTheme.colorScheme
+                                )
+                            Button(
+                                onClick = advanceOrFinish,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .testTag("onboarding_action_button"),
+                                shape = RoundedCornerShape(28.dp), // Squircle-ish
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = actionColors.backgroundColor,
+                                    contentColor = actionColors.contentColor
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 0.dp,
+                                    pressedElevation = 0.dp
+                                )
+                            ) {
+                                Text(
+                                    text = if (isLastPage) "开始体验" else "下一步",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+
+            }
+        ) { innerPadding ->
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxSize(),
                 userScrollEnabled = true
             ) { page ->
+                // --- Top Content (Pager) ---
                 // Basic Parallax/Scale Effect
-                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                
+                val pageOffset =
+                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -85,6 +162,7 @@ fun OnboardingScreen(
                             scaleY = scale
                             alpha = lerp(1f, 0.3f, pageOffset.absoluteValue)
                         }
+                        .padding(innerPadding)
                         .padding(horizontal = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -97,82 +175,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // --- Bottom Control Area ---
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(32.dp)
-            ) {
-                
-                // iOS-style Page Indicator
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(4) { iteration ->
-                        val isSelected = pagerState.currentPage == iteration
-                        // Animate width for the selected indicator
-                        val width by animateDpAsState(
-                            targetValue = if (isSelected) 24.dp else 8.dp,
-                            label = "indicatorWidth"
-                        )
-                        val color = if (isSelected) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-
-                        Box(
-                            modifier = Modifier
-                                .height(8.dp)
-                                .width(width)
-                                .clip(CircleShape)
-                                .background(color)
-                        )
-                    }
-                }
-
-                // Action Button Area (Keeps layout stable)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = pagerState.currentPage == 3,
-                        enter = fadeIn() + scaleIn(),
-                        exit = fadeOut() + scaleOut()
-                    ) {
-                        val isLastPage = pagerState.currentPage == lastPage
-                        val actionColors = com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors(
-                            MaterialTheme.colorScheme
-                        )
-                        Button(
-                            onClick = advanceOrFinish,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .testTag("onboarding_action_button"),
-                            shape = RoundedCornerShape(28.dp), // Squircle-ish
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = actionColors.backgroundColor,
-                                contentColor = actionColors.contentColor
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(
-                                defaultElevation = 0.dp,
-                                pressedElevation = 0.dp
-                            )
-                        ) {
-                            Text(
-                                text = if (isLastPage) "开始体验" else "下一步",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
