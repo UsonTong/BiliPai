@@ -8,6 +8,7 @@ import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncSta
 import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncStateAfterResult
 import com.android.purebilibili.feature.video.danmaku.resolveDanmakuCloudSyncStateAfterStarted
 import com.android.purebilibili.feature.video.danmaku.shouldRunDanmakuManualCloudSync
+import com.android.purebilibili.feature.video.danmaku.filterVisibleCommandDanmakuItems
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.viewmodel.PlayerUiState
 import com.android.purebilibili.feature.video.ui.overlay.FullscreenDoubleTapAction
@@ -1582,6 +1583,7 @@ fun VideoPlayerSection(
         val danmakuAllowBottom = danmakuSettings.allowBottom
         val danmakuAllowColorful = danmakuSettings.allowColorful
         val danmakuAllowSpecial = danmakuSettings.allowSpecial
+        val danmakuBlockAttentionCommands = danmakuSettings.blockAttentionCommands
         val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
         val danmakuFullscreenPanelWidthMode by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuFullscreenPanelWidthMode(context)
@@ -2579,14 +2581,20 @@ fun VideoPlayerSection(
         }
 
         val commandDanmakuList by danmakuManager.commandDanmakuFlow.collectAsStateWithLifecycle()
-        if (shouldShowDanmakuLayer && commandDanmakuList.isNotEmpty()) {
+        val visibleCommandDanmakuList = remember(commandDanmakuList, danmakuBlockAttentionCommands) {
+            filterVisibleCommandDanmakuItems(
+                items = commandDanmakuList,
+                blockAttentionCommands = danmakuBlockAttentionCommands
+            )
+        }
+        if (shouldShowDanmakuLayer && visibleCommandDanmakuList.isNotEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clipToBounds()
             ) {
                 com.android.purebilibili.feature.video.ui.overlay.CommandDanmakuOverlay(
-                    items = commandDanmakuList,
+                    items = visibleCommandDanmakuList,
                     player = playerState.player,
                     onFollowClick = onToggleFollow,
                     onTripleClick = onTriple,

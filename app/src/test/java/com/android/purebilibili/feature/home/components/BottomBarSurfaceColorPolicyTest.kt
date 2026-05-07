@@ -271,6 +271,110 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
+    fun `android native glass export tint preserves theme hue`() {
+        val themeColor = Color(0xFF4F7CFF)
+        val containerColor = Color(0xFFE8ECEF)
+        val color = resolveAndroidNativeExportTintColor(
+            themeColor = themeColor,
+            darkTheme = false,
+            containerColor = containerColor,
+            glassEnabled = true
+        )
+
+        assertEquals(themeColor.red, color.red, 0.001f)
+        assertEquals(themeColor.green, color.green, 0.001f)
+        assertEquals(themeColor.blue, color.blue, 0.001f)
+        assertEquals(themeColor.alpha, color.alpha, 0.001f)
+    }
+
+    @Test
+    fun `android native glass visible selected item stays themed while indicator is idle`() {
+        val unselected = Color(0xFF202124)
+        val selected = Color(0xFF00A1D6)
+        val color = resolveBottomBarGlassVisibleContentColor(
+            unselectedColor = unselected,
+            selectedColor = selected,
+            themeWeight = 1f,
+            glassEnabled = true,
+            indicatorProgress = 0f
+        )
+
+        assertEquals(selected.red, color.red, 0.001f)
+        assertEquals(selected.green, color.green, 0.001f)
+        assertEquals(selected.blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `android native glass visible layer turns neutral only while indicator refracts`() {
+        val unselected = Color(0xFF202124)
+        val selected = Color(0xFF00A1D6)
+        val color = resolveBottomBarGlassVisibleContentColor(
+            unselectedColor = unselected,
+            selectedColor = selected,
+            themeWeight = 1f,
+            glassEnabled = true,
+            indicatorProgress = 1f
+        )
+
+        assertEquals(unselected.red, color.red, 0.001f)
+        assertEquals(unselected.green, color.green, 0.001f)
+        assertEquals(unselected.blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `android native glass export content keeps full theme hue while partially covered`() {
+        val unselected = Color(0xFF202124)
+        val selected = Color(0xFF00A1D6)
+        val color = resolveBottomBarGlassExportContentColor(
+            unselectedColor = unselected,
+            selectedColor = selected,
+            themeWeight = 0.42f,
+            glassEnabled = true
+        )
+
+        assertEquals(selected.red, color.red, 0.001f)
+        assertEquals(selected.green, color.green, 0.001f)
+        assertEquals(selected.blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `android native glass export content keeps uncovered item neutral`() {
+        val unselected = Color(0xFF202124)
+        val selected = Color(0xFF00A1D6)
+        val color = resolveBottomBarGlassExportContentColor(
+            unselectedColor = unselected,
+            selectedColor = selected,
+            themeWeight = 0f,
+            glassEnabled = true
+        )
+
+        assertEquals(unselected.red, color.red, 0.001f)
+        assertEquals(unselected.green, color.green, 0.001f)
+        assertEquals(unselected.blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `android native idle glass indicator keeps neutral gray capsule`() {
+        val themeIndicator = resolveAndroidNativeIndicatorColor(
+            themeColor = Color(0xFF00A1D6),
+            darkTheme = false
+        )
+        val idleIndicator = resolveAndroidNativeIdleIndicatorSurfaceColor(
+            darkTheme = false
+        )
+
+        assertEquals(Color.Black.red, idleIndicator.red, 0.001f)
+        assertEquals(Color.Black.green, idleIndicator.green, 0.001f)
+        assertEquals(Color.Black.blue, idleIndicator.blue, 0.001f)
+        assertEquals(0.1f, idleIndicator.alpha, 0.003f)
+        assertFalse(
+            idleIndicator.red == themeIndicator.red &&
+                idleIndicator.green == themeIndicator.green &&
+                idleIndicator.blue == themeIndicator.blue
+        )
+    }
+
+    @Test
     fun `moving floating bottom bar staggers shell and indicator refraction offsets`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 1.35f,

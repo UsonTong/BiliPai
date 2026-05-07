@@ -196,10 +196,18 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     /**
      * 加载番剧播放（从详情页进入）
      */
-    fun loadBangumiPlay(seasonId: Long, epId: Long) {
-        com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📥 loadBangumiPlay: seasonId=$seasonId, epId=$epId, exoPlayer=${exoPlayer?.hashCode()}")
+    fun loadBangumiPlay(
+        seasonId: Long,
+        epId: Long,
+        resumePositionMs: Long = 0L
+    ) {
+        val startPositionMs = resumePositionMs.coerceAtLeast(0L)
+        com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📥 loadBangumiPlay: seasonId=$seasonId, epId=$epId, resume=${startPositionMs}ms, exoPlayer=${exoPlayer?.hashCode()}")
         if (seasonId == currentSeasonId && epId == currentEpId && _uiState.value is BangumiPlayerState.Success) {
             com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "⏭️ loadBangumiPlay: skipped (already loaded)")
+            if (startPositionMs > 0L) {
+                exoPlayer?.seekTo(startPositionMs)
+            }
             return // 避免重复加载
         }
         
@@ -225,7 +233,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 val episodeIndex = detail.episodes?.indexOfFirst { it.id == episode.id } ?: 0
                 
                 // 2. 获取播放地址
-                fetchPlayUrl(detail, episode, episodeIndex)
+                fetchPlayUrl(detail, episode, episodeIndex, startPositionMs)
                 
             }.onFailure { e ->
                 _uiState.value = BangumiPlayerState.Error(
@@ -239,7 +247,12 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     /**
      * 获取播放地址
      */
-    private suspend fun fetchPlayUrl(detail: BangumiDetail, episode: BangumiEpisode, episodeIndex: Int) {
+    private suspend fun fetchPlayUrl(
+        detail: BangumiDetail,
+        episode: BangumiEpisode,
+        episodeIndex: Int,
+        startPositionMs: Long = 0L
+    ) {
         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "🎬 fetchPlayUrl: epId=${episode.id}, cid=${episode.cid}")
         val playUrlResult = BangumiRepository.getBangumiPlayUrl(
             epId = episode.id,
@@ -381,9 +394,18 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             
             //  [修复] 多段 durl 使用拼接播放，避免只播第一段
             if (audioUrl.isNullOrEmpty() && durlSegmentUrls.size > 1) {
-                playSegmentedVideo(durlSegmentUrls, referer = referer)
+                playSegmentedVideo(
+                    segmentUrls = durlSegmentUrls,
+                    seekToMs = startPositionMs,
+                    referer = referer
+                )
             } else {
-                playDashVideo(videoUrl, audioUrl, referer = referer)
+                playDashVideo(
+                    videoUrl = videoUrl,
+                    audioUrl = audioUrl,
+                    seekToMs = startPositionMs,
+                    referer = referer
+                )
             }
             
             //  [重构] 使用基类方法加载弹幕
@@ -396,8 +418,22 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             //  [新增] 上报播放心跳，记录到历史记录
             episode.bvid?.let { bvid ->
                 viewModelScope.launch {
+                    val currentPositionMs = getPlayerCurrentPosition()
+                    if (!shouldSendBangumiPlaybackHeartbeat(
+                            isPlaying = exoPlayer?.isPlaying == true,
+                            bvid = bvid,
+                            cid = episode.cid,
+                            currentPositionMs = currentPositionMs
+                        )
+                    ) {
+                        return@launch
+                    }
                     try {
-                        com.android.purebilibili.data.repository.VideoRepository.reportPlayHeartbeat(bvid, episode.cid, 0)
+                        com.android.purebilibili.data.repository.VideoRepository.reportPlayHeartbeat(
+                            bvid,
+                            episode.cid,
+                            currentPositionMs / 1000L
+                        )
                         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", " Heartbeat reported for bangumi: $bvid cid=${episode.cid}")
                     } catch (e: Exception) {
                         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", " Heartbeat failed: ${e.message}")

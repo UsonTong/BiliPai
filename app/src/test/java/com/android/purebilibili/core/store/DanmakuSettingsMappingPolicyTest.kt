@@ -41,6 +41,7 @@ class DanmakuSettingsMappingPolicyTest {
         assertTrue(result.allowBottom)
         assertTrue(result.allowColorful)
         assertTrue(result.allowSpecial)
+        assertFalse(result.blockAttentionCommands)
         assertFalse(result.smartOcclusion)
         assertEquals(DanmakuPanelWidthMode.THIRD, result.fullscreenPanelWidthMode)
         assertEquals("", result.blockRulesRaw)
@@ -77,6 +78,7 @@ class DanmakuSettingsMappingPolicyTest {
             booleanPreferencesKey("danmaku_allow_bottom") to false,
             booleanPreferencesKey("danmaku_allow_colorful") to false,
             booleanPreferencesKey("danmaku_allow_special") to false,
+            booleanPreferencesKey("danmaku_block_attention_commands") to true,
             booleanPreferencesKey("danmaku_smart_occlusion") to true,
             intPreferencesKey("danmaku_fullscreen_panel_width_mode") to DanmakuPanelWidthMode.HALF.value,
             stringPreferencesKey("danmaku_block_rules") to "剧透\n广告\n  \n测试"
@@ -95,6 +97,7 @@ class DanmakuSettingsMappingPolicyTest {
         assertFalse(result.allowBottom)
         assertFalse(result.allowColorful)
         assertFalse(result.allowSpecial)
+        assertTrue(result.blockAttentionCommands)
         assertTrue(result.smartOcclusion)
         assertEquals(DanmakuPanelWidthMode.THIRD, result.fullscreenPanelWidthMode)
         assertEquals("剧透\n广告\n  \n测试", result.blockRulesRaw)

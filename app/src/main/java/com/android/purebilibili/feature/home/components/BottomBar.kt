@@ -59,7 +59,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer  //  晃动动画
 import androidx.compose.ui.graphics.lerp as lerpColor
@@ -623,7 +622,12 @@ internal fun Modifier.kernelSuFloatingDockSurface(
                             vibrancy()
                             blur(blurRadius.toPx())
                             if (glassEnabled && drawShellLens) {
-                                lens(24.dp.toPx(), 24.dp.toPx())
+                                lens(
+                                    refractionHeight = 24.dp.toPx(),
+                                    refractionAmount = 24.dp.toPx(),
+                                    depthEffect = true,
+                                    chromaticAberration = true
+                                )
                             }
                         }
                     },
@@ -669,9 +673,55 @@ internal fun resolveAndroidNativeIndicatorColor(
 
 internal fun resolveAndroidNativeExportTintColor(
     themeColor: Color,
-    darkTheme: Boolean
+    darkTheme: Boolean,
+    containerColor: Color = Color.Unspecified,
+    glassEnabled: Boolean = false
 ): Color {
     return themeColor
+}
+
+internal fun resolveBottomBarGlassVisibleContentColor(
+    unselectedColor: Color,
+    selectedColor: Color,
+    themeWeight: Float,
+    glassEnabled: Boolean,
+    indicatorProgress: Float
+): Color {
+    if (glassEnabled && indicatorProgress > 0.001f) {
+        return unselectedColor
+    }
+    return lerpColor(
+        start = unselectedColor,
+        stop = selectedColor,
+        fraction = themeWeight.coerceIn(0f, 1f)
+    )
+}
+
+internal fun resolveBottomBarGlassExportContentColor(
+    unselectedColor: Color,
+    selectedColor: Color,
+    themeWeight: Float,
+    glassEnabled: Boolean
+): Color {
+    val clampedWeight = themeWeight.coerceIn(0f, 1f)
+    if (glassEnabled && clampedWeight > 0.001f) {
+        return selectedColor
+    }
+    return lerpColor(
+        start = unselectedColor,
+        stop = selectedColor,
+        fraction = clampedWeight
+    )
+}
+
+internal fun resolveAndroidNativeIdleIndicatorSurfaceColor(
+    darkTheme: Boolean
+): Color {
+    return if (darkTheme) {
+        Color.White.copy(alpha = 0.1f)
+    } else {
+        Color.Black.copy(alpha = 0.1f)
+    }
 }
 
 internal fun resolveAndroidNativePanelOffsetFraction(
@@ -766,6 +816,7 @@ internal data class BottomBarIndicatorVisualPolicy(
 )
 
 internal const val BOTTOM_BAR_REFRACTION_IDLE_HOLD_MS = 96L
+private const val BOTTOM_BAR_INDICATOR_DRAG_SCALE_TARGET = 88f / 56f
 
 internal fun resolveBottomBarIndicatorVisualPolicyWithHold(
     basePolicy: BottomBarIndicatorVisualPolicy,
@@ -797,6 +848,21 @@ internal data class BottomBarRefractionMotionProfile(
     val chromaticBoostScale: Float
 )
 
+internal data class BottomBarVerticalGlassMotionProfile(
+    val progress: Float
+)
+
+internal data class BottomBarBackdropPresetLensSpec(
+    val refractionHeightDp: Float,
+    val refractionAmountDp: Float
+)
+
+internal data class BottomBarBackdropPresetProgress(
+    val shellProgress: Float,
+    val captureProgress: Float,
+    val indicatorProgress: Float
+)
+
 internal data class BottomBarItemMotionVisual(
     val themeWeight: Float,
     val scale: Float,
@@ -812,6 +878,11 @@ internal data class BottomBarSettlePulseTransform(
 internal data class BottomBarClickPulseTransform(
     val scaleX: Float,
     val scaleY: Float = 1f
+)
+
+internal data class BottomBarIndicatorLayerTransform(
+    val scaleX: Float,
+    val scaleY: Float
 )
 
 private data class BottomBarSettlePulseSnapshot(
@@ -879,6 +950,94 @@ internal fun resolveBottomBarClickPulseTransform(
         }
     }
     return BottomBarClickPulseTransform(scaleX = scaleX)
+}
+
+internal fun resolveBottomBarLiquidGlassLensProgress(
+    motionProgress: Float,
+    idleProgress: Float = 0f
+): Float {
+    return lerp(
+        idleProgress.coerceIn(0f, 1f),
+        1f,
+        motionProgress.coerceIn(0f, 1f)
+    )
+}
+
+internal fun resolveBottomBarLiquidGlassHighlightAlpha(
+    motionProgress: Float
+): Float {
+    return resolveBottomBarLiquidGlassLensProgress(
+        motionProgress = motionProgress,
+        idleProgress = 0.22f
+    )
+}
+
+internal fun resolveBottomBarVerticalGlassMotionProfile(
+    scrollOffsetPx: Float,
+    glassEnabled: Boolean,
+    scrollRangePx: Float = 180f
+): BottomBarVerticalGlassMotionProfile {
+    if (!glassEnabled || scrollRangePx <= 0f) {
+        return BottomBarVerticalGlassMotionProfile(
+            progress = 0f
+        )
+    }
+
+    val rawProgress = (scrollOffsetPx.coerceAtLeast(0f) / scrollRangePx).coerceIn(0f, 1f)
+    val progress = rawProgress * rawProgress * (3f - 2f * rawProgress)
+    return BottomBarVerticalGlassMotionProfile(
+        progress = progress
+    )
+}
+
+internal fun resolveBottomBarBackdropPresetCaptureLens(
+    progress: Float
+): BottomBarBackdropPresetLensSpec {
+    val clamped = progress.coerceIn(0f, 1f)
+    return BottomBarBackdropPresetLensSpec(
+        refractionHeightDp = 24f * clamped,
+        refractionAmountDp = 24f * clamped
+    )
+}
+
+internal fun resolveBottomBarBackdropPresetIndicatorLens(
+    progress: Float
+): BottomBarBackdropPresetLensSpec {
+    val clamped = progress.coerceIn(0f, 1f)
+    return BottomBarBackdropPresetLensSpec(
+        refractionHeightDp = 10f * clamped,
+        refractionAmountDp = 14f * clamped
+    )
+}
+
+internal fun resolveBottomBarBackdropPresetProgress(
+    motionProgress: Float,
+    verticalProgress: Float,
+    pressProgress: Float
+): BottomBarBackdropPresetProgress {
+    val clampedMotion = motionProgress.coerceIn(0f, 1f)
+    val clampedVertical = verticalProgress.coerceIn(0f, 1f)
+    return BottomBarBackdropPresetProgress(
+        shellProgress = maxOf(pressProgress.coerceIn(0f, 1f), clampedVertical),
+        captureProgress = maxOf(clampedMotion, clampedVertical),
+        indicatorProgress = clampedMotion
+    )
+}
+
+internal fun resolveBottomBarIndicatorLayerTransform(
+    motionProgress: Float,
+    velocityItemsPerSecond: Float,
+    motionSpec: com.android.purebilibili.core.ui.motion.BottomBarMotionSpec = resolveBottomBarMotionSpec()
+): BottomBarIndicatorLayerTransform {
+    val clampedProgress = motionProgress.coerceIn(0f, 1f)
+    val baseScale = lerp(1f, BOTTOM_BAR_INDICATOR_DRAG_SCALE_TARGET, clampedProgress)
+    val velocity = velocityItemsPerSecond / 10f
+    val velocityScaleX = (velocity * 0.75f).coerceIn(-0.2f, 0.2f)
+    val velocityScaleY = (velocity * 0.25f).coerceIn(-0.2f, 0.2f)
+    return BottomBarIndicatorLayerTransform(
+        scaleX = baseScale / (1f - velocityScaleX),
+        scaleY = baseScale * (1f - velocityScaleY)
+    )
 }
 
 @Composable
@@ -1081,7 +1240,7 @@ internal fun resolveBottomBarRefractionMotionProfile(
         visiblePanelOffsetFraction = panelOffsetFraction * 0.25f,
         visibleSelectionEmphasis = lerp(1f, 0.28f, progress),
         exportSelectionEmphasis = lerp(1f, 0.52f, progress),
-        exportCaptureWidthScale = 1f,
+        exportCaptureWidthScale = lerp(1f, 1.16f, progress),
         forceChromaticAberration = progress > 0.02f,
         indicatorLensAmountScale = lerp(1f, 1.34f, progress),
         indicatorLensHeightScale = lerp(1f, 1.18f, progress),
@@ -1309,6 +1468,7 @@ fun FrostedBottomBar(
                 homeSettings = homeSettings,
                 onSearchClick = onSearchClick,
                 onSearchKeywordSubmit = onSearchKeywordSubmit,
+                scrollOffset = scrollOffset,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget
@@ -1330,6 +1490,7 @@ fun FrostedBottomBar(
                 homeSettings = homeSettings,
                 onSearchClick = onSearchClick,
                 onSearchKeywordSubmit = onSearchKeywordSubmit,
+                scrollOffset = scrollOffset,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget
@@ -1383,7 +1544,8 @@ fun FrostedBottomBar(
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
-            onSearchKeywordSubmit = onSearchKeywordSubmit
+            onSearchKeywordSubmit = onSearchKeywordSubmit,
+            scrollOffset = scrollOffset
         )
         return
     }
@@ -1404,6 +1566,7 @@ fun FrostedBottomBar(
         homeSettings = homeSettings,
         onSearchClick = onSearchClick,
         onSearchKeywordSubmit = onSearchKeywordSubmit,
+        scrollOffset = scrollOffset,
         motionTier = motionTier,
         isTransitionRunning = isTransitionRunning,
         forceLowBlurBudget = forceLowBlurBudget
@@ -1427,6 +1590,7 @@ private fun MaterialBottomBar(
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
     onSearchClick: () -> Unit,
     onSearchKeywordSubmit: (String) -> Unit,
+    scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean
@@ -1491,7 +1655,8 @@ private fun MaterialBottomBar(
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
-            onSearchKeywordSubmit = onSearchKeywordSubmit
+            onSearchKeywordSubmit = onSearchKeywordSubmit,
+            scrollOffset = scrollOffset
         )
         return
     }
@@ -1620,6 +1785,7 @@ private fun MiuixBottomBar(
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
     onSearchClick: () -> Unit,
     onSearchKeywordSubmit: (String) -> Unit,
+    scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean
@@ -1684,7 +1850,8 @@ private fun MiuixBottomBar(
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
-            onSearchKeywordSubmit = onSearchKeywordSubmit
+            onSearchKeywordSubmit = onSearchKeywordSubmit,
+            scrollOffset = scrollOffset
         )
         return
     }
@@ -1873,7 +2040,8 @@ private fun KernelSuAlignedBottomBar(
     bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
         BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     onSearchClick: () -> Unit = {},
-    onSearchKeywordSubmit: (String) -> Unit = {}
+    onSearchKeywordSubmit: (String) -> Unit = {},
+    scrollOffset: Float = 0f
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
     val tabsBackdrop = rememberLayerBackdrop()
@@ -1922,15 +2090,15 @@ private fun KernelSuAlignedBottomBar(
         motionSpec = bottomBarMotionSpec
     )
     val motionProgress = maxOf(pressMotionProgress, refractionMotionProfile.progress)
+    val verticalGlassProfile = resolveBottomBarVerticalGlassMotionProfile(
+        scrollOffsetPx = scrollOffset,
+        glassEnabled = glassEnabled
+    )
     val contentBackdrop = if (backdrop != null) {
         rememberCombinedBackdrop(backdrop, tabsBackdrop)
     } else {
         null
     }
-    val exportTintColor = resolveAndroidNativeExportTintColor(
-        themeColor = selectedColor,
-        darkTheme = isDarkTheme
-    )
     var searchExpansionOverride by remember {
         mutableStateOf(BottomBarSearchExpansionOverride.FOLLOW_AUTO)
     }
@@ -2051,10 +2219,29 @@ private fun KernelSuAlignedBottomBar(
                 derivedStateOf {
                     val fraction = (dampedDragState.dragOffset / itemWidthPx).coerceIn(-1f, 1f)
                     with(density) {
-                        4.dp.toPx() * fraction.sign * EaseOut.transform(abs(fraction))
+                        bottomBarMotionSpec.refraction.panelOffsetMaxDp.dp.toPx() *
+                            fraction.sign *
+                            EaseOut.transform(abs(fraction))
                     }
                 }
             }
+            val backdropPresetProgress = resolveBottomBarBackdropPresetProgress(
+                motionProgress = motionProgress,
+                verticalProgress = verticalGlassProfile.progress,
+                pressProgress = dampedDragState.pressProgress
+            )
+            val captureLensSpec = resolveBottomBarBackdropPresetCaptureLens(
+                progress = backdropPresetProgress.captureProgress
+            )
+            val indicatorLensSpec = resolveBottomBarBackdropPresetIndicatorLens(
+                progress = backdropPresetProgress.indicatorProgress
+            )
+            val captureHighlightAlpha = resolveBottomBarLiquidGlassHighlightAlpha(
+                backdropPresetProgress.captureProgress
+            )
+            val indicatorHighlightAlpha = resolveBottomBarLiquidGlassHighlightAlpha(
+                backdropPresetProgress.indicatorProgress
+            )
             fun itemVisual(
                 index: Int,
                 selectionEmphasis: Float
@@ -2091,11 +2278,23 @@ private fun KernelSuAlignedBottomBar(
             fun visibleItemContentColor(
                 item: BottomNavItem?,
                 visual: BottomBarItemMotionVisual
-            ): Color = if (glassEnabled) {
-                unselectedColor
-            } else {
-                itemContentColor(item, visual)
-            }
+            ): Color = resolveBottomBarGlassVisibleContentColor(
+                unselectedColor = unselectedColor,
+                selectedColor = selectedContentColor(item),
+                themeWeight = visual.themeWeight,
+                glassEnabled = glassEnabled,
+                indicatorProgress = backdropPresetProgress.indicatorProgress
+            )
+
+            fun exportItemContentColor(
+                item: BottomNavItem?,
+                visual: BottomBarItemMotionVisual
+            ): Color = resolveBottomBarGlassExportContentColor(
+                unselectedColor = unselectedColor,
+                selectedColor = selectedContentColor(item),
+                themeWeight = visual.themeWeight,
+                glassEnabled = glassEnabled
+            )
 
             Row(
                 modifier = Modifier
@@ -2113,7 +2312,7 @@ private fun KernelSuAlignedBottomBar(
                         .matchParentSize()
                         .graphicsLayer {
                             translationX = panelOffsetPx
-                            val progress = dampedDragState.pressProgress
+                            val progress = backdropPresetProgress.shellProgress
                             if (glassEnabled && size.width > 0f) {
                                 val bumpScale = lerp(1f, 1f + 16.dp.toPx() / size.width, progress)
                                 scaleX = bumpScale
@@ -2199,7 +2398,10 @@ private fun KernelSuAlignedBottomBar(
                         .clearAndSetSemantics {}
                         .alpha(0f)
                         .layerBackdrop(tabsBackdrop)
-                        .graphicsLayer { translationX = panelOffsetPx }
+                        .graphicsLayer {
+                            translationX = panelOffsetPx
+                            scaleX = refractionMotionProfile.exportCaptureWidthScale
+                        }
                         .run {
                             if (backdrop != null && glassEnabled) {
                                 drawBackdrop(
@@ -2209,16 +2411,14 @@ private fun KernelSuAlignedBottomBar(
                                         vibrancy()
                                         blur(tuning.shellBlurRadiusDp.dp.toPx())
                                         lens(
-                                            refractionHeight = 24.dp.toPx() *
-                                                motionProgress *
-                                                refractionMotionProfile.indicatorLensHeightScale,
-                                            refractionAmount = 24.dp.toPx() *
-                                                motionProgress *
-                                                refractionMotionProfile.indicatorLensAmountScale
+                                            refractionHeight = captureLensSpec.refractionHeightDp.dp.toPx(),
+                                            refractionAmount = captureLensSpec.refractionAmountDp.dp.toPx(),
+                                            depthEffect = true,
+                                            chromaticAberration = true
                                         )
                                     },
                                     highlight = {
-                                        Highlight.Default.copy(alpha = motionProgress)
+                                        Highlight.Default.copy(alpha = captureHighlightAlpha)
                                     },
                                     onDrawSurface = {
                                         drawRect(containerColor)
@@ -2228,7 +2428,6 @@ private fun KernelSuAlignedBottomBar(
                                 this
                             }
                         }
-                        .graphicsLayer(colorFilter = ColorFilter.tint(exportTintColor))
                 ) {
                     Row(
                         modifier = Modifier
@@ -2241,7 +2440,7 @@ private fun KernelSuAlignedBottomBar(
                                 index = index,
                                 selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
                             )
-                            val contentColor = Color.White
+                            val contentColor = exportItemContentColor(item, visual)
                             AndroidNativeBottomBarItem(
                                 item = item,
                                 label = resolveBottomNavItemLabel(item),
@@ -2265,7 +2464,7 @@ private fun KernelSuAlignedBottomBar(
                                 index = visibleItems.size,
                                 selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
                             )
-                            val contentColor = Color.White
+                            val contentColor = exportItemContentColor(null, visual)
                             AndroidNativeBottomBarItem(
                                 item = null,
                                 label = stringResource(R.string.sidebar_toggle),
@@ -2302,61 +2501,51 @@ private fun KernelSuAlignedBottomBar(
                             .height(56.dp)
                             .align(Alignment.CenterStart)
                             .run {
-                                if (glassEnabled && contentBackdrop != null) {
+                                if (
+                                    glassEnabled &&
+                                    contentBackdrop != null &&
+                                    backdropPresetProgress.indicatorProgress > 0f
+                                ) {
                                     drawBackdrop(
                                         backdrop = contentBackdrop,
                                         shape = { shellShape },
                                         effects = {
                                             lens(
-                                                refractionHeight = 10.dp.toPx() * motionProgress,
-                                                refractionAmount = 14.dp.toPx() * motionProgress,
+                                                refractionHeight = indicatorLensSpec.refractionHeightDp.dp.toPx(),
+                                                refractionAmount = indicatorLensSpec.refractionAmountDp.dp.toPx(),
                                                 depthEffect = true,
                                                 chromaticAberration = true
                                             )
                                         },
                                         highlight = {
-                                            Highlight.Default.copy(alpha = motionProgress)
+                                            Highlight.Default.copy(alpha = indicatorHighlightAlpha)
                                         },
                                         shadow = {
-                                            Shadow(alpha = if (glassEnabled) motionProgress else 0f)
+                                            Shadow(alpha = if (glassEnabled) indicatorHighlightAlpha else 0f)
                                         },
                                         innerShadow = {
                                             InnerShadow(
-                                                radius = 8.dp * motionProgress,
-                                                alpha = if (glassEnabled) motionProgress else 0f
+                                                radius = 8.dp * backdropPresetProgress.indicatorProgress,
+                                                alpha = if (glassEnabled) indicatorHighlightAlpha else 0f
                                             )
                                         },
                                         layerBlock = {
                                             if (glassEnabled) {
-                                                val indicatorScale = lerp(1f, 78f / 56f, motionProgress)
-                                                val velocity = dampedDragState.velocity / 10f
-                                                scaleX = indicatorScale / (
-                                                    1f - (
-                                                        velocity * 0.75f
-                                                    ).coerceIn(-0.2f, 0.2f)
+                                                val indicatorLayerTransform = resolveBottomBarIndicatorLayerTransform(
+                                                    motionProgress = motionProgress,
+                                                    velocityItemsPerSecond = dampedDragState.velocity,
+                                                    motionSpec = bottomBarMotionSpec
                                                 )
-                                                scaleY = indicatorScale * (
-                                                    1f - (
-                                                        velocity * 0.25f
-                                                    ).coerceIn(-0.2f, 0.2f)
-                                                )
+                                                scaleX = indicatorLayerTransform.scaleX
+                                                scaleY = indicatorLayerTransform.scaleY
                                             }
-                                        },
-                                        onDrawSurface = {
-                                            drawRect(
-                                                color = if (isDarkTheme) {
-                                                    Color.White.copy(0.1f)
-                                                } else {
-                                                    Color.Black.copy(0.1f)
-                                                },
-                                                alpha = 1f - motionProgress
-                                            )
-                                            drawRect(Color.Black.copy(alpha = 0.03f * motionProgress))
                                         }
                                     )
                                 } else {
                                     background(
-                                        if (isDarkTheme) Color.White.copy(0.1f) else Color.Black.copy(0.1f),
+                                        resolveAndroidNativeIdleIndicatorSurfaceColor(
+                                            darkTheme = isDarkTheme
+                                        ),
                                         shellShape
                                     )
                                 }

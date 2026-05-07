@@ -4273,6 +4273,14 @@ internal fun shouldUseOrientationDrivenFullscreen(
     return isCompactDevice
 }
 
+internal fun shouldRotateToPortraitOnSplitBack(
+    useTabletLayout: Boolean,
+    isCompactDevice: Boolean,
+    orientation: Int
+): Boolean {
+    return useTabletLayout && isCompactDevice && orientation == Configuration.ORIENTATION_LANDSCAPE
+}
+
 internal fun shouldShowDetachedVideoCommentThreadHost(
     useTabletLayout: Boolean
 ): Boolean {
@@ -4358,7 +4366,7 @@ internal fun resolvePhoneVideoRequestedOrientation(
     isVerticalVideo: Boolean = false
 ): Int? {
     if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) {
-        return ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        return null
     }
     if (fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.NONE) {
         return null

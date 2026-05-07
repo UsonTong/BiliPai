@@ -81,7 +81,9 @@ class BottomBarMiuixPolicyTest {
         assertTrue(source.contains("val tabsBackdrop = rememberLayerBackdrop()"))
         assertTrue(source.contains(".layerBackdrop(tabsBackdrop)"))
         assertTrue(source.contains("rememberCombinedBackdrop(backdrop, tabsBackdrop)"))
-        assertTrue(source.contains("lens(24.dp.toPx(), 24.dp.toPx())"))
+        assertTrue(source.contains("refractionHeight = 24.dp.toPx()"))
+        assertTrue(source.contains("refractionAmount = 24.dp.toPx()"))
+        assertTrue(source.contains("depthEffect = true"))
         assertTrue(source.contains("chromaticAberration = true"))
     }
 

@@ -58,6 +58,14 @@ internal fun buildCommandDanmaku(cmd: DanmakuProto.CommandDm): AdvancedDanmakuDa
     )
 }
 
+internal fun filterVisibleCommandDanmakuItems(
+    items: List<CommandDanmakuItem>,
+    blockAttentionCommands: Boolean
+): List<CommandDanmakuItem> {
+    if (!blockAttentionCommands) return items
+    return items.filterNot { it.type == CommandDanmakuType.ATTENTION }
+}
+
 internal fun buildCommandDanmakuItem(cmd: DanmakuProto.CommandDm): CommandDanmakuItem? {
     val commandType = cmd.command.trim().uppercase()
     if (commandType in NON_VISUAL_COMMAND_TYPES) return null

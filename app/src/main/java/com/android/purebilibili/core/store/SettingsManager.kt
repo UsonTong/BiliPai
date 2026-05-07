@@ -444,6 +444,7 @@ data class DanmakuSettings(
     val allowBottom: Boolean = true,
     val allowColorful: Boolean = true,
     val allowSpecial: Boolean = true,
+    val blockAttentionCommands: Boolean = false,
     val smartOcclusion: Boolean = false,
     val fullscreenPanelWidthMode: DanmakuPanelWidthMode = DanmakuPanelWidthMode.THIRD,
     val blockRulesRaw: String = "",
@@ -2201,6 +2202,8 @@ object SettingsManager {
     private val KEY_DANMAKU_ALLOW_BOTTOM = booleanPreferencesKey("danmaku_allow_bottom")
     private val KEY_DANMAKU_ALLOW_COLORFUL = booleanPreferencesKey("danmaku_allow_colorful")
     private val KEY_DANMAKU_ALLOW_SPECIAL = booleanPreferencesKey("danmaku_allow_special")
+    private val KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS =
+        booleanPreferencesKey("danmaku_block_attention_commands")
     private val KEY_DANMAKU_SMART_OCCLUSION = booleanPreferencesKey("danmaku_smart_occlusion")
     private val KEY_DANMAKU_FULLSCREEN_PANEL_WIDTH_MODE =
         intPreferencesKey("danmaku_fullscreen_panel_width_mode")
@@ -2405,6 +2408,7 @@ object SettingsManager {
                 legacyKey = KEY_DANMAKU_ALLOW_SPECIAL,
                 defaultValue = true
             ),
+            blockAttentionCommands = preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] ?: false,
             smartOcclusion = readScopedDanmakuPreference(
                 preferences = preferences,
                 scopeKey = keyDanmakuSmartOcclusion(scope),
@@ -2866,6 +2870,17 @@ object SettingsManager {
     ) {
         context.settingsDataStore.edit { preferences ->
             preferences[keyDanmakuAllowSpecial(scope)] = value
+        }
+    }
+
+    fun getDanmakuBlockAttentionCommands(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data
+            .map { preferences -> preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] ?: false }
+            .distinctUntilChanged()
+
+    suspend fun setDanmakuBlockAttentionCommands(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] = value
         }
     }
 

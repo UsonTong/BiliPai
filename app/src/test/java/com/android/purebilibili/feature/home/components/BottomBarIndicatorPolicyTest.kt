@@ -2,6 +2,8 @@ package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.store.LiquidGlassMode
+import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
+import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -224,10 +226,87 @@ class BottomBarIndicatorPolicyTest {
         assertTrue(profile.visibleSelectionEmphasis < 0.52f)
         assertTrue(profile.exportSelectionEmphasis > 0.45f)
         assertTrue(profile.exportSelectionEmphasis < 0.72f)
-        assertEquals(1f, profile.exportCaptureWidthScale)
+        assertTrue(profile.exportCaptureWidthScale > 1f)
         assertTrue(profile.indicatorLensAmountScale > 1f)
         assertTrue(profile.indicatorLensHeightScale > 1f)
         assertTrue(profile.chromaticBoostScale > 1.4f)
+    }
+
+    @Test
+    fun `liquid glass lens progress follows backdrop preset progress`() {
+        val idle = resolveBottomBarLiquidGlassLensProgress(motionProgress = 0f)
+        val moving = resolveBottomBarLiquidGlassLensProgress(motionProgress = 1f)
+
+        assertEquals(0f, idle, 0.001f)
+        assertTrue(idle < moving)
+        assertEquals(1f, moving, 0.001f)
+    }
+
+    @Test
+    fun `vertical glass motion is neutral when glass is disabled`() {
+        val profile = resolveBottomBarVerticalGlassMotionProfile(
+            scrollOffsetPx = 600f,
+            glassEnabled = false
+        )
+
+        assertEquals(0f, profile.progress, 0.001f)
+    }
+
+    @Test
+    fun `vertical glass motion only resolves backdrop preset progress`() {
+        val idle = resolveBottomBarVerticalGlassMotionProfile(
+            scrollOffsetPx = 0f,
+            glassEnabled = true
+        )
+        val scrolled = resolveBottomBarVerticalGlassMotionProfile(
+            scrollOffsetPx = 180f,
+            glassEnabled = true
+        )
+
+        assertEquals(0f, idle.progress, 0.001f)
+        assertTrue(scrolled.progress > idle.progress)
+        assertEquals(1f, scrolled.progress, 0.001f)
+    }
+
+    @Test
+    fun `backdrop preset lens dimensions match AndroidLiquidGlass bottom tabs`() {
+        val capture = resolveBottomBarBackdropPresetCaptureLens(progress = 1f)
+        val indicator = resolveBottomBarBackdropPresetIndicatorLens(progress = 1f)
+
+        assertEquals(24f, capture.refractionHeightDp, 0.001f)
+        assertEquals(24f, capture.refractionAmountDp, 0.001f)
+        assertEquals(10f, indicator.refractionHeightDp, 0.001f)
+        assertEquals(14f, indicator.refractionAmountDp, 0.001f)
+    }
+
+    @Test
+    fun `static indicator ignores vertical backdrop progress`() {
+        val progress = resolveBottomBarBackdropPresetProgress(
+            motionProgress = 0f,
+            verticalProgress = 1f,
+            pressProgress = 0f
+        )
+        val indicator = resolveBottomBarBackdropPresetIndicatorLens(
+            progress = progress.indicatorProgress
+        )
+
+        assertEquals(1f, progress.shellProgress, 0.001f)
+        assertEquals(1f, progress.captureProgress, 0.001f)
+        assertEquals(0f, progress.indicatorProgress, 0.001f)
+        assertEquals(0f, indicator.refractionHeightDp, 0.001f)
+        assertEquals(0f, indicator.refractionAmountDp, 0.001f)
+    }
+
+    @Test
+    fun `indicator layer transform uses android native motion spec`() {
+        val transform = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 0f,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+
+        assertTrue(transform.scaleX > 1.5f)
+        assertTrue(transform.scaleY > 1.5f)
     }
 
     @Test

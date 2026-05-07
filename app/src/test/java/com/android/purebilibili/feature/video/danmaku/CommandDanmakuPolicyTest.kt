@@ -119,6 +119,40 @@ class CommandDanmakuPolicyTest {
     }
 
     @Test
+    fun `attention command can be filtered from command overlay items`() {
+        val attention = buildCommandDanmakuItem(
+            commandDm(
+                command = "#ATTENTION#",
+                content = "关注弹幕",
+                extra = """{"type":2}"""
+            )
+        )
+        val up = buildCommandDanmakuItem(
+            commandDm(
+                command = "#UP#",
+                content = "UP 主提示"
+            )
+        )
+
+        assertNotNull(attention)
+        assertNotNull(up)
+        assertEquals(
+            listOf(up),
+            filterVisibleCommandDanmakuItems(
+                items = listOf(attention, up),
+                blockAttentionCommands = true
+            )
+        )
+        assertEquals(
+            listOf(attention, up),
+            filterVisibleCommandDanmakuItems(
+                items = listOf(attention, up),
+                blockAttentionCommands = false
+            )
+        )
+    }
+
+    @Test
     fun `filter structured payload gibberish`() {
         val cmd = commandDm(
             content = """"453dc8b380c6dba.png","type":2,"upower_state":1"""

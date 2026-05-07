@@ -99,6 +99,18 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByAttentionDanmaku_hitsPlaybackInteractionEntry() {
+        val results = resolveSettingsSearchResults("关注点赞弹幕")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_INTERACTION
+            }
+        )
+    }
+
+    @Test
     fun queryByAutoRotate_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("自动横竖屏")
 

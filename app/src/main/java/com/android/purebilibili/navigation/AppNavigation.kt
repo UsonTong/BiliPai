@@ -2309,16 +2309,19 @@ fun AppNavigation(
             route = ScreenRoutes.BangumiPlayer.route,
             arguments = listOf(
                 navArgument("seasonId") { type = NavType.LongType },
-                navArgument("epId") { type = NavType.LongType }
+                navArgument("epId") { type = NavType.LongType },
+                navArgument("resumePositionMs") { type = NavType.LongType; defaultValue = 0L }
             ),
             enterTransition = { slideEnterLeft(navMotionSpec) },
             popExitTransition = { slideExitRight(navMotionSpec) }
         ) { backStackEntry ->
             val seasonId = backStackEntry.arguments?.getLong("seasonId") ?: 0L
             val epId = backStackEntry.arguments?.getLong("epId") ?: 0L
+            val resumePositionMs = backStackEntry.arguments?.getLong("resumePositionMs") ?: 0L
             com.android.purebilibili.feature.bangumi.BangumiPlayerScreen(
                 seasonId = seasonId,
                 epId = epId,
+                resumePositionMs = resumePositionMs,
                 onBack = { navController.popBackStack() },
                 onNavigateToLogin = { navController.navigate(ScreenRoutes.Login.route) }
             )

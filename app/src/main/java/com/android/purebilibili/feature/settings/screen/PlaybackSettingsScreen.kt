@@ -691,6 +691,9 @@ fun PlaybackSettingsContent(
                     val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getVideoAiSummaryEntryEnabled(context)
                         .collectAsState(initial = true)
+                    val blockAttentionCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
+                        .getDanmakuBlockAttentionCommands(context)
+                        .collectAsState(initial = false)
                     val subtitlePreferenceDescription = when (subtitleAutoPreference) {
                         SubtitleAutoPreference.OFF -> "默认关闭字幕"
                         SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
@@ -850,6 +853,24 @@ fun PlaybackSettingsContent(
                                 viewModel.toggleDoubleTapLike(it)
                                 //  [埋点] 设置变更追踪
                                 com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("double_tap_like", it.toString())
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSPink
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.HandThumbsup,
+                            title = "屏蔽关注/点赞弹幕",
+                            subtitle = if (blockAttentionCommandDanmaku) {
+                                "已开启：不显示关注、点赞、三连互动弹幕"
+                            } else {
+                                "关闭后：播放时仍显示关注、点赞、三连互动弹幕"
+                            },
+                            checked = blockAttentionCommandDanmaku,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setDanmakuBlockAttentionCommands(context, it)
+                                }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPink
                         )

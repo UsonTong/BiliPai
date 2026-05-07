@@ -46,6 +46,7 @@ import com.android.purebilibili.feature.bangumi.ui.player.BangumiErrorContent
 fun BangumiPlayerScreen(
     seasonId: Long,
     epId: Long,
+    resumePositionMs: Long = 0L,
     onBack: () -> Unit,
     onNavigateToLogin: () -> Unit = {},
     viewModel: BangumiPlayerViewModel = viewModel()
@@ -106,11 +107,11 @@ fun BangumiPlayerScreen(
     
     // 附加播放器到 ViewModel 并加载番剧
     // 使用同一个 LaunchedEffect 确保顺序执行，避免竞态条件
-    LaunchedEffect(exoPlayer, seasonId, epId) {
+    LaunchedEffect(exoPlayer, seasonId, epId, resumePositionMs) {
         // 先附加播放器
         viewModel.attachPlayer(exoPlayer)
         // 然后加载番剧
-        viewModel.loadBangumiPlay(seasonId, epId)
+        viewModel.loadBangumiPlay(seasonId, epId, resumePositionMs)
     }
 
     LaunchedEffect(viewModel, context) {

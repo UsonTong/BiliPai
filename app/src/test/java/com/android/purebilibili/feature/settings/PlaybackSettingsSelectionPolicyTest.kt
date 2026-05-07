@@ -238,6 +238,16 @@ class PlaybackSettingsSelectionPolicyTest {
         assertFalse(Regex("""(?m)^\s*Switch\(""").containsMatchIn(block))
     }
 
+    @Test
+    fun `playback settings exposes attention command danmaku blocking switch`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
+            .readText()
+
+        assertTrue(source.contains("屏蔽关注/点赞弹幕"))
+        assertTrue(source.contains("getDanmakuBlockAttentionCommands"))
+        assertTrue(source.contains("setDanmakuBlockAttentionCommands"))
+    }
+
     private fun loadSource(path: String): String {
         val candidates = listOf(
             File(path),

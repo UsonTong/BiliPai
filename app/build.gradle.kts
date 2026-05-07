@@ -149,6 +149,21 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
+        create("smooth") {
+            // Smooth 用于真机快速验证动画手感：保留非 debug 运行语义，但跳过 R8。
+            initWith(getByName("release"))
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-smooth"
+            resValue("string", "app_name", "BiliPai Smooth")
+            buildConfigField("boolean", "ALLOW_HARDCODED_DNS_FALLBACK", "true")
+            buildConfigField("boolean", "ENABLE_VERBOSE_DEBUG_LOGS", "false")
+            buildConfigField("boolean", "ENABLE_VERBOSE_RUNTIME_LOG_PERSISTENCE", "false")
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isMinifyEnabled = false
+            isShrinkResources = false
+            matchingFallbacks += listOf("dev", "release")
+        }
     }
 
     compileOptions {
@@ -310,7 +325,7 @@ dependencies {
     
     // --- 3.8 Backdrop (液态玻璃效果) ---
     // 提供透镜折射、玻璃高光、连续圆角等 iOS/visionOS 风格视觉效果
-    implementation("io.github.kyant0:backdrop:1.0.6")
+    implementation("io.github.kyant0:backdrop:2.0.0-alpha03")
 
 
     // --- 4. Player (视频播放器 Media3) ---
