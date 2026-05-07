@@ -2,6 +2,8 @@
 package com.android.purebilibili.feature.video.ui.section
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -34,6 +36,7 @@ import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.data.model.response.VideoTag
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.draw.rotate
 import com.android.purebilibili.core.ui.common.copyOnClick
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
 import com.android.purebilibili.core.ui.components.UserUpBadge
@@ -224,40 +227,48 @@ fun VideoTitleWithDesc(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-                //  共享元素过渡 - 标题
-                var titleModifier = if (animateLayout) Modifier.animateContentSize() else Modifier
-                
-                //  注意：使用 ExperimentalSharedTransitionApi 注解需要上下文
-                if (metadataSharedEnabled) {
-                    with(requireNotNull(sharedTransitionScope)) {
-                         titleModifier = titleModifier.sharedBounds(
-                            sharedContentState = rememberSharedContentState(key = "video_title_${info.bvid}"),
-                            animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                            boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
-                            }
-                        )
-                    }
-                }
+            //  共享元素过渡 - 标题
+            var titleModifier = if (animateLayout) Modifier.animateContentSize() else Modifier
 
-                Text(
-                    text = info.title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    maxLines = if (expanded) Int.MAX_VALUE else 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = titleModifier
-                )
-            Spacer(Modifier.width(4.dp))
+            //  注意：使用 ExperimentalSharedTransitionApi 注解需要上下文
+            if (metadataSharedEnabled) {
+                with(requireNotNull(sharedTransitionScope)) {
+                     titleModifier = titleModifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "video_title_${info.bvid}"),
+                        animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                        boundsTransform = { _, _ ->
+                            androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 200f)
+                        }
+                    )
+                }
+            }
+
+            Text(
+                text = info.title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = if (expanded) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = titleModifier.weight(1f)
+            )
+
+            val rotateAngle by animateFloatAsState(
+                targetValue = if (expanded) 180f else 0f, // 展开时旋转180度
+                animationSpec = tween(durationMillis = 300), // 设置动画时长和曲线
+                label = "IconRotation"
+            )
             Icon(
-                imageVector = if (expanded) CupertinoIcons.Default.ChevronUp else CupertinoIcons.Default.ChevronDown,
+                imageVector = CupertinoIcons.Default.ChevronDown,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier
+                    .rotate(rotateAngle)
+                    .size(20.dp)
+                    .padding(4.dp)
             )
         }
         
