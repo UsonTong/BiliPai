@@ -150,6 +150,7 @@ fun SpaceScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showBlockConfirmDialog by remember { mutableStateOf(false) }
     var showTopPhotoPreview by remember(mid) { mutableStateOf(false) }
+    var showAvatarPreview by remember(mid) { mutableStateOf(false) }
     var repostDynamicId by remember { mutableStateOf<String?>(null) }
     val hazeState = rememberRecoverableHazeState()
     val gridState = rememberLazyGridState()
@@ -338,6 +339,7 @@ fun SpaceScreen(
                             onSearchQueryChange = viewModel::updateSearchQuery,
                             onFollowClick = viewModel::toggleFollow,
                             onTopPhotoClick = { showTopPhotoPreview = true },
+                            onAvatarClick = { showAvatarPreview = true },
                             dynamicCardItems = dynamicCardItems,
                             likedDynamics = likedDynamics,
                             onSpaceDynamicCommentClick = dynamicInteractionViewModel::openCommentSheet,
@@ -369,11 +371,19 @@ fun SpaceScreen(
     val previewUrl = normalizeSpaceTopPhotoUrl(
         currentSuccessState?.userInfo?.topPhoto.orEmpty()
     )
+    val avatarPreviewUrl = currentSuccessState?.userInfo?.face.orEmpty()
     if (showTopPhotoPreview && shouldEnableSpaceTopPhotoPreview(previewUrl)) {
         ImagePreviewDialog(
             images = listOf(previewUrl),
             initialIndex = 0,
             onDismiss = { showTopPhotoPreview = false }
+        )
+    }
+    if (showAvatarPreview && avatarPreviewUrl.isNotBlank()) {
+        ImagePreviewDialog(
+            images = listOf(avatarPreviewUrl),
+            initialIndex = 0,
+            onDismiss = { showAvatarPreview = false }
         )
     }
 
@@ -562,6 +572,7 @@ private fun SpaceContent(
     onSearchQueryChange: (String) -> Unit,
     onFollowClick: () -> Unit,
     onTopPhotoClick: () -> Unit,
+    onAvatarClick: () -> Unit,
     dynamicCardItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
     likedDynamics: Set<String>,
     onSpaceDynamicCommentClick: (com.android.purebilibili.data.model.response.DynamicItem) -> Unit,
@@ -701,6 +712,7 @@ private fun SpaceContent(
                     upStat = state.headerState.upStat ?: state.upStat,
                     onFollowClick = onFollowClick,
                     onTopPhotoClick = onTopPhotoClick,
+                    onAvatarClick = onAvatarClick,
                     onLiveClick = { url, title -> onWebClick(url, title) },
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope
@@ -1520,12 +1532,14 @@ private fun SpaceHeader(
     upStat: UpStatData?,
     onFollowClick: () -> Unit,
     onTopPhotoClick: () -> Unit,
+    onAvatarClick: () -> Unit,
     onLiveClick: (String, String) -> Unit,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?
 ) {
     val context = LocalContext.current
     val topPhotoUrl = normalizeSpaceTopPhotoUrl(userInfo.topPhoto)
+    val avatarPreviewEnabled = userInfo.face.isNotBlank()
     val followLabel = if (userInfo.isFollowed) "已关注" else "关注"
     val officialText = userInfo.official.title.ifBlank { userInfo.official.desc }
     val metrics = remember(relationStat, upStat) {
@@ -1615,7 +1629,9 @@ private fun SpaceHeader(
                     }
 
                     Box(
-                        modifier = Modifier.size(avatarSize)
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clickable(enabled = avatarPreviewEnabled, onClick = onAvatarClick)
                     ) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
