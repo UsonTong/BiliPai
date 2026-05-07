@@ -17,7 +17,6 @@ data class TabletCinemaLayoutPolicy(
 
 internal enum class CinemaMetaPanelBlock {
     ACTIONS,
-    UP_INFO,
     INTRO,
     COLLECTION,
     PAGES
@@ -210,15 +209,11 @@ internal fun resolveCinemaIntroCardContainerColor(
 }
 
 internal fun resolveCinemaMetaPanelBlocks(
-    hasOwner: Boolean,
     hasCollection: Boolean,
     hasMultiplePages: Boolean
 ): List<CinemaMetaPanelBlock> {
     return buildList {
         add(CinemaMetaPanelBlock.ACTIONS)
-        if (hasOwner) {
-            add(CinemaMetaPanelBlock.UP_INFO)
-        }
         add(CinemaMetaPanelBlock.INTRO)
         if (hasCollection) {
             add(CinemaMetaPanelBlock.COLLECTION)

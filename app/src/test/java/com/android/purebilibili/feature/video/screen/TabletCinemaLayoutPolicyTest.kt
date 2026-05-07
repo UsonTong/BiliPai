@@ -2,7 +2,6 @@ package com.android.purebilibili.feature.video.screen
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TabletCinemaLayoutPolicyTest {
@@ -167,9 +166,8 @@ class TabletCinemaLayoutPolicyTest {
     }
 
     @Test
-    fun cinemaMetaBlocksIncludeUpInfoWhenOwnerIsAvailable() {
+    fun cinemaMetaBlocksFoldUpInfoIntoActionsBlock() {
         val blocks = resolveCinemaMetaPanelBlocks(
-            hasOwner = true,
             hasCollection = false,
             hasMultiplePages = false
         )
@@ -177,7 +175,6 @@ class TabletCinemaLayoutPolicyTest {
         assertEquals(
             listOf(
                 CinemaMetaPanelBlock.ACTIONS,
-                CinemaMetaPanelBlock.UP_INFO,
                 CinemaMetaPanelBlock.INTRO
             ),
             blocks
@@ -185,14 +182,12 @@ class TabletCinemaLayoutPolicyTest {
     }
 
     @Test
-    fun cinemaMetaBlocksSkipUpInfoWhenOwnerIsMissing() {
+    fun cinemaMetaBlocksKeepStableBaseOrderWithoutOwnerParameter() {
         val blocks = resolveCinemaMetaPanelBlocks(
-            hasOwner = false,
             hasCollection = false,
             hasMultiplePages = false
         )
 
-        assertFalse(blocks.contains(CinemaMetaPanelBlock.UP_INFO))
         assertEquals(
             listOf(
                 CinemaMetaPanelBlock.ACTIONS,
@@ -205,7 +200,6 @@ class TabletCinemaLayoutPolicyTest {
     @Test
     fun cinemaMetaBlocksAppendCollectionAndPagesWhenAvailable() {
         val blocks = resolveCinemaMetaPanelBlocks(
-            hasOwner = true,
             hasCollection = true,
             hasMultiplePages = true
         )
@@ -213,7 +207,6 @@ class TabletCinemaLayoutPolicyTest {
         assertEquals(
             listOf(
                 CinemaMetaPanelBlock.ACTIONS,
-                CinemaMetaPanelBlock.UP_INFO,
                 CinemaMetaPanelBlock.INTRO,
                 CinemaMetaPanelBlock.COLLECTION,
                 CinemaMetaPanelBlock.PAGES
@@ -225,7 +218,6 @@ class TabletCinemaLayoutPolicyTest {
     @Test
     fun cinemaMetaBlocksOnlyAppendAvailableSupplementalSections() {
         val blocks = resolveCinemaMetaPanelBlocks(
-            hasOwner = false,
             hasCollection = true,
             hasMultiplePages = false
         )
