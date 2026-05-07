@@ -32,6 +32,14 @@ class SettingsSearchFocusPolicyTest {
     }
 
     @Test
+    fun animationFocusIndex_mapsVisualEffectsSection() {
+        assertEquals(
+            2,
+            resolveAnimationSettingsScrollIndex(SettingsSearchFocusIds.ANIMATION_VISUAL_EFFECTS)
+        )
+    }
+
+    @Test
     fun functionLevelSearchResult_carriesFocusId() {
         val results = resolveSettingsSearchResults("画中画")
 

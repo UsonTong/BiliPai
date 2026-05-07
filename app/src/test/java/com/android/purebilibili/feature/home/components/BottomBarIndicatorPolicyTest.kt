@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.store.BottomBarLiquidGlassPreset
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
@@ -233,6 +234,21 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `backdrop native preset keeps bilipai horizontal refraction motion`() {
+        val profile = resolveBottomBarRefractionMotionProfile(
+            position = 1.32f,
+            velocity = 860f,
+            isDragging = true
+        )
+        val effectiveProfile = resolveBottomBarEffectiveRefractionMotionProfile(
+            preset = BottomBarLiquidGlassPreset.BACKDROP_NATIVE,
+            profile = profile
+        )
+
+        assertEquals(profile, effectiveProfile)
+    }
+
+    @Test
     fun `liquid glass lens progress follows backdrop preset progress`() {
         val idle = resolveBottomBarLiquidGlassLensProgress(motionProgress = 0f)
         val moving = resolveBottomBarLiquidGlassLensProgress(motionProgress = 1f)
@@ -277,6 +293,26 @@ class BottomBarIndicatorPolicyTest {
         assertEquals(24f, capture.refractionAmountDp, 0.001f)
         assertEquals(10f, indicator.refractionHeightDp, 0.001f)
         assertEquals(14f, indicator.refractionAmountDp, 0.001f)
+    }
+
+    @Test
+    fun `backdrop native vertical motion becomes transparent jelly without adding blur`() {
+        val idle = resolveBottomBarBackdropNativeSurfaceSpec(
+            blurRadiusDp = 18f,
+            verticalProgress = 0f
+        )
+        val scrolled = resolveBottomBarBackdropNativeSurfaceSpec(
+            blurRadiusDp = 18f,
+            verticalProgress = 1f
+        )
+
+        assertTrue(idle.blurRadiusDp <= 6f)
+        assertTrue(scrolled.blurRadiusDp <= idle.blurRadiusDp)
+        assertTrue(scrolled.refractionHeightDp > idle.refractionHeightDp)
+        assertTrue(scrolled.refractionAmountDp > idle.refractionAmountDp)
+        assertTrue(scrolled.surfaceAlphaMultiplier < idle.surfaceAlphaMultiplier)
+        assertTrue(scrolled.surfaceAlphaMultiplier >= 0.54f)
+        assertTrue(scrolled.surfaceAlphaMultiplier <= 0.58f)
     }
 
     @Test

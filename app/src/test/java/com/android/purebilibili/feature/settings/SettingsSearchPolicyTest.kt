@@ -78,6 +78,14 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByBackdropNativeBottomBarGlass_focusesBottomBarSettings() {
+        val result = resolveSettingsSearchResults("Backdrop 原生").firstOrNull()
+
+        assertEquals(SettingsSearchTarget.ANIMATION, result?.target)
+        assertEquals(SettingsSearchFocusIds.ANIMATION_VISUAL_EFFECTS, result?.focusId)
+    }
+
+    @Test
     fun queryByPinyin_hitsChineseAlias() {
         val results = resolveSettingsSearchResults("waiguan")
 

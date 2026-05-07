@@ -134,6 +134,7 @@ private fun resolveMd3SettingsEntryTintRole(
     target: SettingsSearchTarget
 ): SettingsEntryTintRole = when (target) {
     SettingsSearchTarget.APPEARANCE,
+    SettingsSearchTarget.ANIMATION,
     SettingsSearchTarget.PLUGINS,
     SettingsSearchTarget.OPEN_SOURCE_HOME,
     SettingsSearchTarget.REPLAY_ONBOARDING,
@@ -183,6 +184,10 @@ internal fun resolveSettingsEntryVisual(
         val iconTint = md3Palette.resolve(resolveMd3SettingsEntryTintRole(target))
         return when (target) {
             SettingsSearchTarget.APPEARANCE -> SettingsEntryVisual(
+                icon = Icons.Outlined.Palette,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.ANIMATION -> SettingsEntryVisual(
                 icon = Icons.Outlined.Palette,
                 iconTint = iconTint
             )
@@ -275,6 +280,10 @@ internal fun resolveSettingsEntryVisual(
 
     return when (target) {
         SettingsSearchTarget.APPEARANCE -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.PaintbrushPointed,
+            iconTint = iOSPink
+        )
+        SettingsSearchTarget.ANIMATION -> SettingsEntryVisual(
             icon = CupertinoIcons.Default.PaintbrushPointed,
             iconTint = iOSPink
         )

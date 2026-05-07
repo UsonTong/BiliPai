@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.settings
 
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -60,5 +61,30 @@ class AnimationSettingsPolicyTest {
 
         assertEquals(1f, state.normalizedProgress)
         assertEquals("100%", state.strengthLabel)
+    }
+
+    @Test
+    fun bottomBarLiquidGlassPresetControl_livesInAnimationSettings() {
+        val animationSource = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/AnimationSettingsScreen.kt"
+        )
+        val bottomBarSource = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/BottomBarSettingsScreen.kt"
+        )
+
+        assertTrue(animationSource.contains("底栏液态玻璃预设"))
+        assertTrue(animationSource.contains("BottomBarLiquidGlassPreset.entries"))
+        assertFalse(bottomBarSource.contains("底栏液态玻璃预设"))
+        assertFalse(bottomBarSource.contains("BottomBarLiquidGlassPreset.entries"))
+    }
+
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

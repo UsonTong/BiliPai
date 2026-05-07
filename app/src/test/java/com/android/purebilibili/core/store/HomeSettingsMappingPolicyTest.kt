@@ -31,6 +31,7 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP, result.bottomBarSearchAutoExpandMode)
         assertFalse(result.androidNativeLiquidGlassEnabled)
         assertTrue(result.isLiquidGlassEnabled)
+        assertEquals(BottomBarLiquidGlassPreset.BILIPAI_TUNED, result.bottomBarLiquidGlassPreset)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
         assertEquals(LiquidGlassMode.BALANCED, result.liquidGlassMode)
         assertEquals(0.52f, result.liquidGlassStrength)
@@ -63,6 +64,7 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("bottom_bar_liquid_glass_enabled") to false,
             booleanPreferencesKey("bottom_bar_search_enabled") to true,
             intPreferencesKey("bottom_bar_search_auto_expand_mode") to BottomBarSearchAutoExpandMode.DISABLED.value,
+            intPreferencesKey("bottom_bar_liquid_glass_preset") to BottomBarLiquidGlassPreset.BACKDROP_NATIVE.value,
             booleanPreferencesKey("android_native_liquid_glass_enabled") to true,
             intPreferencesKey("liquid_glass_style") to LiquidGlassStyle.IOS26.value,
             intPreferencesKey("grid_column_count") to 4,
@@ -97,6 +99,7 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(BottomBarSearchAutoExpandMode.DISABLED, result.bottomBarSearchAutoExpandMode)
         assertTrue(result.androidNativeLiquidGlassEnabled)
         assertFalse(result.isLiquidGlassEnabled)
+        assertEquals(BottomBarLiquidGlassPreset.BACKDROP_NATIVE, result.bottomBarLiquidGlassPreset)
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
         assertEquals(LiquidGlassMode.BALANCED, result.liquidGlassMode)
         assertEquals(0.52f, result.liquidGlassStrength)

@@ -107,6 +107,20 @@ class BottomBarMiuixPolicyTest {
         assertTrue(source.contains("Modifier.unifiedBlur("))
     }
 
+    @Test
+    fun `backdrop native preset keeps direct library effect chain`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+
+        assertTrue(source.contains("BottomBarLiquidGlassPreset.BACKDROP_NATIVE"))
+        assertTrue(source.contains("resolveBottomBarBackdropNativeSurfaceSpec("))
+        assertTrue(
+            Regex(
+                """BottomBarLiquidGlassPreset\.BACKDROP_NATIVE[\s\S]*?drawBackdrop\([\s\S]*?effects = \{[\s\S]*?vibrancy\(\)[\s\S]*?blur\([\s\S]*?lens\(""",
+                RegexOption.MULTILINE
+            ).containsMatchIn(source)
+        )
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

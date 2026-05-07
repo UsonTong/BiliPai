@@ -1791,6 +1791,7 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onOpenSourceLicensesClick = { navController.navigate(ScreenRoutes.OpenSourceLicenses.route) },
                 onAppearanceClick = { navController.navigate(ScreenRoutes.AppearanceSettings.route) },
+                onAnimationClick = { navController.navigate(ScreenRoutes.AnimationSettings.route) },
                 onPlaybackClick = { navController.navigate(ScreenRoutes.PlaybackSettings.route) },
                 onPermissionClick = { navController.navigate(ScreenRoutes.PermissionSettings.route) },
                 onPluginsClick = { navController.navigate(ScreenRoutes.PluginsSettings.createRoute()) },

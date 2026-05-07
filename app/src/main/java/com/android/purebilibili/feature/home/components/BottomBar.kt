@@ -142,6 +142,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as RoundedCornerShap
 import androidx.compose.ui.Modifier.Companion.then
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.effect.liquidGlass
+import com.android.purebilibili.core.store.BottomBarLiquidGlassPreset
 import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
 import com.android.purebilibili.core.store.LiquidGlassStyle // [New] Top-level enum
 import com.android.purebilibili.core.store.LiquidGlassMode
@@ -582,7 +583,9 @@ internal fun Modifier.kernelSuFloatingDockSurface(
     containerColor: Color,
     blurEnabled: Boolean,
     glassEnabled: Boolean,
+    liquidGlassPreset: BottomBarLiquidGlassPreset = BottomBarLiquidGlassPreset.BILIPAI_TUNED,
     drawShellLens: Boolean = true,
+    nativeVerticalProgress: Float = 0f,
     blurRadius: Dp,
     hazeState: HazeState?,
     motionTier: MotionTier,
@@ -595,6 +598,17 @@ internal fun Modifier.kernelSuFloatingDockSurface(
         glassEnabled = glassEnabled,
         hasHazeState = hazeState != null
     )
+    val surfaceLiquidGlassPreset = if (glassEnabled) {
+        liquidGlassPreset
+    } else {
+        BottomBarLiquidGlassPreset.BILIPAI_TUNED
+    }
+    val nativeSpec = remember(blurRadius, nativeVerticalProgress) {
+        resolveBottomBarBackdropNativeSurfaceSpec(
+            blurRadiusDp = blurRadius.value,
+            verticalProgress = nativeVerticalProgress
+        )
+    }
 
     this
         .then(
@@ -614,35 +628,62 @@ internal fun Modifier.kernelSuFloatingDockSurface(
         )
         .run {
             if (backdrop != null && !useHazeBlur) {
-                drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { shape },
-                    effects = {
-                        if (glassEnabled || (blurEnabled && !useHazeBlur)) {
-                            vibrancy()
-                            blur(blurRadius.toPx())
-                            if (glassEnabled && drawShellLens) {
-                                lens(
-                                    refractionHeight = 24.dp.toPx(),
-                                    refractionAmount = 24.dp.toPx(),
-                                    depthEffect = true,
-                                    chromaticAberration = true
-                                )
+                when (surfaceLiquidGlassPreset) {
+                    BottomBarLiquidGlassPreset.BACKDROP_NATIVE -> drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {
+                            if (glassEnabled || (blurEnabled && !useHazeBlur)) {
+                                vibrancy()
+                                blur(nativeSpec.blurRadiusDp.dp.toPx())
+                                if (glassEnabled && drawShellLens) {
+                                    lens(
+                                        refractionHeight = nativeSpec.refractionHeightDp.dp.toPx(),
+                                        refractionAmount = nativeSpec.refractionAmountDp.dp.toPx(),
+                                        depthEffect = true,
+                                        chromaticAberration = nativeSpec.chromaticAberration
+                                    )
+                                }
                             }
+                        },
+                        onDrawSurface = {
+                            drawRect(
+                                containerColor.copy(
+                                    alpha = containerColor.alpha * nativeSpec.surfaceAlphaMultiplier
+                                )
+                            )
                         }
-                    },
-                    highlight = {
-                        Highlight.Default.copy(alpha = if (glassEnabled) 1f else 0f)
-                    },
-                    shadow = {
-                        Shadow.Default.copy(
-                            color = Color.Black.copy(alpha = if (isDarkTheme) 0.2f else 0.1f)
-                        )
-                    },
-                    onDrawSurface = {
-                        drawRect(containerColor)
-                    }
-                )
+                    )
+                    BottomBarLiquidGlassPreset.BILIPAI_TUNED -> drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {
+                            if (glassEnabled || (blurEnabled && !useHazeBlur)) {
+                                vibrancy()
+                                blur(blurRadius.toPx())
+                                if (glassEnabled && drawShellLens) {
+                                    lens(
+                                        refractionHeight = 24.dp.toPx(),
+                                        refractionAmount = 24.dp.toPx(),
+                                        depthEffect = true,
+                                        chromaticAberration = true
+                                    )
+                                }
+                            }
+                        },
+                        highlight = {
+                            Highlight.Default.copy(alpha = if (glassEnabled) 1f else 0f)
+                        },
+                        shadow = {
+                            Shadow.Default.copy(
+                                color = Color.Black.copy(alpha = if (isDarkTheme) 0.2f else 0.1f)
+                            )
+                        },
+                        onDrawSurface = {
+                            drawRect(containerColor)
+                        }
+                    )
+                }
             } else {
                 background(containerColor, shape)
             }
@@ -861,6 +902,14 @@ internal data class BottomBarBackdropPresetProgress(
     val shellProgress: Float,
     val captureProgress: Float,
     val indicatorProgress: Float
+)
+
+internal data class BottomBarBackdropNativeSurfaceSpec(
+    val blurRadiusDp: Float,
+    val refractionHeightDp: Float,
+    val refractionAmountDp: Float,
+    val surfaceAlphaMultiplier: Float,
+    val chromaticAberration: Boolean
 )
 
 internal data class BottomBarItemMotionVisual(
@@ -1248,6 +1297,35 @@ internal fun resolveBottomBarRefractionMotionProfile(
     )
 }
 
+internal fun resolveBottomBarEffectiveRefractionMotionProfile(
+    preset: BottomBarLiquidGlassPreset,
+    profile: BottomBarRefractionMotionProfile
+): BottomBarRefractionMotionProfile {
+    return when (preset) {
+        BottomBarLiquidGlassPreset.BILIPAI_TUNED -> profile
+        BottomBarLiquidGlassPreset.BACKDROP_NATIVE -> profile
+    }
+}
+
+internal fun resolveBottomBarBackdropNativeSurfaceSpec(
+    blurRadiusDp: Float,
+    verticalProgress: Float = 0f
+): BottomBarBackdropNativeSurfaceSpec {
+    val progress = verticalProgress.coerceIn(0f, 1f)
+    val transparentBlurRadiusDp = lerp(
+        start = minOf(blurRadiusDp * 0.34f, 5.5f),
+        stop = minOf(blurRadiusDp * 0.24f, 4.5f),
+        fraction = progress
+    )
+    return BottomBarBackdropNativeSurfaceSpec(
+        blurRadiusDp = transparentBlurRadiusDp,
+        refractionHeightDp = lerp(32f, 48f, progress),
+        refractionAmountDp = lerp(38f, 56f, progress),
+        surfaceAlphaMultiplier = lerp(0.62f, 0.56f, progress),
+        chromaticAberration = false
+    )
+}
+
 internal fun resolveBottomBarMovingIndicatorSurfaceColor(isDarkTheme: Boolean): Color {
     return if (isDarkTheme) {
         iOSSystemGray6
@@ -1535,6 +1613,7 @@ fun FrostedBottomBar(
             containerColor = containerColor,
             tuning = tuning,
             glassEnabled = glassEnabled,
+            liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             iconStyle = SharedFloatingBottomBarIconStyle.CUPERTINO,
             haptic = haptic,
             hazeState = hazeState,
@@ -1651,6 +1730,7 @@ private fun MaterialBottomBar(
             containerColor = containerColor,
             tuning = androidNativeTuning,
             glassEnabled = glassEnabled,
+            liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             haptic = haptic,
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
@@ -1841,6 +1921,7 @@ private fun MiuixBottomBar(
             containerColor = containerColor,
             tuning = tuning,
             glassEnabled = glassEnabled,
+            liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             iconStyle = SharedFloatingBottomBarIconStyle.CUPERTINO,
             haptic = haptic,
             hazeState = hazeState,
@@ -2030,6 +2111,7 @@ private fun KernelSuAlignedBottomBar(
     containerColor: Color,
     tuning: AndroidNativeBottomBarTuning,
     glassEnabled: Boolean,
+    liquidGlassPreset: BottomBarLiquidGlassPreset,
     iconStyle: SharedFloatingBottomBarIconStyle = SharedFloatingBottomBarIconStyle.MATERIAL,
     haptic: (HapticType) -> Unit,
     hazeState: HazeState? = null,
@@ -2083,11 +2165,15 @@ private fun KernelSuAlignedBottomBar(
     val pressMotionProgress by remember {
         derivedStateOf { dampedDragState.pressProgress }
     }
-    val refractionMotionProfile = resolveBottomBarRefractionMotionProfile(
+    val tunedRefractionMotionProfile = resolveBottomBarRefractionMotionProfile(
         position = dampedDragState.value,
         velocity = dampedDragState.velocityPxPerSecond,
         isDragging = dampedDragState.isDragging,
         motionSpec = bottomBarMotionSpec
+    )
+    val refractionMotionProfile = resolveBottomBarEffectiveRefractionMotionProfile(
+        preset = liquidGlassPreset,
+        profile = tunedRefractionMotionProfile
     )
     val motionProgress = maxOf(pressMotionProgress, refractionMotionProfile.progress)
     val verticalGlassProfile = resolveBottomBarVerticalGlassMotionProfile(
@@ -2325,6 +2411,8 @@ private fun KernelSuAlignedBottomBar(
                             containerColor = containerColor,
                             blurEnabled = blurEnabled,
                             glassEnabled = glassEnabled,
+                            liquidGlassPreset = liquidGlassPreset,
+                            nativeVerticalProgress = backdropPresetProgress.shellProgress,
                             blurRadius = tuning.shellBlurRadiusDp.dp,
                             hazeState = hazeState,
                             motionTier = motionTier,
@@ -2404,26 +2492,56 @@ private fun KernelSuAlignedBottomBar(
                         }
                         .run {
                             if (backdrop != null && glassEnabled) {
-                                drawBackdrop(
-                                    backdrop = backdrop,
-                                    shape = { shellShape },
-                                    effects = {
-                                        vibrancy()
-                                        blur(tuning.shellBlurRadiusDp.dp.toPx())
-                                        lens(
-                                            refractionHeight = captureLensSpec.refractionHeightDp.dp.toPx(),
-                                            refractionAmount = captureLensSpec.refractionAmountDp.dp.toPx(),
-                                            depthEffect = true,
-                                            chromaticAberration = true
+                                when (liquidGlassPreset) {
+                                    BottomBarLiquidGlassPreset.BACKDROP_NATIVE -> {
+                                        val nativeCaptureSpec = resolveBottomBarBackdropNativeSurfaceSpec(
+                                            blurRadiusDp = tuning.shellBlurRadiusDp,
+                                            verticalProgress = backdropPresetProgress.captureProgress
                                         )
-                                    },
-                                    highlight = {
-                                        Highlight.Default.copy(alpha = captureHighlightAlpha)
-                                    },
-                                    onDrawSurface = {
-                                        drawRect(containerColor)
+                                        drawBackdrop(
+                                            backdrop = backdrop,
+                                            shape = { shellShape },
+                                            effects = {
+                                                vibrancy()
+                                                blur(nativeCaptureSpec.blurRadiusDp.dp.toPx())
+                                                lens(
+                                                    refractionHeight = nativeCaptureSpec.refractionHeightDp.dp.toPx(),
+                                                    refractionAmount = nativeCaptureSpec.refractionAmountDp.dp.toPx(),
+                                                    depthEffect = true,
+                                                    chromaticAberration = nativeCaptureSpec.chromaticAberration
+                                                )
+                                            },
+                                            onDrawSurface = {
+                                                drawRect(
+                                                    containerColor.copy(
+                                                        alpha = containerColor.alpha *
+                                                            nativeCaptureSpec.surfaceAlphaMultiplier
+                                                    )
+                                                )
+                                            }
+                                        )
                                     }
-                                )
+                                    BottomBarLiquidGlassPreset.BILIPAI_TUNED -> drawBackdrop(
+                                        backdrop = backdrop,
+                                        shape = { shellShape },
+                                        effects = {
+                                            vibrancy()
+                                            blur(tuning.shellBlurRadiusDp.dp.toPx())
+                                            lens(
+                                                refractionHeight = captureLensSpec.refractionHeightDp.dp.toPx(),
+                                                refractionAmount = captureLensSpec.refractionAmountDp.dp.toPx(),
+                                                depthEffect = true,
+                                                chromaticAberration = true
+                                            )
+                                        },
+                                        highlight = {
+                                            Highlight.Default.copy(alpha = captureHighlightAlpha)
+                                        },
+                                        onDrawSurface = {
+                                            drawRect(containerColor)
+                                        }
+                                    )
+                                }
                             } else {
                                 this
                             }
@@ -2725,6 +2843,8 @@ private fun KernelSuAlignedBottomBar(
                         containerColor = containerColor,
                         blurEnabled = blurEnabled,
                         glassEnabled = glassEnabled,
+                        liquidGlassPreset = liquidGlassPreset,
+                        nativeVerticalProgress = backdropPresetProgress.shellProgress,
                         blurRadius = tuning.shellBlurRadiusDp.dp,
                         hazeState = hazeState,
                         motionTier = motionTier,
@@ -2754,6 +2874,8 @@ private fun KernelSuBottomBarSearchCapsule(
     containerColor: Color,
     blurEnabled: Boolean,
     glassEnabled: Boolean,
+    liquidGlassPreset: BottomBarLiquidGlassPreset,
+    nativeVerticalProgress: Float,
     blurRadius: Dp,
     hazeState: HazeState?,
     motionTier: MotionTier,
@@ -2813,6 +2935,8 @@ private fun KernelSuBottomBarSearchCapsule(
                 containerColor = containerColor,
                 blurEnabled = blurEnabled,
                 glassEnabled = glassEnabled,
+                liquidGlassPreset = liquidGlassPreset,
+                nativeVerticalProgress = nativeVerticalProgress,
                 blurRadius = blurRadius,
                 hazeState = hazeState,
                 motionTier = motionTier,

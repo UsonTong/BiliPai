@@ -4,6 +4,7 @@ import com.android.purebilibili.core.util.PinyinUtils
 
 enum class SettingsSearchTarget {
     APPEARANCE,
+    ANIMATION,
     PLAYBACK,
     BOTTOM_BAR,
     PERMISSION,
@@ -385,12 +386,12 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         focusId = SettingsSearchFocusIds.APPEARANCE_SPLASH
     ),
     SettingsSearchEntry(
-        target = SettingsSearchTarget.APPEARANCE,
+        target = SettingsSearchTarget.ANIMATION,
         title = "动画与效果 / 触感反馈",
         subtitle = "动画、预测性返回、触感反馈、底栏搜索入口",
         section = "外观设置",
         aliases = listOf("动画与效果", "预测性返回", "预测性返回手势", "触感反馈", "动画设置", "应用图标", "底栏搜索", "底栏搜索入口", "搜索入口", "悬浮搜索"),
-        focusId = SettingsSearchFocusIds.APPEARANCE_PERSONALIZATION
+        focusId = SettingsSearchFocusIds.ANIMATION_VISUAL_EFFECTS
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
@@ -475,10 +476,23 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,
         title = "底栏显示模式 / 标签样式",
-        subtitle = "底部导航",
+        subtitle = "底部导航、标签显示",
         section = "导航设置",
-        aliases = listOf("显示模式", "标签样式", "底栏显示模式", "底栏标签样式"),
+        aliases = listOf(
+            "显示模式",
+            "标签样式",
+            "底栏显示模式",
+            "底栏标签样式"
+        ),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_DISPLAY
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.ANIMATION,
+        title = "底栏液态玻璃预设",
+        subtitle = "BiliPai 调校 / Backdrop 原生",
+        section = "动画与效果",
+        aliases = listOf("底栏玻璃效果", "底栏液态玻璃", "Backdrop 原生", "backdrop native"),
+        focusId = SettingsSearchFocusIds.ANIMATION_VISUAL_EFFECTS
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,

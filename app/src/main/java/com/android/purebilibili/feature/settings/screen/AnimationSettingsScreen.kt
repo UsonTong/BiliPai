@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +27,7 @@ import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
 import com.android.purebilibili.core.store.LiquidGlassMode
+import com.android.purebilibili.core.store.BottomBarLiquidGlassPreset
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
@@ -39,6 +41,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import com.android.purebilibili.core.ui.components.*
 import com.android.purebilibili.core.ui.animation.staggeredEntrance
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import android.os.Build
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
@@ -103,6 +106,9 @@ fun AnimationSettingsContent(
     viewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val focusRequest by SettingsSearchFocusController.request.collectAsState()
     val windowSizeClass = LocalWindowSizeClass.current
     val warningTint = rememberAdaptiveSemanticIconTint(iOSOrange)
     val deviceUiProfile = remember(windowSizeClass.widthSizeClass) {
@@ -143,10 +149,20 @@ fun AnimationSettingsContent(
     val isLiquidGlassAvailable = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)
     val topBarLiquidGlassEnabled = state.topBarLiquidGlassEnabled
     val bottomBarLiquidGlassEnabled = state.bottomBarLiquidGlassEnabled
+    val bottomBarLiquidGlassPreset by SettingsManager.getBottomBarLiquidGlassPreset(context)
+        .collectAsState(initial = BottomBarLiquidGlassPreset.BILIPAI_TUNED)
     var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(focusRequest?.token) {
+        val request = focusRequest ?: return@LaunchedEffect
+        if (request.target != SettingsSearchTarget.ANIMATION) return@LaunchedEffect
+        val index = resolveAnimationSettingsScrollIndex(request.focusId) ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
+        SettingsSearchFocusController.clear(request.token)
+    }
     LaunchedEffect(Unit) { isVisible = true }
 
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = WindowInsets.navigationBars.asPaddingValues()
     ) {
@@ -254,6 +270,76 @@ fun AnimationSettingsContent(
                                 onCheckedChange = { viewModel.toggleBottomBarLiquidGlass(it) },
                                 iconTint = iOSBlue
                             )
+                            IOSDivider()
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        CupertinoIcons.Default.Drop,
+                                        contentDescription = null,
+                                        tint = iOSBlue,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "底栏液态玻璃预设",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "开启底栏液态玻璃后使用：${bottomBarLiquidGlassPreset.label}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    BottomBarLiquidGlassPreset.entries.forEach { preset ->
+                                        val isSelected = bottomBarLiquidGlassPreset == preset
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                                )
+                                                .clickable {
+                                                    scope.launch {
+                                                        SettingsManager.setBottomBarLiquidGlassPreset(context, preset)
+                                                    }
+                                                }
+                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    preset.label,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    preset.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                )
+                                            }
+                                            if (isSelected) {
+                                                Icon(
+                                                    CupertinoIcons.Default.Checkmark,
+                                                    contentDescription = "已选择",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = topBarLiquidGlassEnabled || bottomBarLiquidGlassEnabled,
                                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),

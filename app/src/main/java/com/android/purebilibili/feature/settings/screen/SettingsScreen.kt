@@ -81,6 +81,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenSourceLicensesClick: () -> Unit,
     onAppearanceClick: () -> Unit = {},
+    onAnimationClick: () -> Unit = {},
     onPlaybackClick: () -> Unit = {},
     onPermissionClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
@@ -810,6 +811,7 @@ fun SettingsScreen(
         SettingsSearchFocusController.submit(result.target, result.focusId)
         when (result.target) {
             SettingsSearchTarget.APPEARANCE -> onAppearanceClick()
+            SettingsSearchTarget.ANIMATION -> onAnimationClick()
             SettingsSearchTarget.PLAYBACK -> onPlaybackClick()
             SettingsSearchTarget.BOTTOM_BAR -> onNavigateToBottomBarSettings()
             SettingsSearchTarget.PERMISSION -> onPermissionClick()
