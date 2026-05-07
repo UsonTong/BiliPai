@@ -2,11 +2,14 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -20,8 +23,6 @@ import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarHorizontalPadding
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarLiquidTabSpec
-import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
-import com.kyant.backdrop.Backdrop
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import dev.chrisbanes.haze.HazeState
@@ -43,8 +44,7 @@ fun DynamicTopBarWithTabs(
     modifier: Modifier = Modifier,
     displayMode: DynamicDisplayMode = DynamicDisplayMode.SIDEBAR,
     onDisplayModeChange: (DynamicDisplayMode) -> Unit = {},
-    hazeState: HazeState? = null,
-    backdrop: Backdrop? = null
+    hazeState: HazeState? = null
 ) {
     val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.getTop(density).let { with(density) { it.toDp() } }
@@ -77,23 +77,20 @@ fun DynamicTopBarWithTabs(
         Column {
             Spacer(modifier = Modifier.height(statusBarHeight))
             
-            //  标题行：标题 - 高度设为 44dp 以与左侧边栏返回按钮对齐
+            //  紧凑标签行：宽屏动态页优先展示内容密度
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp) // 固定高度 44dp
-                    .padding(horizontal = resolveDynamicTopBarHorizontalPadding()), 
+                    .height(liquidTabSpec.heightDp.dp)
+                    .padding(horizontal = resolveDynamicTopBarHorizontalPadding()),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 标题
-                Text(
-                    "动态",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground // 自适应颜色
+                DynamicCompactTabRow(
+                    selectedTab = selectedTab,
+                    tabs = tabs,
+                    onTabSelected = onTabSelected,
+                    modifier = Modifier.weight(1f)
                 )
-                
-                Spacer(modifier = Modifier.weight(1f))
                 
                 //  布局模式切换按钮
                 IconButton(
@@ -113,25 +110,48 @@ fun DynamicTopBarWithTabs(
                     )
                 }
             }
-            
-            // Tab栏
-            Box(
+        }
+    }
+}
+
+@Composable
+private fun DynamicCompactTabRow(
+    selectedTab: Int,
+    tabs: List<String>,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selectedColor = rememberDynamicTabSelectedColor()
+    val unselectedColor = rememberDynamicTabUnselectedColor()
+    Row(
+        modifier = modifier.fillMaxHeight(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        tabs.forEachIndexed { index, title ->
+            val selected = index == selectedTab
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = resolveDynamicTopBarHorizontalPadding(),
-                        end = resolveDynamicTopBarHorizontalPadding(),
-                        top = liquidTabSpec.topPaddingDp.dp,
-                        bottom = liquidTabSpec.bottomPaddingDp.dp
-                    )
+                    .height(48.dp)
+                    .widthIn(min = 44.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onTabSelected(index) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                BottomBarLiquidSegmentedControl(
-                    items = tabs,
-                    selectedIndex = selectedTab,
-                    onSelected = onTabSelected,
-                    modifier = Modifier.fillMaxWidth(),
-                    labelFontSize = liquidTabSpec.labelFontSizeSp.sp,
-                    backdrop = backdrop
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (selected) selectedColor else unselectedColor
+                )
+                Spacer(modifier = Modifier.height(7.dp))
+                Box(
+                    modifier = Modifier
+                        .height(3.dp)
+                        .width(28.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (selected) selectedColor else Color.Transparent)
                 )
             }
         }
@@ -139,9 +159,7 @@ fun DynamicTopBarWithTabs(
 }
 
 @Composable
-private fun rememberDynamicTabSelectedColor(): Color {
-    return resolveDynamicTabSelectedColor(MaterialTheme.colorScheme.primary)
-}
+private fun rememberDynamicTabSelectedColor(): Color = resolveDynamicTabSelectedColor(MaterialTheme.colorScheme.primary)
 
 internal fun resolveDynamicTabSelectedColor(primaryColor: Color): Color = primaryColor
 

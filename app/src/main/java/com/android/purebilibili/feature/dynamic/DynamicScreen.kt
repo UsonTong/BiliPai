@@ -21,11 +21,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -59,9 +62,12 @@ import com.android.purebilibili.core.ui.resolveGlobalWallpaperChromeColor
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.responsiveContentWidth
-import com.android.purebilibili.feature.dynamic.resolveDynamicFeedMaxWidth
 import com.android.purebilibili.feature.dynamic.resolveDynamicHorizontalUserListHorizontalPadding
 import com.android.purebilibili.feature.dynamic.resolveDynamicHorizontalUserListSpacing
+import com.android.purebilibili.feature.dynamic.resolveDynamicTimelineHorizontalSpacing
+import com.android.purebilibili.feature.dynamic.resolveDynamicTimelineMaxWidth
+import com.android.purebilibili.feature.dynamic.resolveDynamicTimelineMinColumnWidth
+import com.android.purebilibili.feature.dynamic.resolveDynamicTimelineVerticalSpacing
 
 import com.android.purebilibili.feature.dynamic.components.DynamicCardV2
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentOverlayHost
@@ -116,7 +122,7 @@ fun DynamicScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyStaggeredGridState()
     val sidebarUserListState = rememberLazyListState()
     val horizontalUserListState = rememberLazyListState()
     val dynamicScrollChannel = LocalDynamicScrollChannel.current
@@ -562,7 +568,6 @@ fun DynamicScreen(
                                     displayMode = displayMode,
                                     onDisplayModeChange = { viewModel.setDisplayMode(it) },
                                     hazeState = hazeState, // 传入 hazeState
-                                    backdrop = dynamicChromeBackdrop,
                                     modifier = Modifier.align(Alignment.TopCenter)
                                 )
                             }
@@ -673,8 +678,7 @@ fun DynamicScreen(
                                          },
                                          displayMode = displayMode,
                                          onDisplayModeChange = { viewModel.setDisplayMode(it) },
-                                         hazeState = null, // 禁用内部模糊，由外层统一处理
-                                         backdrop = dynamicChromeBackdrop
+                                         hazeState = null // 禁用内部模糊，由外层统一处理
                                      )
 
                                      //  横向 UP 主列表
@@ -834,7 +838,7 @@ private fun DynamicList(
     selectedTab: Int,
     isSelectedUserTabActive: Boolean,
     filteredItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
-    listState: androidx.compose.foundation.lazy.LazyListState,
+    listState: LazyStaggeredGridState,
     statusBarHeight: androidx.compose.ui.unit.Dp,
     topPaddingExtra: androidx.compose.ui.unit.Dp,
     bottomPadding: androidx.compose.ui.unit.Dp,
@@ -855,17 +859,39 @@ private fun DynamicList(
     likedDynamics: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
+    val dynamicCard: @Composable (com.android.purebilibili.data.model.response.DynamicItem) -> Unit = { item ->
+        DynamicCardV2(
+            item = item,
+            onVideoClick = onVideoClick,
+            onBangumiClick = onBangumiClick,
+            onDynamicDetailClick = onDynamicDetailClick,
+            onUserClick = onUserClick,
+            onLiveClick = onLiveClick,
+            gifImageLoader = gifImageLoader,
+            onCommentClick = onCommentClick,
+            onRepostClick = onRepostClick,
+            onLikeClick = onLikeClick,
+            onWatchLaterClick = onWatchLaterClick,
+            isLiked = likedDynamics.contains(item.id_str)
+        )
+    }
+
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(resolveDynamicTimelineMinColumnWidth()),
         state = listState,
         contentPadding = PaddingValues(
             top = statusBarHeight + topPaddingExtra,
             bottom = bottomPadding
         ),
-        modifier = modifier.fillMaxSize().responsiveContentWidth(maxWidth = resolveDynamicFeedMaxWidth())
+        horizontalArrangement = Arrangement.spacedBy(resolveDynamicTimelineHorizontalSpacing()),
+        verticalItemSpacing = resolveDynamicTimelineVerticalSpacing(),
+        modifier = modifier
+            .fillMaxSize()
+            .responsiveContentWidth(maxWidth = resolveDynamicTimelineMaxWidth())
     ) {
         // 空状态
         if (filteredItems.isEmpty() && !activeLoading && activeError == null) {
-            item {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 EmptyState(
                     message = if (selectedTab == 4 && !isSelectedUserTabActive) "选择一个UP查看专属动态" else "暂无动态",
                     actionText = if (selectedTab == 4 && !isSelectedUserTabActive) "从左侧或顶部 UP 列表中选择一个用户" else "登录后查看关注 UP主 的动态",
@@ -875,29 +901,37 @@ private fun DynamicList(
         }
 
         // 动态卡片列表
-        itemsIndexed(filteredItems, key = { _, item -> "dynamic_${dynamicFeedItemKey(item)}" }) { index, item ->
-            if (oldContentDividerIndex == index) {
+        if (oldContentDividerIndex in 0..filteredItems.size) {
+            items(
+                count = oldContentDividerIndex,
+                key = { index -> "dynamic_${dynamicFeedItemKey(filteredItems[index])}" }
+            ) { index ->
+                dynamicCard(filteredItems[index])
+            }
+            item(span = StaggeredGridItemSpan.FullLine, key = "old_content_divider") {
                 OldContentDivider(label = oldContentDividerLabel)
             }
-            DynamicCardV2(
-                item = item,
-                onVideoClick = onVideoClick,
-                onBangumiClick = onBangumiClick,
-                onDynamicDetailClick = onDynamicDetailClick,
-                onUserClick = onUserClick,
-                onLiveClick = onLiveClick,
-                gifImageLoader = gifImageLoader,
-                onCommentClick = onCommentClick,
-                onRepostClick = onRepostClick,
-                onLikeClick = onLikeClick,
-                onWatchLaterClick = onWatchLaterClick,
-                isLiked = likedDynamics.contains(item.id_str)
-            )
+            items(
+                count = filteredItems.size - oldContentDividerIndex,
+                key = { offset ->
+                    val index = oldContentDividerIndex + offset
+                    "dynamic_${dynamicFeedItemKey(filteredItems[index])}"
+                }
+            ) { offset ->
+                dynamicCard(filteredItems[oldContentDividerIndex + offset])
+            }
+        } else {
+            items(
+                count = filteredItems.size,
+                key = { index -> "dynamic_${dynamicFeedItemKey(filteredItems[index])}" }
+            ) { index ->
+                dynamicCard(filteredItems[index])
+            }
         }
 
         // 加载中
         if (shouldShowDynamicLoadingFooter(isLoading = activeLoading, activeItemsCount = filteredItems.size)) {
-            item {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     contentAlignment = Alignment.Center
@@ -909,7 +943,7 @@ private fun DynamicList(
 
         // 没有更多
         if (shouldShowDynamicNoMoreFooter(hasMore = hasMore, activeItemsCount = filteredItems.size)) {
-            item {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 Text(
                     "没有更多了",
                     modifier = Modifier.fillMaxWidth().padding(16.dp),

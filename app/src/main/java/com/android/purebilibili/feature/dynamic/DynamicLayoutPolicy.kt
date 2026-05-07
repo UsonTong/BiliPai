@@ -10,6 +10,14 @@ internal enum class DynamicVideoCardLayoutMode {
 
 internal fun resolveDynamicFeedMaxWidth(): Dp = 480.dp
 
+internal fun resolveDynamicTimelineMaxWidth(): Dp = 1840.dp
+
+internal fun resolveDynamicTimelineMinColumnWidth(): Dp = 360.dp
+
+internal fun resolveDynamicTimelineHorizontalSpacing(): Dp = 18.dp
+
+internal fun resolveDynamicTimelineVerticalSpacing(): Dp = 10.dp
+
 internal fun resolveDynamicVideoCardLayoutMode(containerWidthDp: Int): DynamicVideoCardLayoutMode {
     return DynamicVideoCardLayoutMode.VERTICAL
 }
@@ -32,10 +40,10 @@ internal data class DynamicTopBarLiquidTabSpec(
 
 internal fun resolveDynamicTopBarLiquidTabSpec(): DynamicTopBarLiquidTabSpec {
     return DynamicTopBarLiquidTabSpec(
-        topPaddingDp = 2,
-        bottomPaddingDp = 8,
-        heightDp = 58,
-        indicatorHeightDp = 56,
+        topPaddingDp = 0,
+        bottomPaddingDp = 0,
+        heightDp = 52,
+        indicatorHeightDp = 3,
         labelFontSizeSp = 14
     )
 }

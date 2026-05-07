@@ -13,6 +13,14 @@ class DynamicLayoutPolicyTest {
     }
 
     @Test
+    fun `dynamic timeline expands into dense adaptive columns on wide screens`() {
+        assertEquals(1840.dp, resolveDynamicTimelineMaxWidth())
+        assertEquals(360.dp, resolveDynamicTimelineMinColumnWidth())
+        assertEquals(18.dp, resolveDynamicTimelineHorizontalSpacing())
+        assertEquals(10.dp, resolveDynamicTimelineVerticalSpacing())
+    }
+
+    @Test
     fun `dynamic video card keeps vertical layout on wide content`() {
         assertEquals(
             DynamicVideoCardLayoutMode.VERTICAL,
@@ -45,10 +53,10 @@ class DynamicLayoutPolicyTest {
     fun `dynamic top tab row uses bottom bar liquid glass proportions`() {
         val spec = resolveDynamicTopBarLiquidTabSpec()
 
-        assertEquals(2, spec.topPaddingDp)
-        assertEquals(8, spec.bottomPaddingDp)
-        assertEquals(58, spec.heightDp)
-        assertEquals(56, spec.indicatorHeightDp)
+        assertEquals(0, spec.topPaddingDp)
+        assertEquals(0, spec.bottomPaddingDp)
+        assertEquals(52, spec.heightDp)
+        assertEquals(3, spec.indicatorHeightDp)
         assertEquals(14, spec.labelFontSizeSp)
     }
 

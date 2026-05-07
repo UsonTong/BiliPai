@@ -14,21 +14,21 @@ class DynamicScreenStatePolicyTest {
     @Test
     fun `horizontal dynamic header reserves top user list height at rest`() {
         assertEquals(
-            204,
+            148,
             resolveDynamicListTopPaddingExtraDp(
                 isHorizontalMode = true,
                 isHorizontalUserListCollapsed = false
             )
         )
         assertEquals(
-            116,
+            60,
             resolveDynamicListTopPaddingExtraDp(
                 isHorizontalMode = true,
                 isHorizontalUserListCollapsed = true
             )
         )
         assertEquals(
-            100,
+            60,
             resolveDynamicListTopPaddingExtraDp(
                 isHorizontalMode = false,
                 isHorizontalUserListCollapsed = false

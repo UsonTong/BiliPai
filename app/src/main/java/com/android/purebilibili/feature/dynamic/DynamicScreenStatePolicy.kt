@@ -9,9 +9,9 @@ internal fun resolveDynamicListTopPaddingExtraDp(
     isHorizontalUserListCollapsed: Boolean = false
 ): Int {
     return when {
-        isHorizontalMode && !isHorizontalUserListCollapsed -> 204
-        isHorizontalMode -> 116
-        else -> 100
+        isHorizontalMode && !isHorizontalUserListCollapsed -> 148
+        isHorizontalMode -> 60
+        else -> 60
     }
 }
 
