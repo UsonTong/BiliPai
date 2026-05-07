@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -507,7 +509,6 @@ private fun CinemaMetaPanel(
             success.info.pages.size
         ) {
             resolveCinemaMetaPanelBlocks(
-                hasOwner = success.info.owner.mid > 0L || success.info.owner.name.isNotBlank(),
                 hasCollection = success.info.ugc_season != null,
                 hasMultiplePages = success.info.pages.size > 1
             )
@@ -525,38 +526,82 @@ private fun CinemaMetaPanel(
             ) { block ->
                 when (block) {
                     CinemaMetaPanelBlock.ACTIONS -> {
-                        ActionButtonsRow(
-                            info = success.info,
-                            isFavorited = success.isFavorited,
-                            isLiked = success.isLiked,
-                            coinCount = success.coinCount,
-                            downloadProgress = downloadProgress,
-                            isInWatchLater = success.isInWatchLater,
-                            onFavoriteClick = onFavoriteClick,
-                            onLikeClick = onLikeClick,
-                            onCoinClick = onCoinClick,
-                            onTripleClick = onTripleClick,
-                            onDownloadClick = onDownloadClick,
-                            onWatchLaterClick = onWatchLaterClick,
-                            onCommentClick = onOpenComments,
-                            onShareClick = {
-                                ShareUtils.shareVideo(
-                                    context,
-                                    success.info.title,
-                                    success.info.bvid
+                        val actions = remember {
+                            movableContentOf<Modifier> { modifier ->
+                                ActionButtonsRow(
+                                    info = success.info,
+                                    isFavorited = success.isFavorited,
+                                    isLiked = success.isLiked,
+                                    coinCount = success.coinCount,
+                                    downloadProgress = downloadProgress,
+                                    isInWatchLater = success.isInWatchLater,
+                                    onFavoriteClick = onFavoriteClick,
+                                    onLikeClick = onLikeClick,
+                                    onCoinClick = onCoinClick,
+                                    onTripleClick = onTripleClick,
+                                    onDownloadClick = onDownloadClick,
+                                    onWatchLaterClick = onWatchLaterClick,
+                                    onCommentClick = onOpenComments,
+                                    onShareClick = {
+                                        ShareUtils.shareVideo(
+                                            context,
+                                            success.info.title,
+                                            success.info.bvid
+                                        )
+                                    },
+                                    modifier = modifier
                                 )
                             }
-                        )
-                    }
-                    CinemaMetaPanelBlock.UP_INFO -> {
-                        UpInfoSection(
-                            info = success.info,
-                            isFollowing = success.isFollowing,
-                            onFollowClick = onFollowClick,
-                            onUpClick = onUpClick,
-                            followerCount = success.ownerFollowerCount,
-                            videoCount = success.ownerVideoCount
-                        )
+                        }
+                        val upInfo = remember {
+                            movableContentOf<Modifier> { modifier ->
+                                UpInfoSection(
+                                    info = success.info,
+                                    isFollowing = success.isFollowing,
+                                    onFollowClick = onFollowClick,
+                                    onUpClick = onUpClick,
+                                    followerCount = success.ownerFollowerCount,
+                                    videoCount = success.ownerVideoCount,
+                                    modifier = modifier
+                                )
+                            }
+                        }
+                        if (success.info.owner.mid > 0L || success.info.owner.name.isNotBlank()) { // hasOwner
+                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val isWide = maxWidth >= 600.dp
+
+                                AnimatedContent(
+                                    targetState = isWide,
+                                    transitionSpec = {
+                                        // 动画配置：淡入淡出 (Fade) + 尺寸平滑变换 (SizeTransform)
+                                        (fadeIn(animationSpec = tween(400)) togetherWith fadeOut(
+                                            animationSpec = tween(400)
+                                        ))
+                                            .using(SizeTransform(clip = false))
+                                    },
+                                    label = "ActionUpInfoTransition"
+                                ) { targetIsWide ->
+                                    if (targetIsWide) {
+                                        // 宽度足够，横排
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            upInfo(Modifier.weight(1f))
+                                            actions(Modifier.weight(1f))
+                                        }
+                                    } else {
+                                        // 宽度不足，竖排
+                                        Column(Modifier.fillMaxWidth()) {
+                                            actions(Modifier.fillMaxWidth())
+                                            upInfo(Modifier.fillMaxWidth())
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            actions(Modifier.fillMaxWidth())
+                        }
                     }
                     CinemaMetaPanelBlock.INTRO -> {
                         CinemaVideoIntroSection(
@@ -607,7 +652,7 @@ private fun CinemaVideoIntroSection(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             shape = RoundedCornerShape(16.dp),
             color = resolveCinemaIntroCardContainerColor(
                 isDarkTheme = isDarkTheme,
@@ -635,14 +680,12 @@ private fun CinemaVideoIntroSection(
             )
         ) {
             AiSummaryCard(
-                aiSummary = success.aiSummary,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                aiSummary = success.aiSummary
             )
         } else if (videoAiSummaryEntryEnabled && success.aiSummaryPrompt != null) {
             AiSummaryPromptCard(
                 promptState = success.aiSummaryPrompt,
-                onActionClick = onRetryAiSummary,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                onActionClick = onRetryAiSummary
             )
         }
     }

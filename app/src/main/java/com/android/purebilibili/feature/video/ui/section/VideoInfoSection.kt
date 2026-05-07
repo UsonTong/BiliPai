@@ -517,7 +517,8 @@ fun UpInfoSection(
     showOwnerAvatar: Boolean = true,
     followerCount: Int? = null,
     videoCount: Int? = null,
-    transitionEnabled: Boolean = false  // 🔗 共享元素过渡开关
+    transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
+    modifier: Modifier = Modifier
 ) {
     //  尝试获取共享元素作用域
     val sharedTransitionScope = com.android.purebilibili.core.ui.LocalSharedTransitionScope.current
@@ -537,8 +538,7 @@ fun UpInfoSection(
     )
     val showInlineOwnerIdentity = shouldShowInlineOwnerIdentity(showOwnerAvatar = showOwnerAvatar)
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
     ) {
         Row(
             modifier = Modifier

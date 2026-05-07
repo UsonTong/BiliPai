@@ -93,7 +93,8 @@ fun ActionButtonsRow(
     onDownloadClick: () -> Unit = {},  //  下载点击
     onWatchLaterClick: () -> Unit = {},  //  稍后再看点击
     onFavoriteLongClick: () -> Unit = {}, // [New] 长按收藏
-    onShareClick: () -> Unit = {}
+    onShareClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val primaryActionColor = MaterialTheme.colorScheme.primary
     val haptic = rememberHapticFeedback()
@@ -130,8 +131,7 @@ fun ActionButtonsRow(
     }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .animateContentSize() // 🚀 [优化] 使布局变化更平滑
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
