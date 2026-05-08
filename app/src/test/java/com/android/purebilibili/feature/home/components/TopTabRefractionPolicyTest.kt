@@ -344,7 +344,8 @@ class TopTabRefractionPolicyTest {
         assertTrue(source.contains("shouldDeformTopTabIndicator("))
         assertTrue(source.contains("1f\n                } else {\n                    0f"))
         assertTrue(source.contains("motionProgress = topTabIndicatorDeformationProgress"))
-        assertTrue(source.contains("scaleY = if (isFloatingStyle)"))
+        assertFalse(source.contains("scaleY = if (isFloatingStyle)"))
+        assertTrue(source.contains("scaleY = indicatorLayerTransform.scaleY"))
     }
 
     @Test

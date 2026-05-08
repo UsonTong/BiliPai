@@ -1083,11 +1083,7 @@ fun CategoryTabRow(
                                         layerBlock = {
                                             if (effectiveLiquidGlassEnabled) {
                                                 scaleX = indicatorLayerTransform.scaleX
-                                                scaleY = if (isFloatingStyle) {
-                                                    1f
-                                                } else {
-                                                    indicatorLayerTransform.scaleY
-                                                }
+                                                scaleY = indicatorLayerTransform.scaleY
                                             }
                                         }
                                     )
