@@ -118,10 +118,13 @@ class FullscreenPlayerOverlayPolicyTest {
     fun fullscreenPlaybackButton_usesThemeTintedNativeIconWithoutSurfaceShadow() {
         val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
             .readText()
-        val playbackButtonIndex = source.indexOf("togglePlayerPlaybackFromUserAction(it)")
+        val playbackButtonIndex = source.indexOf("applyPlaybackButtonUserAction(")
+        assertTrue(playbackButtonIndex >= 0)
+        val iconButtonIndex = source.lastIndexOf("IconButton(", playbackButtonIndex)
+        assertTrue(iconButtonIndex >= 0)
         val buttonSource = source.substring(
-            playbackButtonIndex - 220,
-            playbackButtonIndex + 520
+            iconButtonIndex,
+            playbackButtonIndex + 760
         )
 
         assertTrue(buttonSource.contains("IconButton("))

@@ -382,7 +382,7 @@ internal fun resolveHomeTopTabRowHeight(
             if (isTabFloating) 52.dp else 48.dp
         }
     }
-    return resolveIosTopTabRowHeight(isTabFloating)
+    return if (isTabFloating) 62.dp else 56.dp
 }
 
 internal fun resolveHomeTopSearchRowHorizontalPadding(

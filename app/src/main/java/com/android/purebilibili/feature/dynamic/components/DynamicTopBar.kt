@@ -25,6 +25,8 @@ import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarHorizontalPa
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarLiquidTabSpec
 import com.android.purebilibili.core.ui.blur.BlurStyles
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
+import com.kyant.backdrop.Backdrop
 import dev.chrisbanes.haze.HazeState
 
 //  动态页面布局模式
@@ -44,7 +46,8 @@ fun DynamicTopBarWithTabs(
     modifier: Modifier = Modifier,
     displayMode: DynamicDisplayMode = DynamicDisplayMode.SIDEBAR,
     onDisplayModeChange: (DynamicDisplayMode) -> Unit = {},
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    backdrop: Backdrop? = null
 ) {
     val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.getTop(density).let { with(density) { it.toDp() } }
@@ -89,7 +92,8 @@ fun DynamicTopBarWithTabs(
                     selectedTab = selectedTab,
                     tabs = tabs,
                     onTabSelected = onTabSelected,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    backdrop = backdrop
                 )
                 
                 //  布局模式切换按钮
@@ -119,43 +123,20 @@ private fun DynamicCompactTabRow(
     selectedTab: Int,
     tabs: List<String>,
     onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backdrop: Backdrop? = null
 ) {
-    val selectedColor = rememberDynamicTabSelectedColor()
-    val unselectedColor = rememberDynamicTabUnselectedColor()
-    Row(
-        modifier = modifier.fillMaxHeight(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        tabs.forEachIndexed { index, title ->
-            val selected = index == selectedTab
-            Column(
-                modifier = Modifier
-                    .height(48.dp)
-                    .widthIn(min = 44.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable { onTabSelected(index) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (selected) selectedColor else unselectedColor
-                )
-                Spacer(modifier = Modifier.height(7.dp))
-                Box(
-                    modifier = Modifier
-                        .height(3.dp)
-                        .width(28.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(if (selected) selectedColor else Color.Transparent)
-                )
-            }
-        }
-    }
+    BottomBarLiquidSegmentedControl(
+        items = tabs,
+        selectedIndex = selectedTab,
+        onSelected = onTabSelected,
+        modifier = modifier,
+        height = 44.dp,
+        indicatorHeight = 36.dp,
+        labelFontSize = 14.sp,
+        preferInlineContentStyle = true,
+        backdrop = backdrop
+    )
 }
 
 @Composable

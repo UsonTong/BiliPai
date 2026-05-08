@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Article
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CardGiftcard
@@ -62,6 +63,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.SquareAndArrowUp
 import io.github.alexzhirkevich.cupertino.icons.outlined.SquareStack3dUp
 import io.github.alexzhirkevich.cupertino.icons.outlined.Terminal
 import io.github.alexzhirkevich.cupertino.icons.outlined.Trash
+import io.github.alexzhirkevich.cupertino.icons.outlined.WandAndStars
 import io.github.alexzhirkevich.cupertino.icons.outlined.XmarkCircle
 
 internal data class SettingsEntryVisual(
@@ -188,7 +190,7 @@ internal fun resolveSettingsEntryVisual(
                 iconTint = iconTint
             )
             SettingsSearchTarget.ANIMATION -> SettingsEntryVisual(
-                icon = Icons.Outlined.Palette,
+                icon = Icons.Outlined.AutoAwesome,
                 iconTint = iconTint
             )
             SettingsSearchTarget.PLAYBACK -> SettingsEntryVisual(
@@ -284,7 +286,7 @@ internal fun resolveSettingsEntryVisual(
             iconTint = iOSPink
         )
         SettingsSearchTarget.ANIMATION -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.PaintbrushPointed,
+            icon = CupertinoIcons.Default.WandAndStars,
             iconTint = iOSPink
         )
         SettingsSearchTarget.PLAYBACK -> SettingsEntryVisual(

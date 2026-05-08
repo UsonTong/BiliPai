@@ -568,6 +568,7 @@ fun DynamicScreen(
                                     displayMode = displayMode,
                                     onDisplayModeChange = { viewModel.setDisplayMode(it) },
                                     hazeState = hazeState, // 传入 hazeState
+                                    backdrop = dynamicChromeBackdrop,
                                     modifier = Modifier.align(Alignment.TopCenter)
                                 )
                             }

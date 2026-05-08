@@ -858,7 +858,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandThumbsup,
+                            icon = CupertinoIcons.Default.EyeSlash,
                             title = "屏蔽关注/点赞弹幕",
                             subtitle = if (blockAttentionCommandDanmaku) {
                                 "已开启：不显示关注、点赞、三连互动弹幕"
