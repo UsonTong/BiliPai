@@ -22,8 +22,19 @@ class TopTabRefractionPolicyTest {
     }
 
     @Test
-    fun `indicator should refract while dragging`() {
+    fun `indicator should refract while dragging horizontally`() {
         assertTrue(
+            shouldTopTabIndicatorUseRefraction(
+                position = 1.04f,
+                interacting = true,
+                velocityPxPerSecond = 0f
+            )
+        )
+    }
+
+    @Test
+    fun `indicator should not refract for pager scroll flag without horizontal movement`() {
+        assertFalse(
             shouldTopTabIndicatorUseRefraction(
                 position = 1.0f,
                 interacting = true,
@@ -173,6 +184,12 @@ class TopTabRefractionPolicyTest {
         assertFalse(
             shouldDeformTopTabIndicator(
                 position = 2f,
+                isInMotion = true
+            )
+        )
+        assertFalse(
+            shouldDeformTopTabIndicator(
+                position = 2.004f,
                 isInMotion = true
             )
         )

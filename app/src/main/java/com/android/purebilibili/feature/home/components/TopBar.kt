@@ -1606,10 +1606,9 @@ internal fun shouldTopTabIndicatorUseRefraction(
     position: Float,
     interacting: Boolean,
     velocityPxPerSecond: Float,
-    positionEpsilon: Float = 0.001f,
+    positionEpsilon: Float = 0.015f,
     velocityEpsilon: Float = 45f
 ): Boolean {
-    if (interacting) return true
     val fractional = abs(position - position.roundToInt().toFloat()) > positionEpsilon
     if (fractional) return true
     return abs(velocityPxPerSecond) > velocityEpsilon
@@ -1618,7 +1617,7 @@ internal fun shouldTopTabIndicatorUseRefraction(
 internal fun shouldDeformTopTabIndicator(
     position: Float,
     isInMotion: Boolean,
-    positionEpsilon: Float = 0.001f
+    positionEpsilon: Float = 0.015f
 ): Boolean {
     if (!isInMotion) return false
     return abs(position - position.roundToInt().toFloat()) > positionEpsilon
