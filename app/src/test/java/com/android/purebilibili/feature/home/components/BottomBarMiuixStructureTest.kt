@@ -65,6 +65,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarBackdropPresetIndicatorLens("))
         assertTrue(kernelSuRendererSource.contains("progress = backdropPresetProgress.captureProgress"))
         assertTrue(kernelSuRendererSource.contains("progress = backdropPresetProgress.indicatorProgress"))
+        assertTrue(kernelSuRendererSource.contains("shouldRenderBottomBarRefractionCapture("))
+        assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null)"))
+        assertTrue(kernelSuRendererSource.contains(".layerBackdrop(tabsBackdrop)"))
         assertTrue(kernelSuRendererSource.contains("backdropPresetProgress.indicatorProgress > 0f"))
         assertTrue(kernelSuRendererSource.contains("scaleX = refractionMotionProfile.exportCaptureWidthScale"))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarGlassVisibleContentColor("))
@@ -107,7 +110,12 @@ class BottomBarMiuixStructureTest {
         assertTrue(searchCapsuleSource.contains("label = \"bottomBarSearchLongPressHorizontalScale\""))
         assertTrue(searchCapsuleSource.contains("detectTapGestures("))
         assertTrue(searchCapsuleSource.contains("onLongPress = {"))
-        assertTrue(searchCapsuleSource.contains("haptic(HapticType.SELECTION)"))
+        assertTrue(searchCapsuleSource.contains("currentHaptic(HapticType.SELECTION)"))
+        assertTrue(searchCapsuleSource.contains("val currentOnExpandChange by rememberUpdatedState(onExpandChange)"))
+        assertTrue(searchCapsuleSource.contains("val currentOnSubmit by rememberUpdatedState(onSubmit)"))
+        assertTrue(searchCapsuleSource.contains("val currentHaptic by rememberUpdatedState(haptic)"))
+        assertTrue(searchCapsuleSource.contains("Modifier.pointerInput(Unit)"))
+        assertFalse(searchCapsuleSource.contains("Modifier.pointerInput(onExpandChange)"))
         assertTrue(searchCapsuleSource.contains("easing = AppMotionEasing.Continuity"))
         assertFalse(source.contains("private fun rememberBottomBarSettlePulseTransform("))
         assertFalse(source.contains("settlePulseKey = if (index == selectedIndex)"))
@@ -139,18 +147,37 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
+    fun `sukisu renderer skips dock and export content when search is stably expanded`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val kernelSuRendererSource = source
+            .substringAfter("private fun KernelSuAlignedBottomBar(")
+            .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+
+        assertTrue(kernelSuRendererSource.contains("val shouldComposeDockContent = shouldComposeBottomBarDockContent("))
+        assertTrue(kernelSuRendererSource.contains("if (shouldComposeDockContent) {"))
+        assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null) {\n                    Box("))
+    }
+
+    @Test
     fun `android native input overlay forwards press state to indicator animation`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val kernelSuRendererSource = source
             .substringAfter("private fun KernelSuAlignedBottomBar(")
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
-        val androidItemSource = source.substringAfter("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+        val inputTargetSource = source.substringAfter("@Composable\nprivate fun RowScope.BottomBarInputTarget(")
 
         assertTrue(kernelSuRendererSource.contains("onPressChanged = dampedDragState::setPressed"))
-        assertTrue(androidItemSource.contains("collectIsPressedAsState()"))
-        assertTrue(androidItemSource.contains("LaunchedEffect(isPressed, interactive)"))
-        assertTrue(androidItemSource.contains("DisposableEffect(interactive)"))
-        assertTrue(androidItemSource.contains("currentOnPressChanged(false)"))
+        assertTrue(kernelSuRendererSource.contains("BottomBarInputTarget("))
+        assertFalse(
+            kernelSuRendererSource
+                .substringAfter(".horizontalDragGesture")
+                .substringBefore("if (searchEnabled)")
+                .contains("AndroidNativeBottomBarItem(")
+        )
+        assertTrue(inputTargetSource.contains("collectIsPressedAsState()"))
+        assertTrue(inputTargetSource.contains("LaunchedEffect(isPressed)"))
+        assertTrue(inputTargetSource.contains("DisposableEffect(Unit)"))
+        assertTrue(inputTargetSource.contains("currentOnPressChanged(false)"))
     }
 
     @Test

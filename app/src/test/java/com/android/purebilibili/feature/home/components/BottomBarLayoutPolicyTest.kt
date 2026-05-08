@@ -185,6 +185,46 @@ class BottomBarLayoutPolicyTest {
     }
 
     @Test
+    fun `bottom search auto expansion follows threshold bucket not raw scroll pixels`() {
+        assertEquals(
+            true,
+            shouldAutoExpandBottomBarSearchAtThreshold(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                isPastTopThreshold = false
+            )
+        )
+        assertEquals(
+            true,
+            shouldAutoExpandBottomBarSearchAtThreshold(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_WHEN_SCROLLING_DOWN,
+                isPastTopThreshold = true
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearchAtThreshold(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
+                isPastTopThreshold = true
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoExpandBottomBarSearchAtThreshold(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                autoExpandMode = BottomBarSearchAutoExpandMode.DISABLED,
+                isPastTopThreshold = false
+            )
+        )
+    }
+
+    @Test
     fun `bottom search entry only renders on searchable home item`() {
         assertEquals(
             true,
@@ -280,6 +320,86 @@ class BottomBarLayoutPolicyTest {
                 bottomBarSearchEnabled = true,
                 shouldAutoExpand = true,
                 expansionOverride = BottomBarSearchExpansionOverride.COLLAPSED
+            )
+        )
+    }
+
+    @Test
+    fun `bottom search override reset only follows route enabled state and threshold bucket`() {
+        assertEquals(
+            false,
+            shouldResetBottomBarSearchExpansionOverride(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                shouldAutoExpand = true,
+                isPastTopThreshold = false
+            )
+        )
+        assertEquals(
+            true,
+            shouldResetBottomBarSearchExpansionOverride(
+                currentItem = BottomNavItem.HOME,
+                bottomBarSearchEnabled = true,
+                shouldAutoExpand = false,
+                isPastTopThreshold = true
+            )
+        )
+        assertEquals(
+            true,
+            shouldResetBottomBarSearchExpansionOverride(
+                currentItem = BottomNavItem.DYNAMIC,
+                bottomBarSearchEnabled = true,
+                shouldAutoExpand = false,
+                isPastTopThreshold = false
+            )
+        )
+    }
+
+    @Test
+    fun `bottom bar search performance guards keep expensive layers transient`() {
+        assertEquals(
+            true,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 0.01f
+            )
+        )
+        assertEquals(
+            false,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 0.001f
+            )
+        )
+        assertEquals(
+            false,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = false,
+                hasBackdrop = true,
+                captureProgress = 0.3f
+            )
+        )
+        assertEquals(
+            true,
+            shouldComposeBottomBarDockContent(
+                dockContentAlpha = 0.02f,
+                effectiveSearchExpanded = true
+            )
+        )
+        assertEquals(
+            false,
+            shouldComposeBottomBarDockContent(
+                dockContentAlpha = 0f,
+                effectiveSearchExpanded = true
+            )
+        )
+        assertEquals(
+            true,
+            shouldComposeBottomBarDockContent(
+                dockContentAlpha = 0f,
+                effectiveSearchExpanded = false
             )
         )
     }
