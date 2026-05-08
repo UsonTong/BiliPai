@@ -1,8 +1,11 @@
 package com.android.purebilibili.core.ui.animation
 
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class DampedDragAnimationPolicyTest {
 
@@ -53,5 +56,27 @@ class DampedDragAnimationPolicyTest {
                 itemWidthPx = 0f
             )
         )
+    }
+
+    @Test
+    fun `drag updates snap immediately while release keeps animated settling`() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt"),
+            File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
+        ).first { it.exists() }.readText()
+        val dragSource = source
+            .substringAfter("fun onDrag(dragAmountPx: Float, itemWidthPx: Float)")
+            .substringBefore("fun setPressed(pressed: Boolean)")
+        val releaseSource = source
+            .substringAfter("fun onDragEnd(")
+            .substringBefore("fun updateIndex(index: Int)")
+
+        assertTrue(dragSource.contains("animatable.stop()"))
+        assertTrue(dragSource.contains("animatable.snapTo(newValue)"))
+        assertTrue(dragSource.contains("offsetAnimation.stop()"))
+        assertTrue(dragSource.contains("offsetAnimation.snapTo(desiredDragOffsetPx)"))
+        assertFalse(dragSource.contains("animatable.animateTo(\n                targetValue = newValue"))
+        assertTrue(releaseSource.contains("animatable.animateTo("))
+        assertTrue(releaseSource.contains("offsetAnimation.animateTo(0f"))
     }
 }
