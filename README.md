@@ -1,419 +1,218 @@
 <div align="center">
 
-<img src="docs/images/hero_banner.svg" alt="BiliPai" width="100%" />
+<img src="docs/images/233娘.jpeg" height="96" alt="BiliPai" />
 
-<br/>
+# BiliPai
 
-<sub><a href="README.md">中文</a> &nbsp;·&nbsp; <a href="README_EN.md">English</a> &nbsp;·&nbsp; <a href="docs/wiki/README_v8.0.6_legacy.md">Legacy README</a></sub>
+**原生、纯净、可扩展的第三方 Bilibili Android 客户端**
 
-<br/><br/>
+<sub>面向日常使用的现代 Android 客户端：视频、番剧、直播、动态、下载、插件与大屏体验。</sub>
 
-<a href="https://github.com/jay3-yy/BiliPai/releases"><img src="https://img.shields.io/badge/download-007AFF?style=flat-square&labelColor=ffffff&color=007AFF" alt="Download"/></a>
-&nbsp;
-<img src="https://img.shields.io/badge/v8.0.6-1C1C1E?style=flat-square&labelColor=ffffff&color=1C1C1E" alt="Version"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Android_8.0%2B-8E8E93?style=flat-square&labelColor=ffffff&color=8E8E93" alt="Android"/>
-&nbsp;
-<img src="https://img.shields.io/badge/GPL--3.0-8E8E93?style=flat-square&labelColor=ffffff&color=8E8E93" alt="License"/>
+<p>
+  <a href="README.md">简体中文</a> ·
+  <a href="README_EN.md">English</a> ·
+  <a href="docs/wiki/README_v8.0.6_legacy.md">旧版 README</a>
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/Version-8.0.7-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.7" />
+  <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
+  <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
+  <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=FF9500&labelColor=ffffff" alt="Stars" />
+</p>
+
+<p>
+  <a href="https://github.com/jay3-yy/BiliPai/releases">
+    <img src="https://img.shields.io/badge/Download-Latest_Release-007AFF?style=for-the-badge&labelColor=ffffff" alt="Download latest release" />
+  </a>
+  <a href="https://t.me/BiliPaii">
+    <img src="https://img.shields.io/badge/Telegram-交流群-5AC8FA?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram group" />
+  </a>
+  <a href="https://t.me/BiliPai">
+    <img src="https://img.shields.io/badge/Telegram-频道-5AC8FA?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram channel" />
+  </a>
+  <a href="https://x.com/YangY_0x00">
+    <img src="https://img.shields.io/badge/X-@YangY__0x00-000000?style=for-the-badge&logo=x&logoColor=white" alt="X account" />
+  </a>
+</p>
+
+<sub>README 更新：2026-05-08 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
 
 </div>
 
-<br/>
+---
 
-> 一个原生的 B 站 Android 客户端。回归界面该有的安静与克制 ——
-> 没有广告，没有冗余推荐，每一处动效与触感都经过反复打磨。
+## 项目定位
 
-<br/>
+BiliPai 是一个用 Kotlin 与 Jetpack Compose 构建的 Android 客户端，目标不是复刻官方应用的全部入口，而是把常用观看、互动与管理流程做得更轻、更安静、更可调。
 
-## 设计哲学
+- **日常使用优先**：首页、搜索、视频详情、番剧、直播、动态、消息、个人中心与离线缓存覆盖主流程。
+- **播放体验优先**：DASH、高清画质、弹幕、手势、后台播放、画中画、听视频模式与横竖屏策略持续优化。
+- **原生体验优先**：Material You、Material 3 Expressive、液态玻璃、平板/折叠屏布局与系统媒体控制接入。
+- **可扩展优先**：内置插件稳定分发，JSON 规则插件可 URL 导入，源码级插件能力持续推进。
+- **隐私克制**：登录信息保存在本地，权限尽量收敛，使用统计默认关闭。
 
-BiliPai 在 Material You 与 Apple Human Interface Guidelines 之间寻找平衡点。
-它不是简单地"把 iOS 抄到 Android"，而是从两套语言中各取其长 ——
-Material 提供的色彩响应与系统协作，加上 iOS 教给我们的层次、节奏与触感。
+> [!IMPORTANT]
+> 应用默认设置面向通用场景。安装后建议进入 **设置** 调整外观、动画、播放、弹幕、后台播放和插件选项。
 
-<table>
-<tr>
-<td width="33%" valign="top">
+## 真机预览
 
-**Liquid Glass**
-
-底栏、卡片、播放器面板接入毛玻璃模糊层，背景内容随滚动微动。OLED 与浅色壁纸下都保持清晰与质感。
-
-<sub>由 Haze · AndroidLiquidGlass 提供</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**Capsule Tab Bar**
-
-底部 Tab 采用胶囊指示器与模糊背景层，切换附带阻尼弹簧动画。平板与折叠屏上自动切换为侧边栏。
-
-<sub>v8.0.6 起全面接入</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**Material 3 Expressive**
-
-新增 MD3E 子主题：动态 shape、表达性 typography 与 motion 三件套。覆盖顶栏、底栏、首页分类与视频设置。
-
-<sub>2026-05 落地</sub>
-
-</td>
-</tr>
-</table>
-
-<br/>
-
-## 应用预览
-
-<sub>v8.0.6 真机截图 · 深色 / 浅色双主题</sub>
+以下图片为项目保留的真机测试/实机预览图，后续 README 改版也会继续沿用这组资产。
 
 <div align="center">
 
-<table>
-<tr>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_1_home.png" height="480" /><br/>
-  <sub>首页推荐</sub>
-</td>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_2_video.png" height="480" /><br/>
-  <sub>视频播放 · AI 总结</sub>
-</td>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_3_dynamic.png" height="480" /><br/>
-  <sub>动态页</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_4_settings.png" height="480" /><br/>
-  <sub>设置中心 · 浅色</sub>
-</td>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_5_feed.png" height="480" /><br/>
-  <sub>浏览流</sub>
-</td>
-<td align="center" width="33%">
-  <img src="docs/images/screenshot_real_6_feed.png" height="480" /><br/>
-  <sub>双列瀑布</sub>
-</td>
-</tr>
-</table>
+<img src="docs/images/screenshot_preview_1.png" height="440" alt="BiliPai screenshot 1" />
+<img src="docs/images/screenshot_preview_2.png" height="440" alt="BiliPai screenshot 2" />
+<img src="docs/images/screenshot_preview_3.png" height="440" alt="BiliPai screenshot 3" />
+<img src="docs/images/screenshot_preview_4.png" height="440" alt="BiliPai screenshot 4" />
+<img src="docs/images/screenshot_preview_5.png" height="440" alt="BiliPai screenshot 5" />
 
 </div>
 
-<br/>
+## 下载与安装
 
-## 功能
+| 项目 | 说明 |
+| --- | --- |
+| 最新版本 | [GitHub Releases](https://github.com/jay3-yy/BiliPai/releases) |
+| 系统要求 | Android 8.0+ / API 26+ |
+| 推荐系统 | Android 12+，可获得更完整的 Material You 与动态取色体验 |
+| CPU 架构 | 以 Release 实际产物为准，优先面向 64 位设备 |
+| 登录方式 | 扫码登录 / 网页登录 |
 
-#### 视频与音频
+安装 APK 时可能需要允许“安装未知来源应用”。如果遇到播放画质、登录状态或缓存问题，请先确认当前版本、网络环境和账号权限。
 
-4K · 1080P60 · HDR · Dolby Vision 全画质支持。DASH 自适应码率，倍速 0.5×–2.0× 支持长按上滑锁定。听视频模式提供沉浸式与黑胶唱片切换、歌词、播放列表与定时关闭。画中画、后台播放、锁屏控制全链路打通。
+## 核心能力
 
-#### 浏览与搜索
+| 模块 | 能力 |
+| --- | --- |
+| 视频播放 | DASH 自适应码率、4K / 1080P60 / HDR、弹幕、手势、倍速、后台播放、画中画、播放记忆 |
+| 听视频 | 沉浸式 / 黑胶唱片模式、歌词、播放列表、定时关闭、系统媒体中心联动 |
+| 番剧影视 | 选集面板、季度/版本切换、横屏顶部操作、追番与播放进度 |
+| 直播 | 分区浏览、HLS 播放、实时弹幕、动态卡片跳转直播间 |
+| 动态消息 | 关注流、GIF、图片预览/保存、消息分类、富文本链接跳转 |
+| 搜索空间 | 视频 / UP 主 / 番剧检索，UP 空间搜索，历史记录与实时建议 |
+| 离线缓存 | 清晰度选择、断点续传、本地播放管理、音视频合并 |
+| 插件系统 | 内置插件、JSON 规则插件、源码级原生插件、外部包格式预览 |
+| 大屏适配 | 平板/折叠屏侧边栏、影院布局、横竖屏方向策略 |
 
-首页推荐、动态、消息、个人空间均为原生实现。300ms 防抖搜索建议、UP 空间内搜索、视频 BGM 识别。图片预览采用 iOS 风格的开关动画与立体过渡。
+## 体验设计
 
-#### 离线与下载
+BiliPai 的界面围绕“内容优先、控制轻量、动效克制”调整。
 
-按清晰度选择下载，音视频自动合并。断点续传，本地播放管理。
-
-#### 隐私
-
-无广告，无追踪，权限最小化。登录凭证仅存本地，运行日志默认不落盘，遥测默认仅崩溃追踪 —— 使用统计默认关闭。
-
-<br/>
-
-<details>
-<summary>查看完整功能矩阵</summary>
-
-<br/>
-
-#### 视频播放
-
-| | |
-|-----|-----|
-| 高清画质 | 4K · 1080P60 · HDR · Dolby Vision (需登录/大会员) |
-| DASH 流媒体 | 自适应码率，无缝切换画质 |
-| 弹幕系统 | 透明度、字体、滚动速度、密度过滤 |
-| 手势控制 | 左侧亮度，右侧音量，左右快进/快退 |
-| 倍速 | 0.5× – 2.0×，长按倍速支持上滑锁定 |
-| 画中画 | 悬浮小窗，多任务无缝切换 |
-| 听视频 | 沉浸式 / 黑胶唱片，歌词、播放列表、定时关闭 |
-| AI 总结 | 智能生成视频内容摘要 |
-| 原地播放 | 长按封面预览，点击全屏 |
-| 后台播放 | 锁屏继续，独立开关与音频焦点 |
-| 播放顺序 | 暂停 / 顺序 / 单循环 / 列表循环 / 自动连播 |
-| Seek 预览 | 按帧边界量化，重绘负担更低 |
-| 评论体验 | 默认排序偏好，长按选择复制 |
-| 横屏信息 | 全屏顶部时间显示，交互信息更完整 |
-| 播放记忆 | 自动续播，同目标仅提醒一次 |
-
-#### 番剧 · 直播 · 动态
-
-| | |
-|-----|-----|
-| 番剧首页 | 热门推荐、新番时间表、分区浏览 |
-| 选集面板 | 官方风格底部弹出，季度/版本切换 |
-| 直播 | HLS 自适应码率，实时弹幕，动态卡片直达 |
-| 动态流 | 视频/图文/转发，分类筛选，GIF 完美渲染 |
-| 图片预览 | 全局 Overlay + iOS 风格开关动画，立体过渡 |
-| @ 高亮 | 动态中 @用户 自动高亮 |
-
-#### 消息中心 · 个人
-
-| | |
-|-----|-----|
-| 消息中心 | 回复 / @ / 赞 / 系统通知，统一入口 |
-| 链接预览 | 自动识别 BV 号生成预览卡片 |
-| 双登录 | 扫码登录 / 网页登录 |
-| 历史 · 收藏 · 关注 | 自动记录，云同步，列表浏览 |
-
-#### 现代 UI
-
-| | |
-|-----|-----|
-| Material You | 动态主题色，跟随壁纸 |
-| iOS 风格底栏 | 胶囊指示器，毛玻璃背景 |
-| 卡片动画 | 波浪进场、弹性缩放、共享元素过渡 |
-| 骨架屏 | Shimmer 加载占位 |
-| Lottie | 点赞 / 投币 / 收藏 矢量动画 |
-| 三连烟花 | 庆祝粒子特效 |
-| 粒子消散 | "不感兴趣" 响指式动画 |
-| 平板适配 | 侧边栏持久化，底部栏自动居中 |
-
-</details>
-
-<br/>
+- **Material You / Material 3 Expressive**：支持动态主题色、表达性形状、排版和 motion 策略。
+- **Liquid Glass**：底栏、顶部区域、播放器面板等关键层接入毛玻璃/液态玻璃视觉。
+- **iOS 风格底栏**：胶囊指示器、阻尼回弹、模糊背景与大屏侧边栏之间保持统一。
+- **播放器覆盖层**：控制栏、弹幕、预览图、手势区域和横屏信息栏分层处理，减少互相遮挡。
+- **可调而非强制**：外观、动画、播放器、弹幕、插件和后台行为均尽量提供设置入口。
 
 ## 插件生态
 
-内置 6 款插件随主应用稳定分发；外部 JSON 规则插件可 URL 导入；外部 Kotlin 包格式（`.bpplugin`）目前以预览、授权和 SDK 适配为主，宿主尚不执行外部 Dex。
-
-| 形态 | 状态 | 入口 |
+| 形态 | 当前状态 | 文档 |
 | --- | --- | --- |
-| **内置插件** | 6 个：空降助手、去广告、弹幕增强、夜间护眼、今日推荐单、CDN 属地优选 | 设置 → 插件中心 |
-| **JSON / `.bp` 规则** | 支持 URL 导入，适合推荐流过滤、弹幕过滤/高亮 | [开发指南](docs/PLUGIN_DEVELOPMENT.md) · [社区目录](plugins/community/README.md) |
-| **`.bpplugin` Kotlin 包** | SDK · 包格式 · manifest · 签名校验已就绪；外部 Dex 暂未执行 | [Plugin SDK](plugins/sdk/README.md) · [示例](plugins/samples/today-watch-remix/) |
-| **源码级原生插件** | 适合复杂播放器 / 推荐 / 弹幕能力 | [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
+| 内置插件 | 随主应用稳定分发，覆盖空降助手、去广告、弹幕增强、夜间护眼、今日推荐单、CDN 属地优选 | 应用内插件中心 |
+| JSON / `.bp` 规则插件 | 支持 URL 导入，适合推荐流过滤、弹幕过滤与高亮 | [JSON 插件开发](docs/PLUGIN_DEVELOPMENT.md) |
+| 外部 `.bpplugin` 包 | SDK、包格式、manifest、签名校验已就绪；外部 Dex 执行仍处于预览阶段 | [Plugin SDK](plugins/sdk/README.md) |
+| 源码级原生插件 | 适合复杂播放器、推荐、弹幕能力，需要重新编译 APK | [原生插件开发](docs/NATIVE_PLUGIN_DEVELOPMENT.md) |
 
-> 第三方插件接入前请审阅清单中的敏感能力 ——
-> `NETWORK` · `LOCAL_HISTORY_READ` · `LOCAL_FEEDBACK_READ` · `PLAYER_CONTROL`。
-
-<details>
-<summary>JSON 规则插件 60 秒上手</summary>
-
-<br/>
-
-```json
-{
-  "id": "short_video_filter",
-  "name": "短视频过滤",
-  "type": "feed",
-  "rules": [
-    { "field": "duration", "op": "lt", "value": 60, "action": "hide" }
-  ]
-}
-```
-
-| 字段 | 说明 |
-|---|---|
-| `title` · `duration` · `owner.mid` · `owner.name` · `stat.view` | Feed 字段 |
-| `content` | Danmaku 字段 |
-| `contains` · `regex` · `lt` · `gt` · `eq` · `ne` · `startsWith` | 操作符 |
-
-将 JSON 上传到公开 URL，在 **设置 → 插件中心 → 导入外部插件** 粘贴链接即可。
-
-完整文档 → [PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md) · 示例 → [plugins/samples/](plugins/samples/)
-
-</details>
-
-<details>
-<summary>今日推荐单算法详解</summary>
-
-<br/>
-
-#### 核心思想
-
-一个完全本地、可解释的加权排序器，根据观看行为持续微调结果。
-
-- 统计历史里常看的 UP 主，结合播放进度与"最近看过"权重
-- 候选视频按热度、UP 主匹配、新鲜度、模式偏好、夜间护眼、负反馈综合打分
-- "去同质化"贪心排序，避免连续刷到同一个 UP 主
-
-#### 单条候选打分
-
-```
-score = base + creator + freshness + seenPenalty + mode + night + feedback
-
-base       = ln(view + 1) × 0.45
-creator    = ln(creatorAffinity + 1) × 2.1
-freshness  = ≤1天:0.8 · ≤3天:0.55 · ≤7天:0.3 · ≤30天:0.1 · 其余:-0.05
-seenPenalty = 已看过 -2.6
-```
-
-模式分（`RELAX` / `LEARN`）通过时长曲线 + 关键词 + 弹幕密度近似刺激度（`calmScore`）综合打分；夜间护眼激活时降低高刺激与超长视频权重；负反馈对不感兴趣视频/UP/关键词分别 `-3.2 / -2.4 / -0.7`（封顶 `-2.8`）。
-
-#### 多样化贪心
-
-```
-adjusted = score - sameCreatorPenalty(1.15)
-                 - repeatPenalty(usedCount × 0.75)
-                 + noveltyBonus(0.35)
-```
-
-#### 实现路径
-
-- 策略：`app/src/main/java/com/android/purebilibili/feature/home/TodayWatchPolicy.kt`
-- 画像：`TodayWatchProfileStore.kt`
-- 反馈：`TodayWatchFeedbackStore.kt`
-
-#### 隐私
-
-完全本地运行，不上传历史用于个性化训练；支持一键清空画像与反馈。
-
-#### 后续优化方向
-
-| 优先级 | 优化点 |
-| --- | --- |
-| P0 | 候选池分层召回（偏好 UP / 高质量 / 长尾 / 负反馈避让） |
-| P0 | 反馈半衰期：短期强降权、长期逐步恢复 |
-| P1 | 探索 / 利用配比：70% 偏好 + 20% 新鲜 + 10% 冷门 |
-| P1 | 时段与场景特征 |
-| P1 | 多样化约束升级（分区、关键词簇、时长段） |
-| P2 | 可解释性校准、离线评估基线 |
-
-完整版（含历史预处理 / 画像融合 / 关键词限幅 / 冷启动策略）见 [README_v8.0.6_legacy.md](docs/wiki/README_v8.0.6_legacy.md#-今日推荐单算法详解默认折叠)。
-
-</details>
-
-<br/>
-
-## 下载
-
-<a href="https://github.com/jay3-yy/BiliPai/releases">
-  <img src="https://img.shields.io/badge/Latest_Release-007AFF?style=for-the-badge&labelColor=ffffff" alt="Latest Release"/>
-</a>
-
-| 项目 | 要求 |
-|-----|-----|
-| 系统 | Android 8.0+ (API 26) |
-| 架构 | 64 位 (arm64-v8a) |
-| 推荐 | Android 12+ 获得完整 Material You |
-| 包大小 | 因 ABI 与构建方式而异，以 Releases 实际产物为准 |
-
-<sub>点击安装可能需要允许"未知来源"应用 · 打开后扫码或网页登录即可使用。</sub>
-
-<br/>
+> [!CAUTION]
+> 导入第三方插件前请审阅规则和能力声明，尤其是 `NETWORK`、`LOCAL_HISTORY_READ`、`LOCAL_FEEDBACK_READ`、`PLAYER_CONTROL` 等敏感能力。
 
 ## 技术栈
 
-| | |
-|-----|-----|
-| 语言 | Kotlin 1.9+ · 100% Kotlin |
-| UI | Jetpack Compose · Material 3 / MD3E · MVVM + Clean Architecture |
-| 网络 | Retrofit · OkHttp · Kotlinx Serialization |
-| 存储 | Room · DataStore |
-| 媒体 | ExoPlayer (Media3) · DanmakuFlameMaster · MediaCodec |
-| 视觉 | [Haze](https://github.com/chrisbanes/haze) · [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass) · [Compose Cupertino](https://github.com/alexzhirkevich/compose-cupertino) |
-| 动画 | Lottie Compose · Orbital · Compose Shimmer |
-| 图片 | Coil Compose（含 GIF 解码） |
-
-<br/>
-
-## 文档与社区
-
-| | |
+| 类别 | 选型 |
 | --- | --- |
-| Wiki 首页 | [docs/wiki/README.md](docs/wiki/README.md) |
-| AI / LLM 入口 | [llms.txt](llms.txt) · 别名 `AI.txt` / `llm.txt` · [AI 导航](docs/wiki/AI.md) |
-| 功能矩阵 | [docs/wiki/FEATURE_MATRIX.md](docs/wiki/FEATURE_MATRIX.md) |
-| 架构 | [docs/wiki/ARCHITECTURE.md](docs/wiki/ARCHITECTURE.md) |
-| 发布流程 | [docs/wiki/RELEASE_WORKFLOW.md](docs/wiki/RELEASE_WORKFLOW.md) |
-| QA 手册 | [docs/wiki/QA.md](docs/wiki/QA.md) |
-| 旧版 README | [docs/wiki/README_v8.0.6_legacy.md](docs/wiki/README_v8.0.6_legacy.md) |
-| Telegram 频道 | [@BiliPai](https://t.me/BiliPai) |
-| Telegram 交流群 | [@BiliPaii](https://t.me/BiliPaii) |
-| X · 作者 | [@YangY_0x00](https://x.com/YangY_0x00) |
+| 语言 | Kotlin |
+| UI | Jetpack Compose、Material 3、Material 3 Expressive、MVVM |
+| 网络 | Retrofit、OkHttp、Kotlinx Serialization |
+| 存储 | Room、DataStore |
+| 媒体 | AndroidX Media3 / ExoPlayer、MediaCodec |
+| 弹幕 | DanmakuFlameMaster、DanmakuRenderEngine |
+| 视觉 | Haze、AndroidLiquidGlass、Compose Cupertino、Miuix |
+| 动画 | Lottie Compose、Orbital、Compose Shimmer |
+| 图片 | Coil Compose |
+| 后台任务 | WorkManager |
 
-<br/>
+## 项目结构
 
-## 路线图
-
-<sub>同步于 2026-04-17 · 以最新 Release / `CHANGELOG.md` / 主分支为准</sub>
-
-**进行中** —— 文档站与 Wiki 持续补全（模块 API · 调试手册 · 回归清单）
-
-**计划中** —— 观看历史云同步 · 收藏夹管理 · 多账户切换 · 英文/繁体中文支持
-
-<details>
-<summary>查看已完成项</summary>
-
-<br/>
-
-- 首页推荐流 + 瀑布流布局
-- 视频播放 + 弹幕 + 手势 + 画中画 + 后台
-- 听视频模式 + 收藏夹/稍后再看播放列表 + 顺序/随机/单曲循环
-- 番剧/影视播放 + 选集面板
-- 直播播放 + 分区浏览
-- 动态页面 + 图片下载 + GIF 支持
-- 图片预览文案与过渡升级
-- 离线下载 + 当前视频批量缓存 + 本地播放
-- 搜索 + 历史记录
-- 原生专栏搜索 + 详情页
-- Material You + 深色模式
-- 高画质扫码登录 + 首播清晰度鉴权修复
-- 横屏控制栏增强
-- 共享元素过渡 + 返回首页动效优化
-- 平板/折叠屏适配
-- 应用内更新（手动 + 自动 + 启动提示 + 应用内下载/安装）
-- 插件系统核心架构 + 6 款内置插件
-- Firebase Analytics + Crashlytics
-- 评论/动态可选择复制
-- 消息中心分类页 + 链接直达
-- 竖屏视频点赞/收藏交互修复
-- Seek 预览重绘优化 + 底栏跨 Tab 快速切换优化
-
-</details>
-
-<br/>
-
-## 最近更新
-
-<sub>v8.0.6 · 2026-05-06</sub>
-
-- **@Jay3-yy** 新增安卓原生 MD3E / Material 3 Expressive 子风格，接入 shape、typography、motion 与外观设置
-- **@Jay3-yy** 深度适配顶栏、底栏、首页分类、共享列表、搜索、通用列表与视频设置面板的 MD3E 策略
-- **[@chenx-dust](https://github.com/chenx-dust)** [#267](https://github.com/jay3-yy/BiliPai/pull/267) 修复平板屏幕旋转体验，调整屏幕大小检测方式
-- **[@chenx-dust](https://github.com/chenx-dust)** [#267](https://github.com/jay3-yy/BiliPai/pull/267) 同步修复视频和直播方向策略
-
-完整记录 → [CHANGELOG.md](CHANGELOG.md)
-
-<br/>
+```text
+BiliPai/
+├── app/                 # 主应用、功能 UI、播放器、导航、ViewModel、策略与测试
+├── settings-core/       # 可复用设置与偏好存储逻辑
+├── network-core/        # 网络策略与底层网络支持
+├── baselineprofile/     # Macrobenchmark 与 Baseline Profile
+├── docs/                # Wiki、开发文档、截图资源
+├── plugins/             # 插件 SDK、示例、社区目录
+└── scripts/             # 发布、性能和辅助脚本
+```
 
 ## 构建
 
 ```bash
 git clone https://github.com/jay3-yy/BiliPai.git
 cd BiliPai
-./gradlew assembleDebug
+./gradlew :app:compileDebugKotlin
 ```
 
-JDK 21+ · Android Studio 2024.1+ · Compile SDK 36 · Gradle 8.13+
-可选 `google-services.json` 放入 `app/` 启用 Firebase；缺失则自动跳过。
+本地开发建议使用 JDK 21+ 与 Android Studio 2024.1+。如需打包 APK，可运行：
 
-<br/>
+```bash
+./gradlew :app:assembleDebug
+```
+
+`google-services.json` 是可选项：放入 `app/` 后启用 Firebase Crashlytics / Analytics；缺失时构建脚本会跳过相关能力。
+
+## 文档入口
+
+| 内容 | 链接 |
+| --- | --- |
+| Wiki 首页 | [docs/wiki/README.md](docs/wiki/README.md) |
+| AI / LLM 入口 | [llms.txt](llms.txt) · [docs/wiki/AI.md](docs/wiki/AI.md) |
+| 功能矩阵 | [docs/wiki/FEATURE_MATRIX.md](docs/wiki/FEATURE_MATRIX.md) |
+| 架构说明 | [docs/wiki/ARCHITECTURE.md](docs/wiki/ARCHITECTURE.md) |
+| QA 手册 | [docs/wiki/QA.md](docs/wiki/QA.md) |
+| 发布流程 | [docs/wiki/RELEASE_WORKFLOW.md](docs/wiki/RELEASE_WORKFLOW.md) |
+| 变更日志 | [CHANGELOG.md](CHANGELOG.md) |
+| 旧版 README | [docs/wiki/README_v8.0.6_legacy.md](docs/wiki/README_v8.0.6_legacy.md) |
+
+## 最近更新
+
+当前仓库版本号已更新到 `8.0.7 / versionCode 180`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；现有 changelog 最新完整记录为 `v8.0.6`：
+
+- 新增安卓原生 Material 3 Expressive / MD3E 子风格。
+- 顶栏、底栏、首页分类、共享列表、搜索、通用列表和视频设置面板完成 MD3E 适配。
+- 修复平板屏幕旋转体验与屏幕大小检测逻辑。
+- 同步修复视频和直播的方向策略。
+
+## 路线图
+
+| 状态 | 方向 |
+| --- | --- |
+| 已完成 | 首页推荐、视频播放、番剧、直播、动态、消息、个人中心、离线缓存、插件系统、大屏适配 |
+| 进行中 | Wiki 文档站、模块 API、调试手册、回归清单、插件 SDK 细化 |
+| 计划中 | 观看历史云同步、收藏夹管理、多账户切换、英文/繁体中文体验补全 |
+
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request。
+
+1. Fork 本仓库。
+2. 从主分支创建 `feature/xxx` 或 `fix/xxx` 分支。
+3. 保持改动聚焦，补充必要测试或说明。
+4. 提交 PR，并描述改动目的、影响范围和验证结果。
+
+维护者会优先处理可复现的问题、清晰的功能补全、真实设备反馈和带有验证记录的修复。
 
 ## 致谢
 
+BiliPai 依赖并参考了多个优秀开源项目：
+
 | 项目 | 用途 |
-|-----|-----|
+| --- | --- |
 | [Jetpack Compose](https://developer.android.com/jetpack/compose) | 声明式 UI 框架 |
-| [ExoPlayer (Media3)](https://github.com/androidx/media) | 媒体播放引擎 |
-| [DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | B 站官方弹幕引擎 |
-| [DanmakuRenderEngine](https://github.com/bytedance/DanmakuRenderEngine) | 字节跳动高性能弹幕 |
+| [AndroidX Media](https://github.com/androidx/media) | Media3 / ExoPlayer 播放引擎 |
+| [DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | B 站弹幕渲染能力 |
+| [DanmakuRenderEngine](https://github.com/bytedance/DanmakuRenderEngine) | 高性能弹幕渲染参考 |
 | [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect) | B 站 API 文档 |
 | [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) | 播放链路与移动端体验参考 |
 | [BilibiliSponsorBlock](https://github.com/hanydd/BilibiliSponsorBlock) | 空降助手数据与 API |
@@ -422,70 +221,43 @@ JDK 21+ · Android Studio 2024.1+ · Compile SDK 36 · Gradle 8.13+
 | [Compose Cupertino](https://github.com/alexzhirkevich/compose-cupertino) | iOS 风格组件 |
 | [Miuix](https://github.com/compose-miuix-ui/miuix) | Miuix 风格组件 |
 | [Lottie](https://github.com/airbnb/lottie-android) | 矢量动画 |
-| [Coil](https://github.com/coil-kt/coil) | Kotlin 图片加载 |
+| [Coil](https://github.com/coil-kt/coil) | 图片加载 |
 | [Orbital](https://github.com/skydoves/Orbital) | 共享元素过渡 |
+| [Retrofit](https://github.com/square/retrofit) / [OkHttp](https://github.com/square/okhttp) | 网络请求 |
+| [Room](https://developer.android.com/training/data-storage/room) / [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) | 本地数据与偏好存储 |
 
-<details>
-<summary>完整致谢列表（30+ 项）</summary>
+如有遗漏，欢迎通过 Issue 或 PR 补充。
 
-<br/>
+## 免责声明
 
-| 项目 | 用途 |
-|-----|-----|
-| [Compose Shimmer](https://github.com/valentinilk/compose-shimmer) | 骨架屏加载 |
-| [ZXing](https://github.com/zxing/zxing) | 二维码生成 |
-| [Room](https://developer.android.com/training/data-storage/room) | 数据库持久化 |
-| [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) | 偏好设置存储 |
-| [Retrofit](https://github.com/square/retrofit) | HTTP 网络请求 |
-| [Retrofit Kotlinx Serialization Converter](https://github.com/JakeWharton/retrofit2-kotlinx-serialization-converter) | 序列化转换器 |
-| [OkHttp](https://github.com/square/okhttp) | HTTP 客户端 |
-| [Brotli Decoder](https://github.com/google/brotli) | Brotli 解压 |
-| [Cling](https://github.com/4thline/cling) | DLNA/UPnP 投屏 |
-| [Jetty](https://github.com/jetty/jetty.project) | 内嵌 HTTP/Servlet 容器 |
-| [NanoHTTPD](https://github.com/NanoHttpd/nanohttpd) | 轻量本地代理服务 |
-| [pinyin4j](https://sourceforge.net/projects/pinyin4j/) | 中文拼音转换 |
-| [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization) | Kotlin 序列化 |
-| [Firebase Crashlytics](https://firebase.google.com/docs/crashlytics) | 崩溃追踪 |
-| [AndroidX Palette](https://developer.android.com/training/material/palette-colors) | 动态取色 |
-| [LeakCanary](https://github.com/square/leakcanary) | 内存泄漏检测 |
-| [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) | 后台任务 |
-| [MockK](https://github.com/mockk/mockk) | 单元测试 Mock |
-| [Turbine](https://github.com/cashapp/turbine) | Flow 测试断言 |
-| [biliSendCommAntifraud](https://github.com/freedom-introvert/biliSendCommAntifraud) | 评论反诈检测参考 |
+> [!CAUTION]
+>
+> 1. 本项目仅供学习交流，严禁用于商业用途。
+> 2. 数据来源于 Bilibili 官方公开接口或用户登录后的正常访问能力，版权归对应权利方所有。
+> 3. 登录信息仅保存在本地，不会主动上传隐私数据。
+> 4. 使用本应用观看、下载或分享内容时，请遵守相关法律法规与平台规则。
+> 5. 如涉及版权或权益问题，请联系维护者处理。
 
-如有遗漏，欢迎通过 Issue / PR 补充。
+## 许可证
 
-</details>
+[GPL-3.0 License](LICENSE)
 
-<br/>
-
-## 贡献
-
-欢迎提交 Issue 与 Pull Request。
-Fork → `feature/xxx` 分支 → Commit → PR。
-
-<br/>
-
-## 免责与许可
-
-本项目仅供学习交流，严禁用于商业用途。数据来源 Bilibili 官方 API，版权归上海幻电信息科技有限公司所有。登录信息仅保存本地，不会上传任何隐私数据。如涉及版权问题，请联系删除。
-
-[GPL-3.0](LICENSE) · 可自由使用 / 修改 / 分发；修改后必须同样开源；不得用于商业用途；不得移除原作者信息。
-
-<br/>
+你可以自由使用、修改和分发本项目；修改后的版本必须同样开源，不得用于商业用途，不得移除原作者信息。
 
 ## Star History
 
 <div align="center">
 
-[![Star History](https://api.star-history.com/svg?repos=jay3-yy/BiliPai&type=Date)](https://github.com/jay3-yy/BiliPai/stargazers)
+[![Star History Chart](https://api.star-history.com/svg?repos=jay3-yy/BiliPai&type=Date)](https://github.com/jay3-yy/BiliPai/stargazers)
 
 </div>
 
-<br/>
+---
 
 <div align="center">
 
-<sub>Made with care by <a href="https://x.com/YangY_0x00">YangY</a></sub>
+Made by <a href="https://x.com/YangY_0x00">YangY</a>
+
+<sub>( ゜- ゜)つロ 干杯~</sub>
 
 </div>
