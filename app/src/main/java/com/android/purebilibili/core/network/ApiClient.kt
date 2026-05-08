@@ -425,13 +425,10 @@ interface BilibiliApi {
     suspend fun getPlayUrlHtml5(@QueryMap params: Map<String, String>): PlayUrlResponse
     
     //  [新增] 上报播放心跳（记录播放历史）
+    @retrofit2.http.FormUrlEncoded
     @POST("x/click-interface/web/heartbeat")
     suspend fun reportHeartbeat(
-        @Query("bvid") bvid: String,
-        @Query("cid") cid: Long,
-        @Query("played_time") playedTime: Long = 0,  // 播放进度（秒）
-        @Query("real_played_time") realPlayedTime: Long = 0,
-        @Query("start_ts") startTs: Long = System.currentTimeMillis() / 1000
+        @retrofit2.http.FieldMap fields: Map<String, String>
     ): BaseResponse
 
     //  [新增] 无 WBI 签名的旧版 API (可能绕过 412)

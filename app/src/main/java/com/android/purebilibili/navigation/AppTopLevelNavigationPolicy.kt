@@ -40,6 +40,31 @@ internal fun resolveBottomBarSelectionAction(
     }
 }
 
+internal fun resolveBottomNavItemForRoute(
+    currentRoute: String?,
+    retainedItem: BottomNavItem?,
+    visibleItems: List<BottomNavItem> = BottomNavItem.entries
+): BottomNavItem {
+    val routeBase = currentRoute?.substringBefore("?")
+    return visibleItems.firstOrNull { item -> item.route == routeBase }
+        ?: retainedItem
+        ?: BottomNavItem.HOME
+}
+
+internal fun shouldUseInstantBottomTabTransition(
+    fromRoute: String?,
+    toRoute: String?,
+    visibleBottomBarRoutes: Set<String>
+): Boolean {
+    val fromRouteBase = fromRoute?.substringBefore("?")
+    val toRouteBase = toRoute?.substringBefore("?")
+    return fromRouteBase != null &&
+        toRouteBase != null &&
+        fromRouteBase != toRouteBase &&
+        fromRouteBase in visibleBottomBarRoutes &&
+        toRouteBase in visibleBottomBarRoutes
+}
+
 internal fun shouldBypassNavigationDebounceForRoute(targetRoute: String): Boolean {
     return BottomNavItem.entries.any { item -> item.route == targetRoute }
 }
@@ -53,9 +78,13 @@ internal fun canProceedWithNavigation(
     return bypassDebounce || currentTimeMillis - lastNavigationTimeMillis > debounceWindowMillis
 }
 
-internal fun shouldUseTopLevelNavigationFromProfile(targetRoute: String): Boolean {
+internal fun shouldPreserveProfileStackForShortcut(targetRoute: String): Boolean {
     return targetRoute == ScreenRoutes.Settings.route ||
         targetRoute == ScreenRoutes.History.route ||
         targetRoute == ScreenRoutes.Favorite.route ||
-        targetRoute == ScreenRoutes.WatchLater.route
+        targetRoute == ScreenRoutes.WatchLater.route ||
+        targetRoute == ScreenRoutes.DownloadList.route ||
+        targetRoute == ScreenRoutes.Inbox.route ||
+        targetRoute == ScreenRoutes.Following.route ||
+        targetRoute.startsWith("following/")
 }

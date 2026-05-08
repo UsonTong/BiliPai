@@ -627,7 +627,12 @@ object VideoRepository {
         cid: Long,
         playedTime: Long = 0,
         realPlayedTime: Long = playedTime,
-        startTsSec: Long = System.currentTimeMillis() / 1000L
+        startTsSec: Long = System.currentTimeMillis() / 1000L,
+        aid: Long = 0L,
+        epid: Long = 0L,
+        sid: Long = 0L,
+        videoType: Int = 3,
+        subType: Int? = null
     ) = withContext(Dispatchers.IO) {
         try {
             //  隐私无痕模式检查：如果启用则跳过上报
@@ -636,19 +641,28 @@ object VideoRepository {
                 com.android.purebilibili.core.util.Logger.d("VideoRepo", " Privacy mode enabled, skipping heartbeat report")
                 return@withContext true  // 返回成功但不实际上报
             }
+
+            val fields = buildPlaybackHeartbeatFields(
+                bvid = bvid,
+                aid = aid,
+                cid = cid,
+                epid = epid,
+                sid = sid,
+                mid = com.android.purebilibili.core.store.TokenManager.midCache,
+                playedTimeSec = playedTime,
+                realPlayedTimeSec = realPlayedTime,
+                startTsSec = startTsSec,
+                csrf = com.android.purebilibili.core.store.TokenManager.csrfCache.orEmpty(),
+                videoType = videoType,
+                subType = subType
+            )
             
             com.android.purebilibili.core.util.Logger.d(
                 "VideoRepo",
-                "🔴 Reporting heartbeat: bvid=$bvid, cid=$cid, " +
+                "🔴 Reporting heartbeat: bvid=$bvid, aid=$aid, cid=$cid, epid=$epid, sid=$sid, type=$videoType, " +
                     "playedTime=$playedTime, realPlayedTime=$realPlayedTime, startTs=$startTsSec"
             )
-            val resp = api.reportHeartbeat(
-                bvid = bvid,
-                cid = cid,
-                playedTime = playedTime,
-                realPlayedTime = realPlayedTime,
-                startTs = startTsSec
-            )
+            val resp = api.reportHeartbeat(fields)
             com.android.purebilibili.core.util.Logger.d("VideoRepo", "🔴 Heartbeat response: code=${resp.code}, msg=${resp.message}")
             resp.code == 0
         } catch (e: Exception) {

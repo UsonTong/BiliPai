@@ -19,6 +19,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.luminance
@@ -477,7 +478,6 @@ fun AppNavigation(
         // [新增] 全局底栏状态管理
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
-        val currentBottomNavItem = BottomNavItem.entries.find { it.route == currentRoute } ?: BottomNavItem.HOME
         val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
         val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
         val globalHomeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
@@ -529,6 +529,23 @@ fun AppNavigation(
         }
         val visibleBottomBarRoutes = remember(visibleBottomBarItems) {
             visibleBottomBarItems.map { it.route }.toSet()
+        }
+        var retainedBottomNavItem by rememberSaveable { mutableStateOf(BottomNavItem.HOME) }
+        val currentBottomNavItem = remember(
+            currentRoute,
+            retainedBottomNavItem,
+            visibleBottomBarItems
+        ) {
+            resolveBottomNavItemForRoute(
+                currentRoute = currentRoute,
+                retainedItem = retainedBottomNavItem,
+                visibleItems = visibleBottomBarItems
+            )
+        }
+        LaunchedEffect(currentRoute, currentBottomNavItem) {
+            if (currentRoute?.substringBefore("?") in visibleBottomBarRoutes) {
+                retainedBottomNavItem = currentBottomNavItem
+            }
         }
 
         val bottomBarItemColors = appNavigationSettings.bottomBarItemColors
@@ -681,11 +698,31 @@ fun AppNavigation(
                     )
                 val settingsEnterTransition:
                     AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                    slideEnterLeft(navMotionSpec)
+                    if (
+                        shouldUseInstantBottomTabTransition(
+                            fromRoute = initialState.destination.route,
+                            toRoute = targetState.destination.route,
+                            visibleBottomBarRoutes = visibleBottomBarRoutes
+                        )
+                    ) {
+                        EnterTransition.None
+                    } else {
+                        slideEnterLeft(navMotionSpec)
+                    }
                 }
                 val settingsExitTransition:
                     AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                    resolveSettingsExitTransition(linkedSettingsBackMotion, navMotionSpec)
+                    if (
+                        shouldUseInstantBottomTabTransition(
+                            fromRoute = initialState.destination.route,
+                            toRoute = targetState.destination.route,
+                            visibleBottomBarRoutes = visibleBottomBarRoutes
+                        )
+                    ) {
+                        ExitTransition.None
+                    } else {
+                        resolveSettingsExitTransition(linkedSettingsBackMotion, navMotionSpec)
+                    }
                 }
                 val settingsPopEnterTransition:
                     AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
@@ -706,6 +743,48 @@ fun AppNavigation(
                             navMotionSpec = navMotionSpec
                         )
                     }
+                val bottomTabEnterTransition:
+                    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                    if (
+                        shouldUseInstantBottomTabTransition(
+                            fromRoute = initialState.destination.route,
+                            toRoute = targetState.destination.route,
+                            visibleBottomBarRoutes = visibleBottomBarRoutes
+                        )
+                    ) {
+                        EnterTransition.None
+                    } else {
+                        slideEnterLeft(navMotionSpec)
+                    }
+                }
+                val bottomTabExitTransition:
+                    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                    if (
+                        shouldUseInstantBottomTabTransition(
+                            fromRoute = initialState.destination.route,
+                            toRoute = targetState.destination.route,
+                            visibleBottomBarRoutes = visibleBottomBarRoutes
+                        )
+                    ) {
+                        ExitTransition.None
+                    } else {
+                        slideExitLeft(navMotionSpec)
+                    }
+                }
+                val bottomTabPopExitTransition:
+                    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                    if (
+                        shouldUseInstantBottomTabTransition(
+                            fromRoute = initialState.destination.route,
+                            toRoute = targetState.destination.route,
+                            visibleBottomBarRoutes = visibleBottomBarRoutes
+                        )
+                    ) {
+                        ExitTransition.None
+                    } else {
+                        slideExitRight(navMotionSpec)
+                    }
+                }
                 NavHost(
             navController = navController,
             startDestination = startDestination
@@ -731,7 +810,19 @@ fun AppNavigation(
         composable(
             route = ScreenRoutes.Home.route,
             //  进入视频详情页时的退出动画
-            exitTransition = { fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis)) },
+            exitTransition = {
+                if (
+                    shouldUseInstantBottomTabTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        visibleBottomBarRoutes = visibleBottomBarRoutes
+                    )
+                ) {
+                    ExitTransition.None
+                } else {
+                    fadeOut(animationSpec = tween(navMotionSpec.fastFadeDurationMillis))
+                }
+            },
             //  [修复] 从设置页返回时使用右滑动画
             popEnterTransition = { 
                 val fromRoute = initialState.destination.route
@@ -1228,16 +1319,16 @@ fun AppNavigation(
         // --- 3. 个人中心 ---
         composable(
             route = ScreenRoutes.Profile.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
-            exitTransition = { slideExitLeft(navMotionSpec) },
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
             popEnterTransition = { slideEnterRight(navMotionSpec) },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            popExitTransition = bottomTabPopExitTransition
         ) {
             val navigateFromProfile: (String) -> Unit = { route ->
-                if (shouldUseTopLevelNavigationFromProfile(route)) {
-                    navigateTo(route)
-                } else {
-                    navController.navigate(route)
+                if (canNavigate(shouldBypassNavigationDebounceForRoute(route))) {
+                    navController.navigate(route) {
+                        launchSingleTop = shouldPreserveProfileStackForShortcut(route)
+                    }
                 }
             }
             ProfileScreen(
@@ -1248,10 +1339,10 @@ fun AppNavigation(
                 onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
                 onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
-                onFollowingClick = { mid -> navController.navigate(ScreenRoutes.Following.createRoute(mid)) },
-                onDownloadClick = { navController.navigate(ScreenRoutes.DownloadList.route) },
+                onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
+                onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
                 onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
-                onInboxClick = { navController.navigate(ScreenRoutes.Inbox.route) },  //  [新增] 私信入口
+                onInboxClick = { navigateFromProfile(ScreenRoutes.Inbox.route) },  //  [新增] 私信入口
                 onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }  // [新增] 三连彩蛋跳转
             )
         }
@@ -1260,7 +1351,8 @@ fun AppNavigation(
         // --- 4. 历史记录 ---
         composable(
             route = ScreenRoutes.History.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
             popEnterTransition = {
                 val fromRoute = initialState.destination.route
                 val articleSharedTransitionReady =
@@ -1279,7 +1371,7 @@ fun AppNavigation(
                     videoCardReturnPopEnterTransition(ScreenRoutes.History.route)
                 }
             },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            popExitTransition = bottomTabPopExitTransition
         ) {
             val historyViewModel: HistoryViewModel = viewModel()
             val historyNavigationScope = rememberCoroutineScope()
@@ -1387,9 +1479,10 @@ fun AppNavigation(
         // --- 5. 收藏 ---
         composable(
             route = ScreenRoutes.Favorite.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
             popEnterTransition = { videoCardReturnPopEnterTransition(ScreenRoutes.Favorite.route) },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            popExitTransition = bottomTabPopExitTransition
         ) {
             val favoriteViewModel: FavoriteViewModel = viewModel()
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
@@ -1429,9 +1522,10 @@ fun AppNavigation(
         // --- 5.3  [新增] 稍后再看 ---
         composable(
             route = ScreenRoutes.WatchLater.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
             popEnterTransition = { videoCardReturnPopEnterTransition(ScreenRoutes.WatchLater.route) },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            popExitTransition = bottomTabPopExitTransition
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 com.android.purebilibili.feature.watchlater.WatchLaterScreen(
@@ -1448,8 +1542,9 @@ fun AppNavigation(
         // --- 5.4  [新增] 直播列表 ---
         composable(
             route = ScreenRoutes.LiveList.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
+            popExitTransition = bottomTabPopExitTransition
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 com.android.purebilibili.feature.live.LiveListScreen(
@@ -1608,9 +1703,10 @@ fun AppNavigation(
         // --- 6. 动态页面 ---
         composable(
             route = ScreenRoutes.Dynamic.route,
-            enterTransition = { slideEnterLeft(navMotionSpec) },
+            enterTransition = bottomTabEnterTransition,
+            exitTransition = bottomTabExitTransition,
             popEnterTransition = { videoCardReturnPopEnterTransition(ScreenRoutes.Dynamic.route) },
-            popExitTransition = { slideExitRight(navMotionSpec) }
+            popExitTransition = bottomTabPopExitTransition
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 DynamicScreen(
@@ -2531,7 +2627,10 @@ fun AppNavigation(
                                     currentItem = currentBottomNavItem,
                                     onItemClick = { item ->
                                         when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
-                                            BottomBarSelectionAction.NAVIGATE -> navigateTo(item.route)
+                                            BottomBarSelectionAction.NAVIGATE -> {
+                                                retainedBottomNavItem = item
+                                                navigateTo(item.route)
+                                            }
                                             BottomBarSelectionAction.RESELECT -> when (item) {
                                                 BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
                                                 BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)
@@ -2570,7 +2669,10 @@ fun AppNavigation(
                                 currentItem = currentBottomNavItem,
                                 onItemClick = { item ->
                                     when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
-                                        BottomBarSelectionAction.NAVIGATE -> navigateTo(item.route)
+                                        BottomBarSelectionAction.NAVIGATE -> {
+                                            retainedBottomNavItem = item
+                                            navigateTo(item.route)
+                                        }
                                         BottomBarSelectionAction.RESELECT -> when (item) {
                                             BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
                                             BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)

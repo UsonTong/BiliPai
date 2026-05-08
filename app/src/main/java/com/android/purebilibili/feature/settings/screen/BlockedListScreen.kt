@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepository
 import com.android.purebilibili.data.repository.BlockedUpRepository
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
@@ -34,8 +35,11 @@ fun BlockedListScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { BlockedUpRepository(context) }
+    val syncRepository = remember { BilibiliBlockedListSyncRepository(repository) }
     val blockedUps by repository.getAllBlockedUps().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    var syncingBlockedList by remember { mutableStateOf(false) }
+    var blockedListSyncMessage by remember { mutableStateOf<String?>(null) }
 
     AdaptiveScaffold(
         topBar = {
@@ -57,6 +61,22 @@ fun BlockedListScreen(
     ) { padding ->
         BlockedListContent(
             blockedUps = blockedUps,
+            syncingBlockedList = syncingBlockedList,
+            blockedListSyncMessage = blockedListSyncMessage,
+            onSyncBlockedList = {
+                if (!syncingBlockedList) {
+                    scope.launch {
+                        syncingBlockedList = true
+                        blockedListSyncMessage = "正在同步 B站黑名单..."
+                        val result = syncRepository.importFromBilibili()
+                        blockedListSyncMessage = result.fold(
+                            onSuccess = { it.message },
+                            onFailure = { it.message ?: "同步 B站黑名单失败" }
+                        )
+                        syncingBlockedList = false
+                    }
+                }
+            },
             onUnblock = { mid ->
                 scope.launch { repository.unblockUp(mid) }
             },
@@ -68,19 +88,32 @@ fun BlockedListScreen(
 @Composable
 fun BlockedListContent(
     blockedUps: List<com.android.purebilibili.core.database.entity.BlockedUp>,
+    syncingBlockedList: Boolean = false,
+    blockedListSyncMessage: String? = null,
+    onSyncBlockedList: (() -> Unit)? = null,
     onUnblock: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (blockedUps.isEmpty()) {
-        Box(
+        Column(
             modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = "暂无屏蔽的 UP 主",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (onSyncBlockedList != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                BlockedListSyncAction(
+                    syncing = syncingBlockedList,
+                    message = blockedListSyncMessage,
+                    onSync = onSyncBlockedList,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
         }
     } else {
         LazyColumn(
@@ -89,6 +122,14 @@ fun BlockedListContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                if (onSyncBlockedList != null) {
+                    BlockedListSyncAction(
+                        syncing = syncingBlockedList,
+                        message = blockedListSyncMessage,
+                        onSync = onSyncBlockedList
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
                 IOSSectionTitle("已屏蔽的 UP 主")
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -100,6 +141,48 @@ fun BlockedListContent(
                     onUnblock = { onUnblock(up.mid) }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BlockedListSyncAction(
+    syncing: Boolean,
+    message: String?,
+    onSync: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(12.dp)
+    ) {
+        Button(
+            onClick = onSync,
+            enabled = !syncing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+        ) {
+            if (syncing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(if (syncing) "同步中" else "同步 B站黑名单")
+        }
+        if (!message.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

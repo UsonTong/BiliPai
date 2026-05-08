@@ -430,9 +430,14 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     }
                     try {
                         com.android.purebilibili.data.repository.VideoRepository.reportPlayHeartbeat(
-                            bvid,
-                            episode.cid,
-                            currentPositionMs / 1000L
+                            bvid = bvid,
+                            cid = episode.cid,
+                            playedTime = currentPositionMs / 1000L,
+                            aid = episode.aid,
+                            epid = episode.id,
+                            sid = detail.seasonId,
+                            videoType = 4,
+                            subType = detail.seasonType.takeIf { it > 0 }
                         )
                         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", " Heartbeat reported for bangumi: $bvid cid=${episode.cid}")
                     } catch (e: Exception) {

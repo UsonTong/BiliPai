@@ -5859,6 +5859,7 @@ class PlayerViewModel : ViewModel() {
             val reported = VideoRepository.reportPlayHeartbeat(
                 bvid = currentBvid,
                 cid = currentCid,
+                aid = (_uiState.value as? PlayerUiState.Success)?.info?.aid ?: 0L,
                 playedTime = snapshot.playedTimeSec,
                 realPlayedTime = snapshot.realPlayedTimeSec,
                 startTsSec = heartbeatSessionStartTsSec
@@ -6015,6 +6016,7 @@ class PlayerViewModel : ViewModel() {
                     val reported = VideoRepository.reportPlayHeartbeat(
                         bvid = currentBvid,
                         cid = currentCid,
+                        aid = (_uiState.value as? PlayerUiState.Success)?.info?.aid ?: 0L,
                         playedTime = 0L,
                         realPlayedTime = 0L,
                         startTsSec = heartbeatSessionStartTsSec

@@ -15,6 +15,8 @@ internal data class SpaceSegmentedTabChromeSpec(
 
 private const val SPACE_SEGMENTED_TAB_HEIGHT_DP = 58
 private const val SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP = 56
+private const val SPACE_CONTRIBUTION_TAB_HEIGHT_DP = 48
+private const val SPACE_CONTRIBUTION_TAB_INDICATOR_HEIGHT_DP = 38
 private const val SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP = 16
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_MIN_WIDTH_DP = 104
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_TEXT_PADDING_DP = 44
@@ -49,10 +51,10 @@ internal fun resolveSpaceContributionTabChromeSpec(
     val scrollable = shouldScrollSpaceContributionTabs(tabs)
     return SpaceSegmentedTabChromeSpec(
         selectedIndex = selectedIndex,
-        heightDp = SPACE_SEGMENTED_TAB_HEIGHT_DP,
-        indicatorHeightDp = SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP,
+        heightDp = SPACE_CONTRIBUTION_TAB_HEIGHT_DP,
+        indicatorHeightDp = SPACE_CONTRIBUTION_TAB_INDICATOR_HEIGHT_DP,
         horizontalPaddingDp = SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP,
-        itemWidthDp = if (scrollable) resolveSpaceContributionTabItemWidthDp(tabs) else null,
+        itemWidthDp = resolveSpaceContributionTabItemWidthDp(tabs),
         scrollable = scrollable,
         liquidGlassEffectsEnabled = true,
         dragSelectionEnabled = !scrollable

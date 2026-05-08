@@ -38,7 +38,7 @@ class SpaceTabChromePolicyTest {
     }
 
     @Test
-    fun `contribution tab chrome prefers selected id and keeps main tab visual chrome`() {
+    fun `contribution tab chrome prefers selected id and uses compact secondary chrome`() {
         val tabs = listOf(
             SpaceContributionTab(
                 id = "video",
@@ -81,11 +81,33 @@ class SpaceTabChromePolicyTest {
         assertEquals(2, spec.selectedIndex)
         assertTrue(spec.scrollable)
         assertTrue((spec.itemWidthDp ?: 0) > 104)
-        assertEquals(mainSpec.heightDp, spec.heightDp)
-        assertEquals(mainSpec.indicatorHeightDp, spec.indicatorHeightDp)
+        assertTrue(spec.heightDp < mainSpec.heightDp)
+        assertTrue(spec.heightDp >= 48)
+        assertTrue(spec.indicatorHeightDp < mainSpec.indicatorHeightDp)
+        assertTrue(spec.indicatorHeightDp < spec.heightDp)
         assertEquals(mainSpec.horizontalPaddingDp, spec.horizontalPaddingDp)
         assertTrue(spec.liquidGlassEffectsEnabled)
         assertFalse(spec.dragSelectionEnabled)
+    }
+
+    @Test
+    fun `single contribution video tab uses compact item width instead of full row`() {
+        val spec = resolveSpaceContributionTabChromeSpec(
+            tabs = listOf(
+                SpaceContributionTab(
+                    id = "video",
+                    title = "视频",
+                    subTab = SpaceSubTab.VIDEO,
+                    param = "video"
+                )
+            ),
+            selectedTabId = "video",
+            selectedSubTab = SpaceSubTab.VIDEO
+        )
+
+        assertFalse(spec.scrollable)
+        assertEquals(104, spec.itemWidthDp)
+        assertTrue(spec.dragSelectionEnabled)
     }
 
     @Test
@@ -132,7 +154,7 @@ class SpaceTabChromePolicyTest {
         )
 
         assertFalse(spec.scrollable)
-        assertEquals(null, spec.itemWidthDp)
+        assertTrue((spec.itemWidthDp ?: 0) > 104)
         assertTrue(spec.dragSelectionEnabled)
     }
 

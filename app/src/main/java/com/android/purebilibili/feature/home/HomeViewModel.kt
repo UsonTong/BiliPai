@@ -697,11 +697,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val categoryVideos = _uiState.value.categoryStates[currentCategory]?.videos.orEmpty()
             categoryVideos.firstOrNull { it.bvid == bvid }?.let { video ->
                 recordTodayWatchNegativeFeedback(video)
+                val action = resolveHomeNotInterestedAction(video)
+                if (action.shouldBlockCreator) {
+                    blockedUpRepository.blockUp(
+                        mid = action.creatorMid,
+                        name = action.creatorName,
+                        face = action.creatorFace
+                    )
+                    blockedMids = blockedMids + action.creatorMid
+                    reFilterAllContent()
+                }
             }
             // Optimistically remove from UI
-            completeVideoDissolve(bvid) 
-            // TODO: Call API to persist dislike
-             com.android.purebilibili.core.util.Logger.d("HomeVM", "Marked as not interested: $bvid")
+            completeVideoDissolve(bvid)
+            com.android.purebilibili.core.util.Logger.d("HomeVM", "Marked as not interested: $bvid")
         }
     }
 

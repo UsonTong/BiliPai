@@ -81,6 +81,110 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun routeMatchingVisibleBottomItem_selectsThatItem() {
+        assertEquals(
+            BottomNavItem.HISTORY,
+            resolveBottomNavItemForRoute(
+                currentRoute = ScreenRoutes.History.route,
+                retainedItem = BottomNavItem.HOME
+            )
+        )
+        assertEquals(
+            BottomNavItem.PROFILE,
+            resolveBottomNavItemForRoute(
+                currentRoute = ScreenRoutes.Profile.route,
+                retainedItem = BottomNavItem.HISTORY
+            )
+        )
+    }
+
+    @Test
+    fun secondaryRoute_keepsRetainedBottomItemInsteadOfFallingBackHome() {
+        assertEquals(
+            BottomNavItem.HISTORY,
+            resolveBottomNavItemForRoute(
+                currentRoute = VideoRoute.route,
+                retainedItem = BottomNavItem.HISTORY
+            )
+        )
+        assertEquals(
+            BottomNavItem.PROFILE,
+            resolveBottomNavItemForRoute(
+                currentRoute = ScreenRoutes.DownloadList.route,
+                retainedItem = BottomNavItem.PROFILE
+            )
+        )
+    }
+
+    @Test
+    fun unknownRouteWithoutRetainedItem_fallsBackHome() {
+        assertEquals(
+            BottomNavItem.HOME,
+            resolveBottomNavItemForRoute(
+                currentRoute = ScreenRoutes.DownloadList.route,
+                retainedItem = null
+            )
+        )
+    }
+
+    @Test
+    fun bottomTabToBottomTab_usesInstantTransition() {
+        val visibleRoutes = setOf(
+            ScreenRoutes.Home.route,
+            ScreenRoutes.Dynamic.route,
+            ScreenRoutes.History.route,
+            ScreenRoutes.Profile.route
+        )
+
+        assertTrue(
+            shouldUseInstantBottomTabTransition(
+                fromRoute = ScreenRoutes.Home.route,
+                toRoute = ScreenRoutes.History.route,
+                visibleBottomBarRoutes = visibleRoutes
+            )
+        )
+        assertTrue(
+            shouldUseInstantBottomTabTransition(
+                fromRoute = ScreenRoutes.Profile.route,
+                toRoute = ScreenRoutes.Dynamic.route,
+                visibleBottomBarRoutes = visibleRoutes
+            )
+        )
+    }
+
+    @Test
+    fun secondaryRouteTransitions_keepRegularRouteMotion() {
+        val visibleRoutes = setOf(
+            ScreenRoutes.Home.route,
+            ScreenRoutes.Dynamic.route,
+            ScreenRoutes.History.route,
+            ScreenRoutes.Profile.route
+        )
+
+        assertFalse(
+            shouldUseInstantBottomTabTransition(
+                fromRoute = VideoRoute.route,
+                toRoute = ScreenRoutes.History.route,
+                visibleBottomBarRoutes = visibleRoutes
+            )
+        )
+        assertFalse(
+            shouldUseInstantBottomTabTransition(
+                fromRoute = ScreenRoutes.Home.route,
+                toRoute = ScreenRoutes.Search.route,
+                visibleBottomBarRoutes = visibleRoutes
+            )
+        )
+        assertFalse(
+            shouldUseInstantBottomTabTransition(
+                fromRoute = ScreenRoutes.History.route,
+                toRoute = ScreenRoutes.History.route,
+                visibleBottomBarRoutes = visibleRoutes
+            )
+        )
+    }
+
+    @Test
     fun homeRoute_bypassesGlobalNavigationDebounce() {
         assertTrue(
             canProceedWithNavigation(
@@ -129,17 +233,14 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
-    fun profileShortcutsToTopLevelDestinations_useTopLevelNavigation() {
-        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Settings.route))
-        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.History.route))
-        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Favorite.route))
-        assertTrue(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.WatchLater.route))
-    }
-
-    @Test
-    fun profileShortcutsToSecondaryDestinations_keepRegularNavigation() {
-        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.DownloadList.route))
-        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Inbox.route))
-        assertFalse(shouldUseTopLevelNavigationFromProfile(ScreenRoutes.Following.route))
+    fun profileShortcuts_preserveProfileStackSoBackReturnsToProfile() {
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.Settings.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.History.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.Favorite.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.WatchLater.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.DownloadList.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.Inbox.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.Following.route))
+        assertTrue(shouldPreserveProfileStackForShortcut(ScreenRoutes.Following.createRoute(123L)))
     }
 }

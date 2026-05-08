@@ -1905,8 +1905,14 @@ private fun SpaceContributionTabRow(
                 onSelected = { index ->
                     tabs.getOrNull(index)?.let { onSelect(it.id) }
                 },
-                modifier = if (spec.scrollable) Modifier else Modifier.fillMaxWidth(),
+                modifier = if (spec.scrollable) {
+                    Modifier
+                } else {
+                    Modifier.align(Alignment.Center)
+                },
                 itemWidth = spec.itemWidthDp?.dp,
+                height = spec.heightDp.dp,
+                indicatorHeight = spec.indicatorHeightDp.dp,
                 labelFontSize = 14.sp,
                 liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled,
                 dragSelectionEnabled = spec.dragSelectionEnabled
