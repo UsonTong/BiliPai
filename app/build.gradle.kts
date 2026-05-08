@@ -150,7 +150,7 @@ android {
             matchingFallbacks += listOf("release")
         }
         create("smooth") {
-            // Smooth 用于真机快速验证动画手感：保留非 debug 运行语义，但跳过 R8。
+            // Smooth 用于本地快速验证正式版运行语义：保留非 debug 行为，但跳过 R8/资源压缩。
             initWith(getByName("release"))
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-smooth"
@@ -436,6 +436,18 @@ tasks.register("installFast") {
     group = "install"
     description = "Installs the fast local development variant (debug) on a connected device."
     dependsOn("installDebug")
+}
+
+tasks.register("assembleFastRelease") {
+    group = "build"
+    description = "Assembles the fast local release-like variant (smooth, no R8/resource shrink)."
+    dependsOn("assembleSmooth")
+}
+
+tasks.register("installFastRelease") {
+    group = "install"
+    description = "Installs the fast local release-like variant (smooth, no R8/resource shrink)."
+    dependsOn("installSmooth")
 }
 
 if (file("google-services.json").exists()) {

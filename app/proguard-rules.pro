@@ -69,6 +69,11 @@
 -keep class androidx.compose.** { *; }
 -dontwarn androidx.compose.**
 
+# Android 16 ART can reject the heavily optimized dex for the large Compose
+# VideoDetailScreen entrypoint. Keep this class unoptimized while preserving
+# R8 for the rest of the release build.
+-keep class com.android.purebilibili.feature.video.screen.VideoDetailScreenKt { *; }
+
 # === Haze (毛玻璃效果) ===
 -keep class dev.chrisbanes.haze.** { *; }
 -dontwarn dev.chrisbanes.haze.**
