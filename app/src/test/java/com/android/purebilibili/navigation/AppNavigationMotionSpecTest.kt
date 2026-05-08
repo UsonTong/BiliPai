@@ -29,10 +29,10 @@ class AppNavigationMotionSpecTest {
             cardTransitionEnabled = true
         )
 
-        assertEquals(310, spec.slideDurationMillis)
-        assertEquals(170, spec.fastFadeDurationMillis)
-        assertEquals(250, spec.slowFadeDurationMillis)
-        assertEquals(22f, spec.maxBackdropBlurRadius)
+        assertEquals(350, spec.slideDurationMillis)
+        assertEquals(190, spec.fastFadeDurationMillis)
+        assertEquals(290, spec.slowFadeDurationMillis)
+        assertEquals(24f, spec.maxBackdropBlurRadius)
         assertEquals(120, spec.fallbackFadeDurationMillis)
         assertEquals(170, spec.quickReturnFadeDurationMillis)
         assertEquals(180, spec.seamlessFadeDurationMillis)
@@ -46,9 +46,9 @@ class AppNavigationMotionSpecTest {
             cardTransitionEnabled = true
         )
 
-        assertEquals(260, spec.slideDurationMillis)
-        assertEquals(145, spec.fastFadeDurationMillis)
-        assertEquals(220, spec.slowFadeDurationMillis)
+        assertEquals(300, spec.slideDurationMillis)
+        assertEquals(160, spec.fastFadeDurationMillis)
+        assertEquals(255, spec.slowFadeDurationMillis)
         assertEquals(16f, spec.maxBackdropBlurRadius)
         assertEquals(120, spec.fallbackFadeDurationMillis)
         assertEquals(170, spec.quickReturnFadeDurationMillis)

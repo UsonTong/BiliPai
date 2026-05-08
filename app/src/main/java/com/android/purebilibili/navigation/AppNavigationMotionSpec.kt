@@ -39,12 +39,12 @@ internal fun resolveAppNavigationMotionSpec(
 
     return if (isTabletLayout) {
         AppNavigationMotionSpec(
-            slideDurationMillis = 310,
-            fastFadeDurationMillis = 170,
+            slideDurationMillis = 350,
+            fastFadeDurationMillis = 190,
             mediumFadeDurationMillis = 240,
-            slowFadeDurationMillis = 250,
-            backdropBlurDurationMillis = 220,
-            maxBackdropBlurRadius = 22f,
+            slowFadeDurationMillis = 290,
+            backdropBlurDurationMillis = 240,
+            maxBackdropBlurRadius = 24f,
             fallbackFadeDurationMillis = FALLBACK_FADE_DURATION_MILLIS,
             quickReturnFadeDurationMillis = QUICK_RETURN_FADE_DURATION_MILLIS,
             seamlessFadeDurationMillis = SEAMLESS_FADE_DURATION_MILLIS,
@@ -52,11 +52,11 @@ internal fun resolveAppNavigationMotionSpec(
         )
     } else {
         AppNavigationMotionSpec(
-            slideDurationMillis = 260,
-            fastFadeDurationMillis = 145,
+            slideDurationMillis = 300,
+            fastFadeDurationMillis = 160,
             mediumFadeDurationMillis = 200,
-            slowFadeDurationMillis = 220,
-            backdropBlurDurationMillis = 180,
+            slowFadeDurationMillis = 255,
+            backdropBlurDurationMillis = 200,
             maxBackdropBlurRadius = 16f,
             fallbackFadeDurationMillis = FALLBACK_FADE_DURATION_MILLIS,
             quickReturnFadeDurationMillis = QUICK_RETURN_FADE_DURATION_MILLIS,

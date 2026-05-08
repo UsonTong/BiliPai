@@ -236,27 +236,13 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun videoPushEnterAction_classicBackWithSharedReady_usesNoOpForSingleMainMotionChain() {
+    fun videoPushEnterAction_classicBackWithSharedReady_usesHeroExpandFade() {
         assertEquals(
-            VideoPushEnterAction.NO_OP,
+            VideoPushEnterAction.HERO_EXPAND_FADE,
             resolveVideoPushEnterAction(
                 cardTransitionEnabled = true,
                 predictiveBackAnimationEnabled = false,
                 fromRoute = ScreenRoutes.Home.route,
-                toRoute = VideoRoute.route,
-                sharedTransitionReady = true
-            )
-        )
-    }
-
-    @Test
-    fun videoPushEnterAction_nonCardSourceIgnoresStaleSharedReadyFlag() {
-        assertEquals(
-            VideoPushEnterAction.SOFT_FADE,
-            resolveVideoPushEnterAction(
-                cardTransitionEnabled = true,
-                predictiveBackAnimationEnabled = false,
-                fromRoute = ScreenRoutes.Settings.route,
                 toRoute = VideoRoute.route,
                 sharedTransitionReady = true
             )
@@ -789,24 +775,6 @@ class AppNavigationTransitionPolicyTest {
             resolveVideoPopExitAction(
                 cardTransitionEnabled = true,
                 predictiveBackAnimationEnabled = true,
-                isTabletLayout = false,
-                fromRoute = VideoRoute.route,
-                targetRoute = ScreenRoutes.Home.route,
-                isQuickReturnFromDetail = false,
-                sharedTransitionReady = true,
-                isSingleColumnCard = false,
-                lastClickedCardCenterX = 0.4f
-            ).action
-        )
-    }
-
-    @Test
-    fun videoPopExitAction_classicSharedReturnToCardTarget_usesNoOpForSingleMainMotionChain() {
-        assertEquals(
-            VideoPopExitAction.NO_OP,
-            resolveVideoPopExitAction(
-                cardTransitionEnabled = true,
-                predictiveBackAnimationEnabled = false,
                 isTabletLayout = false,
                 fromRoute = VideoRoute.route,
                 targetRoute = ScreenRoutes.Home.route,

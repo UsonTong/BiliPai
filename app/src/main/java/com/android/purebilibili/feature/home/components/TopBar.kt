@@ -1627,11 +1627,18 @@ internal fun resolveTopTabIndicatorBackdropPolicy(
     hasBackdrop: Boolean,
     indicatorVisualPolicy: BottomBarIndicatorVisualPolicy
 ): TopTabIndicatorBackdropPolicy {
+    if (!effectiveLiquidGlassEnabled) {
+        return TopTabIndicatorBackdropPolicy(
+            useIndicatorBackdrop = indicatorVisualPolicy.shouldRefract && hasBackdrop,
+            useCombinedBackdrop = false
+        )
+    }
+
     val useContentBackdrop = indicatorVisualPolicy.shouldRefract && effectiveLiquidGlassEnabled
     val useBackdrop = indicatorVisualPolicy.shouldRefract && hasBackdrop
     val useCombinedBackdrop = useContentBackdrop && useBackdrop
     return TopTabIndicatorBackdropPolicy(
-        useIndicatorBackdrop = useContentBackdrop || useBackdrop,
+        useIndicatorBackdrop = true,
         useCombinedBackdrop = useCombinedBackdrop
     )
 }

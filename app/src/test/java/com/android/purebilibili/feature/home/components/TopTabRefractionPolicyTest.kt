@@ -150,7 +150,7 @@ class TopTabRefractionPolicyTest {
     }
 
     @Test
-    fun `top tab indicator only uses combined backdrop while refracting`() {
+    fun `liquid top tab indicator keeps stable backdrop while idle`() {
         val idle = resolveTopTabIndicatorBackdropPolicy(
             effectiveLiquidGlassEnabled = true,
             hasBackdrop = true,
@@ -171,9 +171,25 @@ class TopTabRefractionPolicyTest {
         )
 
         assertFalse(idle.useCombinedBackdrop)
-        assertFalse(idle.useIndicatorBackdrop)
+        assertTrue(idle.useIndicatorBackdrop)
         assertTrue(moving.useCombinedBackdrop)
         assertTrue(moving.useIndicatorBackdrop)
+    }
+
+    @Test
+    fun `liquid top tab indicator keeps content backdrop when page backdrop is unavailable`() {
+        val idle = resolveTopTabIndicatorBackdropPolicy(
+            effectiveLiquidGlassEnabled = true,
+            hasBackdrop = false,
+            indicatorVisualPolicy = BottomBarIndicatorVisualPolicy(
+                isInMotion = false,
+                shouldRefract = false,
+                useNeutralTint = false
+            )
+        )
+
+        assertTrue(idle.useIndicatorBackdrop)
+        assertFalse(idle.useCombinedBackdrop)
     }
 
     @Test
