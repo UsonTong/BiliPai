@@ -40,13 +40,40 @@
 
 ## 📸 应用预览
 
+<sub>真机截图 · v8.0.6 · 深色 / 浅色双主题 · 注意底栏的胶囊液态玻璃质感</sub>
+
 <div align="center">
 
-<img src="docs/images/screenshot_preview_1.png" height="440" />
-<img src="docs/images/screenshot_preview_2.png" height="440" />
-<img src="docs/images/screenshot_preview_3.png" height="440" />
-<img src="docs/images/screenshot_preview_4.png" height="440" />
-<img src="docs/images/screenshot_preview_5.png" height="440" />
+<table>
+<tr>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_1_home.png" height="500" /><br/>
+  <sub>🏠 <b>首页推荐</b> · 液态玻璃底栏</sub>
+</td>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_2_video.png" height="500" /><br/>
+  <sub>🎬 <b>视频播放</b> · AI 总结</sub>
+</td>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_3_dynamic.png" height="500" /><br/>
+  <sub>📱 <b>动态页</b> · 番剧 · 专栏</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_4_settings.png" height="500" /><br/>
+  <sub>⚙️ <b>设置中心</b> · iOS 风格浅色</sub>
+</td>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_5_feed.png" height="500" /><br/>
+  <sub>🌊 <b>浏览流</b> · 模糊层底栏</sub>
+</td>
+<td align="center" width="33%">
+  <img src="docs/images/screenshot_real_6_feed.png" height="500" /><br/>
+  <sub>📺 <b>双列瀑布</b> · 卡片动画</sub>
+</td>
+</tr>
+</table>
 
 </div>
 
