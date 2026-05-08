@@ -4,6 +4,7 @@ import com.android.purebilibili.feature.home.components.BottomNavItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AppTopLevelNavigationPolicyTest {
@@ -76,6 +77,96 @@ class AppTopLevelNavigationPolicyTest {
             resolveBottomBarSelectionAction(
                 currentItem = BottomNavItem.HOME,
                 tappedItem = BottomNavItem.DYNAMIC
+            )
+        )
+    }
+
+    @Test
+    fun visibleBottomTabRoute_mapsToPagerPage() {
+        val visibleItems = listOf(
+            BottomNavItem.HOME,
+            BottomNavItem.DYNAMIC,
+            BottomNavItem.HISTORY,
+            BottomNavItem.PROFILE
+        )
+
+        assertEquals(
+            1,
+            resolveBottomPagerPageForRoute(
+                route = ScreenRoutes.Dynamic.route,
+                visibleItems = visibleItems
+            )
+        )
+        assertEquals(
+            2,
+            resolveBottomPagerPageForRoute(
+                route = ScreenRoutes.History.route,
+                visibleItems = visibleItems
+            )
+        )
+    }
+
+    @Test
+    fun secondaryRoute_doesNotMapToBottomPagerPage() {
+        val visibleItems = listOf(
+            BottomNavItem.HOME,
+            BottomNavItem.DYNAMIC,
+            BottomNavItem.HISTORY,
+            BottomNavItem.PROFILE
+        )
+
+        assertNull(
+            resolveBottomPagerPageForRoute(
+                route = ScreenRoutes.Search.route,
+                visibleItems = visibleItems
+            )
+        )
+        assertNull(
+            resolveBottomPagerPageForRoute(
+                route = VideoRoute.route,
+                visibleItems = visibleItems
+            )
+        )
+    }
+
+    @Test
+    fun bottomPagerSelection_clampsInvalidPageToHome() {
+        val visibleItems = listOf(
+            BottomNavItem.HOME,
+            BottomNavItem.DYNAMIC,
+            BottomNavItem.HISTORY
+        )
+
+        assertEquals(
+            BottomNavItem.HOME,
+            resolveBottomPagerItemForPage(
+                page = -1,
+                visibleItems = visibleItems
+            )
+        )
+        assertEquals(
+            BottomNavItem.HOME,
+            resolveBottomPagerItemForPage(
+                page = 99,
+                visibleItems = visibleItems
+            )
+        )
+    }
+
+    @Test
+    fun bottomPagerNavigationDuration_matchesKernelSuDistanceTiming() {
+        assertEquals(
+            300,
+            resolveBottomPagerNavigationDurationMillis(
+                currentPage = 0,
+                targetPage = 1
+            )
+        )
+        assertEquals(
+            500,
+            resolveBottomPagerNavigationDurationMillis(
+                currentPage = 0,
+                targetPage = 4
             )
         )
     }

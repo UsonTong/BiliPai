@@ -939,11 +939,6 @@ internal data class BottomBarItemMotionVisual(
     val selectedIconAlpha: Float
 )
 
-internal data class BottomBarSettlePulseTransform(
-    val scale: Float,
-    val translationYDp: Float
-)
-
 internal data class BottomBarClickPulseTransform(
     val scaleX: Float,
     val scaleY: Float = 1f
@@ -953,47 +948,6 @@ internal data class BottomBarIndicatorLayerTransform(
     val scaleX: Float,
     val scaleY: Float
 )
-
-private data class BottomBarSettlePulseSnapshot(
-    val indicatorPosition: Float,
-    val isIndicatorRunning: Boolean,
-    val isIndicatorDragging: Boolean
-)
-
-internal fun shouldTriggerBottomBarSettlePulse(
-    hasObservedInitialSelection: Boolean,
-    selectedIndex: Int,
-    indicatorPosition: Float,
-    isIndicatorRunning: Boolean,
-    isIndicatorDragging: Boolean,
-    settleTolerance: Float = 0.005f
-): Boolean {
-    return hasObservedInitialSelection &&
-        selectedIndex >= 0 &&
-        !isIndicatorRunning &&
-        !isIndicatorDragging &&
-        abs(indicatorPosition - selectedIndex.toFloat()) <= settleTolerance
-}
-
-internal fun resolveBottomBarSettlePulseTransform(
-    progress: Float
-): BottomBarSettlePulseTransform {
-    val clamped = progress.coerceIn(0f, 1f)
-    val scale = when {
-        clamped <= 0.35f -> lerp(1f, 1.14f, clamped / 0.35f)
-        clamped <= 0.65f -> lerp(1.14f, 0.96f, (clamped - 0.35f) / 0.30f)
-        else -> lerp(0.96f, 1f, (clamped - 0.65f) / 0.35f)
-    }
-    val translationYDp = when {
-        clamped <= 0.35f -> lerp(0f, -2.5f, clamped / 0.35f)
-        clamped <= 0.65f -> lerp(-2.5f, 1.0f, (clamped - 0.35f) / 0.30f)
-        else -> lerp(1.0f, 0f, (clamped - 0.65f) / 0.35f)
-    }
-    return BottomBarSettlePulseTransform(
-        scale = scale,
-        translationYDp = translationYDp
-    )
-}
 
 internal fun resolveBottomBarClickPulseTransform(
     progress: Float
@@ -1109,43 +1063,6 @@ internal fun resolveBottomBarIndicatorLayerTransform(
 }
 
 @Composable
-private fun rememberBottomBarSettlePulseKey(
-    selectedIndex: Int,
-    isValidSelection: Boolean,
-    dampedDragState: DampedDragAnimationState
-): Int {
-    var pulseKey by remember { mutableIntStateOf(0) }
-    var hasObservedInitialSelection by remember { mutableStateOf(false) }
-
-    LaunchedEffect(selectedIndex, isValidSelection, dampedDragState) {
-        if (!isValidSelection) return@LaunchedEffect
-        dampedDragState.updateIndex(selectedIndex)
-        if (!hasObservedInitialSelection) {
-            hasObservedInitialSelection = true
-            return@LaunchedEffect
-        }
-        snapshotFlow {
-            BottomBarSettlePulseSnapshot(
-                indicatorPosition = dampedDragState.value,
-                isIndicatorRunning = dampedDragState.isRunning,
-                isIndicatorDragging = dampedDragState.isDragging
-            )
-        }.filter { snapshot ->
-            shouldTriggerBottomBarSettlePulse(
-                hasObservedInitialSelection = hasObservedInitialSelection,
-                selectedIndex = selectedIndex,
-                indicatorPosition = snapshot.indicatorPosition,
-                isIndicatorRunning = snapshot.isIndicatorRunning,
-                isIndicatorDragging = snapshot.isIndicatorDragging
-            )
-        }.first()
-        pulseKey += 1
-    }
-
-    return pulseKey
-}
-
-@Composable
 private fun rememberBottomBarClickPulseTransform(
     pulseKey: Int
 ): BottomBarClickPulseTransform {
@@ -1162,23 +1079,6 @@ private fun rememberBottomBarClickPulseTransform(
         )
     }
     return resolveBottomBarClickPulseTransform(progress.value)
-}
-
-@Composable
-private fun rememberBottomBarSettlePulseTransform(
-    pulseKey: Int
-): BottomBarSettlePulseTransform {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(pulseKey) {
-        if (pulseKey <= 0) return@LaunchedEffect
-        progress.snapTo(0f)
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 240)
-        )
-        progress.snapTo(0f)
-    }
-    return resolveBottomBarSettlePulseTransform(progress.value)
 }
 
 internal fun resolveBottomBarMotionThemeWeight(
@@ -1210,11 +1110,7 @@ internal fun resolveBottomBarItemMotionVisual(
         currentSelectedIndex = currentSelectedIndex,
         isIdle = isIdle
     )
-    val scale = if (isIdle) {
-        1f
-    } else {
-        lerp(1f, maxScale, indicatorWeight * normalizedMotionProgress)
-    }
+    val scale = 1f
 
     val useSelectedIcon = if (isIdle) {
         idleSelected
@@ -2180,7 +2076,7 @@ private fun KernelSuAlignedBottomBar(
         initialIndex = selectedIndex,
         itemCount = totalItems,
         motionSpec = bottomBarMotionSpec,
-        notifyIndexChangedOnReleaseStart = true,
+        notifyIndexChangedOnReleaseStart = false,
         holdPressUntilReleaseTargetSettles = true,
         onIndexChanged = { index ->
             when {
@@ -2189,11 +2085,11 @@ private fun KernelSuAlignedBottomBar(
             }
         }
     )
-    val selectedSettlePulseKey = rememberBottomBarSettlePulseKey(
-        selectedIndex = selectedIndex,
-        isValidSelection = isValidSelection,
-        dampedDragState = dampedDragState
-    )
+    LaunchedEffect(selectedIndex, isValidSelection, dampedDragState) {
+        if (isValidSelection) {
+            dampedDragState.updateIndex(selectedIndex)
+        }
+    }
     val pressMotionProgress by remember {
         derivedStateOf { dampedDragState.pressProgress }
     }
@@ -2484,7 +2380,6 @@ private fun KernelSuAlignedBottomBar(
                             interactive = false,
                             selectedIconAlpha = visual.selectedIconAlpha,
                             scale = if (glassEnabled) visual.scale else 1f,
-                            settlePulseKey = if (index == selectedIndex) selectedSettlePulseKey else 0,
                             clickPulseKey = if (item == BottomNavItem.HOME) homeClickPulseKey else 0
                         )
                     }
@@ -3092,7 +2987,6 @@ private fun RowScope.AndroidNativeBottomBarItem(
     onPressChanged: (Boolean) -> Unit = {},
     selectedIconAlpha: Float = if (selected) 1f else 0f,
     scale: Float = 1f,
-    settlePulseKey: Int = 0,
     clickPulseKey: Int = 0
 ) {
     val animatedContentColor by animateColorAsState(
@@ -3105,12 +2999,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     )
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val density = LocalDensity.current
-    val settlePulseTransform = rememberBottomBarSettlePulseTransform(settlePulseKey)
     val clickPulseTransform = rememberBottomBarClickPulseTransform(clickPulseKey)
-    val settlePulseTranslationYPx = with(density) {
-        settlePulseTransform.translationYDp.dp.toPx()
-    }
     val currentOnPressChanged by rememberUpdatedState(onPressChanged)
 
     LaunchedEffect(isPressed, interactive) {
@@ -3155,11 +3044,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
         ) {
             if (showIcon) {
                 Box(
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = settlePulseTransform.scale
-                        scaleY = settlePulseTransform.scale
-                        translationY = settlePulseTranslationYPx
-                    },
+                    modifier = Modifier,
                     contentAlignment = Alignment.Center
                 ) {
                     CompositionLocalProvider(LocalContentColor provides contentColor) {

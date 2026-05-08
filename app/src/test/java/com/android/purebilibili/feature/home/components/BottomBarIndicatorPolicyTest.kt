@@ -401,7 +401,8 @@ class BottomBarIndicatorPolicyTest {
         )
 
         assertTrue(dynamic.themeWeight > home.themeWeight)
-        assertTrue(dynamic.scale > home.scale)
+        assertEquals(1f, home.scale, 0.001f)
+        assertEquals(1f, dynamic.scale, 0.001f)
     }
 
     @Test
@@ -462,48 +463,24 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `settle pulse only triggers after non-initial selected indicator reaches target`() {
-        assertFalse(
-            shouldTriggerBottomBarSettlePulse(
-                hasObservedInitialSelection = false,
-                selectedIndex = 1,
-                indicatorPosition = 1f,
-                isIndicatorRunning = false,
-                isIndicatorDragging = false
-            )
+    fun `sliding item scale stays fixed so icons do not vertically compress`() {
+        val home = resolveBottomBarItemMotionVisual(
+            itemIndex = 0,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
         )
-        assertFalse(
-            shouldTriggerBottomBarSettlePulse(
-                hasObservedInitialSelection = true,
-                selectedIndex = 1,
-                indicatorPosition = 0.82f,
-                isIndicatorRunning = true,
-                isIndicatorDragging = false
-            )
+        val dynamic = resolveBottomBarItemMotionVisual(
+            itemIndex = 1,
+            indicatorPosition = 0.8f,
+            currentSelectedIndex = 0,
+            motionProgress = 1f,
+            selectionEmphasis = 0.28f
         )
-        assertTrue(
-            shouldTriggerBottomBarSettlePulse(
-                hasObservedInitialSelection = true,
-                selectedIndex = 1,
-                indicatorPosition = 1.002f,
-                isIndicatorRunning = false,
-                isIndicatorDragging = false
-            )
-        )
-    }
 
-    @Test
-    fun `settle pulse transform scales up then rebounds`() {
-        val peak = resolveBottomBarSettlePulseTransform(progress = 0.35f)
-        val rebound = resolveBottomBarSettlePulseTransform(progress = 0.65f)
-        val idle = resolveBottomBarSettlePulseTransform(progress = 1f)
-
-        assertTrue(peak.scale > 1f)
-        assertTrue(peak.translationYDp < 0f)
-        assertTrue(rebound.scale < 1f)
-        assertTrue(rebound.translationYDp > 0f)
-        assertEquals(1f, idle.scale, 0.001f)
-        assertEquals(0f, idle.translationYDp, 0.001f)
+        assertEquals(1f, home.scale, 0.001f)
+        assertEquals(1f, dynamic.scale, 0.001f)
     }
 
     @Test
@@ -586,8 +563,8 @@ class BottomBarIndicatorPolicyTest {
             isDragging = true
         )
 
-        assertTrue(home.scale > 1f)
-        assertTrue(dynamic.scale > 1f)
+        assertEquals(1f, home.scale, 0.001f)
+        assertEquals(1f, dynamic.scale, 0.001f)
         assertEquals(1f, history.scale)
         assertEquals(0f, history.themeWeight)
         assertTrue(profile.progress > 0f)

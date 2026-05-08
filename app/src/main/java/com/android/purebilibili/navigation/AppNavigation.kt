@@ -11,6 +11,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState //  新增
 import androidx.compose.runtime.getValue //  新增
@@ -19,6 +21,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
@@ -531,21 +534,73 @@ fun AppNavigation(
             visibleBottomBarItems.map { it.route }.toSet()
         }
         var retainedBottomNavItem by rememberSaveable { mutableStateOf(BottomNavItem.HOME) }
-        val currentBottomNavItem = remember(
-            currentRoute,
-            retainedBottomNavItem,
+        val initialBottomPagerPage = remember(visibleBottomBarItems) {
+            resolveBottomPagerPageForRoute(
+                route = retainedBottomNavItem.route,
+                visibleItems = visibleBottomBarItems
+            ) ?: 0
+        }
+        val bottomPagerState = rememberPagerState(initialPage = initialBottomPagerPage) {
+            visibleBottomBarItems.size.coerceAtLeast(1)
+        }
+        val mainBottomPagerState = rememberMainBottomPagerState(bottomPagerState)
+        LaunchedEffect(bottomPagerState) {
+            snapshotFlow { bottomPagerState.settledPage }.collect {
+                mainBottomPagerState.syncPage()
+            }
+        }
+        val pagerBottomNavItem = remember(
+            mainBottomPagerState.selectedPage,
             visibleBottomBarItems
         ) {
-            resolveBottomNavItemForRoute(
-                currentRoute = currentRoute,
-                retainedItem = retainedBottomNavItem,
+            resolveBottomPagerItemForPage(
+                page = mainBottomPagerState.selectedPage,
                 visibleItems = visibleBottomBarItems
             )
         }
+        val currentBottomNavItem = remember(
+            currentRoute,
+            pagerBottomNavItem,
+            retainedBottomNavItem,
+            visibleBottomBarItems
+        ) {
+            val routeBase = currentRoute?.substringBefore("?")
+            if (routeBase == ScreenRoutes.Home.route) {
+                pagerBottomNavItem
+            } else {
+                resolveBottomNavItemForRoute(
+                    currentRoute = currentRoute,
+                    retainedItem = retainedBottomNavItem,
+                    visibleItems = visibleBottomBarItems
+                )
+            }
+        }
         LaunchedEffect(currentRoute, currentBottomNavItem) {
-            if (currentRoute?.substringBefore("?") in visibleBottomBarRoutes) {
+            val routeBase = currentRoute?.substringBefore("?")
+            if (routeBase == ScreenRoutes.Home.route || routeBase in visibleBottomBarRoutes) {
                 retainedBottomNavItem = currentBottomNavItem
             }
+        }
+
+        fun navigateToBottomPagerItem(item: BottomNavItem) {
+            val targetPage = visibleBottomBarItems.indexOf(item)
+            if (targetPage < 0) {
+                navigateTo(item.route)
+                return
+            }
+            retainedBottomNavItem = item
+            if (navController.currentBackStackEntry?.destination?.route?.substringBefore("?") != ScreenRoutes.Home.route) {
+                if (!navController.popBackStack(ScreenRoutes.Home.route, inclusive = false)) {
+                    navController.navigate(ScreenRoutes.Home.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
+            mainBottomPagerState.animateToPage(targetPage)
         }
 
         val bottomBarItemColors = appNavigationSettings.bottomBarItemColors
@@ -586,11 +641,17 @@ fun AppNavigation(
                 hasPreviousBackStackEntry = hasPreviousBackStackEntry
             )
         }
-        val isSettingsScreen = currentRoute == ScreenRoutes.Settings.route
+        val activeBottomTabRoute = if (currentRoute?.substringBefore("?") == ScreenRoutes.Home.route) {
+            currentBottomNavItem.route
+        } else {
+            currentRoute
+        }
+        val isSettingsScreen = activeBottomTabRoute == ScreenRoutes.Settings.route
         val shouldHideBottomBarOnTablet = isTabletLayout && isSettingsScreen
 
         // [UX] 底栏仅在“用户配置为可见的一级入口”显示；Story 始终沉浸式隐藏。
-        val isBottomBarDestination = currentRoute != ScreenRoutes.Story.route && currentRoute in visibleBottomBarRoutes
+        val isBottomBarDestination =
+            activeBottomTabRoute != ScreenRoutes.Story.route && activeBottomTabRoute in visibleBottomBarRoutes
         val shouldDeferBottomBarReveal = shouldDeferBottomBarRevealOnVideoReturn(
             isReturningFromDetail = CardPositionManager.isReturningFromDetail,
             currentRoute = currentRoute
@@ -643,8 +704,8 @@ fun AppNavigation(
         val favoriteScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         var dynamicUnreadCount by remember { mutableStateOf(0) }
         val dynamicUnreadPollingEnabled = visibleBottomBarItems.contains(BottomNavItem.DYNAMIC)
-        LaunchedEffect(currentRoute, dynamicUnreadPollingEnabled) {
-            if (!dynamicUnreadPollingEnabled || currentRoute == ScreenRoutes.Dynamic.route) {
+        LaunchedEffect(currentBottomNavItem, dynamicUnreadPollingEnabled) {
+            if (!dynamicUnreadPollingEnabled || currentBottomNavItem == BottomNavItem.DYNAMIC) {
                 dynamicUnreadCount = 0
                 return@LaunchedEffect
             }
@@ -658,7 +719,7 @@ fun AppNavigation(
         }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-        LaunchedEffect(currentRoute) {
+        LaunchedEffect(currentRoute, currentBottomNavItem) {
             scrollOffsetState.floatValue = 0f
         }
 
@@ -896,53 +957,281 @@ fun AppNavigation(
                 }
             }
         ) {
-            //  提供 AnimatedVisibilityScope 给 HomeScreen 以支持共享元素过渡i l
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                HomeScreen(
-                    viewModel = homeViewModel,
-                    onVideoClick = { request -> navigateToVideoFromHome(request) },
-                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
-                    onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
-                    onProfileClick = { navigateTo(ScreenRoutes.Profile.route) },
-                    onLogout = {
-                        coroutineScope.launch {
-                            com.android.purebilibili.core.store.TokenManager.clear(context)
-                            com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
-                                mid = null,
-                                isVip = false,
-                                privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
+                HorizontalPager(
+                    modifier = Modifier.fillMaxSize(),
+                    state = bottomPagerState,
+                    beyondViewportPageCount = 1
+                ) { page ->
+                    when (visibleBottomBarItems.getOrNull(page) ?: BottomNavItem.HOME) {
+                        BottomNavItem.HOME -> {
+                            HomeScreen(
+                                viewModel = homeViewModel,
+                                onVideoClick = { request -> navigateToVideoFromHome(request) },
+                                onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
+                                onProfileClick = { navigateToBottomPagerItem(BottomNavItem.PROFILE) },
+                                onLogout = {
+                                    coroutineScope.launch {
+                                        com.android.purebilibili.core.store.TokenManager.clear(context)
+                                        com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
+                                            mid = null,
+                                            isVip = false,
+                                            privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
+                                        )
+                                        com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
+                                        homeViewModel.refresh()
+                                    }
+                                },
+                                onSettingsClick = { navigateToBottomPagerItem(BottomNavItem.SETTINGS) },
+                                onDynamicClick = { navigateToBottomPagerItem(BottomNavItem.DYNAMIC) },
+                                onHistoryClick = { navigateToBottomPagerItem(BottomNavItem.HISTORY) },
+                                onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },
+                                onLiveClick = { roomId, title, uname ->
+                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                                },
+                                onBangumiClick = { initialType ->
+                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
+                                },
+                                onCategoryClick = { tid, name ->
+                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
+                                },
+                                onFavoriteClick = { navigateToBottomPagerItem(BottomNavItem.FAVORITE) },
+                                onLiveListClick = { navigateToBottomPagerItem(BottomNavItem.LIVE) },
+                                onWatchLaterClick = { navigateToBottomPagerItem(BottomNavItem.WATCHLATER) },
+                                onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
+                                onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
+                                onStoryClick = { navigateToBottomPagerItem(BottomNavItem.STORY) },
+                                globalHazeState = mainHazeState,
+                                predictiveStableBackRouteMotionEnabled =
+                                    shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
                             )
-                            com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
-                            homeViewModel.refresh()
                         }
-                    },
-                    onSettingsClick = { navigateTo(ScreenRoutes.Settings.route) },
-                    // 🔒 [防抖 + SingleTop] 底栏导航优化
-                    onDynamicClick = { navigateTo(ScreenRoutes.Dynamic.route) },
-                    onHistoryClick = { navigateTo(ScreenRoutes.History.route) },
-                    onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },  //  分区点击
-                    onLiveClick = { roomId, title, uname ->
-                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
-                    },
-                    //  [修复] 番剧点击导航，接受类型参数
-                    onBangumiClick = { initialType ->
-                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
-                    },
-                    //  分类点击：跳转到分类详情页面
-                    onCategoryClick = { tid, name ->
-                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
-                    },
-                    //  [新增] 底栏扩展项目导航
-                    onFavoriteClick = { navigateTo(ScreenRoutes.Favorite.route) },
-                    onLiveListClick = { navigateTo(ScreenRoutes.LiveList.route) },
-                    onWatchLaterClick = { navigateTo(ScreenRoutes.WatchLater.route) },
-                    onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
-                    onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
-                    onStoryClick = { navigateTo(ScreenRoutes.Story.route) },  //  [新增] 竖屏短视频
-                    globalHazeState = mainHazeState,  // [新增] 全局底栏模糊状态
-                    predictiveStableBackRouteMotionEnabled =
-                        shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
-                )
+                        BottomNavItem.DYNAMIC -> {
+                            DynamicScreen(
+                                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
+                                onBangumiClick = { seasonId, epId -> navigateToBangumiTarget(seasonId, epId) },
+                                onDynamicDetailClick = { dynamicId ->
+                                    navController.navigate(ScreenRoutes.DynamicDetail.createRoute(dynamicId))
+                                },
+                                onUserClick = { mid -> navController.navigate(ScreenRoutes.Space.createRoute(mid)) },
+                                onLiveClick = { roomId, title, uname ->
+                                    navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                                },
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onLoginClick = { navController.navigate(ScreenRoutes.Login.route) },
+                                onHomeClick = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                globalHazeState = mainHazeState
+                            )
+                        }
+                        BottomNavItem.STORY -> {
+                            com.android.purebilibili.feature.story.StoryScreen(
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onSearchClick = { navigateTo(ScreenRoutes.Search.route) }
+                            )
+                        }
+                        BottomNavItem.PROFILE -> {
+                            val navigateFromProfile: (String) -> Unit = { route ->
+                                val bottomItem = visibleBottomBarItems.firstOrNull { it.route == route }
+                                if (bottomItem != null) {
+                                    navigateToBottomPagerItem(bottomItem)
+                                } else if (canNavigate(shouldBypassNavigationDebounceForRoute(route))) {
+                                    navController.navigate(route) {
+                                        launchSingleTop = shouldPreserveProfileStackForShortcut(route)
+                                    }
+                                }
+                            }
+                            ProfileScreen(
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onGoToLogin = { navController.navigate(ScreenRoutes.Login.route) },
+                                onLogoutSuccess = { homeViewModel.refresh() },
+                                onAccountSwitchSuccess = { homeViewModel.refresh() },
+                                onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
+                                onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
+                                onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
+                                onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
+                                onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
+                                onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
+                                onInboxClick = { navigateFromProfile(ScreenRoutes.Inbox.route) },
+                                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }
+                            )
+                        }
+                        BottomNavItem.HISTORY -> {
+                            val historyViewModel: HistoryViewModel = viewModel()
+                            val historyNavigationScope = rememberCoroutineScope()
+                            androidx.compose.runtime.LaunchedEffect(Unit) {
+                                historyViewModel.loadData()
+                            }
+                            CommonListScreen(
+                                viewModel = historyViewModel,
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                globalHazeState = mainHazeState,
+                                scrollToTopChannel = historyScrollChannel,
+                                onVideoClick = { lookupKey, cid, cover ->
+                                    val historyItem = historyViewModel.getHistoryItem(lookupKey)
+                                    val resolvedCid = resolveHistoryPlaybackCid(
+                                        clickedCid = cid,
+                                        historyItem = historyItem
+                                    )
+                                    val resumePositionMs = resolveHistoryResumePositionMs(historyItem)
+                                    when (resolveHistoryNavigationKind(historyItem)) {
+                                        HistoryNavigationKind.PGC -> {
+                                            if (historyItem != null && historyItem.epid > 0 && historyItem.seasonId > 0) {
+                                                navController.navigate(ScreenRoutes.BangumiPlayer.createRoute(historyItem.seasonId, historyItem.epid))
+                                            } else if (historyItem != null && (historyItem.seasonId > 0 || historyItem.epid > 0)) {
+                                                navController.navigate(ScreenRoutes.BangumiDetail.createRoute(historyItem.seasonId, historyItem.epid))
+                                            } else {
+                                                navigateToVideo(
+                                                    lookupKey,
+                                                    resolvedCid,
+                                                    cover,
+                                                    resumePositionMs = resumePositionMs
+                                                )
+                                            }
+                                        }
+                                        HistoryNavigationKind.LIVE -> {
+                                            if (historyItem != null && historyItem.roomId > 0) {
+                                                navController.navigate(
+                                                    ScreenRoutes.Live.createRoute(
+                                                        historyItem.roomId,
+                                                        historyItem.videoItem.title,
+                                                        historyItem.videoItem.owner.name
+                                                    )
+                                                )
+                                            } else {
+                                                navigateToVideo(
+                                                    lookupKey,
+                                                    resolvedCid,
+                                                    cover,
+                                                    resumePositionMs = resumePositionMs
+                                                )
+                                            }
+                                        }
+                                        HistoryNavigationKind.ARTICLE -> {
+                                            val articleId = historyItem?.videoItem?.id ?: 0L
+                                            val articleTitle = historyItem?.videoItem?.title.orEmpty()
+                                            if (articleId > 0L) {
+                                                historyNavigationScope.launch {
+                                                    when (val target = resolveArticleNavigationTarget(articleId)) {
+                                                        is ArticleNavigationTarget.NativeDynamic -> {
+                                                            navController.navigate(ScreenRoutes.DynamicDetail.createRoute(target.dynamicId))
+                                                        }
+                                                        is ArticleNavigationTarget.NativeArticle -> {
+                                                            navController.navigate(
+                                                                ScreenRoutes.ArticleDetail.createRoute(target.articleId, articleTitle)
+                                                            )
+                                                        }
+                                                        null -> {
+                                                            navController.navigate(
+                                                                ScreenRoutes.ArticleDetail.createRoute(articleId, articleTitle)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                navigateToVideo(
+                                                    lookupKey,
+                                                    resolvedCid,
+                                                    cover,
+                                                    resumePositionMs = resumePositionMs
+                                                )
+                                            }
+                                        }
+                                        HistoryNavigationKind.VIDEO -> {
+                                            navigateToVideo(
+                                                lookupKey,
+                                                resolvedCid,
+                                                cover,
+                                                resumePositionMs = resumePositionMs
+                                            )
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        BottomNavItem.FAVORITE -> {
+                            val favoriteViewModel: FavoriteViewModel = viewModel()
+                            CommonListScreen(
+                                viewModel = favoriteViewModel,
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                globalHazeState = mainHazeState,
+                                scrollToTopChannel = favoriteScrollChannel,
+                                onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
+                                onFavoriteFolderClick = { mediaId, ownerMid, title ->
+                                    navController.navigate(
+                                        ScreenRoutes.SeasonSeriesDetail.createRoute(
+                                            type = "favorite",
+                                            id = mediaId,
+                                            mid = ownerMid,
+                                            title = title
+                                        )
+                                    )
+                                },
+                                onCollectionClick = { collectionId, collectionMid, title ->
+                                    navController.navigate(
+                                        ScreenRoutes.SeasonSeriesDetail.createRoute(
+                                            type = "season",
+                                            id = collectionId,
+                                            mid = collectionMid,
+                                            title = title
+                                        )
+                                    )
+                                },
+                                onPlayAllAudioClick = { bvid, cid ->
+                                    navigateToVideo(bvid, cid, "", startAudio = true)
+                                }
+                            )
+                        }
+                        BottomNavItem.WATCHLATER -> {
+                            com.android.purebilibili.feature.watchlater.WatchLaterScreen(
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
+                                onPlayAllAudioClick = { bvid, cid ->
+                                    navigateToVideo(bvid, cid, "", startAudio = true)
+                                },
+                                globalHazeState = mainHazeState
+                            )
+                        }
+                        BottomNavItem.LIVE -> {
+                            com.android.purebilibili.feature.live.LiveListScreen(
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onLiveClick = { roomId, title, uname ->
+                                    navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                                },
+                                onSearchClick = { navController.navigate(ScreenRoutes.LiveSearch.route) },
+                                onAreaListClick = { navController.navigate(ScreenRoutes.LiveArea.route) },
+                                onFollowingClick = { navController.navigate(ScreenRoutes.LiveFollowing.route) },
+                                onAreaDetailClick = { parentAreaId, areaId, title ->
+                                    navController.navigate(
+                                        ScreenRoutes.LiveAreaDetail.createRoute(
+                                            parentAreaId = parentAreaId,
+                                            areaId = areaId,
+                                            title = title
+                                        )
+                                    )
+                                },
+                                globalHazeState = mainHazeState
+                            )
+                        }
+                        BottomNavItem.SETTINGS -> {
+                            SettingsScreen(
+                                onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
+                                onOpenSourceLicensesClick = { navController.navigate(ScreenRoutes.OpenSourceLicenses.route) },
+                                onAppearanceClick = { navController.navigate(ScreenRoutes.AppearanceSettings.route) },
+                                onAnimationClick = { navController.navigate(ScreenRoutes.AnimationSettings.route) },
+                                onPlaybackClick = { navController.navigate(ScreenRoutes.PlaybackSettings.route) },
+                                onPermissionClick = { navController.navigate(ScreenRoutes.PermissionSettings.route) },
+                                onPluginsClick = { navController.navigate(ScreenRoutes.PluginsSettings.createRoute()) },
+                                onSettingsShareClick = { navController.navigate(ScreenRoutes.SettingsShare.route) },
+                                onWebDavBackupClick = { navController.navigate(ScreenRoutes.WebDavBackup.route) },
+                                onNavigateToBottomBarSettings = { navController.navigate(ScreenRoutes.BottomBarSettings.route) },
+                                onTipsClick = { navController.navigate(ScreenRoutes.TipsSettings.route) },
+                                onReplayOnboardingClick = { navController.navigate(ScreenRoutes.Onboarding.route) },
+                                mainHazeState = mainHazeState
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -2628,8 +2917,7 @@ fun AppNavigation(
                                     onItemClick = { item ->
                                         when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
                                             BottomBarSelectionAction.NAVIGATE -> {
-                                                retainedBottomNavItem = item
-                                                navigateTo(item.route)
+                                                navigateToBottomPagerItem(item)
                                             }
                                             BottomBarSelectionAction.RESELECT -> when (item) {
                                                 BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
@@ -2670,8 +2958,7 @@ fun AppNavigation(
                                 onItemClick = { item ->
                                     when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
                                         BottomBarSelectionAction.NAVIGATE -> {
-                                            retainedBottomNavItem = item
-                                            navigateTo(item.route)
+                                            navigateToBottomPagerItem(item)
                                         }
                                         BottomBarSelectionAction.RESELECT -> when (item) {
                                             BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)

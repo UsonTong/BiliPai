@@ -39,9 +39,11 @@ class BottomBarMiuixStructureTest {
                 "val progress = backdropPresetProgress.shellProgress"
             )
         )
-        assertTrue(kernelSuRendererSource.contains("notifyIndexChangedOnReleaseStart = true"))
+        assertTrue(kernelSuRendererSource.contains("notifyIndexChangedOnReleaseStart = false"))
         assertTrue(kernelSuRendererSource.contains("holdPressUntilReleaseTargetSettles = true"))
         assertTrue(kernelSuRendererSource.contains("dampedDragState.updateIndex(index)"))
+        assertFalse(kernelSuRendererSource.contains("selectedSettlePulseKey"))
+        assertFalse(kernelSuRendererSource.contains("settlePulseKey = if (index == selectedIndex)"))
         assertTrue(kernelSuRendererSource.contains("if (effectiveSearchExpanded) {\n                                    Modifier.clickable("))
         assertFalse(kernelSuRendererSource.contains("ColorFilter.tint(exportTintColor)"))
         assertFalse(kernelSuRendererSource.contains("val contentColor = Color.White"))
@@ -91,11 +93,8 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
-    fun `bottom bar nonlinear search motion does not change indicator dispersion or settle pulse`() {
+    fun `bottom bar nonlinear search motion does not change indicator dispersion or item scale`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
-        val settlePulseSource = source
-            .substringAfter("private fun rememberBottomBarSettlePulseTransform(")
-            .substringBefore("internal fun resolveBottomBarMotionThemeWeight(")
         val refractionProfileSource = source
             .substringAfter("internal fun resolveBottomBarRefractionMotionProfile(")
             .substringBefore("@Composable\nfun FrostedBottomBar(")
@@ -110,8 +109,8 @@ class BottomBarMiuixStructureTest {
         assertTrue(searchCapsuleSource.contains("onLongPress = {"))
         assertTrue(searchCapsuleSource.contains("haptic(HapticType.SELECTION)"))
         assertTrue(searchCapsuleSource.contains("easing = AppMotionEasing.Continuity"))
-        assertTrue(settlePulseSource.contains("animationSpec = tween(durationMillis = 240)"))
-        assertFalse(settlePulseSource.contains("AppMotionEasing.Continuity"))
+        assertFalse(source.contains("private fun rememberBottomBarSettlePulseTransform("))
+        assertFalse(source.contains("settlePulseKey = if (index == selectedIndex)"))
         assertTrue(refractionProfileSource.contains("rawProgress * rawProgress * (3f - 2f * rawProgress)"))
         assertFalse(refractionProfileSource.contains("resolveBottomBarIOSMotionProgress"))
     }

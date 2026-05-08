@@ -40,6 +40,30 @@ internal fun resolveBottomBarSelectionAction(
     }
 }
 
+internal fun resolveBottomPagerPageForRoute(
+    route: String?,
+    visibleItems: List<BottomNavItem>
+): Int? {
+    val routeBase = route?.substringBefore("?") ?: return null
+    return visibleItems.indexOfFirst { item -> item.route == routeBase }
+        .takeIf { it >= 0 }
+}
+
+internal fun resolveBottomPagerItemForPage(
+    page: Int,
+    visibleItems: List<BottomNavItem>
+): BottomNavItem {
+    return visibleItems.getOrNull(page) ?: BottomNavItem.HOME
+}
+
+internal fun resolveBottomPagerNavigationDurationMillis(
+    currentPage: Int,
+    targetPage: Int
+): Int {
+    val distance = kotlin.math.abs(targetPage - currentPage).coerceAtLeast(2)
+    return 100 * distance + 100
+}
+
 internal fun resolveBottomNavItemForRoute(
     currentRoute: String?,
     retainedItem: BottomNavItem?,

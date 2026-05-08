@@ -165,15 +165,19 @@ internal class DampedDragAnimationState(
         
         positionJob?.cancel()
         positionJob = scope.launch {
-            animatable.stop()
-            animatable.snapTo(newValue)
+            animatable.animateTo(
+                targetValue = newValue,
+                animationSpec = motionSpec.drag.selectionSpring.toSpringSpec()
+            )
         }
         // 累计偏移量 — 用于面板偏移
         desiredDragOffsetPx += dragAmountPx
         offsetJob?.cancel()
         offsetJob = scope.launch {
-            offsetAnimation.stop()
-            offsetAnimation.snapTo(desiredDragOffsetPx)
+            offsetAnimation.animateTo(
+                targetValue = desiredDragOffsetPx,
+                animationSpec = motionSpec.drag.offsetSnapSpring.toSpringSpec()
+            )
         }
     }
 
