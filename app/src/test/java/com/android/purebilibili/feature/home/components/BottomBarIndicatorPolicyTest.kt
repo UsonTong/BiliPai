@@ -401,8 +401,7 @@ class BottomBarIndicatorPolicyTest {
         )
 
         assertTrue(dynamic.themeWeight > home.themeWeight)
-        assertEquals(1f, home.scale, 0.001f)
-        assertEquals(1f, dynamic.scale, 0.001f)
+        assertTrue(dynamic.scale > home.scale)
     }
 
     @Test
@@ -463,7 +462,7 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `sliding item scale stays fixed so icons do not vertically compress`() {
+    fun `sliding item scale remains active for indicator refraction feel`() {
         val home = resolveBottomBarItemMotionVisual(
             itemIndex = 0,
             indicatorPosition = 0.8f,
@@ -479,8 +478,8 @@ class BottomBarIndicatorPolicyTest {
             selectionEmphasis = 0.28f
         )
 
-        assertEquals(1f, home.scale, 0.001f)
-        assertEquals(1f, dynamic.scale, 0.001f)
+        assertTrue(dynamic.scale > 1f)
+        assertTrue(home.scale > 1f)
     }
 
     @Test
@@ -563,8 +562,8 @@ class BottomBarIndicatorPolicyTest {
             isDragging = true
         )
 
-        assertEquals(1f, home.scale, 0.001f)
-        assertEquals(1f, dynamic.scale, 0.001f)
+        assertTrue(home.scale > 1f)
+        assertTrue(dynamic.scale > 1f)
         assertEquals(1f, history.scale)
         assertEquals(0f, history.themeWeight)
         assertTrue(profile.progress > 0f)
