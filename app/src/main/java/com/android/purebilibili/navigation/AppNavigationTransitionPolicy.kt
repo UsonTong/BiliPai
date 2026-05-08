@@ -59,6 +59,17 @@ internal fun resolveVideoPushEnterAction(
     ) {
         return VideoPushEnterAction.NO_OP
     }
+    val sourceCanHostSharedVideoCard = isVideoCardReturnTargetRoute(fromRoute)
+    if (
+        sourceCanHostSharedVideoCard &&
+        shouldUseNoOpSharedElementRouteTransition(
+            cardTransitionEnabled = cardTransitionEnabled,
+            sharedTransitionReady = sharedTransitionReady,
+            predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
+        )
+    ) {
+        return VideoPushEnterAction.NO_OP
+    }
 
     val backRouteMotionMode = resolveBackRouteMotionMode(
         predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
@@ -66,7 +77,7 @@ internal fun resolveVideoPushEnterAction(
     )
 
     if (shouldUseClassicBackRouteMotion(backRouteMotionMode)) {
-        return if (sharedTransitionReady) {
+        return if (sourceCanHostSharedVideoCard && sharedTransitionReady) {
             VideoPushEnterAction.HERO_EXPAND_FADE
         } else {
             VideoPushEnterAction.SOFT_FADE
@@ -178,6 +189,17 @@ internal fun resolveVideoPopExitAction(
     }
 
     val targetIsCardReturnTarget = isVideoCardReturnTargetRoute(targetRoute)
+
+    if (
+        targetIsCardReturnTarget &&
+        shouldUseNoOpSharedElementRouteTransition(
+            cardTransitionEnabled = cardTransitionEnabled,
+            sharedTransitionReady = sharedTransitionReady,
+            predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
+        )
+    ) {
+        return VideoPopExitDecision(action = VideoPopExitAction.NO_OP)
+    }
 
     if (
         targetIsCardReturnTarget &&

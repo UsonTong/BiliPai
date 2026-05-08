@@ -1853,29 +1853,34 @@ fun HomeScreen(
         
         val currentGridState = gridStates[state.currentCategory] ?: return@LaunchedEffect
         
-        snapshotFlow { currentGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-            .distinctUntilChanged()  //  只在索引变化时触发
-            .collect { lastVisibleIndex ->
-                // Move heavy lifting to IO thread
+        snapshotFlow {
+            val lastVisibleIndex = currentGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleIndex to currentGridState.isScrollInProgress
+        }
+            .distinctUntilChanged()
+            .collect { (lastVisibleIndex, isScrollInProgress) ->
+                val videos = state.categoryStates[state.currentCategory]?.videos ?: state.videos
+                val preloadRange = resolveHomeCoverPreloadRange(
+                    isDataSaverActive = isDataSaverActive,
+                    isScrollInProgress = isScrollInProgress,
+                    lastVisibleIndex = lastVisibleIndex,
+                    totalItemCount = videos.size,
+                    preloadAheadCount = preloadAheadCount
+                ) ?: return@collect
+                val imageUrls = preloadRange.mapNotNull { index -> videos.getOrNull(index)?.pic }
+                if (imageUrls.isEmpty()) return@collect
+
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val videos = state.categoryStates[state.currentCategory]?.videos ?: state.videos
-                    val preloadStart = (lastVisibleIndex + 1).coerceAtMost(videos.size)
-                    val preloadEnd = (lastVisibleIndex + 1 + preloadAheadCount).coerceAtMost(videos.size)
-                    
-                    if (preloadStart < preloadEnd) {
-                        for (i in preloadStart until preloadEnd) {
-                            val imageUrl = videos.getOrNull(i)?.pic ?: continue
-                            // [Optimization] Run validation and request building off main thread
-                            val fixedUrl = com.android.purebilibili.core.util.FormatUtils.fixImageUrl(imageUrl)
-                            
-                            val request = coil.request.ImageRequest.Builder(context)
-                                .data(fixedUrl)
-                                .size(360, 225)  //  预加载也使用限制尺寸
-                                .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
-                                .diskCachePolicy(coil.request.CachePolicy.ENABLED)
-                                .build()
-                            context.imageLoader.enqueue(request)
-                        }
+                    for (imageUrl in imageUrls) {
+                        val fixedUrl = com.android.purebilibili.core.util.FormatUtils.fixImageUrl(imageUrl)
+
+                        val request = coil.request.ImageRequest.Builder(context)
+                            .data(fixedUrl)
+                            .size(360, 225)  //  预加载也使用限制尺寸
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .build()
+                        context.imageLoader.enqueue(request)
                     }
                 }
             }

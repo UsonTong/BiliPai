@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -70,5 +71,27 @@ class VideoContentTabBarPolicyTest {
         assertEquals("发弹幕", policy.sendLabel)
         assertEquals(36, policy.settingsButtonSizeDp)
         assertEquals(18, policy.settingsIconSizeDp)
+    }
+
+    @Test
+    fun `info comment tab bar disables tap press refraction`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/video/screen/VideoContentSection.kt"
+        )
+        val tabBarBlock = source
+            .substringAfter("fun VideoContentTabBar(")
+            .substringBefore("// [新增] 恢复画面按钮")
+
+        assertTrue(tabBarBlock.contains("tapPressRefractionEnabled = false"))
+    }
+
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

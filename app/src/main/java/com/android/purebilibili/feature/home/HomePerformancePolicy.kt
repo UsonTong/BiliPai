@@ -22,7 +22,29 @@ internal fun resolveHomePreloadAheadCount(
     normalPreloadAheadCount: Int
 ): Int {
     if (isDataSaverActive) return 0
-    return normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(3)
+    return normalPreloadAheadCount.coerceAtLeast(0).coerceAtMost(2)
+}
+
+internal fun resolveHomeCoverPreloadRange(
+    isDataSaverActive: Boolean,
+    isScrollInProgress: Boolean,
+    lastVisibleIndex: Int,
+    totalItemCount: Int,
+    preloadAheadCount: Int
+): IntRange? {
+    if (isDataSaverActive || isScrollInProgress || totalItemCount <= 0) return null
+    val effectiveAheadCount = resolveHomePreloadAheadCount(
+        isDataSaverActive = false,
+        normalPreloadAheadCount = preloadAheadCount
+    )
+    if (effectiveAheadCount <= 0) return null
+
+    val preloadStart = (lastVisibleIndex + 1)
+        .coerceAtLeast(0)
+        .coerceAtMost(totalItemCount)
+    val preloadEndExclusive = (preloadStart + effectiveAheadCount).coerceAtMost(totalItemCount)
+    if (preloadStart >= preloadEndExclusive) return null
+    return preloadStart until preloadEndExclusive
 }
 
 internal fun resolveHomePerformanceConfig(

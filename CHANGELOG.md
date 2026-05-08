@@ -1,5 +1,23 @@
 # Changelog
 
+## v8.1.0 (2026-05-08)
+
+### 版本信息
+- 版本号从 `8.0.9` 升级到 `8.1.0`，`versionCode` 升级到 `183`。
+- 本次为“整体观感流畅度优化 + 分段控件手感收敛”的功能更新。
+
+### 更新内容
+- **后台内存控制**：图片内存缓存上限从 15% 收紧到 10%，普通后台隐藏时改为裁剪热缓存并触发回收；系统继续施加后台压力时清空热缓存，降低后台常驻占用，同时保留普通切回的少量热封面。
+- **首页滑动流畅度**：首页封面预加载改为滑动停稳后保守触发，最多预取 2 个封面，避免快速滑动时预加载抢占资源。
+- **视频转场合理性**：共享元素已就绪时路由级动画让位给共享元素，减少视频详情进出时 slide / fade / sharedBounds 多层叠加；常规导航时长同步收紧，降低拖尾感。
+- **分段控件手感**：共享分段控件使用更克制的 spring 与折射参数，视频详情 Tab 和评论排序条关闭点击瞬间折射，保留拖动时的液态反馈但减少点按晃动。
+- **回归覆盖**：补充后台缓存裁剪、首页预加载、导航转场、分段控件 motion、视频详情 Tab 和评论排序条策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.PureApplicationTrimPolicyTest' --tests 'com.android.purebilibili.feature.home.HomePerformancePolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationMotionSpecTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.VideoContentTabBarPolicyTest' --tests 'com.android.purebilibili.feature.video.ui.components.CommentSortFilterBarPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.0.9 (2026-05-08)
 
 ### 版本信息

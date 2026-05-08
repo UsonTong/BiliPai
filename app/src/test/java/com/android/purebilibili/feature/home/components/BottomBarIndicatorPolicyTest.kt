@@ -363,6 +363,49 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `shared segmented control ignores tap press for refraction when disabled`() {
+        assertEquals(
+            0f,
+            resolveSegmentedControlMotionProgress(
+                pressProgress = 1f,
+                refractionProgress = 0f,
+                tapPressRefractionEnabled = false
+            ),
+            0.001f
+        )
+        assertEquals(
+            1f,
+            resolveSegmentedControlMotionProgress(
+                pressProgress = 1f,
+                refractionProgress = 0f,
+                tapPressRefractionEnabled = true
+            ),
+            0.001f
+        )
+        assertEquals(
+            0.42f,
+            resolveSegmentedControlMotionProgress(
+                pressProgress = 1f,
+                refractionProgress = 0.42f,
+                tapPressRefractionEnabled = false
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `shared segmented control motion is calmer than bottom dock`() {
+        val bottomDock = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        val segmented = resolveSegmentedControlMotionSpec()
+
+        assertTrue(segmented.drag.selectionSpring.stiffness < bottomDock.drag.selectionSpring.stiffness)
+        assertTrue(segmented.drag.selectionSpring.dampingRatio > bottomDock.drag.selectionSpring.dampingRatio)
+        assertTrue(segmented.refraction.speedProgressDivisorPxPerSecond > bottomDock.refraction.speedProgressDivisorPxPerSecond)
+        assertTrue(segmented.refraction.dragProgressFloor < bottomDock.refraction.dragProgressFloor)
+        assertTrue(segmented.refraction.panelOffsetMaxDp < bottomDock.refraction.panelOffsetMaxDp)
+    }
+
+    @Test
     fun `idle refraction profile disables offset and keeps full visible emphasis`() {
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 2f,

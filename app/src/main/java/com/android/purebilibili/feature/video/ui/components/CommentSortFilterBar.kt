@@ -125,7 +125,8 @@ fun iOSSegmentedControl(
         itemWidth = spec.itemWidthDp.dp,
         height = spec.heightDp.dp,
         indicatorHeight = spec.indicatorHeightDp.dp,
-        labelFontSize = 13.sp
+        labelFontSize = 13.sp,
+        tapPressRefractionEnabled = false
     )
 }
 

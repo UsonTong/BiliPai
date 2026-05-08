@@ -1110,7 +1110,8 @@ private fun VideoContentTabBar(
                     .padding(start = 0.dp, top = 5.dp, end = 8.dp, bottom = 5.dp),
                 height = layoutSpec.segmentedControlHeightDp.dp,
                 indicatorHeight = layoutSpec.segmentedControlIndicatorHeightDp.dp,
-                labelFontSize = layoutSpec.unselectedTabFontSizeSp.sp
+                labelFontSize = layoutSpec.unselectedTabFontSizeSp.sp,
+                tapPressRefractionEnabled = false
             )
 
             // [新增] 恢复画面按钮 (仅在播放器折叠时显示)

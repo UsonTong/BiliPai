@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.0.9-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.9" />
+  <img src="https://img.shields.io/badge/Version-8.1.0-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.0" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.0.9 / versionCode 182`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.0.9`：
+当前仓库版本号已更新到 `8.1.0 / versionCode 183`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.0`：
 
-- 底栏拖动阶段恢复即时跟手更新，松手后再执行吸附动画，降低左右滑动卡顿。
-- 保留底栏滑动过程中的图标折射、色散和选中态动态效果，继续移除切换后的图标上下收缩动画。
-- manifest 保持系统预测返回 opt-in，打开设置开关时恢复系统预测返回动画。
-- 关闭设置开关时由经典 BackHandler 拦截返回，避免继续触发系统预测返回预览。
-- 补充底栏拖动、预测返回 manifest opt-out、设置搜索和导航转场策略测试。
+- 图片内存缓存上限收紧到 10%，普通后台隐藏时裁剪热缓存，系统继续施加后台压力时清空热缓存，降低后台常驻占用。
+- 首页封面预加载改为滑动停稳后保守触发，避免快速滑动时抢占资源。
+- 共享元素就绪时路由动画让位给 sharedBounds，减少视频详情进出时的多层动画叠加。
+- 共享分段控件使用更克制的 spring 与折射参数，视频详情 Tab 和评论排序条减少点按晃动。
+- 补充后台缓存裁剪、首页预加载、导航转场和分段控件 motion 策略测试。
 
 ## 路线图
 

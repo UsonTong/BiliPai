@@ -259,18 +259,23 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
     // � [后台内存优化] 响应系统内存警告
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (PureApplicationRuntimeConfig.shouldClearImageMemoryCacheOnTrimLevel(level)) {
-            _imageLoader?.memoryCache?.clear()
-            when (level) {
-                ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> {
-                    Logger.d(PureApplicationRuntimeConfig.TAG, " UI hidden, released image memory cache")
+        val imageCacheTrimLevel = PureApplicationRuntimeConfig.resolveImageMemoryCacheTrimLevel(level)
+        if (imageCacheTrimLevel != null) {
+            _imageLoader?.memoryCache?.trimMemory(imageCacheTrimLevel)
+            if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
+                PureApplicationRuntimeConfig.shouldClearImageMemoryCacheOnTrimLevel(level)
+            ) {
+                System.gc()
+            }
+            when {
+                PureApplicationRuntimeConfig.shouldClearImageMemoryCacheOnTrimLevel(level) -> {
+                    Logger.d(PureApplicationRuntimeConfig.TAG, "🚨 trim(level=$level), released image memory cache")
                 }
-                ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> {
-                    Logger.d(PureApplicationRuntimeConfig.TAG, "🚨 TRIM_MEMORY_COMPLETE, released image memory cache")
+                level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> {
+                    Logger.d(PureApplicationRuntimeConfig.TAG, " UI hidden, trimmed image memory cache for background")
                 }
                 else -> {
-                    System.gc()
-                    Logger.d(PureApplicationRuntimeConfig.TAG, " Low memory trim(level=$level), cleared image memory cache")
+                    Logger.d(PureApplicationRuntimeConfig.TAG, " Low memory trim(level=$level), trimmed image memory cache")
                 }
             }
         }

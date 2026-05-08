@@ -54,6 +54,8 @@ import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationSta
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
+import com.android.purebilibili.core.ui.motion.BottomBarMotionSpec
+import com.android.purebilibili.core.ui.motion.MotionSpringConfig
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -140,6 +142,51 @@ internal fun shouldDrawSegmentedControlIndicatorBackdrop(
     return hasExternalBackdrop || motionProgress > 0.001f
 }
 
+internal fun resolveSegmentedControlMotionProgress(
+    pressProgress: Float,
+    refractionProgress: Float,
+    tapPressRefractionEnabled: Boolean
+): Float {
+    val resolvedPressProgress = if (tapPressRefractionEnabled) pressProgress else 0f
+    return maxOf(resolvedPressProgress, refractionProgress)
+}
+
+internal fun resolveSegmentedControlMotionSpec(): BottomBarMotionSpec {
+    val base = resolveBottomBarMotionSpec(profile = BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+    return base.copy(
+        drag = base.drag.copy(
+            selectionSpring = MotionSpringConfig(
+                dampingRatio = 0.88f,
+                stiffness = 320f
+            ),
+            offsetSnapSpring = MotionSpringConfig(
+                dampingRatio = 0.84f,
+                stiffness = 300f
+            )
+        ),
+        refraction = base.refraction.copy(
+            speedProgressDivisorPxPerSecond = 1700f,
+            dragProgressFloor = 0.14f,
+            panelOffsetMaxDp = 3f
+        ),
+        indicator = base.indicator.copy(
+            scaleSpring = MotionSpringConfig(
+                dampingRatio = 0.58f,
+                stiffness = 420f
+            ),
+            dragScaleSpring = MotionSpringConfig(
+                dampingRatio = 0.64f,
+                stiffness = 320f
+            ),
+            lensVelocityRangePxPerSecond = 3200f,
+            capsuleVelocityNormalizationDivisor = 14f,
+            capsuleVelocityScaleXMultiplier = 0.52f,
+            capsuleVelocityScaleYMultiplier = 0.18f,
+            capsuleVelocityClamp = 0.14f
+        )
+    )
+}
+
 @Composable
 fun BottomBarLiquidSegmentedControl(
     items: List<String>,
@@ -158,6 +205,7 @@ fun BottomBarLiquidSegmentedControl(
     preferInlineContentStyle: Boolean = false,
     forceLiquidChrome: Boolean = false,
     backdrop: Backdrop? = null,
+    tapPressRefractionEnabled: Boolean = true,
     onIndicatorPositionChanged: ((Float) -> Unit)? = null
 ) {
     if (items.isEmpty()) return
@@ -199,9 +247,7 @@ fun BottomBarLiquidSegmentedControl(
     val density = LocalDensity.current
     val itemCount = items.size
     val safeSelectedIndex = selectedIndex.coerceIn(0, itemCount - 1)
-    val motionSpec = remember {
-        resolveBottomBarMotionSpec(profile = BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
-    }
+    val motionSpec = remember { resolveSegmentedControlMotionSpec() }
     val dragState = rememberDampedDragAnimationState(
         initialIndex = safeSelectedIndex,
         itemCount = itemCount,
@@ -291,7 +337,11 @@ fun BottomBarLiquidSegmentedControl(
             isDragging = dragState.isDragging,
             motionSpec = motionSpec
         )
-        val motionProgress = maxOf(pressMotionProgress, refractionMotionProfile.progress)
+        val motionProgress = resolveSegmentedControlMotionProgress(
+            pressProgress = pressMotionProgress,
+            refractionProgress = refractionMotionProfile.progress,
+            tapPressRefractionEnabled = tapPressRefractionEnabled
+        )
         val panelOffsetPx by remember(density, itemWidthPx) {
             derivedStateOf {
                 val fraction = (dragState.dragOffset / itemWidthPx).coerceIn(-1f, 1f)
