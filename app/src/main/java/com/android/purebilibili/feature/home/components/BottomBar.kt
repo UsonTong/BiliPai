@@ -2788,48 +2788,135 @@ private fun KernelSuAlignedBottomBar(
 
                 if (searchEnabled) {
                     Spacer(modifier = Modifier.width(searchGap))
-                    KernelSuBottomBarSearchCapsule(
-                        width = searchWidth,
-                        height = searchHeight,
-                        expanded = effectiveSearchExpanded,
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        onExpandChange = { expanded ->
-                            haptic(HapticType.LIGHT)
-                            searchExpansionOverride = if (expanded) {
-                                BottomBarSearchExpansionOverride.EXPANDED
-                            } else {
-                                BottomBarSearchExpansionOverride.COLLAPSED
-                            }
-                        },
-                        onSubmit = {
-                            val keyword = searchQuery.trim()
-                            if (keyword.isEmpty()) {
-                                onSearchClick()
-                            } else {
-                                onSearchKeywordSubmit(keyword)
-                            }
-                        },
-                        shape = shellShape,
-                        backdrop = backdrop,
-                        containerColor = containerColor,
-                        blurEnabled = blurEnabled,
-                        glassEnabled = glassEnabled,
-                        liquidGlassPreset = liquidGlassPreset,
-                        nativeVerticalProgress = verticalGlassProfile.progress,
-                        blurRadius = tuning.shellBlurRadiusDp.dp,
-                        hazeState = hazeState,
-                        motionTier = motionTier,
-                        isTransitionRunning = isTransitionRunning,
-                        forceLowBlurBudget = forceLowBlurBudget,
-                        contentColor = unselectedColor,
-                        accentColor = selectedColor,
-                        haptic = haptic
-                    )
+                    Box(
+                        modifier = Modifier
+                            .width(searchWidth)
+                            .height(searchHeight)
+                    ) {
+                        KernelSuBottomBarSearchCapsule(
+                            width = searchWidth,
+                            height = searchHeight,
+                            expanded = effectiveSearchExpanded,
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onExpandChange = { expanded ->
+                                haptic(HapticType.LIGHT)
+                                searchExpansionOverride = if (expanded) {
+                                    BottomBarSearchExpansionOverride.EXPANDED
+                                } else {
+                                    BottomBarSearchExpansionOverride.COLLAPSED
+                                }
+                            },
+                            onSubmit = {
+                                val keyword = searchQuery.trim()
+                                if (keyword.isEmpty()) {
+                                    onSearchClick()
+                                } else {
+                                    onSearchKeywordSubmit(keyword)
+                                }
+                            },
+                            shape = shellShape,
+                            backdrop = backdrop,
+                            containerColor = containerColor,
+                            blurEnabled = blurEnabled,
+                            glassEnabled = glassEnabled,
+                            liquidGlassPreset = liquidGlassPreset,
+                            nativeVerticalProgress = verticalGlassProfile.progress,
+                            blurRadius = tuning.shellBlurRadiusDp.dp,
+                            hazeState = hazeState,
+                            motionTier = motionTier,
+                            isTransitionRunning = isTransitionRunning,
+                            forceLowBlurBudget = forceLowBlurBudget,
+                            contentColor = unselectedColor,
+                            accentColor = selectedColor,
+                            haptic = haptic
+                        )
+                        if (shouldRenderRefractionCapture && backdrop != null) {
+                            KernelSuBottomBarSearchRefractionCapture(
+                                modifier = Modifier.matchParentSize(),
+                                tabsBackdrop = tabsBackdrop,
+                                expanded = effectiveSearchExpanded,
+                                query = searchQuery,
+                                shape = shellShape,
+                                backdrop = backdrop,
+                                containerColor = containerColor,
+                                blurEnabled = blurEnabled,
+                                glassEnabled = glassEnabled,
+                                liquidGlassPreset = liquidGlassPreset,
+                                nativeVerticalProgress = verticalGlassProfile.progress,
+                                blurRadius = tuning.shellBlurRadiusDp.dp,
+                                hazeState = hazeState,
+                                motionTier = motionTier,
+                                isTransitionRunning = isTransitionRunning,
+                                forceLowBlurBudget = forceLowBlurBudget,
+                                contentColor = unselectedColor,
+                                accentColor = selectedColor
+                            )
+                        }
+                    }
                 }
         }
     }
 }
+}
+
+@Composable
+private fun KernelSuBottomBarSearchRefractionCapture(
+    modifier: Modifier,
+    tabsBackdrop: LayerBackdrop,
+    expanded: Boolean,
+    query: String,
+    shape: androidx.compose.ui.graphics.Shape,
+    backdrop: Backdrop?,
+    containerColor: Color,
+    blurEnabled: Boolean,
+    glassEnabled: Boolean,
+    liquidGlassPreset: BottomBarLiquidGlassPreset,
+    nativeVerticalProgress: Float,
+    blurRadius: Dp,
+    hazeState: HazeState?,
+    motionTier: MotionTier,
+    isTransitionRunning: Boolean,
+    forceLowBlurBudget: Boolean,
+    contentColor: Color,
+    accentColor: Color
+) {
+    val captureIconScale = if (expanded) 0.92f else 1f
+    val captureFieldAlpha = if (expanded) 1f else 0f
+
+    Box(
+        modifier = modifier
+            .clearAndSetSemantics {}
+            .alpha(0f)
+            .layerBackdrop(tabsBackdrop)
+            .kernelSuFloatingDockSurface(
+                shape = shape,
+                backdrop = backdrop,
+                containerColor = containerColor,
+                blurEnabled = blurEnabled,
+                glassEnabled = glassEnabled,
+                liquidGlassPreset = liquidGlassPreset,
+                nativeVerticalProgress = nativeVerticalProgress,
+                blurRadius = blurRadius,
+                hazeState = hazeState,
+                motionTier = motionTier,
+                isTransitionRunning = isTransitionRunning,
+                forceLowBlurBudget = forceLowBlurBudget
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        KernelSuBottomBarSearchVisualContent(
+            expanded = expanded,
+            query = query,
+            onQueryChange = {},
+            onSubmit = {},
+            contentColor = contentColor,
+            accentColor = accentColor,
+            iconScale = captureIconScale,
+            fieldAlpha = captureFieldAlpha,
+            interactive = false
+        )
+    }
 }
 
 @Composable
@@ -2947,40 +3034,67 @@ private fun KernelSuBottomBarSearchCapsule(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Row(
+        KernelSuBottomBarSearchVisualContent(
+            expanded = expanded,
+            query = query,
+            onQueryChange = onQueryChange,
+            onSubmit = {
+                searchClickPulseKey += 1
+                currentOnSubmit()
+            },
+            contentColor = contentColor,
+            accentColor = accentColor,
+            iconScale = iconScale,
+            fieldAlpha = fieldAlpha,
+            interactive = true
+        )
+    }
+}
+
+@Composable
+private fun KernelSuBottomBarSearchVisualContent(
+    expanded: Boolean,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    contentColor: Color,
+    accentColor: Color,
+    iconScale: Float,
+    fieldAlpha: Float,
+    interactive: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = if (expanded) 16.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center
+    ) {
+        Icon(
+            imageVector = CupertinoIcons.Default.MagnifyingGlass,
+            contentDescription = "搜索",
+            tint = if (expanded) accentColor else contentColor,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = if (expanded) 16.dp else 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center
-        ) {
-            Icon(
-                imageVector = CupertinoIcons.Default.MagnifyingGlass,
-                contentDescription = "搜索",
-                tint = if (expanded) accentColor else contentColor,
-                modifier = Modifier
-                    .size(24.dp)
-                    .then(
-                        if (expanded) {
-                            Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    searchClickPulseKey += 1
-                                    currentOnSubmit()
-                                }
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
+                .size(24.dp)
+                .then(
+                    if (expanded && interactive) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onSubmit
+                        )
+                    } else {
+                        Modifier
                     }
-            )
-            if (expanded) {
-                Spacer(modifier = Modifier.width(10.dp))
+                )
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                }
+        )
+        if (expanded) {
+            Spacer(modifier = Modifier.width(10.dp))
+            if (interactive) {
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
@@ -2988,7 +3102,7 @@ private fun KernelSuBottomBarSearchCapsule(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
                     cursorBrush = SolidColor(accentColor),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { currentOnSubmit() }),
+                    keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                     modifier = Modifier
                         .weight(1f)
                         .alpha(fieldAlpha),
@@ -3006,6 +3120,24 @@ private fun KernelSuBottomBarSearchCapsule(
                         }
                     }
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .alpha(fieldAlpha),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = query.ifBlank { "搜索" },
+                        color = if (query.isBlank()) {
+                            contentColor.copy(alpha = 0.45f)
+                        } else {
+                            contentColor
+                        },
+                        maxLines = 1,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

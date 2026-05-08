@@ -159,6 +159,24 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
+    fun `sukisu search capsule participates in indicator refraction capture`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val kernelSuRendererSource = source
+            .substringAfter("private fun KernelSuAlignedBottomBar(")
+            .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+        val searchCaptureSource = source
+            .substringAfter("private fun KernelSuBottomBarSearchRefractionCapture(")
+            .substringBefore("@Composable\nprivate fun KernelSuBottomBarSearchCapsule(")
+
+        assertTrue(kernelSuRendererSource.contains("KernelSuBottomBarSearchRefractionCapture("))
+        assertTrue(searchCaptureSource.contains(".layerBackdrop(tabsBackdrop)"))
+        assertTrue(searchCaptureSource.contains(".alpha(0f)"))
+        assertTrue(searchCaptureSource.contains("KernelSuBottomBarSearchVisualContent("))
+        assertFalse(searchCaptureSource.contains("detectTapGestures("))
+        assertFalse(searchCaptureSource.contains("BasicTextField("))
+    }
+
+    @Test
     fun `android native input overlay forwards press state to indicator animation`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val kernelSuRendererSource = source
