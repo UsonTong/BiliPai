@@ -155,25 +155,29 @@ class BottomBarMiuixStructureTest {
 
         assertTrue(kernelSuRendererSource.contains("val shouldComposeDockContent = shouldComposeBottomBarDockContent("))
         assertTrue(kernelSuRendererSource.contains("if (shouldComposeDockContent) {"))
-        assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null) {\n                    Box("))
+        assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null) {"))
+        assertTrue(kernelSuRendererSource.contains("val captureWidth = dockWidth + searchGap + searchWidth"))
+        assertTrue(kernelSuRendererSource.contains(".width(captureWidth)"))
     }
 
     @Test
-    fun `sukisu search capsule participates in indicator refraction capture`() {
+    fun `sukisu search capsule participates in the dock aligned refraction capture`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val kernelSuRendererSource = source
             .substringAfter("private fun KernelSuAlignedBottomBar(")
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
-        val searchCaptureSource = source
-            .substringAfter("private fun KernelSuBottomBarSearchRefractionCapture(")
-            .substringBefore("@Composable\nprivate fun KernelSuBottomBarSearchCapsule(")
+        val refractionCaptureSource = kernelSuRendererSource
+            .substringAfter("if (shouldRenderRefractionCapture && backdrop != null) {")
+            .substringBefore("if (selectedIndex in visibleItems.indices)")
 
-        assertTrue(kernelSuRendererSource.contains("KernelSuBottomBarSearchRefractionCapture("))
-        assertTrue(searchCaptureSource.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(searchCaptureSource.contains(".alpha(0f)"))
-        assertTrue(searchCaptureSource.contains("KernelSuBottomBarSearchVisualContent("))
-        assertFalse(searchCaptureSource.contains("detectTapGestures("))
-        assertFalse(searchCaptureSource.contains("BasicTextField("))
+        assertFalse(source.contains("private fun KernelSuBottomBarSearchRefractionCapture("))
+        assertFalse(kernelSuRendererSource.contains("KernelSuBottomBarSearchRefractionCapture("))
+        assertTrue(refractionCaptureSource.contains("val captureWidth = dockWidth + searchGap + searchWidth"))
+        assertTrue(refractionCaptureSource.contains(".width(captureWidth)"))
+        assertTrue(refractionCaptureSource.contains(".layerBackdrop(tabsBackdrop)"))
+        assertTrue(refractionCaptureSource.contains(".offset(x = dockWidth + searchGap)"))
+        assertTrue(refractionCaptureSource.contains("KernelSuBottomBarSearchVisualContent("))
+        assertTrue(refractionCaptureSource.contains("interactive = false"))
     }
 
     @Test

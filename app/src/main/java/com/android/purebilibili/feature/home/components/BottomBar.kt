@@ -2486,9 +2486,11 @@ private fun KernelSuAlignedBottomBar(
                 }
 
                 if (shouldRenderRefractionCapture && backdrop != null) {
+                    val captureWidth = dockWidth + searchGap + searchWidth
                     Box(
                         modifier = Modifier
-                            .matchParentSize()
+                            .width(captureWidth)
+                            .height(shellHeight)
                             .clearAndSetSemantics {}
                             .alpha(0f)
                             .layerBackdrop(tabsBackdrop)
@@ -2549,57 +2551,101 @@ private fun KernelSuAlignedBottomBar(
                                 }
                             }
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(contentPadding),
-                            verticalAlignment = Alignment.CenterVertically
+                                .width(dockWidth)
+                                .height(dockHeight)
+                                .align(Alignment.CenterStart)
                         ) {
-                            visibleItems.forEachIndexed { index, item ->
-                                val visual = itemVisual(
-                                    index = index,
-                                    selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
-                                )
-                                val contentColor = exportItemContentColor(item, visual)
-                                AndroidNativeBottomBarItem(
-                                    item = item,
-                                    label = resolveBottomNavItemLabel(item),
-                                    dynamicUnreadCount = dynamicUnreadCount,
-                                    selected = visual.useSelectedIcon,
-                                    showIcon = showIcon,
-                                    showText = showText,
-                                    selectedColor = contentColor,
-                                    unselectedColor = contentColor,
-                                    contentColorOverride = contentColor,
-                                    iconStyle = iconStyle,
-                                    onClick = {},
-                                    interactive = false,
-                                    selectedIconAlpha = visual.selectedIconAlpha,
-                                    scale = if (glassEnabled) visual.scale else 1f
-                                )
-                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(contentPadding),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                visibleItems.forEachIndexed { index, item ->
+                                    val visual = itemVisual(
+                                        index = index,
+                                        selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
+                                    )
+                                    val contentColor = exportItemContentColor(item, visual)
+                                    AndroidNativeBottomBarItem(
+                                        item = item,
+                                        label = resolveBottomNavItemLabel(item),
+                                        dynamicUnreadCount = dynamicUnreadCount,
+                                        selected = visual.useSelectedIcon,
+                                        showIcon = showIcon,
+                                        showText = showText,
+                                        selectedColor = contentColor,
+                                        unselectedColor = contentColor,
+                                        contentColorOverride = contentColor,
+                                        iconStyle = iconStyle,
+                                        onClick = {},
+                                        interactive = false,
+                                        selectedIconAlpha = visual.selectedIconAlpha,
+                                        scale = if (glassEnabled) visual.scale else 1f
+                                    )
+                                }
 
-                            if (isTablet && onToggleSidebar != null) {
-                                val visual = itemVisual(
-                                    index = visibleItems.size,
-                                    selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
-                                )
-                                val contentColor = exportItemContentColor(null, visual)
-                                AndroidNativeBottomBarItem(
-                                    item = null,
-                                    label = stringResource(R.string.sidebar_toggle),
-                                    dynamicUnreadCount = dynamicUnreadCount,
-                                    selected = visual.useSelectedIcon,
-                                    showIcon = showIcon,
-                                    showText = showText,
-                                    selectedColor = contentColor,
-                                    unselectedColor = contentColor,
-                                    contentColorOverride = contentColor,
-                                    iconStyle = iconStyle,
-                                    onClick = {},
-                                    interactive = false,
-                                    selectedIconAlpha = visual.selectedIconAlpha,
-                                    scale = if (glassEnabled) visual.scale else 1f
+                                if (isTablet && onToggleSidebar != null) {
+                                    val visual = itemVisual(
+                                        index = visibleItems.size,
+                                        selectionEmphasis = refractionMotionProfile.exportSelectionEmphasis
+                                    )
+                                    val contentColor = exportItemContentColor(null, visual)
+                                    AndroidNativeBottomBarItem(
+                                        item = null,
+                                        label = stringResource(R.string.sidebar_toggle),
+                                        dynamicUnreadCount = dynamicUnreadCount,
+                                        selected = visual.useSelectedIcon,
+                                        showIcon = showIcon,
+                                        showText = showText,
+                                        selectedColor = contentColor,
+                                        unselectedColor = contentColor,
+                                        contentColorOverride = contentColor,
+                                        iconStyle = iconStyle,
+                                        onClick = {},
+                                        interactive = false,
+                                        selectedIconAlpha = visual.selectedIconAlpha,
+                                        scale = if (glassEnabled) visual.scale else 1f
+                                    )
+                                }
+                            }
+                        }
+
+                        if (searchEnabled) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = dockWidth + searchGap)
+                                    .width(searchWidth)
+                                    .height(searchHeight)
+                                    .align(Alignment.CenterStart)
+                                    .kernelSuFloatingDockSurface(
+                                        shape = shellShape,
+                                        backdrop = backdrop,
+                                        containerColor = containerColor,
+                                        blurEnabled = blurEnabled,
+                                        glassEnabled = glassEnabled,
+                                        liquidGlassPreset = liquidGlassPreset,
+                                        nativeVerticalProgress = verticalGlassProfile.progress,
+                                        blurRadius = tuning.shellBlurRadiusDp.dp,
+                                        hazeState = hazeState,
+                                        motionTier = motionTier,
+                                        isTransitionRunning = isTransitionRunning,
+                                        forceLowBlurBudget = forceLowBlurBudget
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                KernelSuBottomBarSearchVisualContent(
+                                    expanded = effectiveSearchExpanded,
+                                    query = searchQuery,
+                                    onQueryChange = {},
+                                    onSubmit = {},
+                                    contentColor = unselectedColor,
+                                    accentColor = selectedColor,
+                                    iconScale = if (effectiveSearchExpanded) 0.92f else 1f,
+                                    fieldAlpha = if (effectiveSearchExpanded) 1f else 0f,
+                                    interactive = false
                                 )
                             }
                         }
@@ -2831,92 +2877,11 @@ private fun KernelSuAlignedBottomBar(
                             accentColor = selectedColor,
                             haptic = haptic
                         )
-                        if (shouldRenderRefractionCapture && backdrop != null) {
-                            KernelSuBottomBarSearchRefractionCapture(
-                                modifier = Modifier.matchParentSize(),
-                                tabsBackdrop = tabsBackdrop,
-                                expanded = effectiveSearchExpanded,
-                                query = searchQuery,
-                                shape = shellShape,
-                                backdrop = backdrop,
-                                containerColor = containerColor,
-                                blurEnabled = blurEnabled,
-                                glassEnabled = glassEnabled,
-                                liquidGlassPreset = liquidGlassPreset,
-                                nativeVerticalProgress = verticalGlassProfile.progress,
-                                blurRadius = tuning.shellBlurRadiusDp.dp,
-                                hazeState = hazeState,
-                                motionTier = motionTier,
-                                isTransitionRunning = isTransitionRunning,
-                                forceLowBlurBudget = forceLowBlurBudget,
-                                contentColor = unselectedColor,
-                                accentColor = selectedColor
-                            )
-                        }
                     }
                 }
         }
     }
 }
-}
-
-@Composable
-private fun KernelSuBottomBarSearchRefractionCapture(
-    modifier: Modifier,
-    tabsBackdrop: LayerBackdrop,
-    expanded: Boolean,
-    query: String,
-    shape: androidx.compose.ui.graphics.Shape,
-    backdrop: Backdrop?,
-    containerColor: Color,
-    blurEnabled: Boolean,
-    glassEnabled: Boolean,
-    liquidGlassPreset: BottomBarLiquidGlassPreset,
-    nativeVerticalProgress: Float,
-    blurRadius: Dp,
-    hazeState: HazeState?,
-    motionTier: MotionTier,
-    isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean,
-    contentColor: Color,
-    accentColor: Color
-) {
-    val captureIconScale = if (expanded) 0.92f else 1f
-    val captureFieldAlpha = if (expanded) 1f else 0f
-
-    Box(
-        modifier = modifier
-            .clearAndSetSemantics {}
-            .alpha(0f)
-            .layerBackdrop(tabsBackdrop)
-            .kernelSuFloatingDockSurface(
-                shape = shape,
-                backdrop = backdrop,
-                containerColor = containerColor,
-                blurEnabled = blurEnabled,
-                glassEnabled = glassEnabled,
-                liquidGlassPreset = liquidGlassPreset,
-                nativeVerticalProgress = nativeVerticalProgress,
-                blurRadius = blurRadius,
-                hazeState = hazeState,
-                motionTier = motionTier,
-                isTransitionRunning = isTransitionRunning,
-                forceLowBlurBudget = forceLowBlurBudget
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        KernelSuBottomBarSearchVisualContent(
-            expanded = expanded,
-            query = query,
-            onQueryChange = {},
-            onSubmit = {},
-            contentColor = contentColor,
-            accentColor = accentColor,
-            iconScale = captureIconScale,
-            fieldAlpha = captureFieldAlpha,
-            interactive = false
-        )
-    }
 }
 
 @Composable
