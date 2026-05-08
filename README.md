@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.0.7-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.7" />
+  <img src="https://img.shields.io/badge/Version-8.0.8-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.8" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -177,12 +177,12 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.0.7 / versionCode 180`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；现有 changelog 最新完整记录为 `v8.0.6`：
+当前仓库版本号已更新到 `8.0.8 / versionCode 181`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.0.8`：
 
-- 新增安卓原生 Material 3 Expressive / MD3E 子风格。
-- 顶栏、底栏、首页分类、共享列表、搜索、通用列表和视频设置面板完成 MD3E 适配。
-- 修复平板屏幕旋转体验与屏幕大小检测逻辑。
-- 同步修复视频和直播的方向策略。
+- 空间页投稿视频新增网格/单列布局切换，默认保留原网格浏览。
+- 单列模式复用归档列表行样式，并通过过渡动画减少切换跳动。
+- 画中画和系统媒体控制拆出明确播放/暂停动作，降低状态滞后导致的误触发。
+- 补充空间页布局与迷你播放器媒体控制策略测试。
 
 ## 路线图
 

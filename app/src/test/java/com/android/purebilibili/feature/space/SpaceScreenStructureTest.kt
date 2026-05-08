@@ -13,10 +13,23 @@ class SpaceScreenStructureTest {
 
         assertTrue(source.contains("columns = GridCells.Fixed("))
         assertTrue(source.contains("resolveSpaceContentGridColumnCount("))
+        assertTrue(source.contains("SpaceContributionVideoLayoutMode.GRID"))
         assertTrue(source.contains("SpaceHomeVideoCard("))
         assertTrue(source.contains("key = { \"space_video_${'$'}{it.bvid}_${'$'}{it.aid}\" }"))
         assertFalse(source.contains("SpaceVideoListItemRow("))
-        assertFalse(source.contains("span = { GridItemSpan(maxLineSpan) }\n                        ) { video ->"))
+    }
+
+    @Test
+    fun `contribution videos expose single column toggle with animated card transition`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/space/SpaceScreen.kt")
+
+        assertTrue(source.contains("onLayoutModeClick"))
+        assertTrue(source.contains("toggleSpaceContributionVideoLayoutMode"))
+        assertTrue(source.contains("AnimatedContent("))
+        assertTrue(source.contains("SizeTransform(clip = false)"))
+        assertTrue(source.contains("resolveSpaceContributionVideoGridSpan("))
+        assertTrue(source.contains("SpaceContributionVideoLayoutMode.SINGLE_COLUMN"))
+        assertTrue(source.contains("SpaceArchiveListItemRow("))
     }
 
     private fun loadSource(path: String): String {

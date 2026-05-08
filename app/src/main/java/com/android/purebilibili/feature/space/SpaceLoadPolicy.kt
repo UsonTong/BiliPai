@@ -186,6 +186,34 @@ internal fun resolveSpaceContentGridColumnCount(widthDp: Int): Int {
     }
 }
 
+internal enum class SpaceContributionVideoLayoutMode {
+    GRID,
+    SINGLE_COLUMN
+}
+
+internal fun defaultSpaceContributionVideoLayoutMode(): SpaceContributionVideoLayoutMode {
+    return SpaceContributionVideoLayoutMode.GRID
+}
+
+internal fun toggleSpaceContributionVideoLayoutMode(
+    current: SpaceContributionVideoLayoutMode
+): SpaceContributionVideoLayoutMode {
+    return when (current) {
+        SpaceContributionVideoLayoutMode.GRID -> SpaceContributionVideoLayoutMode.SINGLE_COLUMN
+        SpaceContributionVideoLayoutMode.SINGLE_COLUMN -> SpaceContributionVideoLayoutMode.GRID
+    }
+}
+
+internal fun resolveSpaceContributionVideoGridSpan(
+    layoutMode: SpaceContributionVideoLayoutMode,
+    maxLineSpan: Int
+): Int {
+    return when (layoutMode) {
+        SpaceContributionVideoLayoutMode.GRID -> 1
+        SpaceContributionVideoLayoutMode.SINGLE_COLUMN -> maxLineSpan
+    }
+}
+
 internal data class SpaceInitialSeed(
     val userInfo: SpaceUserInfo,
     val relationStat: RelationStatData?,

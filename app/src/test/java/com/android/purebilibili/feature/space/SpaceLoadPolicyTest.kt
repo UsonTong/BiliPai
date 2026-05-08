@@ -295,6 +295,37 @@ class SpaceLoadPolicyTest {
     }
 
     @Test
+    fun `contribution video layout defaults to grid and toggles to single column`() {
+        assertEquals(SpaceContributionVideoLayoutMode.GRID, defaultSpaceContributionVideoLayoutMode())
+        assertEquals(
+            SpaceContributionVideoLayoutMode.SINGLE_COLUMN,
+            toggleSpaceContributionVideoLayoutMode(SpaceContributionVideoLayoutMode.GRID)
+        )
+        assertEquals(
+            SpaceContributionVideoLayoutMode.GRID,
+            toggleSpaceContributionVideoLayoutMode(SpaceContributionVideoLayoutMode.SINGLE_COLUMN)
+        )
+    }
+
+    @Test
+    fun `single column contribution video layout spans the full content row`() {
+        assertEquals(
+            1,
+            resolveSpaceContributionVideoGridSpan(
+                layoutMode = SpaceContributionVideoLayoutMode.GRID,
+                maxLineSpan = 4
+            )
+        )
+        assertEquals(
+            4,
+            resolveSpaceContributionVideoGridSpan(
+                layoutMode = SpaceContributionVideoLayoutMode.SINGLE_COLUMN,
+                maxLineSpan = 4
+            )
+        )
+    }
+
+    @Test
     fun `space archive shared transition key uses non blank bvid`() {
         assertEquals("BVSEASON", resolveSpaceArchiveSharedTransitionKey("BVSEASON"))
         assertNull(resolveSpaceArchiveSharedTransitionKey(""))

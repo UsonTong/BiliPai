@@ -4,8 +4,10 @@ package com.android.purebilibili.feature.video.player
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.RemoteAction
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
@@ -60,6 +62,9 @@ import com.android.purebilibili.feature.video.playback.session.resolveShouldCont
 import com.android.purebilibili.feature.video.state.isPlaybackActiveForLifecycle
 import com.android.purebilibili.feature.video.usecase.VideoLoadResult
 import com.android.purebilibili.feature.video.usecase.VideoPlaybackUseCase
+import com.android.purebilibili.feature.video.usecase.pausePlayerFromUserAction
+import com.android.purebilibili.feature.video.usecase.playPlayerFromUserAction
+import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
 
 private const val TAG = "MiniPlayerManager"
 private const val NOTIFICATION_ID = 1002
@@ -333,6 +338,8 @@ internal fun resolveNotificationSmallIconRes(iconKey: String): Int {
 
 internal enum class MediaControlType {
     PREVIOUS,
+    PLAY,
+    PAUSE,
     PLAY_PAUSE,
     NEXT
 }
@@ -350,6 +357,8 @@ internal enum class PlaylistSkipExecutionMode {
 internal fun resolveMediaControlType(controlType: Int): MediaControlType? {
     return when (controlType) {
         MiniPlayerManager.ACTION_PREVIOUS -> MediaControlType.PREVIOUS
+        MiniPlayerManager.ACTION_PLAY -> MediaControlType.PLAY
+        MiniPlayerManager.ACTION_PAUSE -> MediaControlType.PAUSE
         MiniPlayerManager.ACTION_PLAY_PAUSE -> MediaControlType.PLAY_PAUSE
         MiniPlayerManager.ACTION_NEXT -> MediaControlType.NEXT
         else -> null
@@ -361,11 +370,74 @@ internal fun resolveMediaButtonControlType(keyCode: Int, action: Int): MediaCont
     return when (keyCode) {
         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> MediaControlType.PREVIOUS
         KeyEvent.KEYCODE_MEDIA_NEXT -> MediaControlType.NEXT
-        KeyEvent.KEYCODE_MEDIA_PLAY,
-        KeyEvent.KEYCODE_MEDIA_PAUSE,
+        KeyEvent.KEYCODE_MEDIA_PLAY -> MediaControlType.PLAY
+        KeyEvent.KEYCODE_MEDIA_PAUSE -> MediaControlType.PAUSE
         KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> MediaControlType.PLAY_PAUSE
         else -> null
     }
+}
+
+internal fun resolvePipPlaybackControlType(
+    isPlaying: Boolean,
+    playWhenReady: Boolean,
+    playbackState: Int
+): Int {
+    return if (
+        isPlaybackActiveForLifecycle(
+            isPlaying = isPlaying,
+            playWhenReady = playWhenReady,
+            playbackState = playbackState
+        )
+    ) {
+        MiniPlayerManager.ACTION_PAUSE
+    } else {
+        MiniPlayerManager.ACTION_PLAY
+    }
+}
+
+internal fun applyPlaybackMediaControlToPlayer(
+    player: Player,
+    controlType: MediaControlType
+): Boolean {
+    when (controlType) {
+        MediaControlType.PLAY -> playPlayerFromUserAction(player)
+        MediaControlType.PAUSE -> pausePlayerFromUserAction(player)
+        MediaControlType.PLAY_PAUSE -> togglePlayerPlaybackFromUserAction(player)
+        else -> return false
+    }
+    return true
+}
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+internal fun buildPipPlaybackRemoteActions(
+    context: Context,
+    player: Player?
+): List<RemoteAction> {
+    val actionType = resolvePipPlaybackControlType(
+        isPlaying = player?.isPlaying == true,
+        playWhenReady = player?.playWhenReady == true,
+        playbackState = player?.playbackState ?: Player.STATE_IDLE
+    )
+    val isPauseAction = actionType == MiniPlayerManager.ACTION_PAUSE
+    val intent = PendingIntent.getBroadcast(
+        context,
+        actionType,
+        Intent(MiniPlayerManager.ACTION_MEDIA_CONTROL)
+            .setPackage(context.packageName)
+            .putExtra(MiniPlayerManager.EXTRA_CONTROL_TYPE, actionType),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    )
+    return listOf(
+        RemoteAction(
+            Icon.createWithResource(
+                context,
+                if (isPauseAction) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+            ),
+            if (isPauseAction) "暂停" else "播放",
+            if (isPauseAction) "暂停播放" else "继续播放",
+            intent
+        )
+    )
 }
 
 internal fun resolveExternalTransportActionOrder(): IntArray {
@@ -546,6 +618,8 @@ class MiniPlayerManager private constructor(private val context: Context) :
         const val ACTION_PREVIOUS = 1
         const val ACTION_PLAY_PAUSE = 2
         const val ACTION_NEXT = 3
+        const val ACTION_PLAY = 4
+        const val ACTION_PAUSE = 5
     }
 
     // --- 协程作用域 ---
@@ -1630,17 +1704,17 @@ class MiniPlayerManager private constructor(private val context: Context) :
      */
     fun togglePlayPause() {
         val currentPlayer = player ?: return
-        if (currentPlayer.isPlaying) {
-            currentPlayer.pause()
-        } else {
-            currentPlayer.play()
-        }
+        applyPlaybackMediaControlToPlayer(currentPlayer, MediaControlType.PLAY_PAUSE)
     }
 
     private fun performMediaControl(controlType: MediaControlType) {
         when (controlType) {
             MediaControlType.PREVIOUS -> playPrevious()
-            MediaControlType.PLAY_PAUSE -> togglePlayPause()
+            MediaControlType.PLAY,
+            MediaControlType.PAUSE,
+            MediaControlType.PLAY_PAUSE -> player?.let {
+                applyPlaybackMediaControlToPlayer(it, controlType)
+            }
             MediaControlType.NEXT -> playNext()
         }
     }

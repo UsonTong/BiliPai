@@ -161,6 +161,7 @@ import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.player.PlaylistUiState
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
+import com.android.purebilibili.feature.video.player.buildPipPlaybackRemoteActions
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 // 📱 [新增] 竖屏全屏
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
@@ -1341,6 +1342,12 @@ fun VideoDetailScreen(
         activity?.let { act ->
             val pipParamsBuilder = android.app.PictureInPictureParams.Builder()
                 .setAspectRatio(android.util.Rational(16, 9))
+                .setActions(
+                    buildPipPlaybackRemoteActions(
+                        context = context,
+                        player = miniPlayerManager?.player
+                    )
+                )
 
             //  设置源矩形区域 - PiP只显示视频播放器区域
             videoPlayerBounds?.let { bounds ->

@@ -117,6 +117,7 @@ import com.android.purebilibili.feature.settings.selectPreferredAppUpdateAsset
 import com.android.purebilibili.feature.settings.shouldRunAppEntryAutoCheck
 import com.android.purebilibili.feature.settings.resolveThemePreferenceState
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
+import com.android.purebilibili.feature.video.player.buildPipPlaybackRemoteActions
 import com.android.purebilibili.feature.video.ui.overlay.FullscreenPlayerOverlay
 import com.android.purebilibili.feature.video.ui.overlay.MiniPlayerOverlay
 import com.android.purebilibili.navigation.AppNavigation
@@ -1121,6 +1122,20 @@ open class MainActivity : AppCompatActivity() {
                         ) {
                             val isPipRenderingActive =
                                 isInPipMode || miniPlayerManager.shouldKeepPlaybackForPipTransition()
+                            LaunchedEffect(isInPipMode, miniPlayerManager.isPlaying) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPipMode) {
+                                    val pipParams = PictureInPictureParams.Builder()
+                                        .setAspectRatio(Rational(16, 9))
+                                        .setActions(
+                                            buildPipPlaybackRemoteActions(
+                                                context = this@MainActivity,
+                                                player = miniPlayerManager.player
+                                            )
+                                        )
+                                        .build()
+                                    setPictureInPictureParams(pipParams)
+                                }
+                            }
                             //  SharedTransitionProvider 包裹导航，启用共享元素过渡
                             SharedTransitionProvider {
                                 AppNavigation(
@@ -1687,6 +1702,12 @@ open class MainActivity : AppCompatActivity() {
                 
                 val pipParams = PictureInPictureParams.Builder()
                     .setAspectRatio(Rational(16, 9))
+                    .setActions(
+                        buildPipPlaybackRemoteActions(
+                            context = this,
+                            player = miniPlayerManager.player
+                        )
+                    )
                 
                 // Android 12+: 启用自动进入和无缝调整
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

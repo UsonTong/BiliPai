@@ -1,8 +1,14 @@
 package com.android.purebilibili.feature.space
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,12 +33,14 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,6 +65,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -603,6 +612,9 @@ private fun SpaceContent(
             selectedSubTab = state.selectedSubTab
         )
     }
+    var contributionVideoLayoutMode by rememberSaveable(state.userInfo.mid) {
+        mutableStateOf(defaultSpaceContributionVideoLayoutMode())
+    }
     val shouldLoadMoreVideos by remember(
         gridState,
         selectedMainTab,
@@ -1069,8 +1081,13 @@ private fun SpaceContent(
                             SpaceContributionVideoActions(
                                 totalVideos = state.totalVideos,
                                 currentOrder = state.sortOrder,
+                                layoutMode = contributionVideoLayoutMode,
                                 onPlayAllClick = playAllSpaceVideos,
-                                onOrderClick = onSortOrderSelected
+                                onOrderClick = onSortOrderSelected,
+                                onLayoutModeClick = {
+                                    contributionVideoLayoutMode =
+                                        toggleSpaceContributionVideoLayoutMode(contributionVideoLayoutMode)
+                                }
                             )
                         }
 
@@ -1085,12 +1102,48 @@ private fun SpaceContent(
 
                         items(
                             items = state.videos,
-                            key = { "space_video_${it.bvid}_${it.aid}" }
+                            key = { "space_video_${it.bvid}_${it.aid}" },
+                            span = {
+                                GridItemSpan(
+                                    resolveSpaceContributionVideoGridSpan(
+                                        layoutMode = contributionVideoLayoutMode,
+                                        maxLineSpan = maxLineSpan
+                                    )
+                                )
+                            }
                         ) { video ->
-                            SpaceHomeVideoCard(
-                                video = video,
-                                onClick = { playVideoFromSpace(video.bvid) }
-                            )
+                            AnimatedContent(
+                                targetState = contributionVideoLayoutMode,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(180)) togetherWith
+                                        fadeOut(animationSpec = tween(120)) using
+                                        SizeTransform(clip = false)
+                                },
+                                label = "spaceContributionVideoLayout"
+                            ) { layoutMode ->
+                                when (layoutMode) {
+                                    SpaceContributionVideoLayoutMode.GRID -> {
+                                        SpaceHomeVideoCard(
+                                            video = video,
+                                            onClick = { playVideoFromSpace(video.bvid) }
+                                        )
+                                    }
+                                    SpaceContributionVideoLayoutMode.SINGLE_COLUMN -> {
+                                        SpaceArchiveListItemRow(
+                                            title = video.title,
+                                            cover = video.pic,
+                                            duration = video.length,
+                                            publishTime = FormatUtils.formatPublishTime(video.created),
+                                            play = video.play.toLong(),
+                                            secondaryCount = video.comment.toLong(),
+                                            onClick = { playVideoFromSpace(video.bvid) },
+                                            sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(video.bvid),
+                                            sharedTransitionScope = sharedTransitionScope,
+                                            animatedVisibilityScope = animatedVisibilityScope
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         if (state.isLoadingMore) {
@@ -1925,10 +1978,13 @@ private fun SpaceContributionTabRow(
 private fun SpaceContributionVideoActions(
     totalVideos: Int,
     currentOrder: VideoSortOrder,
+    layoutMode: SpaceContributionVideoLayoutMode,
     onPlayAllClick: () -> Unit,
-    onOrderClick: (VideoSortOrder) -> Unit
+    onOrderClick: (VideoSortOrder) -> Unit,
+    onLayoutModeClick: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val isSingleColumn = layoutMode == SpaceContributionVideoLayoutMode.SINGLE_COLUMN
 
     Row(
         modifier = Modifier
@@ -1963,6 +2019,17 @@ private fun SpaceContributionVideoActions(
         }
 
         Spacer(modifier = Modifier.weight(1f))
+
+        IconButton(
+            onClick = onLayoutModeClick,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                imageVector = if (isSingleColumn) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                contentDescription = if (isSingleColumn) "切换为双列" else "切换为单列",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
         Box {
             TextButton(onClick = { menuExpanded = true }) {
