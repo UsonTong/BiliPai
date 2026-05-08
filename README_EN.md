@@ -433,10 +433,11 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Latest (v8.0.8 · 2026-05-08)
 
-- Added a grid / single-column toggle for space contribution videos while keeping the grid as the default.
-- Reused the archive-list row style for single-column browsing and animated the layout switch to reduce visual jumps.
+- Added a Backdrop Native liquid-glass preset for the bottom bar with calmer horizontal refraction, chromatic dispersion, and selected-state emphasis.
+- Changed bottom-bar scroll coupling to material alpha, highlight, shadow, and light refraction changes instead of scaling the whole shell / capture layer.
+- Added a grid / single-column toggle for space contribution videos while keeping the grid as the default, reusing the archive-list row style for single-column browsing.
 - Split PiP and system media controls into explicit play / pause actions to avoid stale playback state toggling the wrong way.
-- Added focused policy and structure tests for the space layout toggle and mini-player media controls.
+- Added focused policy and structure tests for bottom-bar animation, the space layout toggle, and mini-player media controls.
 - Bumped the app to `8.0.8` with `versionCode` `181`.
 
 ---

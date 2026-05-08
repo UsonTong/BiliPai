@@ -4,14 +4,17 @@
 
 ### 版本信息
 - 版本号从 `8.0.7` 升级到 `8.0.8`，`versionCode` 升级到 `181`。
-- 本次为“空间页投稿布局切换 + PiP 播放控制修复”的小版本维护更新。
+- 本次为“底栏动画与液态玻璃优化 + 空间页投稿布局切换 + PiP 播放控制修复”的小版本维护更新。
 
 ### 更新内容
+- **底栏动画与液态玻璃**：补充 `Backdrop Native` 底栏液态玻璃预设，底栏折射改为更克制的横向拖动反馈，收敛指示器色散、内容层偏移和选中态强调，减少滑动时整条底栏“果冻化”的晃动感。
+- **底栏材质细节**：滚动时只推进玻璃材质的透明度、高光、阴影和轻量折射，不再把首页纵向滚动进度叠加到 shell / capture 缩放；悬浮搜索展开时的首页图标也改为更稳定的独立尺寸与缩放。
 - **空间页投稿视频**：投稿列表新增网格/单列切换，默认保持原双列网格；单列模式复用归档列表行样式，并通过淡入淡出和尺寸过渡减少切换跳动。
 - **PiP / 媒体控制**：画中画按钮改为根据播放意图生成明确的播放或暂停动作，不再依赖可能滞后的 `isPlaying` 状态；系统媒体播放、暂停按键也拆分为显式控制，降低暂停后被误切回播放的概率。
-- **回归覆盖**：补充空间页布局策略、结构检查和迷你播放器媒体控制策略测试，锁定默认布局、全宽 span、PiP 动作选择和显式播放/暂停行为。
+- **回归覆盖**：补充底栏指示器/布局策略、空间页布局策略、结构检查和迷你播放器媒体控制策略测试，锁定底栏折射参数、默认布局、全宽 span、PiP 动作选择和显式播放/暂停行为。
 
 ### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLayoutPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest'`
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.space.SpaceLoadPolicyTest' --tests 'com.android.purebilibili.feature.space.SpaceScreenStructureTest' --tests 'com.android.purebilibili.feature.video.player.MiniPlayerMediaControlPolicyTest'`
 - `git diff --check`
 
