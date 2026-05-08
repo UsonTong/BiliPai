@@ -2028,7 +2028,7 @@ fun VideoDetailScreen(
         isPortraitFullscreen = false
     }
     
-    // 🎯 [移除] 以下 BackHandler 会阻止 Compose Navigation 的预测性返回手势动画
+    // 以下 BackHandler 会阻止 Compose Navigation 的返回路由动画，由根导航统一处理。
     // 显式点击返回时由 handleBack 提前标记 returning，系统路径仍由 onDispose 兜底标记。
     // BackHandler(enabled = !isFullscreenMode && !isPortraitFullscreen, onBack = handleBack)
     
