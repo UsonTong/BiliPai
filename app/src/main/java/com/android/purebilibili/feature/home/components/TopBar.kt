@@ -75,9 +75,13 @@ import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowDirectHazeLiquidGlassFallback
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.platform.LocalDensity
@@ -120,6 +124,10 @@ internal fun resolveTopTabDockHorizontalPaddingDp(
 }
 
 internal fun resolveTopTabDockVerticalPaddingDp(isFloatingStyle: Boolean): Float {
+    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 4f else 0f
+}
+
+internal fun resolveTopTabDockContentPaddingDp(isFloatingStyle: Boolean): Float {
     return if (shouldUseTopTabDockSurface(isFloatingStyle)) 4f else 0f
 }
 
@@ -332,8 +340,18 @@ internal fun resolveMd3TopTabActionIconSize(
 
 internal fun resolveMd3TopTabActionContentBottomPadding(): Dp = 4.dp
 
-internal fun resolveIosTopTabRowHeight(isFloatingStyle: Boolean): Dp =
-    52.dp
+internal fun resolveIosTopTabRowHeight(
+    isFloatingStyle: Boolean,
+    labelMode: Int = com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
+): Dp {
+    return if (normalizeTopTabLabelMode(labelMode) ==
+        com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.ICON_AND_TEXT
+    ) {
+        if (isFloatingStyle) 58.dp else 56.dp
+    } else {
+        52.dp
+    }
+}
 
 internal fun resolveIosTopTabActionButtonSize(isFloatingStyle: Boolean): Dp =
     if (isFloatingStyle) 46.dp else 44.dp
@@ -598,10 +616,7 @@ private fun TopTabDockSurface(
         blurIntensity = currentUnifiedBlurIntensity()
     )
 
-    Box(
-        modifier = modifier
-            .clip(shape)
-    ) {
+    Box(modifier = modifier) {
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -656,14 +671,14 @@ fun CategoryTabRow(
         isLiquidGlassEnabled = isLiquidGlassEnabled,
         interactionBudget = interactionBudget
     )
-    val resolvedLiquidGlassTuning = remember(liquidGlassStyle, liquidGlassTuning) {
-        liquidGlassTuning ?: resolveLiquidGlassTuning(liquidGlassStyle)
-    }
 
     //  [交互优化] 触觉反馈
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
     val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
-    val tabRowHeight = resolveIosTopTabRowHeight(isFloatingStyle)
+    val tabRowHeight = resolveIosTopTabRowHeight(
+        isFloatingStyle = isFloatingStyle,
+        labelMode = labelMode
+    )
     val actionButtonSize = resolveIosTopTabActionButtonSize(isFloatingStyle)
     val actionButtonCorner = resolveIosTopTabActionButtonCorner(isFloatingStyle)
     val actionIconSize = resolveIosTopTabActionIconSize(isFloatingStyle)
@@ -672,13 +687,8 @@ fun CategoryTabRow(
     val topIndicatorWidthRatio = visualTuning.nonFloatingIndicatorWidthRatio
     val topIndicatorMinWidth = visualTuning.nonFloatingIndicatorMinWidthDp.dp
     val topIndicatorHorizontalInset = visualTuning.nonFloatingIndicatorHorizontalInsetDp.dp
-    val floatingLiquidWidthMultiplier = visualTuning.floatingIndicatorWidthMultiplier
-    val floatingLiquidMinWidth = visualTuning.floatingIndicatorMinWidthDp.dp
-    val floatingLiquidMaxWidth = visualTuning.floatingIndicatorMaxWidthDp.dp
-    val floatingLiquidMaxWidthToItemRatio = visualTuning.floatingIndicatorMaxWidthToItemRatio
     val floatingLiquidHeight = visualTuning.floatingIndicatorHeightDp.dp
     val floatingIndicatorEdgeInset = 0.dp
-    val floatingIndicatorLeftBias = 0.dp
 
     if (
         shouldUseMd3TopTabMaterialIndicator(
@@ -736,12 +746,16 @@ fun CategoryTabRow(
             )
     ) {
         val longestLabelLength = categories.maxOfOrNull { it.length } ?: 0
+        val dockContentPadding = resolveTopTabDockContentPaddingDp(isFloatingStyle).dp
+        val dockContentWidthDp = (maxWidth - dockContentPadding * 2)
+            .coerceAtLeast(0.dp)
+            .value
         val visibleCategorySlots = resolveTopTabVisibleCategorySlots(
             categoryCount = categories.size,
             longestLabelLength = longestLabelLength
         )
         val actionSlotWidth = resolveTopTabActionSlotWidthDp(
-            containerWidthDp = maxWidth.value,
+            containerWidthDp = dockContentWidthDp,
             categoryCount = categories.size,
             longestLabelLength = longestLabelLength
         ).dp
@@ -761,7 +775,8 @@ fun CategoryTabRow(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .padding(dockContentPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
             // [Refactor] 使用 BoxWithConstraints 动态计算宽度
@@ -859,34 +874,10 @@ fun CategoryTabRow(
                 }
             }
 
-            val floatingIndicatorWidthPx by remember(isFloatingStyle) {
-                derivedStateOf {
-                    if (!isFloatingStyle) 0f
-                    else {
-                        val minWidthPx = with(localDensity) { floatingLiquidMinWidth.toPx() }
-                        val maxWidthPx = with(localDensity) { floatingLiquidMaxWidth.toPx() }
-                        (actualTabWidthPx * floatingLiquidWidthMultiplier).coerceIn(minWidthPx, maxWidthPx)
-                    }
-                }
-            }
-            val floatingInsetPx by remember(isFloatingStyle) {
-                derivedStateOf {
-                    if (!isFloatingStyle) 0f
-                    else {
-                        val edgePx = with(localDensity) { floatingIndicatorEdgeInset.toPx() }
-                        ((floatingIndicatorWidthPx - actualTabWidthPx) / 2f).coerceAtLeast(0f) + edgePx
-                    }
-                }
-            }
-            val floatingAdjustedInsetDp = with(localDensity) {
-                resolveFloatingIndicatorStartPaddingPx(
-                    baseInsetPx = floatingInsetPx,
-                    leftBiasPx = floatingIndicatorLeftBias.toPx()
-                ).toDp()
-            }
+            val floatingAdjustedInsetDp = 0.dp
 
             Box(modifier = Modifier.fillMaxSize()) {
-                val tabContentBackdrop = rememberLayerBackdrop()
+                val tabsBackdrop = rememberLayerBackdrop()
                 val topIndicatorVisualPolicy = resolveTopTabIndicatorVisualPolicy(
                     position = currentPosition,
                     interacting = isInteracting,
@@ -894,34 +885,17 @@ fun CategoryTabRow(
                     useNeutralIndicatorTint = true
                 )
                 val shouldRefract = topIndicatorVisualPolicy.shouldRefract
-                val topIndicatorBackdropPolicy = resolveTopTabIndicatorBackdropPolicy(
-                    effectiveLiquidGlassEnabled = effectiveLiquidGlassEnabled,
-                    hasBackdrop = backdrop != null,
-                    indicatorVisualPolicy = topIndicatorVisualPolicy
-                )
-                val combinedIndicatorBackdrop = if (topIndicatorBackdropPolicy.useCombinedBackdrop && backdrop != null) {
-                    rememberCombinedBackdrop(backdrop, tabContentBackdrop)
-                } else {
-                    null
-                }
-                val indicatorBackdrop = when {
-                    combinedIndicatorBackdrop != null -> combinedIndicatorBackdrop
-                    topIndicatorBackdropPolicy.useIndicatorBackdrop && effectiveLiquidGlassEnabled -> tabContentBackdrop
-                    topIndicatorBackdropPolicy.useIndicatorBackdrop -> backdrop
-                    else -> null
-                }
                 val topTabRefractionProfile = resolveTopTabRefractionMotionProfile(
                     position = currentPosition,
                     shouldRefract = shouldRefract,
                     velocityPxPerSecond = indicatorVelocityPxPerSecond,
                     liquidGlassEnabled = effectiveLiquidGlassEnabled
                 )
-                val topTabPanelOffsetPx = with(localDensity) {
+                val bottomBarMotionSpec = remember {
                     resolveBottomBarMotionSpec(BottomBarMotionProfile.IOS_FLOATING)
-                        .refraction
-                        .panelOffsetMaxDp
-                        .dp
-                        .toPx()
+                }
+                val topTabPanelOffsetPx = with(localDensity) {
+                    bottomBarMotionSpec.refraction.panelOffsetMaxDp.dp.toPx()
                 }
                 val indicatorPanelOffsetPx = topTabPanelOffsetPx *
                     topTabRefractionProfile.indicatorPanelOffsetFraction
@@ -929,6 +903,25 @@ fun CategoryTabRow(
                     topTabRefractionProfile.exportPanelOffsetFraction
                 val visiblePanelOffsetPx = topTabPanelOffsetPx *
                     topTabRefractionProfile.visiblePanelOffsetFraction
+                val topTabIndicatorGlassProgress = if (
+                    effectiveLiquidGlassEnabled &&
+                    backdrop != null &&
+                    shouldRefract
+                ) {
+                    1f
+                } else {
+                    0f
+                }
+                val topTabIndicatorDeformationProgress = if (
+                    shouldDeformTopTabIndicator(
+                        position = currentPosition,
+                        isInMotion = topIndicatorVisualPolicy.isInMotion
+                    )
+                ) {
+                    1f
+                } else {
+                    0f
+                }
 
                 // 1. [Layer] Background Liquid Indicator
                 // [修复] 使用 layoutInfo 动态计算滚动偏移
@@ -942,80 +935,17 @@ fun CategoryTabRow(
                     }
                 }
 
-                Box(modifier = Modifier.graphicsLayer {
-                    translationX = -scrollOffset + indicatorPanelOffsetPx
-                }) {
-                    val isDarkTheme = isSystemInDarkTheme()
-                    val topIndicatorTintAlpha = resolveTopTabNeutralIndicatorTintAlpha(
-                        isDarkTheme = isDarkTheme,
-                        configuredAlpha = resolvedLiquidGlassTuning.indicatorTintAlpha
-                    )
-                    val topIndicatorColor = resolveTopTabNeutralIndicatorColor(
-                        isDarkTheme = isDarkTheme,
-                        alpha = topIndicatorTintAlpha
-                    )
-
-                    if (isFloatingStyle) {
-                        LiquidIndicator(
-                            position = currentPosition,
-                            itemWidth = with(localDensity) { actualTabWidthPx.toDp() },
-                            itemCount = categories.size,
-                            isDragging = topIndicatorVisualPolicy.isInMotion,
-                            velocity = indicatorVelocityPxPerSecond,
-                            startPadding = floatingAdjustedInsetDp,
-                            modifier = Modifier.fillMaxSize(),
-                            isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
-                            clampToBounds = true,
-                            edgeInset = floatingIndicatorEdgeInset,
-                            viewportShiftPx = resolveTopTabIndicatorViewportClampShiftPx(
-                                rowScrollOffsetPx = scrollOffset,
-                                indicatorPanelOffsetPx = indicatorPanelOffsetPx
-                            ),
-                            indicatorWidthMultiplier = floatingLiquidWidthMultiplier,
-                            indicatorMinWidth = floatingLiquidMinWidth,
-                            indicatorMaxWidth = floatingLiquidMaxWidth,
-                            maxWidthToItemRatio = floatingLiquidMaxWidthToItemRatio,
-                            indicatorHeight = floatingLiquidHeight,
-                            lensIntensityBoost = resolvedLiquidGlassTuning.indicatorLensBoost,
-                            edgeWarpBoost = resolvedLiquidGlassTuning.indicatorEdgeWarpBoost,
-                            chromaticBoost = resolvedLiquidGlassTuning.indicatorChromaticBoost *
-                                topTabRefractionProfile.chromaticBoostScale,
-                            lensAmountScale = topTabRefractionProfile.lensAmountScale,
-                            lensHeightScale = topTabRefractionProfile.lensHeightScale,
-                            forceChromaticAberration = topTabRefractionProfile.forceChromaticAberration,
-                            liquidGlassStyle = liquidGlassStyle,
-                            liquidGlassTuning = resolvedLiquidGlassTuning,
-                            backdrop = indicatorBackdrop,
-                            color = topIndicatorColor
-                        )
-                    } else {
-                        SimpleLiquidIndicator(
-                            position = currentPosition,
-                            itemWidthPx = actualTabWidthPx,
-                            isDragging = topIndicatorVisualPolicy.isInMotion,
-                            velocityPxPerSecond = indicatorVelocityPxPerSecond,
-                            isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
-                            liquidGlassStyle = liquidGlassStyle,
-                            liquidGlassTuning = resolvedLiquidGlassTuning,
-                            backdrop = indicatorBackdrop,
-                            indicatorColor = topIndicatorColor,
-                            indicatorHeight = topIndicatorHeight,
-                            cornerRadius = topIndicatorCorner,
-                            widthRatio = topIndicatorWidthRatio,
-                            minWidth = topIndicatorMinWidth,
-                            horizontalInset = topIndicatorHorizontalInset,
-                            modifier = Modifier.align(Alignment.CenterStart)
-                        )
-                    }
-                }
-
-                if (topIndicatorBackdropPolicy.useIndicatorBackdrop && effectiveLiquidGlassEnabled) {
+                if (
+                    effectiveLiquidGlassEnabled &&
+                    backdrop != null &&
+                    topTabIndicatorGlassProgress > 0f
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .clearAndSetSemantics {}
                             .alpha(0f)
-                            .layerBackdrop(tabContentBackdrop)
+                            .layerBackdrop(tabsBackdrop)
                             .graphicsLayer { translationX = -scrollOffset + exportPanelOffsetPx }
                     ) {
                         Row(
@@ -1051,6 +981,126 @@ fun CategoryTabRow(
                             }
                         }
                     }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val isDarkTheme = isSystemInDarkTheme()
+                    val indicatorLayerTransform = resolveTopTabIndicatorLayerTransform(
+                        motionProgress = topTabIndicatorDeformationProgress,
+                        velocityItemsPerSecond = 0f,
+                        motionSpec = bottomBarMotionSpec
+                    )
+                    val indicatorVerticalScale = if (isFloatingStyle) {
+                        indicatorLayerTransform.scaleY
+                    } else {
+                        1f
+                    }
+                    val selectedIndicatorHeight = if (isFloatingStyle) {
+                        (floatingLiquidHeight.value * indicatorVerticalScale).dp
+                    } else {
+                        topIndicatorHeight
+                    }
+                    val selectedIndicatorWidthPx = if (isFloatingStyle) {
+                        actualTabWidthPx
+                    } else {
+                        resolveTopTabIndicatorWidthPx(
+                            itemWidthPx = actualTabWidthPx,
+                            widthRatio = topIndicatorWidthRatio,
+                            minWidthPx = with(localDensity) { topIndicatorMinWidth.toPx() },
+                            horizontalInsetPx = with(localDensity) { topIndicatorHorizontalInset.toPx() }
+                        )
+                    }
+                    val selectedIndicatorWidth = with(localDensity) {
+                        selectedIndicatorWidthPx.toDp()
+                    }
+                    val selectedIndicatorShape: Shape = if (isFloatingStyle) {
+                        RoundedCornerShape(selectedIndicatorHeight / 2)
+                    } else {
+                        RoundedCornerShape(topIndicatorCorner)
+                    }
+                    val selectedIndicatorStartPx = if (isFloatingStyle) {
+                        resolveIndicatorTranslationXPx(
+                            position = currentPosition,
+                            itemWidthPx = actualTabWidthPx,
+                            indicatorWidthPx = selectedIndicatorWidthPx,
+                            startPaddingPx = with(localDensity) { floatingAdjustedInsetDp.toPx() },
+                            containerWidthPx = tabViewportWidthPx.coerceAtLeast(actualTabWidthPx),
+                            clampToBounds = true,
+                            edgeInsetPx = with(localDensity) { floatingIndicatorEdgeInset.toPx() },
+                            viewportShiftPx = resolveTopTabIndicatorViewportClampShiftPx(
+                                rowScrollOffsetPx = scrollOffset,
+                                indicatorPanelOffsetPx = indicatorPanelOffsetPx
+                            )
+                        )
+                    } else {
+                        currentPosition * actualTabWidthPx +
+                            (actualTabWidthPx - selectedIndicatorWidthPx) / 2f
+                    }
+                    val indicatorLensSpec = resolveBottomBarBackdropPresetIndicatorLens(
+                        progress = topTabIndicatorGlassProgress
+                    )
+                    val indicatorHighlightAlpha = resolveBottomBarLiquidGlassHighlightAlpha(
+                        topTabIndicatorGlassProgress
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                translationX = -scrollOffset + indicatorPanelOffsetPx +
+                                    selectedIndicatorStartPx
+                            }
+                            .width(selectedIndicatorWidth)
+                            .height(selectedIndicatorHeight)
+                            .align(Alignment.CenterStart)
+                            .run {
+                                if (
+                                    effectiveLiquidGlassEnabled &&
+                                    topTabIndicatorGlassProgress > 0f
+                                ) {
+                                    drawBackdrop(
+                                        backdrop = tabsBackdrop,
+                                        shape = { selectedIndicatorShape },
+                                        effects = {
+                                            lens(
+                                                refractionHeight = indicatorLensSpec.refractionHeightDp.dp.toPx(),
+                                                refractionAmount = indicatorLensSpec.refractionAmountDp.dp.toPx(),
+                                                depthEffect = true,
+                                                chromaticAberration = true
+                                            )
+                                        },
+                                        highlight = {
+                                            Highlight.Default.copy(alpha = indicatorHighlightAlpha)
+                                        },
+                                        shadow = {
+                                            Shadow(alpha = if (effectiveLiquidGlassEnabled) indicatorHighlightAlpha else 0f)
+                                        },
+                                        innerShadow = {
+                                            InnerShadow(
+                                                radius = 8.dp * topTabIndicatorGlassProgress,
+                                                alpha = if (effectiveLiquidGlassEnabled) indicatorHighlightAlpha else 0f
+                                            )
+                                        },
+                                        layerBlock = {
+                                            if (effectiveLiquidGlassEnabled) {
+                                                scaleX = indicatorLayerTransform.scaleX
+                                                scaleY = if (isFloatingStyle) {
+                                                    1f
+                                                } else {
+                                                    indicatorLayerTransform.scaleY
+                                                }
+                                            }
+                                        }
+                                    )
+                                } else {
+                                    background(
+                                        resolveAndroidNativeIdleIndicatorSurfaceColor(
+                                            darkTheme = isDarkTheme
+                                        ),
+                                        selectedIndicatorShape
+                                    )
+                                }
+                            }
+                    )
                 }
 
                 // 2. [Layer] Content Tabs
@@ -1569,6 +1619,15 @@ internal fun shouldTopTabIndicatorUseRefraction(
     return abs(velocityPxPerSecond) > velocityEpsilon
 }
 
+internal fun shouldDeformTopTabIndicator(
+    position: Float,
+    isInMotion: Boolean,
+    positionEpsilon: Float = 0.001f
+): Boolean {
+    if (!isInMotion) return false
+    return abs(position - position.roundToInt().toFloat()) > positionEpsilon
+}
+
 internal fun resolveTopTabIndicatorVisualPolicy(
     position: Float,
     interacting: Boolean,
@@ -1595,6 +1654,19 @@ internal fun resolveTopTabStaticIndicatorVisualPolicy(
         shouldRefract = false,
         useNeutralTint = useNeutralIndicatorTint
     )
+}
+
+internal fun resolveTopTabIndicatorLayerTransform(
+    motionProgress: Float,
+    velocityItemsPerSecond: Float,
+    motionSpec: com.android.purebilibili.core.ui.motion.BottomBarMotionSpec = resolveBottomBarMotionSpec()
+): BottomBarIndicatorLayerTransform {
+    val bottomBarTransform = resolveBottomBarIndicatorLayerTransform(
+        motionProgress = motionProgress,
+        velocityItemsPerSecond = velocityItemsPerSecond,
+        motionSpec = motionSpec
+    )
+    return bottomBarTransform
 }
 
 internal fun resolveTopTabNeutralIndicatorColor(
@@ -1798,7 +1870,8 @@ fun CategoryTabItem(
      val iconSize = resolveTopTabIconSizeDp(normalizedLabelMode).dp
      val textSize = resolveTopTabLabelTextSizeSp(normalizedLabelMode).sp
      val textLineHeight = resolveTopTabLabelLineHeightSp(normalizedLabelMode).sp
-     val contentMinHeight = resolveTopTabContentMinHeightDp().dp
+     val contentMinHeight = resolveTopTabContentMinHeightDp(normalizedLabelMode).dp
+     val contentVerticalPadding = resolveTopTabContentVerticalPaddingDp(normalizedLabelMode).dp
      val iconTextSpacing = resolveTopTabIconTextSpacingDp(normalizedLabelMode).dp
      
      val targetScale = resolveTopTabContentScale(
@@ -1829,7 +1902,7 @@ fun CategoryTabItem(
                      Modifier
                  }
              )
-             .padding(horizontal = 8.dp, vertical = 4.dp)
+             .padding(horizontal = 8.dp, vertical = contentVerticalPadding)
              .heightIn(min = contentMinHeight),
          contentAlignment = Alignment.Center
      ) {

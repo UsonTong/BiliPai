@@ -141,6 +141,7 @@ class TopTabIndicatorGeometryTest {
         assertTrue(shouldUseTopTabDockSurface(isFloatingStyle = true))
         assertEquals(10f, resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = true), 0.01f)
         assertEquals(4f, resolveTopTabDockVerticalPaddingDp(isFloatingStyle = true), 0.01f)
+        assertEquals(4f, resolveTopTabDockContentPaddingDp(isFloatingStyle = true), 0.01f)
         assertEquals(30f, resolveTopTabDockCornerRadiusDp(isFloatingStyle = true), 0.01f)
     }
 
@@ -165,6 +166,7 @@ class TopTabIndicatorGeometryTest {
         assertFalse(shouldUseTopTabDockSurface(isFloatingStyle = false))
         assertEquals(0f, resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = false), 0.01f)
         assertEquals(0f, resolveTopTabDockVerticalPaddingDp(isFloatingStyle = false), 0.01f)
+        assertEquals(0f, resolveTopTabDockContentPaddingDp(isFloatingStyle = false), 0.01f)
         assertEquals(0f, resolveTopTabDockCornerRadiusDp(isFloatingStyle = false), 0.01f)
     }
 }

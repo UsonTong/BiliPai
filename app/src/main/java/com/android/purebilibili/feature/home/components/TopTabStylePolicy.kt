@@ -299,8 +299,18 @@ fun resolveTopTabLabelLineHeightSp(labelMode: Int): Float {
     }
 }
 
-fun resolveTopTabContentMinHeightDp(): Float {
-    return resolveTopTabVisualTuning().tabContentMinHeightDp
+fun resolveTopTabContentMinHeightDp(labelMode: Int = 2): Float {
+    return when (normalizeTopTabLabelMode(labelMode)) {
+        0 -> 42f
+        else -> resolveTopTabVisualTuning().tabContentMinHeightDp
+    }
+}
+
+fun resolveTopTabContentVerticalPaddingDp(labelMode: Int): Float {
+    return when (normalizeTopTabLabelMode(labelMode)) {
+        0 -> 2f
+        else -> 4f
+    }
 }
 
 fun resolveTopTabIconSizeDp(labelMode: Int): Float {

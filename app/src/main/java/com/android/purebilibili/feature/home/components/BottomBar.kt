@@ -446,7 +446,7 @@ internal fun resolveKernelSuBottomBarDockHeight(searchExpanded: Boolean): Dp {
 }
 
 internal fun resolveKernelSuBottomBarSearchHeight(searchExpanded: Boolean): Dp {
-    return if (searchExpanded) 58.dp else 64.dp
+    return 64.dp
 }
 
 private const val BottomBarSearchTopThresholdPx = 32f

@@ -122,7 +122,7 @@ class BottomBarLayoutPolicyTest {
         assertEquals(64.dp, resolveKernelSuBottomBarDockHeight(searchExpanded = false))
         assertEquals(resolveKernelSuBottomBarSearchCircleSize(), resolveKernelSuBottomBarDockHeight(searchExpanded = true))
         assertEquals(64.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = false))
-        assertEquals(58.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = true))
+        assertEquals(64.dp, resolveKernelSuBottomBarSearchHeight(searchExpanded = true))
     }
 
     @Test

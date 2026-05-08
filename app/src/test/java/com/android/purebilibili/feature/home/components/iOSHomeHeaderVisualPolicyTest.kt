@@ -201,6 +201,26 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `ios home header expands docked top tab row for icon plus text`() {
+        assertEquals(
+            58.dp,
+            resolveHomeTopTabRowHeight(
+                isTabFloating = false,
+                uiPreset = UiPreset.IOS,
+                labelMode = 0
+            )
+        )
+        assertEquals(
+            62.dp,
+            resolveHomeTopTabRowHeight(
+                isTabFloating = true,
+                uiPreset = UiPreset.IOS,
+                labelMode = 0
+            )
+        )
+    }
+
+    @Test
     fun `header scroll hides search row while keeping top tabs pinned`() {
         val layout = resolveHomeHeaderScrollLayout(
             headerOffsetPx = -96f,
@@ -864,9 +884,62 @@ class iOSHomeHeaderVisualPolicyTest {
         assertEquals(Color.Black.red, darkContainer.red)
         assertEquals(Color.Black.green, darkContainer.green)
         assertEquals(Color.Black.blue, darkContainer.blue)
-        assertTrue(darkContainer.alpha >= 0.16f)
+        assertTrue(darkContainer.alpha >= 0.30f)
         assertTrue(resolveHomeTopSearchDarkWhiteOverlayMultiplier(isLightMode = false) < 0.5f)
         assertEquals(0.86f, resolveHomeTopSearchDarkWhiteOverlayMultiplier(isLightMode = true), 0.0001f)
+    }
+
+    @Test
+    fun `plain top search keeps an opaque readable surface when liquid glass is disabled`() {
+        val darkPlain = resolveHomeTopUnifiedSearchContainerColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.PLAIN
+        )
+        val darkBlur = resolveHomeTopUnifiedSearchContainerColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val lightPlainBorder = resolveHomeTopUnifiedSearchBorderColor(
+            isLightMode = true,
+            renderMode = HomeTopChromeRenderMode.PLAIN
+        )
+
+        assertEquals(Color.Black.red, darkPlain.red)
+        assertTrue(darkPlain.alpha >= 0.40f)
+        assertTrue(darkPlain.alpha > darkBlur.alpha)
+        assertTrue(lightPlainBorder.alpha > 0f)
+    }
+
+    @Test
+    fun `plain top edge controls keep a contrasting visible container`() {
+        val darkPlain = resolveHomeTopEdgeControlContainerColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.PLAIN
+        )
+        val darkBlur = resolveHomeTopEdgeControlContainerColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val darkLiquid = resolveHomeTopEdgeControlContainerColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP
+        )
+        val darkBlurBorder = resolveHomeTopEdgeControlBorderColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val darkPlainBorder = resolveHomeTopEdgeControlBorderColor(
+            isLightMode = false,
+            renderMode = HomeTopChromeRenderMode.PLAIN
+        )
+
+        assertEquals(Color.Black.red, darkPlain.red)
+        assertTrue(darkPlain.alpha >= 0.38f)
+        assertTrue(darkBlur.alpha >= 0.30f)
+        assertTrue(darkPlain.alpha > darkLiquid.alpha)
+        assertTrue(darkBlur.alpha > darkLiquid.alpha)
+        assertTrue(darkBlurBorder.alpha > 0f)
+        assertTrue(darkPlainBorder.alpha > 0f)
     }
 
     @Test
@@ -1206,6 +1279,25 @@ class iOSHomeHeaderVisualPolicyTest {
         assertFalse(blurPolicy.isTransitionRunning)
         assertTrue(liquidPolicy.isScrolling)
         assertTrue(liquidPolicy.isTransitionRunning)
+    }
+
+    @Test
+    fun `top tab chrome ignores vertical scroll motion to avoid stop flicker`() {
+        val liquidPolicy = resolveHomeTopTabChromeMotionPolicy(
+            renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+            isScrolling = true,
+            isTransitionRunning = true
+        )
+        val hazePolicy = resolveHomeTopTabChromeMotionPolicy(
+            renderMode = HomeTopChromeRenderMode.LIQUID_GLASS_HAZE,
+            isScrolling = true,
+            isTransitionRunning = false
+        )
+
+        assertFalse(liquidPolicy.isScrolling)
+        assertFalse(liquidPolicy.isTransitionRunning)
+        assertFalse(hazePolicy.isScrolling)
+        assertFalse(hazePolicy.isTransitionRunning)
     }
 
     @Test

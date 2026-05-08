@@ -81,6 +81,14 @@ class HomeChromeLiquidSurfaceStructureTest {
             topBar.readText().contains("drawShellLens = false")
         )
         assertFalse(
+            "top tab dock should not clip the enlarged indicator layer",
+            topBar.readText().contains("modifier = modifier\n            .clip(shape)")
+        )
+        assertFalse(
+            "top tab chrome should not clip enlarged child indicators to the tab shell",
+            topTabChrome.readText().contains(".clip(tabShape)")
+        )
+        assertFalse(
             "top tab dock should not switch sampling off during feed scroll",
             topBar.readText().contains("shouldSampleTopTabDockBackdrop(")
         )
@@ -96,13 +104,23 @@ class HomeChromeLiquidSurfaceStructureTest {
                 topBar.readText().contains("resolveTopTabNeutralIndicatorColor(")
         )
         assertTrue(
-            "top tab indicator should combine page backdrop and exported tab content while moving",
-            topBar.readText().contains("rememberCombinedBackdrop(backdrop, tabContentBackdrop)") &&
-                topBar.readText().contains("LiquidIndicator(")
+            "top tab indicator should inline the same backdrop indicator block as the bottom bar",
+            topBar.readText().contains("resolveBottomBarBackdropPresetIndicatorLens(") &&
+                topBar.readText().contains("drawBackdrop(") &&
+                topBar.readText().contains("backdrop = tabsBackdrop") &&
+                topBar.readText().contains("shape = { selectedIndicatorShape }") &&
+                topBar.readText().contains("Highlight.Default.copy(alpha = indicatorHighlightAlpha)") &&
+                topBar.readText().contains("InnerShadow(") &&
+                topBar.readText().contains("resolveAndroidNativeIdleIndicatorSurfaceColor(") &&
+                topBar.readText().contains("resolveBottomBarIndicatorLayerTransform(") &&
+                topBar.readText().contains(".layerBackdrop(tabsBackdrop)")
         )
-        assertTrue(
-            "top tab indicator should keep bottom-bar style chromatic motion tuning",
-            topBar.readText().contains("forceChromaticAberration = topTabRefractionProfile.forceChromaticAberration")
+        assertFalse(
+            "top tab indicator should not keep its old custom indicator renderer",
+            topBar.readText().contains("BottomBarStyleIndicatorSurface(") ||
+                topBar.readText().contains("LiquidIndicator(") ||
+                topBar.readText().contains("rememberCombinedBackdrop(backdrop, tabsBackdrop)") ||
+                topBar.readText().contains("rememberCombinedBackdrop(backdrop, tabContentBackdrop)")
         )
         assertTrue(
             "KSU dock surface should use backdrop vibrancy, blur, and lens like the floating bottom bar",

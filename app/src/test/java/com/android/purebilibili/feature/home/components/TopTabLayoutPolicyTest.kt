@@ -56,6 +56,24 @@ class TopTabLayoutPolicyTest {
     }
 
     @Test
+    fun `ios top tabs reserve enough height for icon label modes`() {
+        assertEquals(52f, resolveIosTopTabRowHeight(isFloatingStyle = true, labelMode = 2).value, 0.001f)
+        assertEquals(52f, resolveIosTopTabRowHeight(isFloatingStyle = true, labelMode = 1).value, 0.001f)
+        assertEquals(58f, resolveIosTopTabRowHeight(isFloatingStyle = true, labelMode = 0).value, 0.001f)
+        assertEquals(56f, resolveIosTopTabRowHeight(isFloatingStyle = false, labelMode = 0).value, 0.001f)
+    }
+
+    @Test
+    fun `top tab item content policy avoids clipping icon plus text`() {
+        assertEquals(42f, resolveTopTabContentMinHeightDp(labelMode = 0), 0.001f)
+        assertEquals(36f, resolveTopTabContentMinHeightDp(labelMode = 1), 0.001f)
+        assertEquals(36f, resolveTopTabContentMinHeightDp(labelMode = 2), 0.001f)
+        assertEquals(2f, resolveTopTabContentVerticalPaddingDp(labelMode = 0), 0.001f)
+        assertEquals(4f, resolveTopTabContentVerticalPaddingDp(labelMode = 1), 0.001f)
+        assertEquals(4f, resolveTopTabContentVerticalPaddingDp(labelMode = 2), 0.001f)
+    }
+
+    @Test
     fun `md3 top tabs keep selected category within four visible slots`() {
         assertEquals(
             listOf(0, 1, 2, 3),

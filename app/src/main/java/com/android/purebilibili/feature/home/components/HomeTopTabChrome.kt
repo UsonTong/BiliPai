@@ -82,7 +82,6 @@ internal fun HomeTopTabChrome(
             .height(currentTabHeight)
             .graphicsLayer { alpha = containerAlpha }
             .offset { IntOffset(x = 0, y = tabVerticalOffset.roundToPx()) }
-            .clip(tabShape)
             .then(
                 if (gestureEnabled && onTabsCollapsedChange != null) {
                     Modifier.pointerInput(isTabsCollapsed, gestureThresholdPx) {
@@ -132,7 +131,6 @@ internal fun HomeTopTabChrome(
                         Modifier
                     }
                 )
-                .clip(tabShape)
                 .homeTopChromeSurface(
                     renderMode = tabChromeRenderMode,
                     shape = tabShape,
@@ -163,7 +161,7 @@ internal fun HomeTopTabChrome(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(tabContentUnderlayColor)
+                    .background(tabContentUnderlayColor, tabShape)
             )
             if (isTabFloating) {
                 Box(
@@ -171,12 +169,13 @@ internal fun HomeTopTabChrome(
                         .fillMaxWidth()
                         .height(16.dp)
                         .background(
-                            Brush.verticalGradient(
+                            brush = Brush.verticalGradient(
                                 colors = listOf(
                                     tabHighlightColor,
                                     Color.Transparent
                                 )
-                            )
+                            ),
+                            shape = tabShape
                         )
                 )
             }

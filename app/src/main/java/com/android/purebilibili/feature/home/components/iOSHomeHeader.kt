@@ -382,7 +382,11 @@ internal fun resolveHomeTopTabRowHeight(
             if (isTabFloating) 52.dp else 48.dp
         }
     }
-    return if (isTabFloating) 62.dp else 56.dp
+    return if (showIconAndText) {
+        if (isTabFloating) 62.dp else 58.dp
+    } else {
+        if (isTabFloating) 62.dp else 56.dp
+    }
 }
 
 internal fun resolveHomeTopSearchRowHorizontalPadding(
@@ -772,12 +776,19 @@ internal fun resolveHomeTopUnifiedTabSurfaceColor(
 }
 
 internal fun resolveHomeTopUnifiedSearchContainerColor(
-    isLightMode: Boolean
+    isLightMode: Boolean,
+    renderMode: HomeTopChromeRenderMode = HomeTopChromeRenderMode.BLUR
 ): Color {
+    val alpha = when (renderMode) {
+        HomeTopChromeRenderMode.PLAIN -> if (isLightMode) 0.62f else 0.42f
+        HomeTopChromeRenderMode.BLUR -> if (isLightMode) 0.38f else 0.32f
+        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> if (isLightMode) 0.34f else 0.18f
+    }
     return if (isLightMode) {
-        Color.White.copy(alpha = 0.34f)
+        Color.White.copy(alpha = alpha)
     } else {
-        Color.Black.copy(alpha = 0.18f)
+        Color.Black.copy(alpha = alpha)
     }
 }
 
@@ -788,12 +799,64 @@ internal fun resolveHomeTopSearchDarkWhiteOverlayMultiplier(
 }
 
 internal fun resolveHomeTopUnifiedSearchBorderColor(
-    isLightMode: Boolean
+    isLightMode: Boolean,
+    renderMode: HomeTopChromeRenderMode = HomeTopChromeRenderMode.BLUR
 ): Color {
+    if (renderMode == HomeTopChromeRenderMode.PLAIN) {
+        return if (isLightMode) {
+            Color.Black.copy(alpha = 0.14f)
+        } else {
+            Color.White.copy(alpha = 0.22f)
+        }
+    }
+    if (renderMode == HomeTopChromeRenderMode.BLUR) {
+        return if (isLightMode) {
+            Color.White.copy(alpha = 0.22f)
+        } else {
+            Color.White.copy(alpha = 0.18f)
+        }
+    }
     return if (isLightMode) {
         Color.White.copy(alpha = 0.20f)
     } else {
         Color.White.copy(alpha = 0.12f)
+    }
+}
+
+internal fun resolveHomeTopEdgeControlContainerColor(
+    isLightMode: Boolean,
+    renderMode: HomeTopChromeRenderMode
+): Color {
+    val alpha = when (renderMode) {
+        HomeTopChromeRenderMode.PLAIN -> if (isLightMode) 0.58f else 0.40f
+        HomeTopChromeRenderMode.BLUR -> if (isLightMode) 0.38f else 0.32f
+        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> if (isLightMode) 0.12f else 0.14f
+    }
+    return if (isLightMode) {
+        Color.White.copy(alpha = alpha)
+    } else {
+        Color.Black.copy(alpha = alpha)
+    }
+}
+
+internal fun resolveHomeTopEdgeControlBorderColor(
+    isLightMode: Boolean,
+    renderMode: HomeTopChromeRenderMode
+): Color {
+    return when (renderMode) {
+        HomeTopChromeRenderMode.PLAIN -> if (isLightMode) {
+            Color.Black.copy(alpha = 0.12f)
+        } else {
+            Color.White.copy(alpha = 0.20f)
+        }
+        HomeTopChromeRenderMode.BLUR -> if (isLightMode) {
+            Color.White.copy(alpha = 0.16f)
+        } else {
+            Color.White.copy(alpha = 0.16f)
+        }
+        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE -> Color.Transparent
     }
 }
 
@@ -850,6 +913,26 @@ internal fun resolveHomeTopChromeMotionPolicy(
         )
     } else {
         HomeTopChromeMotionPolicy(
+            isScrolling = isScrolling,
+            isTransitionRunning = isTransitionRunning
+        )
+    }
+}
+
+internal fun resolveHomeTopTabChromeMotionPolicy(
+    renderMode: HomeTopChromeRenderMode,
+    isScrolling: Boolean,
+    isTransitionRunning: Boolean
+): HomeTopChromeMotionPolicy {
+    return when (renderMode) {
+        HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP,
+        HomeTopChromeRenderMode.LIQUID_GLASS_HAZE,
+        HomeTopChromeRenderMode.BLUR -> HomeTopChromeMotionPolicy(
+            isScrolling = false,
+            isTransitionRunning = false
+        )
+        HomeTopChromeRenderMode.PLAIN -> resolveHomeTopChromeMotionPolicy(
+            renderMode = renderMode,
             isScrolling = isScrolling,
             isTransitionRunning = isTransitionRunning
         )
@@ -1394,7 +1477,7 @@ fun iOSHomeHeader(
         }
         TopTabMaterialMode.PLAIN -> HomeTopChromeRenderMode.PLAIN
     }
-    val tabChromeMotionPolicy = resolveHomeTopChromeMotionPolicy(
+    val tabChromeMotionPolicy = resolveHomeTopTabChromeMotionPolicy(
         renderMode = tabChromeRenderMode,
         isScrolling = isScrolling,
         isTransitionRunning = isTransitionRunning
@@ -1955,7 +2038,10 @@ fun iOSHomeHeader(
                                                     renderMode = searchChromeRenderMode,
                                                     shape = searchContainerShape,
                                                     surfaceColor = if (useUnifiedTopPanel) {
-                                                        resolveHomeTopUnifiedSearchContainerColor(isLightMode = isLightMode)
+                                                        resolveHomeTopUnifiedSearchContainerColor(
+                                                            isLightMode = isLightMode,
+                                                            renderMode = searchChromeRenderMode
+                                                        )
                                                     } else {
                                                         searchPillColors.containerColor
                                                     },
@@ -1982,7 +2068,10 @@ fun iOSHomeHeader(
                                                 if (useBottomBarMatchedTopControls) {
                                                     Color.Transparent
                                                 } else {
-                                                    resolveHomeTopUnifiedSearchBorderColor(isLightMode = isLightMode)
+                                                    resolveHomeTopUnifiedSearchBorderColor(
+                                                        isLightMode = isLightMode,
+                                                        renderMode = searchChromeRenderMode
+                                                    )
                                                 }
                                             } else {
                                                 searchPillColors.borderColor
@@ -2093,9 +2182,21 @@ fun iOSHomeHeader(
                                                         drawShellLens = false
                                                     )
                                             } else {
-                                                Modifier.background(
-                                                    topForegroundColor.copy(alpha = if (isLightMode) 0.06f else 0.10f)
-                                                )
+                                                Modifier
+                                                    .background(
+                                                        resolveHomeTopEdgeControlContainerColor(
+                                                            isLightMode = isLightMode,
+                                                            renderMode = localTopChromeRenderMode
+                                                        )
+                                                    )
+                                                    .border(
+                                                        width = 0.8.dp,
+                                                        color = resolveHomeTopEdgeControlBorderColor(
+                                                            isLightMode = isLightMode,
+                                                            renderMode = localTopChromeRenderMode
+                                                        ),
+                                                        shape = edgeButtonShape
+                                                    )
                                             }
                                         } else {
                                             Modifier
