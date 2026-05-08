@@ -93,6 +93,8 @@ report.md
 !CHANGELOG.md
 !docs/
 docs/*
+!docs/images/
+!docs/images/screenshot*.png
 !docs/wiki/
 !docs/wiki/*.md
 .omx/

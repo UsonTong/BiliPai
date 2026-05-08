@@ -41,11 +41,12 @@
 ## 📸 Preview
 
 <p align="center">
-  <img src="docs/images/screenshot_preview_1.png" alt="Preview 1" height="500">
-  <img src="docs/images/screenshot_preview_2.png" alt="Preview 2" height="500">
-  <img src="docs/images/screenshot_preview_3.png" alt="Preview 3" height="500">
-  <img src="docs/images/screenshot_preview_4.png" alt="Preview 4" height="500">
-  <img src="docs/images/screenshot_preview_5.png" alt="Preview 5" height="500">
+  <img src="docs/images/screenshot1.png" alt="Preview 1" height="500">
+  <img src="docs/images/screenshot2.png" alt="Preview 2" height="500">
+  <img src="docs/images/screenshot4.png" alt="Preview 4" height="500">
+  <img src="docs/images/screenshot5.png" alt="Preview 5" height="500">
+  <img src="docs/images/screenshot6.png" alt="Preview 6" height="500">
+  <img src="docs/images/screenshot7.png" alt="Preview 7" height="500">
 </p>
 ---
 
