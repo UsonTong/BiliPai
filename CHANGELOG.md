@@ -1,5 +1,23 @@
 # Changelog
 
+## v8.0.9 (2026-05-08)
+
+### 版本信息
+- 版本号从 `8.0.8` 升级到 `8.0.9`，`versionCode` 升级到 `182`。
+- 本次为“底栏滑动跟手修复 + 预测返回开关修复”的小版本维护更新。
+
+### 更新内容
+- **底栏滑动跟手**：恢复底栏拖动阶段的即时跟手更新，松手后再执行吸附动画，减少左右滑动指示器卡顿与不跟手。
+- **底栏视觉反馈**：保留滑动过程中的图标折射、色散和选中态动态效果，同时继续移除切换后图标上下收缩的多余动画。
+- **预测返回设置**：manifest 保持系统预测返回 opt-in，开关打开时恢复系统预测返回动画；关闭时由经典 BackHandler 拦截返回，避免继续触发系统预测返回预览。
+- **回归覆盖**：补充底栏拖动、预测返回 manifest opt-out、设置搜索和导航转场策略测试，锁定相关行为。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.ui.animation.DampedDragAnimationPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.AndroidApiCompatibilityPolicyTest' --tests 'com.android.purebilibili.feature.settings.AnimationSettingsPolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsSearchPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.0.8 (2026-05-08)
 
 ### 版本信息

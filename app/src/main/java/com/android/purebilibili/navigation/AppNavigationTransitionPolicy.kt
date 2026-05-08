@@ -320,10 +320,9 @@ internal fun shouldUseLinkedSettingsBackMotion(
 }
 
 internal fun shouldInterceptSystemBackForClassicMotion(
-    predictiveBackAnimationEnabled: Boolean,
-    hasPreviousBackStackEntry: Boolean
+    predictiveBackAnimationEnabled: Boolean
 ): Boolean {
-    return !predictiveBackAnimationEnabled && hasPreviousBackStackEntry
+    return !predictiveBackAnimationEnabled
 }
 
 internal fun shouldDeferBottomBarRevealOnVideoReturn(

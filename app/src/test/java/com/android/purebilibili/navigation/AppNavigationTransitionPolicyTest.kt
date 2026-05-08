@@ -115,23 +115,15 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun classicBackMotion_interceptsSystemBackWhenPreviousEntryExists() {
+    fun classicBackMotion_interceptsSystemBackUntilPredictiveBackIsEnabled() {
         assertTrue(
             shouldInterceptSystemBackForClassicMotion(
-                predictiveBackAnimationEnabled = false,
-                hasPreviousBackStackEntry = true
+                predictiveBackAnimationEnabled = false
             )
         )
         assertFalse(
             shouldInterceptSystemBackForClassicMotion(
-                predictiveBackAnimationEnabled = true,
-                hasPreviousBackStackEntry = true
-            )
-        )
-        assertFalse(
-            shouldInterceptSystemBackForClassicMotion(
-                predictiveBackAnimationEnabled = false,
-                hasPreviousBackStackEntry = false
+                predictiveBackAnimationEnabled = true
             )
         )
     }

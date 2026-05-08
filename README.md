@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.0.8-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.8" />
+  <img src="https://img.shields.io/badge/Version-8.0.9-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.0.9" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.0.8 / versionCode 181`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.0.8`：
+当前仓库版本号已更新到 `8.0.9 / versionCode 182`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.0.9`：
 
-- 底栏新增 Backdrop Native 液态玻璃预设，横向折射、色散和选中态强调更克制。
-- 底栏滚动联动改为材质透明度、高光、阴影和轻量折射变化，不再带动整条底栏明显缩放晃动。
-- 空间页投稿视频新增网格/单列布局切换，默认保留原网格浏览，单列模式复用归档列表行样式。
-- 画中画和系统媒体控制拆出明确播放/暂停动作，降低状态滞后导致的误触发。
-- 补充底栏动画、空间页布局与迷你播放器媒体控制策略测试。
+- 底栏拖动阶段恢复即时跟手更新，松手后再执行吸附动画，降低左右滑动卡顿。
+- 保留底栏滑动过程中的图标折射、色散和选中态动态效果，继续移除切换后的图标上下收缩动画。
+- manifest 保持系统预测返回 opt-in，打开设置开关时恢复系统预测返回动画。
+- 关闭设置开关时由经典 BackHandler 拦截返回，避免继续触发系统预测返回预览。
+- 补充底栏拖动、预测返回 manifest opt-out、设置搜索和导航转场策略测试。
 
 ## 路线图
 

@@ -13,6 +13,12 @@ internal enum class BottomBarSelectionAction {
     RESELECT
 }
 
+internal enum class AppSystemBackAction {
+    RETURN_TO_HOME_TAB,
+    NAVIGATE_UP,
+    FINISH_ACTIVITY
+}
+
 internal fun resolveTopLevelNavigationAction(
     currentRoute: String?,
     targetRoute: String,
@@ -37,6 +43,22 @@ internal fun resolveBottomBarSelectionAction(
         BottomBarSelectionAction.RESELECT
     } else {
         BottomBarSelectionAction.NAVIGATE
+    }
+}
+
+internal fun resolveAppSystemBackAction(
+    currentRoute: String?,
+    currentBottomItem: BottomNavItem,
+    hasPreviousBackStackEntry: Boolean
+): AppSystemBackAction {
+    val routeBase = currentRoute?.substringBefore("?")
+    if (routeBase == ScreenRoutes.Home.route && currentBottomItem != BottomNavItem.HOME) {
+        return AppSystemBackAction.RETURN_TO_HOME_TAB
+    }
+    return if (hasPreviousBackStackEntry) {
+        AppSystemBackAction.NAVIGATE_UP
+    } else {
+        AppSystemBackAction.FINISH_ACTIVITY
     }
 }
 

@@ -82,6 +82,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -182,6 +184,7 @@ fun PortraitVideoPager(
     initialBvid: String,
     initialInfo: ViewInfo,
     recommendations: List<RelatedVideo>,
+    isActive: Boolean = true,
     onBack: () -> Unit,
     onHomeClick: () -> Unit = onBack,
     onVideoChange: (String) -> Unit,
@@ -417,17 +420,48 @@ fun PortraitVideoPager(
     var lastAutoAdvancedBvid by remember { mutableStateOf<String?>(null) }
     var pendingUserSpaceNavigation by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    var isLifecycleResumed by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
+    val isPortraitPlaybackAllowed = shouldAllowPortraitPlayback(
+        isCurrentStoryTab = isActive,
+        isLifecycleResumed = isLifecycleResumed
+    )
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> isLifecycleResumed = true
+                Lifecycle.Event.ON_PAUSE,
+                Lifecycle.Event.ON_STOP,
+                Lifecycle.Event.ON_DESTROY -> isLifecycleResumed = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     DisposableEffect(exoPlayer) {
         danmakuManager.attachPlayer(exoPlayer)
         onDispose { }
     }
 
-    DisposableEffect(exoPlayer, activeLoadGeneration) {
+    LaunchedEffect(exoPlayer, isPortraitPlaybackAllowed) {
+        if (isPortraitPlaybackAllowed) return@LaunchedEffect
+        pendingAutoPlayGeneration = -1
+        exoPlayer.playWhenReady = false
+        exoPlayer.pause()
+    }
+
+    DisposableEffect(exoPlayer, activeLoadGeneration, isPortraitPlaybackAllowed) {
         val autoPlayListener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY &&
                     pendingAutoPlayGeneration == activeLoadGeneration &&
+                    isPortraitPlaybackAllowed &&
                     !exoPlayer.isPlaying
                 ) {
                     exoPlayer.playWhenReady = true
@@ -452,8 +486,8 @@ fun PortraitVideoPager(
         }
     }
 
-    LaunchedEffect(useSharedPlayer, sharedPlayerShouldResumeAtEntry) {
-        if (useSharedPlayer && sharedPlayerShouldResumeAtEntry) {
+    LaunchedEffect(useSharedPlayer, sharedPlayerShouldResumeAtEntry, isPortraitPlaybackAllowed) {
+        if (useSharedPlayer && sharedPlayerShouldResumeAtEntry && isPortraitPlaybackAllowed) {
             exoPlayer.playWhenReady = true
             if (!exoPlayer.isPlaying) {
                 exoPlayer.play()
@@ -524,10 +558,12 @@ fun PortraitVideoPager(
         autoPlayEnabled,
         externalPlaylistAutoContinueEnabled,
         playbackCompletionBehavior,
-        isExternalPlaylist
+        isExternalPlaylist,
+        isPortraitPlaybackAllowed
     ) {
         val autoAdvanceListener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (!isPortraitPlaybackAllowed) return
                 if (playbackState != Player.STATE_ENDED) return
                 val playbackEndAction = resolvePlaybackEndAction(
                     behavior = playbackCompletionBehavior,
@@ -582,7 +618,7 @@ fun PortraitVideoPager(
     }
 
     // [核心] 仅在页面 settle 后切流，避免拖动过程频繁切换导致卡顿与竞态
-    LaunchedEffect(pagerState, pageItems) {
+    LaunchedEffect(pagerState, pageItems, isPortraitPlaybackAllowed) {
         snapshotFlow {
             resolveCommittedPage(
                 isScrollInProgress = pagerState.isScrollInProgress,
@@ -600,6 +636,12 @@ fun PortraitVideoPager(
                 val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid
 
                 onVideoChange(bvid)
+
+                if (!isPortraitPlaybackAllowed) {
+                    pendingAutoPlayGeneration = -1
+                    isLoading = false
+                    return@collect
+                }
 
                 if (
                     shouldLoadMorePortraitRecommendations(
@@ -755,7 +797,7 @@ fun PortraitVideoPager(
                                 }
                                 currentPlayingCid = info.cid
                                 currentPlayingAid = info.aid
-                                exoPlayer.playWhenReady = true
+                                exoPlayer.playWhenReady = isPortraitPlaybackAllowed
                                 exoPlayer.setMediaSource(finalSource)
                                 exoPlayer.prepare()
 
@@ -764,7 +806,9 @@ fun PortraitVideoPager(
                                     hasConsumedInitialSeek = true
                                 }
 
-                                exoPlayer.play()
+                                if (isPortraitPlaybackAllowed) {
+                                    exoPlayer.play()
+                                }
                             },
                             onFailure = {
                                 pendingAutoPlayGeneration = -1
@@ -873,6 +917,7 @@ fun PortraitVideoPager(
                 exoPlayer = exoPlayer, // [核心] 传递共享播放器
                 currentPlayingBvid = currentPlayingBvid, // [修复] 传递当前播放的 BVID 用于校验
                 currentPlayingCid = currentPlayingCid,
+                isPortraitPlaybackAllowed = isPortraitPlaybackAllowed,
                 isLoading = if (page == pagerState.currentPage) isLoading else false, // 只有当前页显示 Loading
                 danmakuManager = danmakuManager,
                 danmakuEnabled = danmakuEnabled,
@@ -927,6 +972,7 @@ private fun VideoPageItem(
     exoPlayer: ExoPlayer,
     currentPlayingBvid: String?, // [新增]
     currentPlayingCid: Long,
+    isPortraitPlaybackAllowed: Boolean,
     isLoading: Boolean,
     danmakuManager: DanmakuManager,
     danmakuEnabled: Boolean,
@@ -1019,7 +1065,9 @@ private fun VideoPageItem(
 
     // [逻辑] 只有当播放器正在播放当前视频时，才显示 PlayerView
     val isPlayerReadyForThisVideo = bvid == currentPlayingBvid
-    val shouldKeepPortraitPagerItemAwake = keepPortraitPagerAwake && isPlayerReadyForThisVideo
+    val shouldKeepPortraitPagerItemAwake = isPortraitPlaybackAllowed &&
+        keepPortraitPagerAwake &&
+        isPlayerReadyForThisVideo
     val snapshotCid = if (isPlayerReadyForThisVideo && currentPlayingCid > 0L) {
         currentPlayingCid
     } else {
@@ -1157,8 +1205,8 @@ private fun VideoPageItem(
     }
     
     // 如果是当前页，监听播放器进度
-    LaunchedEffect(isCurrentPage, exoPlayer, hasRenderedFirstFrame) {
-        if (isCurrentPage) {
+    LaunchedEffect(isCurrentPage, exoPlayer, hasRenderedFirstFrame, isPortraitPlaybackAllowed) {
+        if (isCurrentPage && isPortraitPlaybackAllowed) {
             while (true) {
                 if (isPlayerReadyForThisVideo) {
                     val playerPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
@@ -1196,9 +1244,10 @@ private fun VideoPageItem(
         exoPlayer.playWhenReady,
         exoPlayer.isPlaying,
         exoPlayer.playbackState,
-        isCurrentPage
+        isCurrentPage,
+        isPortraitPlaybackAllowed
     ) {
-        if (!isCurrentPage) return@LaunchedEffect
+        if (!isCurrentPage || !isPortraitPlaybackAllowed) return@LaunchedEffect
         if (!shouldAttemptPlaybackRecoveryAfterSeek(
                 state = seekSession,
                 playWhenReady = exoPlayer.playWhenReady,
@@ -2218,6 +2267,13 @@ internal fun resolvePortraitVideoViewportSize(
 internal fun resolvePortraitPagerFillContainer(): Boolean = false
 
 internal fun resolvePortraitPagerResizeMode(): Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
+
+internal fun shouldAllowPortraitPlayback(
+    isCurrentStoryTab: Boolean,
+    isLifecycleResumed: Boolean
+): Boolean {
+    return isCurrentStoryTab && isLifecycleResumed
+}
 
 internal fun resolvePortraitVideoViewportVerticalOffsetDp(
     currentVideoAspect: Float,

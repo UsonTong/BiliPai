@@ -185,6 +185,28 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
+    fun portraitPlaybackAllowed_onlyWhenStoryTabVisibleAndLifecycleResumed() {
+        assertTrue(
+            shouldAllowPortraitPlayback(
+                isCurrentStoryTab = true,
+                isLifecycleResumed = true
+            )
+        )
+        assertFalse(
+            shouldAllowPortraitPlayback(
+                isCurrentStoryTab = false,
+                isLifecycleResumed = true
+            )
+        )
+        assertFalse(
+            shouldAllowPortraitPlayback(
+                isCurrentStoryTab = true,
+                isLifecycleResumed = false
+            )
+        )
+    }
+
+    @Test
     fun portraitDanmakuSurface_usesPageLayerSoDanmakuStartsAtScreenTop() {
         assertEquals(
             PortraitDanmakuSurfaceMode.Page,

@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.home.components
 
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -189,5 +190,74 @@ class TopTabRefractionPolicyTest {
 
         assertTrue(moving.useIndicatorBackdrop)
         assertFalse(moving.useCombinedBackdrop)
+    }
+
+    @Test
+    fun `top tab render material keeps glass ahead of blur`() {
+        assertEquals(
+            TopTabMaterialMode.LIQUID_GLASS,
+            resolveTopTabRenderMaterialMode(
+                liquidGlassEnabled = true,
+                hasHazeState = true
+            )
+        )
+        assertEquals(
+            TopTabMaterialMode.BLUR,
+            resolveTopTabRenderMaterialMode(
+                liquidGlassEnabled = false,
+                hasHazeState = true
+            )
+        )
+        assertEquals(
+            TopTabMaterialMode.PLAIN,
+            resolveTopTabRenderMaterialMode(
+                liquidGlassEnabled = false,
+                hasHazeState = false
+            )
+        )
+    }
+
+    @Test
+    fun `home top tab row derives item color motion from live pager drag`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
+        )
+
+        assertFalse(source.contains("val isInteracting = false"))
+        assertFalse(source.contains("resolveTopTabStaticIndicatorVisualPolicy(\n                    useNeutralIndicatorTint = true"))
+        assertTrue(source.contains("val isInteracting by remember(pagerState, effectiveLiquidGlassEnabled)"))
+        assertTrue(source.contains("pagerIsScrolling = pagerState?.isScrollInProgress == true"))
+        assertTrue(source.contains("val contentMotionInProgress = isInteracting"))
+        assertTrue(source.contains("isInMotion = contentMotionInProgress"))
+        assertTrue(source.contains("resolveTopTabIndicatorVisualPolicy("))
+        assertTrue(source.contains("position = currentPosition"))
+    }
+
+    @Test
+    fun `home top tab row keeps render effects while tracking pager motion`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
+        )
+
+        assertFalse(source.contains("suppressTopTabRenderEffects"))
+        assertFalse(source.contains("renderLiquidGlassEnabled"))
+        assertFalse(source.contains("renderHazeState"))
+        assertFalse(source.contains("renderBackdrop"))
+        assertTrue(source.contains("val contentMotionInProgress = isInteracting"))
+        assertTrue(source.contains("hazeState = hazeState"))
+        assertTrue(source.contains("backdrop = backdrop"))
+        assertTrue(source.contains("isLiquidGlassEnabled = effectiveLiquidGlassEnabled"))
+        assertTrue(source.contains("isInMotion = contentMotionInProgress"))
+        assertFalse(source.contains("isInMotion = topIndicatorVisualPolicy.isInMotion"))
+    }
+
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

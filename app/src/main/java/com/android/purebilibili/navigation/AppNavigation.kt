@@ -1,6 +1,9 @@
 // 文件路径: navigation/AppNavigation.kt
 package com.android.purebilibili.navigation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -161,6 +164,12 @@ object VideoRoute {
             commentRootRpid = commentRootRpid
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 internal fun shouldAutoEnterPortraitForStandardVideoNavigation(): Boolean = false
@@ -633,12 +642,10 @@ fun AppNavigation(
         }
         val hasPreviousBackStackEntry = navController.previousBackStackEntry != null
         val shouldInterceptSystemBack = remember(
-            predictiveBackAnimationEnabled,
-            hasPreviousBackStackEntry
+            predictiveBackAnimationEnabled
         ) {
             shouldInterceptSystemBackForClassicMotion(
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                hasPreviousBackStackEntry = hasPreviousBackStackEntry
+                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
             )
         }
         val activeBottomTabRoute = if (currentRoute?.substringBefore("?") == ScreenRoutes.Home.route) {
@@ -737,7 +744,17 @@ fun AppNavigation(
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
         ) {
             BackHandler(enabled = shouldInterceptSystemBack) {
-                navController.navigateUp()
+                when (
+                    resolveAppSystemBackAction(
+                        currentRoute = currentRoute,
+                        currentBottomItem = currentBottomNavItem,
+                        hasPreviousBackStackEntry = hasPreviousBackStackEntry
+                    )
+                ) {
+                    AppSystemBackAction.RETURN_TO_HOME_TAB -> navigateToBottomPagerItem(BottomNavItem.HOME)
+                    AppSystemBackAction.NAVIGATE_UP -> navController.navigateUp()
+                    AppSystemBackAction.FINISH_ACTIVITY -> context.findActivity()?.finish()
+                }
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 // ===== 内容层 (hazeSource) =====
@@ -1026,6 +1043,7 @@ fun AppNavigation(
                         }
                         BottomNavItem.STORY -> {
                             com.android.purebilibili.feature.story.StoryScreen(
+                                isActive = currentBottomNavItem == BottomNavItem.STORY,
                                 onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
                                 onSearchClick = { navigateTo(ScreenRoutes.Search.route) }
                             )

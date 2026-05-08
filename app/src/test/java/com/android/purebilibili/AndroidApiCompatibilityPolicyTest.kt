@@ -36,7 +36,7 @@ class AndroidApiCompatibilityPolicyTest {
     }
 
     @Test
-    fun `manifest does not force system predictive back on`() {
+    fun `manifest opts into system predictive back so runtime setting can enable it`() {
         val manifest = listOf(
             File("app/src/main/AndroidManifest.xml"),
             File("src/main/AndroidManifest.xml")
@@ -44,13 +44,13 @@ class AndroidApiCompatibilityPolicyTest {
 
         val source = manifest.readText()
 
-        assertFalse(
-            source.contains("""android:enableOnBackInvokedCallback="true""""),
-            "Do not force system predictive back on from the manifest; the runtime setting can only control app route motion."
-        )
         assertTrue(
+            source.contains("""android:enableOnBackInvokedCallback="true""""),
+            "System predictive back must stay opted in from the manifest; runtime setting disables it by installing a classic BackHandler."
+        )
+        assertFalse(
             source.contains("""android:enableOnBackInvokedCallback="false""""),
-            "Manifest should opt out of system predictive back animations while keeping OnBackPressedCallback handling."
+            "Do not disable manifest opt-in globally, or turning the setting on cannot restore predictive back."
         )
     }
 }

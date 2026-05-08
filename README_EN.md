@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-08 · Synced to v8.0.8 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-08 · Synced to v8.0.9 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.0.8-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.0.9-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.0.8 · 2026-05-08)
+### Latest (v8.0.9 · 2026-05-08)
 
-- Added a Backdrop Native liquid-glass preset for the bottom bar with calmer horizontal refraction, chromatic dispersion, and selected-state emphasis.
-- Changed bottom-bar scroll coupling to material alpha, highlight, shadow, and light refraction changes instead of scaling the whole shell / capture layer.
-- Added a grid / single-column toggle for space contribution videos while keeping the grid as the default, reusing the archive-list row style for single-column browsing.
-- Split PiP and system media controls into explicit play / pause actions to avoid stale playback state toggling the wrong way.
-- Added focused policy and structure tests for bottom-bar animation, the space layout toggle, and mini-player media controls.
-- Bumped the app to `8.0.8` with `versionCode` `181`.
+- Restored immediate bottom-bar drag following during gestures, keeping the snap animation for release only.
+- Preserved sliding-time icon refraction, chromatic dispersion, and selected-state motion while keeping the post-selection vertical icon pulse removed.
+- Kept the manifest system predictive-back opt-in so turning the setting on restores the system predictive-back animation.
+- Installed the classic BackHandler path when the setting is off so system predictive-back previews are not triggered.
+- Added focused policy tests for bottom-bar dragging, predictive-back manifest opt-out, settings search, and navigation transitions.
+- Bumped the app to `8.0.9` with `versionCode` `182`.
 
 ---
 

@@ -15,6 +15,17 @@ enum class TopTabMaterialMode {
     LIQUID_GLASS
 }
 
+internal fun resolveTopTabRenderMaterialMode(
+    liquidGlassEnabled: Boolean,
+    hasHazeState: Boolean
+): TopTabMaterialMode {
+    return when {
+        liquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
+        hasHazeState -> TopTabMaterialMode.BLUR
+        else -> TopTabMaterialMode.PLAIN
+    }
+}
+
 enum class TopTabIndicatorStyle {
     CAPSULE,
     MATERIAL

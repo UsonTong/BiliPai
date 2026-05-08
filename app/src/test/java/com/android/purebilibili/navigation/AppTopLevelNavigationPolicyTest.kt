@@ -82,6 +82,46 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun systemBackFromRetainedBottomTab_returnsToHomeBeforeFinishingActivity() {
+        assertEquals(
+            AppSystemBackAction.RETURN_TO_HOME_TAB,
+            resolveAppSystemBackAction(
+                currentRoute = ScreenRoutes.Home.route,
+                currentBottomItem = BottomNavItem.FAVORITE,
+                hasPreviousBackStackEntry = false
+            )
+        )
+        assertEquals(
+            AppSystemBackAction.RETURN_TO_HOME_TAB,
+            resolveAppSystemBackAction(
+                currentRoute = ScreenRoutes.Home.route,
+                currentBottomItem = BottomNavItem.HISTORY,
+                hasPreviousBackStackEntry = true
+            )
+        )
+    }
+
+    @Test
+    fun systemBackOnHomeTab_usesBackStackOrFinishesActivity() {
+        assertEquals(
+            AppSystemBackAction.NAVIGATE_UP,
+            resolveAppSystemBackAction(
+                currentRoute = ScreenRoutes.Home.route,
+                currentBottomItem = BottomNavItem.HOME,
+                hasPreviousBackStackEntry = true
+            )
+        )
+        assertEquals(
+            AppSystemBackAction.FINISH_ACTIVITY,
+            resolveAppSystemBackAction(
+                currentRoute = ScreenRoutes.Home.route,
+                currentBottomItem = BottomNavItem.HOME,
+                hasPreviousBackStackEntry = false
+            )
+        )
+    }
+
+    @Test
     fun visibleBottomTabRoute_mapsToPagerPage() {
         val visibleItems = listOf(
             BottomNavItem.HOME,

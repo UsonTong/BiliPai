@@ -711,11 +711,10 @@ fun CategoryTabRow(
         isFloatingStyle = isFloatingStyle,
         hasOuterChromeSurface = hasOuterChromeSurface
     )
-    val dockMaterialMode = when {
-        effectiveLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
-        hazeState != null -> TopTabMaterialMode.BLUR
-        else -> TopTabMaterialMode.PLAIN
-    }
+    val dockMaterialMode = resolveTopTabRenderMaterialMode(
+        liquidGlassEnabled = effectiveLiquidGlassEnabled,
+        hasHazeState = hazeState != null
+    )
     val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
 
     BoxWithConstraints(
@@ -792,8 +791,17 @@ fun CategoryTabRow(
                     )
                 }
             }
-            val isInteracting = false
             val indicatorVelocityPxPerSecond = 0f
+            val isInteracting by remember(pagerState, effectiveLiquidGlassEnabled) {
+                derivedStateOf {
+                    shouldTopTabIndicatorBeInteracting(
+                        pagerIsScrolling = pagerState?.isScrollInProgress == true,
+                        combinedVelocityPxPerSecond = indicatorVelocityPxPerSecond,
+                        liquidGlassEnabled = effectiveLiquidGlassEnabled
+                    )
+                }
+            }
+            val contentMotionInProgress = isInteracting
             
             // 同步滚动位置：跟随指示器位置保持当前滑动方向上的 Tab 可见
             val firstVisibleIndex by remember {
@@ -879,7 +887,10 @@ fun CategoryTabRow(
 
             Box(modifier = Modifier.fillMaxSize()) {
                 val tabContentBackdrop = rememberLayerBackdrop()
-                val topIndicatorVisualPolicy = resolveTopTabStaticIndicatorVisualPolicy(
+                val topIndicatorVisualPolicy = resolveTopTabIndicatorVisualPolicy(
+                    position = currentPosition,
+                    interacting = isInteracting,
+                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
                     useNeutralIndicatorTint = true
                 )
                 val shouldRefract = topIndicatorVisualPolicy.shouldRefract
@@ -1030,7 +1041,7 @@ fun CategoryTabRow(
                                         primaryColor = primaryColor,
                                         unselectedColor = unselectedColor,
                                         labelMode = labelMode,
-                                        isInMotion = topIndicatorVisualPolicy.isInMotion,
+                                        isInMotion = contentMotionInProgress,
                                         selectionEmphasis = topTabRefractionProfile.exportSelectionEmphasis,
                                         isInteractive = false,
                                         onClick = {},
@@ -1072,7 +1083,7 @@ fun CategoryTabRow(
                                     primaryColor = primaryColor,
                                     unselectedColor = unselectedColor,
                                     labelMode = labelMode,
-                                    isInMotion = topIndicatorVisualPolicy.isInMotion,
+                                    isInMotion = contentMotionInProgress,
                                     selectionEmphasis = topTabRefractionProfile.visibleSelectionEmphasis,
                                     onClick = {
                                         performHomeTopBarTap(haptic = haptic, onClick = {

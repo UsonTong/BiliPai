@@ -352,7 +352,7 @@ data class HomeSettings(
     val cardAnimationEnabled: Boolean = false,    //  卡片进场动画（默认关闭）
     val cardTransitionEnabled: Boolean = true,    //  卡片过渡动画（默认开启）
     val videoTransitionRealtimeBlurEnabled: Boolean = true, // 视频转场实时模糊（默认开启）
-    val predictiveBackAnimationEnabled: Boolean = true, // 预测返回兼容路由动画（默认开启）
+    val predictiveBackAnimationEnabled: Boolean = true, // 预测性返回手势支持（默认开启）
     val smartVisualGuardEnabled: Boolean = false, // [Retired] 智能流畅优先已下线，固定关闭
     val compactVideoStatsOnCover: Boolean = true, //  播放量/评论数显示在封面底部（默认开启）
     val lowQualityHomeCoverInDataSaver: Boolean = false, // 省流量时首页封面使用低清晰度
@@ -822,7 +822,7 @@ object SettingsManager {
     private val KEY_CARD_TRANSITION_ENABLED = booleanPreferencesKey("card_transition_enabled")
     private val KEY_VIDEO_TRANSITION_REALTIME_BLUR_ENABLED =
         booleanPreferencesKey("video_transition_realtime_blur_enabled")
-    // 预测返回兼容路由动画开关；系统级预测返回 opt-in 由 manifest 控制。
+    // 预测性返回手势支持开关；manifest 保持 opt-in，关闭时由经典 BackHandler 拦截。
     private val KEY_PREDICTIVE_BACK_ANIMATION_ENABLED = booleanPreferencesKey("predictive_back_animation_enabled")
     // [New] 运行时视觉降级守卫开关
     private val KEY_SMART_VISUAL_GUARD_ENABLED = booleanPreferencesKey("smart_visual_guard_enabled")
