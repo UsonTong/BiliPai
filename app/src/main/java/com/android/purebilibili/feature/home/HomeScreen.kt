@@ -1895,56 +1895,8 @@ fun HomeScreen(
 // [Removed] Animation logic moved inside HorizontalPager where the active state exists
     
     // 指示器位置逻辑也移入 graphicsLayer
-    
-    // 📱 [平板适配] 导航模式切换动画
-    // 始终使用 Row 布局，通过动画控制侧边栏的显示/隐藏
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        AnimatedVisibility(
-            visible = useSideNavigation,
-            enter = slideInHorizontally(
-                initialOffsetX = { -it },
-                animationSpec = tween(
-                    overlayMotionSpec.sideNavEnterSlideDurationMillis,
-                    easing = LinearOutSlowInEasing
-                )
-            ) + fadeIn(animationSpec = tween(overlayMotionSpec.sideNavFadeDurationMillis)),
-            exit = slideOutHorizontally(
-                targetOffsetX = { -it },
-                animationSpec = tween(
-                    overlayMotionSpec.sideNavExitSlideDurationMillis,
-                    easing = FastOutLinearInEasing
-                )
-            ) + fadeOut(animationSpec = tween(overlayMotionSpec.sideNavFadeDurationMillis))
-        ) {
-            FrostedSideBar(
-                currentItem = currentNavItem,
-                onItemClick = handleNavItemClick,
-                firstItemModifier = Modifier,
-                onHomeDoubleTap = {
-                    coroutineScope.launch {
-                        setHeaderOffsetImmediate(0f)
-                        gridStates[state.currentCategory]?.animateScrollToItem(0)
-                        setHeaderOffsetImmediate(0f)
-                        globalScrollOffset.floatValue = 0f
-                    }
-                },
-                hazeState = if (isBottomBarBlurEnabled) hazeState else null,
-                visibleItems = visibleBottomBarItems,
-                itemColorIndices = bottomBarItemColors,
-                onToggleSidebar = onToggleNavigationMode
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(1f)
-        ) {
-            scaffoldContent()
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        scaffoldContent()
     }
 }
 

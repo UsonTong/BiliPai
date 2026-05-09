@@ -85,8 +85,10 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.CompositionLocalProvider
 // [LayerBackdrop] AndroidLiquidGlass for real background refraction
@@ -115,9 +117,13 @@ import com.android.purebilibili.core.util.NetworkUtils
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier // 确保 Modifier 被导入
 import androidx.compose.foundation.layout.Box // 确保 Box 被导入
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize // 确保 fillMaxSize 被导入
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.pager.PagerScope
+import androidx.compose.foundation.pager.VerticalPager
+import com.android.purebilibili.feature.home.components.FrostedSideBar
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -731,6 +737,21 @@ fun AppNavigation(
                 kotlinx.coroutines.delay(60_000L)
             }
         }
+
+        val handleNavItemClick: (BottomNavItem) -> Unit = { item ->
+            when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
+                BottomBarSelectionAction.NAVIGATE -> {
+                    navigateToBottomPagerItem(item)
+                }
+                BottomBarSelectionAction.RESELECT -> when (item) {
+                    BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
+                    BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)
+                    BottomNavItem.HISTORY -> historyScrollChannel.trySend(Unit)
+                    BottomNavItem.FAVORITE -> favoriteScrollChannel.trySend(Unit)
+                    else -> Unit
+                }
+            }
+        }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
         LaunchedEffect(currentRoute, currentBottomNavItem) {
@@ -763,7 +784,37 @@ fun AppNavigation(
                     AppSystemBackAction.FINISH_ACTIVITY -> context.findActivity()?.finish()
                 }
             }
-            Box(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (windowSizeClass.shouldUseSideNavigation) {
+                    AnimatedVisibility(
+                        visible = useSideNavigation,
+                        enter = slideInHorizontally(
+                            animationSpec = softLandingSpring(),
+                            initialOffsetX = { -it }
+                        ) + fadeIn(animationSpec = emphasizedEnterTween(navMotionSpec.slowFadeDurationMillis)),
+                        exit = slideOutHorizontally(
+                            animationSpec = emphasizedExitTween(navMotionSpec.fastFadeDurationMillis),
+                            targetOffsetX = { -it }
+                        ) + fadeOut(animationSpec = emphasizedExitTween(navMotionSpec.fastFadeDurationMillis))
+                    ) {
+                        FrostedSideBar(
+                            currentItem = currentBottomNavItem,
+                            onItemClick = handleNavItemClick,
+                            firstItemModifier = Modifier,
+                            onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
+                            hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
+                            visibleItems = visibleBottomBarItems,
+                            itemColorIndices = bottomBarItemColors,
+                            onToggleSidebar = {
+                                // [Tablet] Toggle sidebar mode
+                                coroutineScope.launch {
+                                    SettingsManager.setTabletUseSidebar(context, false)
+                                }
+                            }
+                        )
+                    }
+                }
+                Box(modifier = Modifier.animateContentSize()) {
                 // ===== 内容层 (hazeSource) =====
                 // 这个 Box 包裹全局壁纸和所有 NavHost 内容，作为底栏模糊/折射的源
                 // [LayerBackdrop] Apply layerBackdrop before the bottom bar sibling so the dock
@@ -982,13 +1033,28 @@ fun AppNavigation(
             }
         ) {
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
-                HorizontalPager(
-                    modifier = Modifier.fillMaxSize(),
-                    state = bottomPagerState,
-                    beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
-                        contentReady = bottomPagerContentReady
-                    )
-                ) { page ->
+                val pager = @Composable { pageContent: @Composable PagerScope.(page: Int) -> Unit ->
+                    if (useSideNavigation) {
+                        VerticalPager(
+                            modifier = Modifier.fillMaxSize(),
+                            state = bottomPagerState,
+                            beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
+                                contentReady = bottomPagerContentReady
+                            ),
+                            pageContent = pageContent,
+                        )
+                    } else {
+                        HorizontalPager(
+                            modifier = Modifier.fillMaxSize(),
+                            state = bottomPagerState,
+                            beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
+                                contentReady = bottomPagerContentReady
+                            ),
+                            pageContent = pageContent,
+                        )
+                    }
+                }
+                pager { page ->
                     if (!shouldComposeBottomPagerPage(
                             page = page,
                             currentPage = bottomPagerState.currentPage,
@@ -997,7 +1063,7 @@ fun AppNavigation(
                         )
                     ) {
                         Box(modifier = Modifier.fillMaxSize())
-                        return@HorizontalPager
+                        return@pager
                     }
                     when (visibleBottomBarItems.getOrNull(page) ?: BottomNavItem.HOME) {
                         BottomNavItem.HOME -> {
@@ -2925,14 +2991,13 @@ fun AppNavigation(
             } // End of Content Box
 
             // ===== 全局底栏 (Global Bottom Bar) =====
-            // ===== 全局底栏 (Global Bottom Bar) =====
             // 依然保留 showBottomBar 作为外层判断，避免不必要的 AnimatedVisibility 挂载
             if (showBottomBar && bottomBarVisibilityMode != SettingsManager.BottomBarVisibilityMode.ALWAYS_HIDDEN) {
                 // 用于处理底栏悬浮时的点击穿透问题，底栏自身处理点击
                 Box(
                     modifier = Modifier.align(Alignment.BottomCenter).zIndex(1f)
                 ) {
-                    AnimatedVisibility(
+                    androidx.compose.animation.AnimatedVisibility(
                         visible = finalBottomBarVisible,
                         enter = slideInVertically(
                             animationSpec = softLandingSpring(),
@@ -2951,20 +3016,7 @@ fun AppNavigation(
                             ) {
                                 FrostedBottomBar(
                                     currentItem = currentBottomNavItem,
-                                    onItemClick = { item ->
-                                        when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
-                                            BottomBarSelectionAction.NAVIGATE -> {
-                                                navigateToBottomPagerItem(item)
-                                            }
-                                            BottomBarSelectionAction.RESELECT -> when (item) {
-                                                BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
-                                                BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)
-                                                BottomNavItem.HISTORY -> historyScrollChannel.trySend(Unit)
-                                                BottomNavItem.FAVORITE -> favoriteScrollChannel.trySend(Unit)
-                                                else -> Unit
-                                            }
-                                        }
-                                    },
+                                    onItemClick = handleNavItemClick,
                                     onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                     onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
                                     onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
@@ -2992,20 +3044,7 @@ fun AppNavigation(
                             // 贴底式底栏
                             FrostedBottomBar(
                                 currentItem = currentBottomNavItem,
-                                onItemClick = { item ->
-                                    when (resolveBottomBarSelectionAction(currentBottomNavItem, item)) {
-                                        BottomBarSelectionAction.NAVIGATE -> {
-                                            navigateToBottomPagerItem(item)
-                                        }
-                                        BottomBarSelectionAction.RESELECT -> when (item) {
-                                            BottomNavItem.HOME -> homeScrollChannel.trySend(Unit)
-                                            BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)
-                                            BottomNavItem.HISTORY -> historyScrollChannel.trySend(Unit)
-                                            BottomNavItem.FAVORITE -> favoriteScrollChannel.trySend(Unit)
-                                            else -> Unit
-                                        }
-                                    }
-                                },
+                                onItemClick = handleNavItemClick,
                                 onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                 onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
                                 onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
@@ -3051,6 +3090,7 @@ fun AppNavigation(
                     .zIndex(100f)
             )
         } // End of Main Box
+        } // End of Row
         } // End of CompositionLocalProvider
     }
 }
