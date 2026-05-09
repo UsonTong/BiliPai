@@ -1,5 +1,27 @@
 # Changelog
 
+## v8.1.1 (2026-05-10)
+
+### 版本信息
+- 版本号从 `8.1.0` 升级到 `8.1.1`，`versionCode` 升级到 `184`。
+- 本次为“应用内截图能力 + 首页/导航策略修复 + issue #313 图标美化阶段性落地”的维护更新。
+
+### 更新内容
+- **应用内干净截图**：新增前台手势截图能力，支持全窗口保存和手选区域截图；截图流程会避开启动页、PiP 过渡、全屏锁定和保存中的状态，降低误触与异常截图概率。
+- **截图设置入口**：播放设置新增“应用内干净截图”、触发方式和截图范围选项，并接入设置搜索。
+- **主页/导航策略**：顶部分类和底部 pager 的同步策略继续收敛，减少导航切换期间的多余页面组合和分类语义绕路。
+- **主题刷新**：主 Activity 增加系统深浅色快照刷新策略，降低系统主题变化后应用内状态不同步的概率。
+- **图标美化阶段性落地**：补齐 `AppIcons` 的 watch-later / coin 语义入口，播放页、横屏/竖屏覆盖层、音频模式、预览弹窗、评论输入、合集和“我的/侧边栏/底栏”相关入口逐步改为统一图标映射。
+- **AI 总结布局**：时间节点固定到右侧列，正文区域使用权重布局，减少长中文挤压时间胶囊的问题。
+
+### 未完成
+- issue #313 的全应用图标迁移仍未改完；设置页、弹幕设置、章节面板、选集弹窗、相关视频卡片等低频入口仍需继续分批收敛。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.ui.AppIconsPresetPolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileTopBarSystemUiPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarColorBindingPolicyTest' --tests 'com.android.purebilibili.feature.settings.BottomBarSettingsScreenIconPolicyTest' --tests 'com.android.purebilibili.feature.video.ui.VideoInteractionIconPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.1.0 (2026-05-08)
 
 ### 版本信息
