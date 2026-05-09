@@ -58,7 +58,7 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
-    fun pagerSettledAction_routesToLivePage_whenSettledCategoryIsLive() {
+    fun pagerSettledAction_switchesCategory_whenSettledCategoryIsLive() {
         val action = resolveHomePagerSettledAction(
             hasSyncedPagerWithState = true,
             pagerCurrentPage = 2,
@@ -67,7 +67,13 @@ class HomePagerSyncPolicyTest {
             settledCategory = HomeCategory.LIVE
         )
 
-        assertEquals(HomePagerSettledAction.OPEN_LIVE_PAGE, action)
+        assertEquals(HomePagerSettledAction.SWITCH_CATEGORY, action)
+    }
+
+    @Test
+    fun homeTopLiveCategory_isDisplayedInline() {
+        assertTrue(shouldDisplayHomeTopCategoryInline(HomeCategory.LIVE))
+        assertTrue(shouldDisplayHomeTopCategoryInline(HomeCategory.RECOMMEND))
     }
 
     @Test

@@ -86,6 +86,19 @@ internal fun resolveBottomPagerNavigationDurationMillis(
     return 100 * distance + 100
 }
 
+internal fun resolveBottomPagerBeyondViewportPageCount(contentReady: Boolean): Int {
+    return if (contentReady) 1 else 0
+}
+
+internal fun shouldComposeBottomPagerPage(
+    page: Int,
+    currentPage: Int,
+    selectedPage: Int,
+    contentReady: Boolean
+): Boolean {
+    return contentReady || page == currentPage || page == selectedPage
+}
+
 internal fun resolveBottomNavItemForRoute(
     currentRoute: String?,
     retainedItem: BottomNavItem?,

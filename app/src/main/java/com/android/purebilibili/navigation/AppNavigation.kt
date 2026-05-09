@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.luminance
@@ -117,9 +118,6 @@ import androidx.compose.foundation.layout.Box // 确保 Box 被导入
 import androidx.compose.foundation.layout.fillMaxSize // 确保 fillMaxSize 被导入
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -553,6 +551,15 @@ fun AppNavigation(
             visibleBottomBarItems.size.coerceAtLeast(1)
         }
         val mainBottomPagerState = rememberMainBottomPagerState(bottomPagerState)
+        var bottomPagerContentReady by remember { mutableStateOf(false) }
+        LaunchedEffect(mainBottomPagerState.isNavigating) {
+            if (mainBottomPagerState.isNavigating) {
+                bottomPagerContentReady = false
+            } else {
+                withFrameNanos { }
+                bottomPagerContentReady = true
+            }
+        }
         LaunchedEffect(bottomPagerState) {
             snapshotFlow { bottomPagerState.settledPage }.collect {
                 mainBottomPagerState.syncPage()
@@ -978,8 +985,20 @@ fun AppNavigation(
                 HorizontalPager(
                     modifier = Modifier.fillMaxSize(),
                     state = bottomPagerState,
-                    beyondViewportPageCount = 1
+                    beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
+                        contentReady = bottomPagerContentReady
+                    )
                 ) { page ->
+                    if (!shouldComposeBottomPagerPage(
+                            page = page,
+                            currentPage = bottomPagerState.currentPage,
+                            selectedPage = mainBottomPagerState.selectedPage,
+                            contentReady = bottomPagerContentReady
+                        )
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@HorizontalPager
+                    }
                     when (visibleBottomBarItems.getOrNull(page) ?: BottomNavItem.HOME) {
                         BottomNavItem.HOME -> {
                             HomeScreen(

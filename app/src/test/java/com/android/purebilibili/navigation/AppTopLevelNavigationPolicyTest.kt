@@ -212,6 +212,48 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun bottomPagerPreload_waitsUntilContentReady() {
+        assertEquals(0, resolveBottomPagerBeyondViewportPageCount(contentReady = false))
+        assertEquals(1, resolveBottomPagerBeyondViewportPageCount(contentReady = true))
+    }
+
+    @Test
+    fun bottomPagerDuringNavigation_composesOnlyCurrentAndTargetBeforeReady() {
+        assertTrue(
+            shouldComposeBottomPagerPage(
+                page = 0,
+                currentPage = 0,
+                selectedPage = 2,
+                contentReady = false
+            )
+        )
+        assertTrue(
+            shouldComposeBottomPagerPage(
+                page = 2,
+                currentPage = 0,
+                selectedPage = 2,
+                contentReady = false
+            )
+        )
+        assertFalse(
+            shouldComposeBottomPagerPage(
+                page = 1,
+                currentPage = 0,
+                selectedPage = 2,
+                contentReady = false
+            )
+        )
+        assertTrue(
+            shouldComposeBottomPagerPage(
+                page = 1,
+                currentPage = 0,
+                selectedPage = 2,
+                contentReady = true
+            )
+        )
+    }
+
+    @Test
     fun routeMatchingVisibleBottomItem_selectsThatItem() {
         assertEquals(
             BottomNavItem.HISTORY,

@@ -109,9 +109,29 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
-    fun topTabTapPolicy_keepsPagerAnimationWhenTargetChanges() {
-        assertFalse(shouldSnapHomeTopTabSelection(currentPage = 0, targetPage = 1))
-        assertFalse(shouldSnapHomeTopTabSelection(currentPage = 2, targetPage = 2))
+    fun pagerSwipe_skipsTopTabViewportSyncWhenTargetRemainsVisible() {
+        assertFalse(
+            shouldSyncHomeTopTabViewport(
+                pagerIsScrolling = true,
+                targetIsOutsideViewport = false
+            )
+        )
+        assertTrue(
+            shouldSyncHomeTopTabViewport(
+                pagerIsScrolling = true,
+                targetIsOutsideViewport = true
+            )
+        )
+    }
+
+    @Test
+    fun idlePager_allowsTopTabViewportSettleCorrection() {
+        assertTrue(
+            shouldSyncHomeTopTabViewport(
+                pagerIsScrolling = false,
+                targetIsOutsideViewport = false
+            )
+        )
     }
 
     @Test

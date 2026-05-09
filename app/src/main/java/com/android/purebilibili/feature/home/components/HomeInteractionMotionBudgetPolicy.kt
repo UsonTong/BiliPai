@@ -52,10 +52,12 @@ internal fun shouldAnimateTopTabAutoScroll(
     return isTargetOutsideViewport
 }
 
-internal fun shouldSnapHomeTopTabSelection(
-    currentPage: Int,
-    targetPage: Int
-): Boolean = false
+internal fun shouldSyncHomeTopTabViewport(
+    pagerIsScrolling: Boolean,
+    targetIsOutsideViewport: Boolean
+): Boolean {
+    return !pagerIsScrolling || targetIsOutsideViewport
+}
 
 internal fun resolveTopTabViewportAnchorIndex(
     selectedIndex: Int,

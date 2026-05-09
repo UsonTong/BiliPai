@@ -183,10 +183,6 @@ internal fun resolveTopTabMinItemWidthDp(isFloatingStyle: Boolean): Float {
     return if (isFloatingStyle) 72f else 64f
 }
 
-internal fun shouldRouteTopTabToLivePage(categoryKey: String): Boolean {
-    return categoryKey.equals(HomeCategory.LIVE.name, ignoreCase = true)
-}
-
 internal fun resolveTopTabItemWidthDp(
     containerWidthDp: Float,
     categoryCount: Int,
@@ -646,7 +642,6 @@ fun CategoryTabRow(
     selectedIndex: Int = 0,
     onCategorySelected: (Int) -> Unit = {},
     onPartitionClick: () -> Unit = {},
-    onLiveClick: () -> Unit = {},  // [新增] 直播分区点击回调
     pagerState: androidx.compose.foundation.pager.PagerState? = null, // [New] PagerState for sync
     labelMode: Int = 2,
     isLiquidGlassEnabled: Boolean = false,
@@ -702,7 +697,6 @@ fun CategoryTabRow(
             selectedIndex = selectedIndex,
             onCategorySelected = onCategorySelected,
             onPartitionClick = onPartitionClick,
-            onLiveClick = onLiveClick,
             pagerState = pagerState,
             labelMode = labelMode,
             isFloatingStyle = isFloatingStyle,
@@ -794,7 +788,7 @@ fun CategoryTabRow(
             val localDensity = LocalDensity.current
             val tabListState = rememberLazyListState()
             
-            // 渲染位置保持离散，避免内容区横滑时顶部指示器产生左右滑动效果。
+            // 指示器跟随 Pager 的连续位置；选中强调和内容态也从同一位置派生，避免快速滑动时错位。
             val currentPosition by remember(pagerState, selectedIndex) {
                 derivedStateOf {
                     resolveTopTabIndicatorRenderPosition(
@@ -824,6 +818,11 @@ fun CategoryTabRow(
                     tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
                 }
             }
+            val lastVisibleIndex by remember {
+                derivedStateOf {
+                    tabListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: firstVisibleIndex
+                }
+            }
             val firstVisibleScrollOffsetPx by remember {
                 derivedStateOf { tabListState.firstVisibleItemScrollOffset }
             }
@@ -844,6 +843,7 @@ fun CategoryTabRow(
                 actualTabWidthPx,
                 tabViewportWidthPx,
                 firstVisibleIndex,
+                lastVisibleIndex,
                 firstVisibleScrollOffsetPx
             ) {
                 if (!isViewportSyncEnabled) {
@@ -863,6 +863,18 @@ fun CategoryTabRow(
                     maxScrollPx = maxScrollPx,
                     edgeBufferPx = with(localDensity) { 20.dp.toPx() }
                 )
+                val targetIndex = currentPosition
+                    .roundToInt()
+                    .coerceIn(0, categories.lastIndex)
+                val targetIsOutsideViewport = targetIndex < firstVisibleIndex ||
+                    targetIndex > lastVisibleIndex
+                if (!shouldSyncHomeTopTabViewport(
+                        pagerIsScrolling = pagerState?.isScrollInProgress == true,
+                        targetIsOutsideViewport = targetIsOutsideViewport
+                    )
+                ) {
+                    return@LaunchedEffect
+                }
                 if (
                     target.firstVisibleItemIndex != firstVisibleIndex ||
                     abs(target.firstVisibleItemScrollOffsetPx - firstVisibleScrollOffsetPx) > 1
@@ -1133,12 +1145,7 @@ fun CategoryTabRow(
                                     selectionEmphasis = topTabRefractionProfile.visibleSelectionEmphasis,
                                     onClick = {
                                         performHomeTopBarTap(haptic = haptic, onClick = {
-                                            // [修复] 直播由分类语义驱动，而不是固定索引，支持自定义排序
-                                            if (shouldRouteTopTabToLivePage(categoryKey)) {
-                                                onLiveClick()
-                                            } else {
-                                                onCategorySelected(index)
-                                            }
+                                            onCategorySelected(index)
                                         })
                                     },
                                     onDoubleTap = {
@@ -1193,7 +1200,6 @@ private fun Md3CategoryTabRow(
     selectedIndex: Int,
     onCategorySelected: (Int) -> Unit,
     onPartitionClick: () -> Unit,
-    onLiveClick: () -> Unit,
     pagerState: androidx.compose.foundation.pager.PagerState?,
     labelMode: Int,
     isFloatingStyle: Boolean,
@@ -1214,11 +1220,9 @@ private fun Md3CategoryTabRow(
     if (shouldUseNativeMiuixTopTabRow(androidNativeVariant, normalizedLabelMode)) {
         MiuixCategoryTabRow(
             categories = categories,
-            categoryKeys = categoryKeys,
             selectedIndex = selectedIndex,
             onCategorySelected = onCategorySelected,
             onPartitionClick = onPartitionClick,
-            onLiveClick = onLiveClick,
             pagerState = pagerState,
             haptic = haptic,
             scrollChannel = scrollChannel
@@ -1362,11 +1366,7 @@ private fun Md3CategoryTabRow(
                             (1f - abs(currentVisiblePosition - visibleIndex.toFloat())).coerceIn(0f, 1f)
                         val onTabClick = {
                             performHomeTopBarTap(haptic = haptic, onClick = {
-                                if (shouldRouteTopTabToLivePage(categoryKey)) {
-                                    onLiveClick()
-                                } else {
-                                    onCategorySelected(originalIndex)
-                                }
+                                onCategorySelected(originalIndex)
                             })
                         }
 
@@ -1472,11 +1472,9 @@ private fun Md3CategoryTabRow(
 @Composable
 private fun MiuixCategoryTabRow(
     categories: List<String>,
-    categoryKeys: List<String>,
     selectedIndex: Int,
     onCategorySelected: (Int) -> Unit,
     onPartitionClick: () -> Unit,
-    onLiveClick: () -> Unit,
     pagerState: androidx.compose.foundation.pager.PagerState?,
     haptic: (HapticType) -> Unit,
     scrollChannel: kotlinx.coroutines.channels.Channel<Unit>?
@@ -1526,11 +1524,9 @@ private fun MiuixCategoryTabRow(
                 tabs = categories,
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = { index ->
-                    val categoryKey = categoryKeys.getOrNull(index) ?: categories[index]
                     performHomeTopBarTap(haptic = haptic, onClick = {
                         when {
                             index == selectedIndex -> scrollChannel?.trySend(Unit)
-                            shouldRouteTopTabToLivePage(categoryKey) -> onLiveClick()
                             else -> onCategorySelected(index)
                         }
                     })

@@ -70,7 +70,6 @@ import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  // 
 import com.android.purebilibili.feature.home.components.HomeInteractionMotionBudget
 import com.android.purebilibili.feature.home.components.resolveHomeInteractionMotionBudget
 import com.android.purebilibili.feature.home.components.resolveHomeDrawerScrimAlpha
-import com.android.purebilibili.feature.home.components.shouldSnapHomeTopTabSelection
 import com.android.purebilibili.feature.home.components.resolveTopTabStyle
 import com.android.purebilibili.feature.home.components.resolveHomeTopChromeMaterialMode
 import com.android.purebilibili.feature.home.components.resolveHomeTopSearchBarHeight
@@ -311,17 +310,6 @@ fun HomeScreen(
                     )
                 ) {
                     HomePagerSettledAction.NONE -> return@collect
-                    HomePagerSettledAction.OPEN_LIVE_PAGE -> {
-                        val returnPage = currentCategoryIndex
-                            .takeIf { it >= 0 && it != page }
-                            ?: topCategories.indexOfFirst { it != HomeCategory.LIVE }
-                                .takeIf { it >= 0 }
-                            ?: 0
-                        programmaticPageSwitchInProgress = true
-                        pagerState.scrollToPage(returnPage)
-                        programmaticPageSwitchInProgress = false
-                        onLiveListClick()
-                    }
                     HomePagerSettledAction.SWITCH_CATEGORY -> {
                         viewModel.switchCategory(
                             resolveHomeCategoryForTopTab(
@@ -1463,23 +1451,20 @@ fun HomeScreen(
             onCategorySelected = { index ->
                 viewModel.updateDisplayedTabIndex(index)
                 topCategories.getOrNull(index)?.let { selectedCategory ->
-                    if (shouldSnapHomeTopTabSelection(pagerState.currentPage, index)) {
+                    if (pagerState.currentPage != index) {
+                        programmaticPageSwitchInProgress = true
                         coroutineScope.launch {
-                            programmaticPageSwitchInProgress = true
                             try {
-                                pagerState.scrollToPage(index)
+                                pagerState.animateScrollToPage(index)
                             } finally {
                                 programmaticPageSwitchInProgress = false
                             }
                         }
-                    } else if (pagerState.currentPage != index && selectedCategory != state.currentCategory) {
-                        programmaticPageSwitchInProgress = true
                     }
                     viewModel.switchCategory(selectedCategory)
                 }
             },
             onPartitionClick = onPartitionClick,
-            onLiveClick = onLiveListClick,  // [修复] 直播分区点击导航到独立页面
             // isScrollingUp = isHeaderVisible, // [Removed] logic moved to offset
             hazeState = if (topChromeMaterialMode != com.android.purebilibili.feature.home.components.TopTabMaterialMode.PLAIN) {
                 hazeState

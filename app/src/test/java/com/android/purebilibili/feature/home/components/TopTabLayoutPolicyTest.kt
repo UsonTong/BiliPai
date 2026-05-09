@@ -40,14 +40,6 @@ class TopTabLayoutPolicyTest {
     }
 
     @Test
-    fun `live route decision should follow category key not localized label`() {
-        assertTrue(shouldRouteTopTabToLivePage("LIVE"))
-        assertTrue(shouldRouteTopTabToLivePage("live"))
-        assertFalse(shouldRouteTopTabToLivePage("直播"))
-        assertFalse(shouldRouteTopTabToLivePage("RECOMMEND"))
-    }
-
-    @Test
     fun `md3 top tabs keep four visible slots on every device width`() {
         assertEquals(4, resolveMd3TopTabVisibleSlots())
         assertEquals(80f, resolveMd3TopTabItemWidthDp(containerWidthDp = 320f), 0.001f)
