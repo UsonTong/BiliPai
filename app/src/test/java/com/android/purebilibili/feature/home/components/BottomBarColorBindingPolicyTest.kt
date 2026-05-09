@@ -79,7 +79,6 @@ class BottomBarColorBindingPolicyTest {
             "Person",
             "Star",
             "Video",
-            "Bookmark",
             "Gearshape"
         )
 
@@ -88,6 +87,24 @@ class BottomBarColorBindingPolicyTest {
                 source.contains("{ Icon(CupertinoIcons.Filled.$symbol, contentDescription = null) }")
             },
             "Bottom bar selected icons should use filled symbols so the whole selected icon is tinted by the theme color."
+        )
+    }
+
+    @Test
+    fun `watch later bottom bar icons use clock semantics`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+            .readText()
+        val watchLaterBlock = source
+            .substringAfter("WATCHLATER(")
+            .substringBefore("    ),")
+
+        assertTrue(watchLaterBlock.contains("CupertinoIcons.Filled.Clock"))
+        assertTrue(watchLaterBlock.contains("CupertinoIcons.Outlined.Clock"))
+        assertFalse(watchLaterBlock.contains("Bookmark"))
+        assertTrue(
+            source.contains(
+                "BottomNavItem.WATCHLATER -> if (selected) Icons.Filled.WatchLater else Icons.Outlined.WatchLater"
+            )
         )
     }
 

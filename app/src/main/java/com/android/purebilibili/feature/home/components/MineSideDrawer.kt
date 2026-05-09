@@ -36,18 +36,12 @@ import com.android.purebilibili.core.ui.rememberAppHistoryIcon
 import com.android.purebilibili.core.ui.rememberAppInboxIcon
 import com.android.purebilibili.core.ui.rememberAppLogoutIcon
 import com.android.purebilibili.core.ui.rememberAppTvIcon
+import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
 import com.android.purebilibili.core.ui.components.IOSClickableItem
 import com.android.purebilibili.core.ui.components.UserLevelBadge
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.feature.home.UserState
 import dev.chrisbanes.haze.HazeState
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.filled.Tv
-import io.github.alexzhirkevich.cupertino.icons.outlined.ArrowDownCircle
-import io.github.alexzhirkevich.cupertino.icons.outlined.Bookmark
-import io.github.alexzhirkevich.cupertino.icons.outlined.ChevronForward
-import io.github.alexzhirkevich.cupertino.icons.outlined.Clock
-import io.github.alexzhirkevich.cupertino.icons.outlined.RectanglePortraitAndArrowForward
 import kotlinx.coroutines.launch
 
 internal data class MineSideDrawerChromeSpec(
@@ -143,6 +137,7 @@ fun MineSideDrawer(
     val historyIcon = rememberAppHistoryIcon()
     val tvIcon = rememberAppTvIcon()
     val bookmarkIcon = rememberAppBookmarkIcon()
+    val watchLaterIcon = rememberAppWatchLaterIcon()
     val inboxIcon = rememberAppInboxIcon()
     val logoutIcon = rememberAppLogoutIcon()
     val chevronForwardIcon = rememberAppChevronForwardIcon()
@@ -372,7 +367,7 @@ fun MineSideDrawer(
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 48.dp), thickness = dividerThickness, color = dividerColor)
                     IOSClickableItem(
-                        icon = bookmarkIcon,
+                        icon = watchLaterIcon,
                         title = "稍后再看",
                         onClick = { closeAndRun(onWatchLaterClick) },
                         iconTint = iOSGreen,

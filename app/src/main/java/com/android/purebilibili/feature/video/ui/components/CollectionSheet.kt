@@ -23,10 +23,10 @@ import androidx.compose.ui.platform.LocalContext
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.theme.iOSBlue
+import com.android.purebilibili.core.ui.rememberAppClearIcon
 import com.android.purebilibili.data.model.response.UgcEpisode
 import com.android.purebilibili.data.model.response.UgcSeason
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.XmarkCircle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Play
 import kotlinx.coroutines.launch
 
@@ -44,6 +44,7 @@ fun CollectionSheet(
     onEpisodeClick: (UgcEpisode) -> Unit
 ) {
     val context = LocalContext.current
+    val clearIcon = rememberAppClearIcon()
     val scope = rememberCoroutineScope()
     val allEpisodes = remember(ugcSeason.sections) { ugcSeason.sections.flatMap { it.episodes } }
     val collectionSubscriptionId = remember(ugcSeason) { resolveCollectionSubscriptionId(ugcSeason) }
@@ -114,7 +115,7 @@ fun CollectionSheet(
 
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        CupertinoIcons.Default.XmarkCircle,
+                        clearIcon,
                         contentDescription = "关闭",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

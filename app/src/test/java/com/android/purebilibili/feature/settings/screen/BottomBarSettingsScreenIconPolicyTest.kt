@@ -2,7 +2,6 @@ package com.android.purebilibili.feature.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -11,10 +10,11 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.android.purebilibili.core.theme.UiPreset
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.Bookmark
+import io.github.alexzhirkevich.cupertino.icons.outlined.Clock
 import io.github.alexzhirkevich.cupertino.icons.outlined.ChartBar
 import io.github.alexzhirkevich.cupertino.icons.outlined.Cpu
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
@@ -30,7 +30,7 @@ class BottomBarSettingsScreenIconPolicyTest {
     fun bottomBarIconPolicy_usesSemanticIconsForSecondaryTabs() {
         assertSameVectorAsset(CupertinoIcons.Outlined.RectangleStack, resolveBottomBarTabIcon("DYNAMIC", UiPreset.IOS))
         assertSameVectorAsset(CupertinoIcons.Outlined.Star, resolveBottomBarTabIcon("FAVORITE", UiPreset.IOS))
-        assertSameVectorAsset(CupertinoIcons.Outlined.Bookmark, resolveBottomBarTabIcon("WATCHLATER", UiPreset.IOS))
+        assertSameVectorAsset(CupertinoIcons.Outlined.Clock, resolveBottomBarTabIcon("WATCHLATER", UiPreset.IOS))
     }
 
     @Test
@@ -38,7 +38,7 @@ class BottomBarSettingsScreenIconPolicyTest {
         assertSameVectorAsset(Icons.Outlined.Home, resolveBottomBarTabIcon("HOME", UiPreset.MD3))
         assertSameVectorAsset(Icons.Outlined.DynamicFeed, resolveBottomBarTabIcon("DYNAMIC", UiPreset.MD3))
         assertSameVectorAsset(Icons.Outlined.StarBorder, resolveBottomBarTabIcon("FAVORITE", UiPreset.MD3))
-        assertSameVectorAsset(Icons.Outlined.BookmarkBorder, resolveBottomBarTabIcon("WATCHLATER", UiPreset.MD3))
+        assertSameVectorAsset(Icons.Outlined.WatchLater, resolveBottomBarTabIcon("WATCHLATER", UiPreset.MD3))
         assertSameVectorAsset(Icons.Outlined.LiveTv, resolveBottomBarTabIcon("LIVE", UiPreset.MD3))
         assertSameVectorAsset(Icons.Outlined.Settings, resolveBottomBarTabIcon("SETTINGS", UiPreset.MD3))
     }

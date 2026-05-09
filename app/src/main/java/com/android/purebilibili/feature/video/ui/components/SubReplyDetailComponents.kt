@@ -65,6 +65,8 @@ import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.core.ui.animation.MaybeDissolvableVideoCard
 import com.android.purebilibili.core.ui.common.rememberClipboardCopyHandler
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
 import com.android.purebilibili.feature.video.viewmodel.CommentUiState
 import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
@@ -878,6 +880,9 @@ private fun SubReplyDetailItem(
                         Spacer(modifier = Modifier.width(18.dp))
                     }
 
+                    val likeIcon = rememberAppLikeIcon()
+                    val likeFilledIcon = rememberAppLikeFilledIcon()
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -885,7 +890,7 @@ private fun SubReplyDetailItem(
                             .padding(4.dp)
                     ) {
                         Icon(
-                            imageVector = if (isLiked) CupertinoIcons.Filled.HandThumbsup else CupertinoIcons.Outlined.HandThumbsup,
+                            imageVector = if (isLiked) likeFilledIcon else likeIcon,
                             contentDescription = "Like",
                             tint = if (isLiked) appearance.primaryTextColor else appearance.actionTint,
                             modifier = Modifier.size(16.dp)

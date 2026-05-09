@@ -50,7 +50,10 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.AdaptiveScaffold
-import com.android.purebilibili.core.ui.AppIcons
+import com.android.purebilibili.core.ui.rememberAppBookmarkIcon
+import com.android.purebilibili.core.ui.rememberAppCoinIcon
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
@@ -453,24 +456,28 @@ fun AudioModeScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         // 3. 互动按钮行
+                        val likeIcon = rememberAppLikeIcon()
+                        val likeFilledIcon = rememberAppLikeFilledIcon()
+                        val coinIcon = rememberAppCoinIcon()
+                        val favoriteIcon = rememberAppBookmarkIcon()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             InteractionButton(
-                                icon = if (successState.isLiked) CupertinoIcons.Filled.HandThumbsup else CupertinoIcons.Default.HandThumbsup,
+                                icon = if (successState.isLiked) likeFilledIcon else likeIcon,
                                 label = FormatUtils.formatStat(info.stat.like.toLong()),
                                 isActive = successState.isLiked,
                                 onClick = { viewModel.toggleLike() }
                             )
                             InteractionButton(
-                                icon = AppIcons.BiliCoin,
+                                icon = coinIcon,
                                 label = FormatUtils.formatStat(info.stat.coin.toLong()),
                                 isActive = successState.coinCount > 0,
                                 onClick = { viewModel.openCoinDialog() }
                             )
                             InteractionButton(
-                                icon = if (successState.isFavorited) CupertinoIcons.Filled.Bookmark else CupertinoIcons.Default.Bookmark,
+                                icon = favoriteIcon,
                                 label = FormatUtils.formatStat(info.stat.favorite.toLong()),
                                 isActive = successState.isFavorited,
                                 onClick = { viewModel.toggleFavorite() }

@@ -80,6 +80,7 @@ import com.android.purebilibili.core.ui.rememberAppRestoreIcon
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
 import com.android.purebilibili.core.ui.components.UserLevelBadge
 import com.android.purebilibili.core.ui.rememberAppWarningIcon
+import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
 import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperLayout
 import com.android.purebilibili.core.ui.wallpaper.ProfileWallpaperTransform
 import com.android.purebilibili.core.ui.wallpaper.resolveProfileWallpaperLayout
@@ -132,8 +133,9 @@ internal fun resolveProfileTopBarScrimAlpha(
 ): Float {
     if (!isImmersive) return 0f
     // Immersive profile pages already have a wallpaper gradient behind the top bar.
-    // Adding another black scrim on scroll creates the visible dark band regression.
-    return 0f
+    // Keep this capped so controls stay readable without restoring the old dark band.
+    val progress = collapsedFraction.coerceIn(0f, 1f)
+    return 0.10f + (0.12f * progress)
 }
 
 internal fun resolveProfileLightStatusBars(
@@ -1603,6 +1605,7 @@ fun ServicesSection(
     val downloadIcon = rememberAppDownloadIcon()
     val historyIcon = rememberAppHistoryIcon()
     val bookmarkIcon = rememberAppBookmarkIcon()
+    val watchLaterIcon = rememberAppWatchLaterIcon()
     val inboxIcon = rememberAppInboxIcon()
     val accountIcon = rememberAppProfileAddIcon()
     if (isTablet) {
@@ -1611,7 +1614,7 @@ fun ServicesSection(
             Triple("离线缓存", downloadIcon, onDownloadClick),
             Triple("历史记录", historyIcon, onHistoryClick),
             Triple("我的收藏", bookmarkIcon, onFavoriteClick),
-            Triple("稍后再看", bookmarkIcon, onWatchLaterClick),
+            Triple("稍后再看", watchLaterIcon, onWatchLaterClick),
             Triple("消息中心", inboxIcon, onInboxClick),
             Triple("账号切换", accountIcon, onAccountManageClick)
         )
@@ -1697,7 +1700,7 @@ fun ServicesSection(
                 textColor = contentColor
             )
             IOSClickableItem(
-                icon = bookmarkIcon,
+                icon = watchLaterIcon,
                 title = "稍后再看",
                 onClick = onWatchLaterClick,
                 iconTint = iOSGreen,

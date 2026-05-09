@@ -63,6 +63,8 @@ import androidx.compose.ui.layout.ContentScale
 import com.android.purebilibili.core.ui.common.CopySelectionDialog
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import com.android.purebilibili.core.ui.common.rememberClipboardCopyHandler
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
 import androidx.compose.foundation.text.selection.SelectionContainer
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -1190,6 +1192,9 @@ fun ReplyItemView(
 
                     Spacer(modifier = Modifier.weight(1f))
 
+                    val likeIcon = rememberAppLikeIcon()
+                    val likeFilledIcon = rememberAppLikeFilledIcon()
+
                     // Like
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1198,7 +1203,7 @@ fun ReplyItemView(
                             .padding(4.dp)
                     ) {
                         Icon(
-                            imageVector = if (isLiked) CupertinoIcons.Filled.HandThumbsup else CupertinoIcons.Default.HandThumbsup,
+                            imageVector = if (isLiked) likeFilledIcon else likeIcon,
                             contentDescription = "Like",
                             tint = if (isLiked) appearance.accentColor else appearance.actionTint,
                             modifier = Modifier.size(16.dp)

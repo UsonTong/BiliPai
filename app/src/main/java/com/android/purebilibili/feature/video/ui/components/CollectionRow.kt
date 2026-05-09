@@ -18,11 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.ui.rememberAppShareIcon
 import com.android.purebilibili.data.model.response.UgcSeason
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.ChevronForward
 import io.github.alexzhirkevich.cupertino.icons.outlined.Folder
-import io.github.alexzhirkevich.cupertino.icons.outlined.SquareAndArrowUp
 
 /**
  *  视频合集展示行
@@ -37,6 +37,7 @@ fun CollectionRow(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val shareIcon = rememberAppShareIcon()
     val collectionSubscriptionId = remember(ugcSeason) { resolveCollectionSubscriptionId(ugcSeason) }
     val allEpisodes = remember(ugcSeason.sections) { ugcSeason.sections.flatMap { it.episodes } }
     val currentAid = remember(allEpisodes, currentBvid, currentCid) {
@@ -155,7 +156,7 @@ fun CollectionRow(
                 modifier = Modifier.size(28.dp)
             ) {
                 Icon(
-                    CupertinoIcons.Default.SquareAndArrowUp,
+                    shareIcon,
                     contentDescription = "分享合集",
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary

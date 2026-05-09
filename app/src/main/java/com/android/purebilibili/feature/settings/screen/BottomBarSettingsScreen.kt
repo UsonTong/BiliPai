@@ -59,11 +59,11 @@ import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.rememberAppBackIcon
-import com.android.purebilibili.core.ui.resolveAppBookmarkIcon
 import com.android.purebilibili.core.ui.resolveAppDynamicIcon
 import com.android.purebilibili.core.ui.resolveAppHomeIcon
 import com.android.purebilibili.core.ui.resolveAppSettingsIcon
 import com.android.purebilibili.core.ui.resolveAppTvIcon
+import com.android.purebilibili.core.ui.resolveAppWatchLaterIcon
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -101,7 +101,7 @@ internal fun resolveBottomBarTabIcon(
             "PROFILE" -> Icons.Outlined.Person
             "FAVORITE" -> Icons.Outlined.StarBorder
             "LIVE" -> resolveAppTvIcon(uiPreset)
-            "WATCHLATER" -> resolveAppBookmarkIcon(uiPreset)
+            "WATCHLATER" -> resolveAppWatchLaterIcon(uiPreset)
             "SETTINGS" -> resolveAppSettingsIcon(uiPreset)
             else -> resolveAppHomeIcon(uiPreset)
         }
@@ -113,7 +113,7 @@ internal fun resolveBottomBarTabIcon(
             "PROFILE" -> CupertinoIcons.Default.PersonCircle
             "FAVORITE" -> CupertinoIcons.Default.Star
             "LIVE" -> CupertinoIcons.Default.Video
-            "WATCHLATER" -> CupertinoIcons.Default.Bookmark
+            "WATCHLATER" -> resolveAppWatchLaterIcon(uiPreset)
             "SETTINGS" -> CupertinoIcons.Default.Gearshape
             else -> CupertinoIcons.Default.House
         }

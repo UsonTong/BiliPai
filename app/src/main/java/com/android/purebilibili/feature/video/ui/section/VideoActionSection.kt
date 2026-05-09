@@ -12,16 +12,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-//  Cupertino Icons - iOS SF Symbols 风格图标
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
-import io.github.alexzhirkevich.cupertino.icons.outlined.*
-import io.github.alexzhirkevich.cupertino.icons.filled.*
 import androidx.compose.animation.animateContentSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,10 +25,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.ui.rememberAppBookmarkIcon
+import com.android.purebilibili.core.ui.rememberAppCoinIcon
+import com.android.purebilibili.core.ui.rememberAppDownloadIcon
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
+import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.HapticType
 import com.android.purebilibili.core.util.rememberHapticFeedback
-import com.android.purebilibili.core.ui.AppIcons
 import com.android.purebilibili.data.model.response.ViewInfo
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -98,6 +94,12 @@ fun ActionButtonsRow(
 ) {
     val primaryActionColor = MaterialTheme.colorScheme.primary
     val haptic = rememberHapticFeedback()
+    val likeIcon = rememberAppLikeIcon()
+    val likedIcon = rememberAppLikeFilledIcon()
+    val coinIcon = rememberAppCoinIcon()
+    val bookmarkIcon = rememberAppBookmarkIcon()
+    val watchLaterIcon = rememberAppWatchLaterIcon()
+    val downloadIcon = rememberAppDownloadIcon()
     var isTriplePressing by remember { mutableStateOf(false) }
     var tripleCompleted by remember { mutableStateOf(false) }
     var tripleProgress by remember { mutableFloatStateOf(0f) }
@@ -145,7 +147,7 @@ fun ActionButtonsRow(
             contentAlignment = Alignment.Center
         ) {
             TripleProgressActionButton(
-                icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+                icon = if (isLiked) likedIcon else likeIcon,
                 text = FormatUtils.formatStat(info.stat.like.toLong()),
                 isActive = isLiked,
                 activeColor = primaryActionColor,
@@ -191,7 +193,7 @@ fun ActionButtonsRow(
             contentAlignment = Alignment.Center
         ) {
             TripleProgressActionButton(
-                icon = AppIcons.BiliCoin,
+                icon = coinIcon,
                 text = FormatUtils.formatStat(info.stat.coin.toLong()),
                 isActive = coinCount > 0,
                 activeColor = primaryActionColor,
@@ -208,7 +210,7 @@ fun ActionButtonsRow(
             contentAlignment = Alignment.Center
         ) {
             TripleProgressActionButton(
-                icon = if (isFavorited) Icons.Rounded.Star else Icons.Outlined.StarBorder,
+                icon = bookmarkIcon,
                 text = FormatUtils.formatStat(info.stat.favorite.toLong()),
                 isActive = isFavorited,
                 activeColor = primaryActionColor,
@@ -226,7 +228,7 @@ fun ActionButtonsRow(
             contentAlignment = Alignment.Center
         ) {
             BiliActionButton(
-                icon = if (isInWatchLater) CupertinoIcons.Filled.Clock else CupertinoIcons.Default.Clock,
+                icon = watchLaterIcon,
                 text = if (isInWatchLater) "已添加" else "稍后看",
                 isActive = isInWatchLater,
                 activeColor = Color(0xFF9C27B0),  // 紫色
@@ -249,7 +251,7 @@ fun ActionButtonsRow(
             contentAlignment = Alignment.Center
         ) {
             BiliActionButton(
-                icon = if (isDownloaded) CupertinoIcons.Default.Checkmark else CupertinoIcons.Default.ArrowDown,
+                icon = downloadIcon,
                 text = downloadText,
                 isActive = isDownloaded || isDownloading,
                 activeColor = if (isDownloaded) Color(0xFF4CAF50) else Color(0xFF2196F3),
@@ -385,6 +387,10 @@ private fun TripleLikeActionButton(
     modifier: Modifier = Modifier
 ) {
     val haptic = rememberHapticFeedback()
+    val likeIcon = rememberAppLikeIcon()
+    val likedIcon = rememberAppLikeFilledIcon()
+    val coinIcon = rememberAppCoinIcon()
+    val bookmarkIcon = rememberAppBookmarkIcon()
     
     // 长按进度状态
     var isLongPressing by remember { mutableStateOf(false) }
@@ -440,7 +446,7 @@ private fun TripleLikeActionButton(
     ) {
         // 点赞图标
         TripleProgressIcon(
-            icon = if (isLiked) CupertinoIcons.Filled.HandThumbsup else CupertinoIcons.Outlined.HandThumbsup,
+            icon = if (isLiked) likedIcon else likeIcon,
             text = likeCount,
             progress = longPressProgress,
             progressColor = MaterialTheme.colorScheme.primary,
@@ -454,7 +460,7 @@ private fun TripleLikeActionButton(
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
         ) {
             TripleProgressIcon(
-                icon = com.android.purebilibili.core.ui.AppIcons.BiliCoin,
+                icon = coinIcon,
                 text = coinCount,
                 progress = longPressProgress,
                 progressColor = MaterialTheme.colorScheme.primary,
@@ -469,7 +475,7 @@ private fun TripleLikeActionButton(
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
         ) {
             TripleProgressIcon(
-                icon = if (isFavorited) CupertinoIcons.Filled.Bookmark else CupertinoIcons.Default.Bookmark,
+                icon = bookmarkIcon,
                 text = favoriteCount,
                 progress = longPressProgress,
                 progressColor = MaterialTheme.colorScheme.primary,

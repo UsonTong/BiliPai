@@ -76,10 +76,12 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import io.github.alexzhirkevich.cupertino.icons.filled.HandThumbsup
-import io.github.alexzhirkevich.cupertino.icons.outlined.HandThumbsup
-import io.github.alexzhirkevich.cupertino.icons.outlined.HandThumbsup
-import com.android.purebilibili.core.ui.AppIcons
+import com.android.purebilibili.core.ui.rememberAppBookmarkIcon
+import com.android.purebilibili.core.ui.rememberAppCoinIcon
+import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
+import com.android.purebilibili.core.ui.rememberAppLikeIcon
+import com.android.purebilibili.core.ui.rememberAppMoreIcon
+import com.android.purebilibili.core.ui.rememberAppShareIcon
 import com.android.purebilibili.core.util.HapticType
 import com.android.purebilibili.core.util.rememberHapticFeedback
 import com.android.purebilibili.feature.video.usecase.applyPlaybackButtonUserAction
@@ -1835,6 +1837,8 @@ private fun PortraitTopBar(
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
+    val moreIcon = rememberAppMoreIcon()
+    val shareIcon = rememberAppShareIcon()
     val layoutPolicy = remember(configuration.screenWidthDp) {
         resolvePortraitTopBarLayoutPolicy(
             widthDp = configuration.screenWidthDp
@@ -1933,7 +1937,7 @@ private fun PortraitTopBar(
                 modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
             ) {
                 Icon(
-                    imageVector = CupertinoIcons.Default.Ellipsis,
+                    imageVector = moreIcon,
                     contentDescription = "设置",
                     tint = Color.White,
                     modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
@@ -1946,7 +1950,7 @@ private fun PortraitTopBar(
                 modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
             ) {
                 Icon(
-                    imageVector = CupertinoIcons.Default.SquareAndArrowUp,
+                    imageVector = shareIcon,
                     contentDescription = "分享",
                     tint = Color.White,
                     modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
@@ -2267,6 +2271,10 @@ private fun TripleLikeInteractionButton(
     modifier: Modifier = Modifier
 ) {
     val haptic = rememberHapticFeedback()
+    val favoriteIcon = rememberAppBookmarkIcon()
+    val coinIcon = rememberAppCoinIcon()
+    val likeIcon = rememberAppLikeIcon()
+    val likeFilledIcon = rememberAppLikeFilledIcon()
     
     var isLongPressing by remember { mutableStateOf(false) }
     var longPressProgress by remember { mutableFloatStateOf(0f) }
@@ -2306,7 +2314,7 @@ private fun TripleLikeInteractionButton(
     ) {
         // 点赞
         LandscapeProgressIcon(
-            icon = if (isLiked) CupertinoIcons.Filled.HandThumbsup else CupertinoIcons.Outlined.HandThumbsup,
+            icon = if (isLiked) likeFilledIcon else likeIcon,
             label = "点赞",
             progress = longPressProgress,
             progressColor = MaterialTheme.colorScheme.primary,
@@ -2322,7 +2330,7 @@ private fun TripleLikeInteractionButton(
         
         // 投币 (显示时带进度)
         LandscapeProgressIcon(
-            icon = AppIcons.BiliCoin,
+            icon = coinIcon,
             label = "投币",
             progress = longPressProgress,
             progressColor = Color(0xFFFFB300),
@@ -2334,7 +2342,7 @@ private fun TripleLikeInteractionButton(
         
         // 收藏 (显示时带进度)
         LandscapeProgressIcon(
-            icon = if (isFavorited) CupertinoIcons.Filled.Star else CupertinoIcons.Default.Star,
+            icon = favoriteIcon,
             label = "收藏",
             progress = longPressProgress,
             progressColor = Color(0xFFFFC107),
