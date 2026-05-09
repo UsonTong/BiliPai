@@ -124,6 +124,7 @@ import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RAT
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.util.Logger
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureBlockState
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
@@ -684,6 +685,15 @@ fun VideoPlayerSection(
     
     // 🔒 [新增] 屏幕锁定状态（全屏时防误触）
     var isScreenLocked by remember { mutableStateOf(false) }
+    DisposableEffect(isFullscreen, isScreenLocked) {
+        val shouldBlockAppScreenshot = isFullscreen && isScreenLocked
+        AppScreenshotGestureBlockState.fullscreenPlayerLocked = shouldBlockAppScreenshot
+        onDispose {
+            if (shouldBlockAppScreenshot) {
+                AppScreenshotGestureBlockState.fullscreenPlayerLocked = false
+            }
+        }
+    }
 
     var gestureMode by remember { mutableStateOf<VideoGestureMode>(VideoGestureMode.None) }
     var gestureIcon by remember { mutableStateOf<ImageVector?>(null) }

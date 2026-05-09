@@ -4,6 +4,8 @@ import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.FullscreenMode
 import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
 
 internal data class PlaybackSegmentOption<T>(
     val value: T,
@@ -111,5 +113,20 @@ internal fun resolvePortraitPlayerCollapseModeSegmentOptions(): List<PlaybackSeg
         PlaybackSegmentOption(PortraitPlayerCollapseMode.INTRO_ONLY, "竖屏"),
         PlaybackSegmentOption(PortraitPlayerCollapseMode.COMMENT_ONLY, "横屏"),
         PlaybackSegmentOption(PortraitPlayerCollapseMode.BOTH, "全部")
+    )
+}
+
+internal fun resolveAppScreenshotGestureModeSegmentOptions(): List<PlaybackSegmentOption<AppScreenshotGestureMode>> {
+    return listOf(
+        PlaybackSegmentOption(AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS, "右上角"),
+        PlaybackSegmentOption(AppScreenshotGestureMode.THREE_FINGER_SWIPE_DOWN, "三指下滑"),
+        PlaybackSegmentOption(AppScreenshotGestureMode.DISABLED, "关闭")
+    )
+}
+
+internal fun resolveAppScreenshotCaptureModeSegmentOptions(): List<PlaybackSegmentOption<AppScreenshotCaptureMode>> {
+    return listOf(
+        PlaybackSegmentOption(AppScreenshotCaptureMode.FULL_WINDOW, "全屏"),
+        PlaybackSegmentOption(AppScreenshotCaptureMode.SELECT_REGION, "手选")
     )
 }

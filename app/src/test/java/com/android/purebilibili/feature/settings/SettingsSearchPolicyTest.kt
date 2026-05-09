@@ -126,6 +126,20 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByAppScreenshotGesture_hitsPlaybackEntry() {
+        val results = resolveSettingsSearchResults("应用内干净截图")
+
+        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+    }
+
+    @Test
+    fun queryByRegionScreenshot_hitsPlaybackEntry() {
+        val results = resolveSettingsSearchResults("手选区域")
+
+        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+    }
+
+    @Test
     fun queryByAutoCheckUpdate_hitsCheckUpdateEntry() {
         val results = resolveSettingsSearchResults("自动检查更新")
 

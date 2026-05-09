@@ -48,6 +48,8 @@ import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.store.TokenManager
+import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
 import kotlinx.coroutines.launch
@@ -1041,6 +1043,14 @@ fun PlaybackSettingsContent(
                             .getShowFullscreenLockButton(context).collectAsState(initial = true)
                         val showFullscreenScreenshotButton by com.android.purebilibili.core.store.SettingsManager
                             .getShowFullscreenScreenshotButton(context).collectAsState(initial = true)
+                        val appGestureScreenshotEnabled by SettingsManager
+                            .getAppGestureScreenshotEnabled(context).collectAsState(initial = false)
+                        val appScreenshotGestureMode by SettingsManager
+                            .getAppScreenshotGestureMode(context)
+                            .collectAsState(initial = AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS)
+                        val appScreenshotCaptureMode by SettingsManager
+                            .getAppScreenshotCaptureMode(context)
+                            .collectAsState(initial = AppScreenshotCaptureMode.FULL_WINDOW)
                         val showFullscreenBatteryLevel by com.android.purebilibili.core.store.SettingsManager
                             .getShowFullscreenBatteryLevel(context).collectAsState(initial = true)
                         val showFullscreenTime by com.android.purebilibili.core.store.SettingsManager
@@ -1195,6 +1205,43 @@ fun PlaybackSettingsContent(
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Camera,
+                            title = "应用内干净截图",
+                            subtitle = "在 BiliPai 前台通过应用内手势导出当前窗口 PNG",
+                            checked = appGestureScreenshotEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    SettingsManager.setAppGestureScreenshotEnabled(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSPurple
+                        )
+                        IOSDivider()
+                        IOSSlidingSegmentedSetting(
+                            title = "截图触发方式：${appScreenshotGestureMode.label}",
+                            subtitle = appScreenshotGestureMode.description,
+                            options = resolveAppScreenshotGestureModeSegmentOptions(),
+                            selectedValue = appScreenshotGestureMode,
+                            onSelectionChange = { mode ->
+                                scope.launch {
+                                    SettingsManager.setAppScreenshotGestureMode(context, mode)
+                                }
+                            }
+                        )
+                        IOSDivider()
+                        IOSSlidingSegmentedSetting(
+                            title = "截图范围：${appScreenshotCaptureMode.label}",
+                            subtitle = appScreenshotCaptureMode.description,
+                            options = resolveAppScreenshotCaptureModeSegmentOptions(),
+                            selectedValue = appScreenshotCaptureMode,
+                            onSelectionChange = { mode ->
+                                scope.launch {
+                                    SettingsManager.setAppScreenshotCaptureMode(context, mode)
+                                }
+                            }
                         )
                         IOSDivider()
                         IOSSwitchItem(

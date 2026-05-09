@@ -6,6 +6,7 @@ import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
@@ -27,7 +28,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -116,6 +116,16 @@ import com.android.purebilibili.feature.settings.resolveUpdateReleaseNotesText
 import com.android.purebilibili.feature.settings.selectPreferredAppUpdateAsset
 import com.android.purebilibili.feature.settings.shouldRunAppEntryAutoCheck
 import com.android.purebilibili.feature.settings.resolveThemePreferenceState
+import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureBlockState
+import com.android.purebilibili.feature.screenshot.AppScreenshotResult
+import com.android.purebilibili.feature.screenshot.AppScreenshotRegionOverlay
+import com.android.purebilibili.feature.screenshot.appScreenshotGestureDetector
+import com.android.purebilibili.feature.screenshot.captureAndSaveAppScreenshot
+import com.android.purebilibili.feature.screenshot.captureCurrentAppWindow
+import com.android.purebilibili.feature.screenshot.cropAppScreenshotBitmap
+import com.android.purebilibili.feature.screenshot.saveAppScreenshotBitmapToGallery
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.player.buildPipPlaybackRemoteActions
 import com.android.purebilibili.feature.video.ui.overlay.FullscreenPlayerOverlay
@@ -662,6 +672,17 @@ internal fun shouldLogWarmResume(
     return hasCompletedInitialResume && !isChangingConfigurations
 }
 
+internal fun resolveMainActivitySystemInDarkTheme(uiMode: Int): Boolean {
+    return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+}
+
+internal fun shouldRefreshMainActivitySystemThemeSnapshot(
+    previousSystemInDark: Boolean,
+    currentSystemInDark: Boolean
+): Boolean {
+    return previousSystemInDark != currentSystemInDark
+}
+
 @OptIn(UnstableApi::class) // 解决 UnsafeOptInUsageError，因为 AppNavigation 内部使用了不稳定的 API
 open class MainActivity : AppCompatActivity() {
     
@@ -678,8 +699,22 @@ open class MainActivity : AppCompatActivity() {
     private var hasCompletedInitialResume = false
     private var splashFlyoutEnabledAtCreate = false
     private var splashExitCallbackTriggered = false
+    private var systemInDarkThemeSnapshot by mutableStateOf(false)
 
     var windowMetrics: WindowMetrics? by mutableStateOf(null)
+
+    private fun refreshSystemThemeSnapshot(reason: String) {
+        val currentSystemInDark = resolveMainActivitySystemInDarkTheme(
+            resources.configuration.uiMode
+        )
+        if (shouldRefreshMainActivitySystemThemeSnapshot(systemInDarkThemeSnapshot, currentSystemInDark)) {
+            Logger.d(
+                TAG,
+                "🌓 System theme refreshed on $reason: dark=$currentSystemInDark"
+            )
+            systemInDarkThemeSnapshot = currentSystemInDark
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyAppLanguage(SettingsManager.getAppLanguageSync(this))
@@ -710,6 +745,7 @@ open class MainActivity : AppCompatActivity() {
         
         // 初始化小窗管理器
         miniPlayerManager = MiniPlayerManager.getInstance(this)
+        refreshSystemThemeSnapshot(reason = "create")
         
         //  🚀 [启动优化] 保持 Splash 直到数据加载完成或超时
         var isDataReady = false
@@ -1020,9 +1056,18 @@ open class MainActivity : AppCompatActivity() {
                 initial = AppUiScalePreset.STANDARD
             )
             val appDpiOverridePercent by SettingsManager.getAppDpiOverridePercent(context).collectAsState(initial = 0)
+            val appGestureScreenshotEnabled by SettingsManager
+                .getAppGestureScreenshotEnabled(context)
+                .collectAsState(initial = false)
+            val appScreenshotGestureMode by SettingsManager
+                .getAppScreenshotGestureMode(context)
+                .collectAsState(initial = AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS)
+            val appScreenshotCaptureMode by SettingsManager
+                .getAppScreenshotCaptureMode(context)
+                .collectAsState(initial = AppScreenshotCaptureMode.FULL_WINDOW)
             
             // 4. 获取系统当前的深色状态
-            val systemInDark = isSystemInDarkTheme()
+            val systemInDark = systemInDarkThemeSnapshot
 
             // 5. 根据枚举值决定是否开启 DarkTheme
             val themePreferenceState = resolveThemePreferenceState(
@@ -1106,9 +1151,63 @@ open class MainActivity : AppCompatActivity() {
                         LocalWindowSizeClass provides windowSizeClass,
                         LocalDisplayMetricsSnapshot provides displayMetricsSnapshot
                     ) {
+                    val isPipRenderingActive =
+                        isInPipMode || miniPlayerManager.shouldKeepPlaybackForPipTransition()
+                    val isFullscreenPlayerLocked = AppScreenshotGestureBlockState.fullscreenPlayerLocked
+                    var isAppScreenshotBlockedBySplash by remember { mutableStateOf(false) }
+                    var isAppScreenshotSaving by remember { mutableStateOf(false) }
+                    var appScreenshotRegionBitmap by remember { mutableStateOf<Bitmap?>(null) }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .appScreenshotGestureDetector(
+                                enabled = appGestureScreenshotEnabled,
+                                mode = appScreenshotGestureMode,
+                                blocked = isPipRenderingActive ||
+                                    isFullscreenPlayerLocked ||
+                                    isAppScreenshotBlockedBySplash ||
+                                    isAppScreenshotSaving ||
+                                    appScreenshotRegionBitmap != null,
+                                onCaptureRequested = {
+                                    if (!isAppScreenshotSaving) {
+                                        scope.launch {
+                                            isAppScreenshotSaving = true
+                                            try {
+                                                if (appScreenshotCaptureMode == AppScreenshotCaptureMode.SELECT_REGION) {
+                                                    val bitmap = runCatching {
+                                                        captureCurrentAppWindow(this@MainActivity)
+                                                    }.getOrElse {
+                                                        Logger.e(TAG, "应用内截图预览捕获失败", it)
+                                                        null
+                                                    }
+                                                    if (bitmap == null) {
+                                                        Toast.makeText(context, "截图失败，请稍后重试", Toast.LENGTH_SHORT).show()
+                                                    } else {
+                                                        appScreenshotRegionBitmap?.recycle()
+                                                        appScreenshotRegionBitmap = bitmap
+                                                    }
+                                                } else {
+                                                    val result = runCatching {
+                                                        captureAndSaveAppScreenshot(this@MainActivity)
+                                                    }.getOrElse {
+                                                        Logger.e(TAG, "应用内截图失败", it)
+                                                        AppScreenshotResult.CaptureFailed
+                                                    }
+                                                    val message = when (result) {
+                                                        AppScreenshotResult.Success -> "截图已保存到相册（PNG）"
+                                                        AppScreenshotResult.Blocked -> "当前状态暂不支持截图"
+                                                        AppScreenshotResult.CaptureFailed,
+                                                        AppScreenshotResult.SaveFailed -> "截图失败，请稍后重试"
+                                                    }
+                                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                                }
+                                            } finally {
+                                                isAppScreenshotSaving = false
+                                            }
+                                        }
+                                    }
+                                }
+                            )
                             .background(MaterialTheme.colorScheme.background)  // 📐 [修复] 防止平板端返回后出现黑边
                     ) {
                     Surface(
@@ -1120,8 +1219,6 @@ open class MainActivity : AppCompatActivity() {
                         Box(
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            val isPipRenderingActive =
-                                isInPipMode || miniPlayerManager.shouldKeepPlaybackForPipTransition()
                             LaunchedEffect(isInPipMode, miniPlayerManager.isPlaying) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPipMode) {
                                     val pipParams = PictureInPictureParams.Builder()
@@ -1264,6 +1361,9 @@ open class MainActivity : AppCompatActivity() {
                         )
                     }
                     var showSplash by remember { mutableStateOf(showCustomSplashInitially) }
+                    LaunchedEffect(showSplash) {
+                        isAppScreenshotBlockedBySplash = showSplash
+                    }
                     // [Optimization] If we delayed enough in splash screen, we might want to skip custom splash or show it briefly?
                     // Logic: If user uses custom splash, system splash shows icon, then custom splash shows wallpaper.
                     // If we use setKeepOnScreenCondition, system splash (icon) stays longer.
@@ -1401,6 +1501,45 @@ open class MainActivity : AppCompatActivity() {
                                     .background(Color.Black.copy(alpha = splashTailScrimAlpha))
                             )
                         }
+                    }
+
+                    appScreenshotRegionBitmap?.let { bitmap ->
+                        AppScreenshotRegionOverlay(
+                            bitmap = bitmap,
+                            saving = isAppScreenshotSaving,
+                            onCancel = {
+                                bitmap.recycle()
+                                appScreenshotRegionBitmap = null
+                            },
+                            onSaveRegion = { cropRect ->
+                                if (!isAppScreenshotSaving) {
+                                    scope.launch {
+                                        isAppScreenshotSaving = true
+                                        try {
+                                            val croppedBitmap = cropAppScreenshotBitmap(bitmap, cropRect)
+                                            val saved = croppedBitmap?.let { cropped ->
+                                                try {
+                                                    saveAppScreenshotBitmapToGallery(context, cropped)
+                                                } finally {
+                                                    cropped.recycle()
+                                                }
+                                            } ?: false
+                                            Toast.makeText(
+                                                context,
+                                                if (saved) "截图已保存到相册（PNG）" else "截图失败，请稍后重试",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            if (saved) {
+                                                bitmap.recycle()
+                                                appScreenshotRegionBitmap = null
+                                            }
+                                        } finally {
+                                            isAppScreenshotSaving = false
+                                        }
+                                    }
+                                }
+                            }
+                        )
                     }
 
                     startupUpdateCheckResult?.let { info ->
@@ -1624,6 +1763,7 @@ open class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         windowMetrics = WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this)
+        refreshSystemThemeSnapshot(reason = "configuration")
     }
 
     override fun onStart() {
@@ -1638,6 +1778,7 @@ open class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshSystemThemeSnapshot(reason = "resume")
         miniPlayerManager.clearUserLeaveHint()
         miniPlayerManager.clearPlaybackRoutePipState()
         miniPlayerManager.clearPlaybackNotificationIfIdleOnResume()

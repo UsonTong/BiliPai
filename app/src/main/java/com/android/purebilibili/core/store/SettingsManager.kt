@@ -31,6 +31,8 @@ import com.android.purebilibili.feature.settings.DarkThemeStyle
 import com.android.purebilibili.feature.settings.resolveAppLanguagePreference
 import com.android.purebilibili.feature.settings.resolveDarkThemeStylePreference
 import com.android.purebilibili.feature.settings.resolveThemeModePreference
+import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
+import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
 import com.android.purebilibili.feature.video.ui.components.CollectionSortMode
 import com.android.purebilibili.feature.video.danmaku.DANMAKU_DEFAULT_OPACITY
 import com.android.purebilibili.feature.video.danmaku.normalizeDanmakuOpacity
@@ -4019,6 +4021,12 @@ object SettingsManager {
     private val KEY_AUTO_EXIT_FULLSCREEN = booleanPreferencesKey("auto_exit_fullscreen")
     private val KEY_SHOW_FULLSCREEN_LOCK_BUTTON = booleanPreferencesKey("show_fullscreen_lock_button")
     private val KEY_SHOW_FULLSCREEN_SCREENSHOT_BUTTON = booleanPreferencesKey("show_fullscreen_screenshot_button")
+    private val KEY_APP_GESTURE_SCREENSHOT_ENABLED =
+        booleanPreferencesKey("app_gesture_screenshot_enabled")
+    private val KEY_APP_SCREENSHOT_GESTURE_MODE =
+        intPreferencesKey("app_screenshot_gesture_mode")
+    private val KEY_APP_SCREENSHOT_CAPTURE_MODE =
+        intPreferencesKey("app_screenshot_capture_mode")
     private val KEY_SHOW_FULLSCREEN_BATTERY_LEVEL = booleanPreferencesKey("show_fullscreen_battery_level")
     private val KEY_SHOW_FULLSCREEN_TIME = booleanPreferencesKey("show_fullscreen_time")
     private val KEY_SHOW_FULLSCREEN_ACTION_ITEMS = booleanPreferencesKey("show_fullscreen_action_items")
@@ -4157,6 +4165,43 @@ object SettingsManager {
     suspend fun setShowFullscreenScreenshotButton(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_SHOW_FULLSCREEN_SCREENSHOT_BUTTON] = enabled
+        }
+    }
+
+    fun getAppGestureScreenshotEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_APP_GESTURE_SCREENSHOT_ENABLED] ?: false }
+
+    suspend fun setAppGestureScreenshotEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_GESTURE_SCREENSHOT_ENABLED] = enabled
+        }
+    }
+
+    fun getAppScreenshotGestureMode(context: Context): Flow<AppScreenshotGestureMode> =
+        context.settingsDataStore.data.map { preferences ->
+            AppScreenshotGestureMode.fromValue(
+                preferences[KEY_APP_SCREENSHOT_GESTURE_MODE]
+                    ?: AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS.value
+            )
+        }
+
+    suspend fun setAppScreenshotGestureMode(context: Context, mode: AppScreenshotGestureMode) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_SCREENSHOT_GESTURE_MODE] = mode.value
+        }
+    }
+
+    fun getAppScreenshotCaptureMode(context: Context): Flow<AppScreenshotCaptureMode> =
+        context.settingsDataStore.data.map { preferences ->
+            AppScreenshotCaptureMode.fromValue(
+                preferences[KEY_APP_SCREENSHOT_CAPTURE_MODE]
+                    ?: AppScreenshotCaptureMode.FULL_WINDOW.value
+            )
+        }
+
+    suspend fun setAppScreenshotCaptureMode(context: Context, mode: AppScreenshotCaptureMode) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_SCREENSHOT_CAPTURE_MODE] = mode.value
         }
     }
 
