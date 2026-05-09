@@ -785,7 +785,7 @@ fun AppNavigation(
                 }
             }
             Row(modifier = Modifier.fillMaxSize()) {
-                if (windowSizeClass.shouldUseSideNavigation) {
+                if (windowSizeClass.shouldUseSideNavigation && isBottomBarDestination) {
                     AnimatedVisibility(
                         visible = useSideNavigation,
                         enter = slideInHorizontally(
