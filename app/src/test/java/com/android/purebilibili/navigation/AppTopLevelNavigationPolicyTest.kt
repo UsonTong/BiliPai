@@ -102,6 +102,28 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun predictiveBackStillInterceptsRetainedBottomTabReturn() {
+        assertTrue(
+            shouldInterceptSystemBackForAppAction(
+                predictiveBackAnimationEnabled = true,
+                action = AppSystemBackAction.RETURN_TO_HOME_TAB
+            )
+        )
+        assertFalse(
+            shouldInterceptSystemBackForAppAction(
+                predictiveBackAnimationEnabled = true,
+                action = AppSystemBackAction.NAVIGATE_UP
+            )
+        )
+        assertTrue(
+            shouldInterceptSystemBackForAppAction(
+                predictiveBackAnimationEnabled = false,
+                action = AppSystemBackAction.NAVIGATE_UP
+            )
+        )
+    }
+
+    @Test
     fun systemBackOnHomeTab_usesBackStackOrFinishesActivity() {
         assertEquals(
             AppSystemBackAction.NAVIGATE_UP,
@@ -215,6 +237,11 @@ class AppTopLevelNavigationPolicyTest {
     fun bottomPagerPreload_waitsUntilContentReady() {
         assertEquals(0, resolveBottomPagerBeyondViewportPageCount(contentReady = false))
         assertEquals(1, resolveBottomPagerBeyondViewportPageCount(contentReady = true))
+    }
+
+    @Test
+    fun bottomPagerUserScroll_isDisabledToAvoidAccidentalTabSwitch() {
+        assertFalse(shouldEnableBottomPagerUserScroll())
     }
 
     @Test

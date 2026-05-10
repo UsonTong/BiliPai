@@ -226,7 +226,7 @@ fun TabletVideoLayout(
                 if (uiState is PlayerUiState.Success) {
                     val success = uiState as PlayerUiState.Success
                     val currentPageIndex = success.info.pages.indexOfFirst { it.cid == success.info.cid }.coerceAtLeast(0)
-                    val downloadProgress by viewModel.downloadProgress.collectAsState()
+                    val downloadProgress by viewModel.downloadProgress.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
                     
                     ScrollableVideoInfoSection(
                         info = success.info,
@@ -318,7 +318,7 @@ private fun TabletSecondaryContent(
         initialPage = selectedTab,
         pageCount = { 2 }
     )
-    val subReplyState by commentViewModel.subReplyState.collectAsState()
+    val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val tabs = listOf("评论 ${if (commentState.replyCount > 0) "(${commentState.replyCount})" else ""}", "相关推荐")
     
     // 评论图片预览状态

@@ -630,25 +630,46 @@ fun VideoPlayerOverlay(
     }
     val showFullscreenLockButton by SettingsManager
         .getShowFullscreenLockButton(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val showFullscreenScreenshotButton by SettingsManager
         .getShowFullscreenScreenshotButton(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val showFullscreenBatteryLevel by SettingsManager
         .getShowFullscreenBatteryLevel(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val showFullscreenTime by SettingsManager
         .getShowFullscreenTime(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val showFullscreenActionItems by SettingsManager
         .getShowFullscreenActionItems(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val showOnlineCount by SettingsManager
         .getShowOnlineCount(context)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val bottomProgressBehavior by SettingsManager
         .getBottomProgressBehavior(context)
-        .collectAsState(initial = BottomProgressBehavior.ALWAYS_SHOW)
+        .collectAsState(
+            initial = BottomProgressBehavior.ALWAYS_SHOW,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val displayedOnlineCount = remember(onlineCount, showOnlineCount) {
         resolveDisplayedOnlineCount(
             onlineCount = onlineCount,
@@ -684,7 +705,10 @@ fun VideoPlayerOverlay(
     }
     val playbackCompletionBehavior by SettingsManager
         .getPlaybackCompletionBehavior(context)
-        .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
+        .collectAsState(
+            initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
 
     DisposableEffect(player) {
         currentSpeed = player.playbackParameters.speed
@@ -1997,7 +2021,10 @@ fun LandscapeEndDrawer(
     }
     val cardAnimationEnabled by SettingsManager
         .getCardAnimationEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val overlayMotionTier = resolveEffectiveMotionTier(
         baseTier = deviceUiProfile.motionTier,
         animationEnabled = cardAnimationEnabled

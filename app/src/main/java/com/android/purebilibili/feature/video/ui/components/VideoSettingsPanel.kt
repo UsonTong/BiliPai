@@ -222,25 +222,46 @@ fun VideoSettingsPanel(
     val scope = rememberCoroutineScope()
     val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
         .getSeekForwardSeconds(context)
-        .collectAsState(initial = 10)
+        .collectAsState(
+            initial = 10,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
         .getSeekBackwardSeconds(context)
-        .collectAsState(initial = 10)
+        .collectAsState(
+            initial = 10,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val longPressSpeed by com.android.purebilibili.core.store.SettingsManager
         .getLongPressSpeed(context)
-        .collectAsState(initial = 2.0f)
+        .collectAsState(
+            initial = 2.0f,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val twoFingerVerticalSpeedEnabled by com.android.purebilibili.core.store.SettingsManager
         .getTwoFingerVerticalSpeedEnabled(context)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val twoFingerHorizontalSpeedEnabled by com.android.purebilibili.core.store.SettingsManager
         .getTwoFingerHorizontalSpeedEnabled(context)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val defaultPlaybackSpeed by com.android.purebilibili.core.store.SettingsManager
         .getDefaultPlaybackSpeed(context)
-        .collectAsState(initial = 1.0f)
+        .collectAsState(
+            initial = 1.0f,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val rememberLastPlaybackSpeed by com.android.purebilibili.core.store.SettingsManager
         .getRememberLastPlaybackSpeed(context)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val timerIcon = rememberAppTimerIcon()
     val refreshIcon = rememberAppRefreshIcon()
     val photoIcon = rememberAppPhotoIcon()
@@ -949,7 +970,10 @@ fun VideoSettingsPanel(
                 ) {
                     val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getDoubleTapSeekEnabled(context)
-                        .collectAsState(initial = true)
+                        .collectAsState(
+                            initial = true,
+                            context = kotlin.coroutines.EmptyCoroutineContext
+                        )
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

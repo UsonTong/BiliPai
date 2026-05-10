@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-10 · Synced to v8.1.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-10 · Synced to v8.1.2 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.1-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.1.2-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.1 · 2026-05-10)
+### Latest (v8.1.2 · 2026-05-10)
 
-- Added in-app clean screenshot capture with foreground gestures, full-window saves, and manual region capture.
-- Added a startup icon mask toggle; when disabled, launcher aliases switch to a no-icon splash theme so Android Splash no longer lingers on the app icon mask.
-- Tightened bottom-bar sliding visuals so icon fill, foreground color, scaling, and exported-layer translation follow indicator coverage continuously.
-- Continued Home/navigation, system theme refresh, and AI summary layout fixes to reduce transition detours, stale theme state, and long-text compression.
-- Continued issue #313 icon polish by moving more player, overlay, audio, comment, collection, and bottom-bar entry points onto the shared icon mapping.
-- Bumped the app to `8.1.1` with `versionCode` `184`.
+- Disabled user-driven swiping on the main bottom pager while preserving bottom-bar tap navigation, fixing accidental jumps from Home top areas to Dynamic.
+- Kept retained bottom tabs on the app-level back path so Back returns to Home before leaving the app.
+- Refined liquid segmented-control gestures: continuous dragging now starts only from the indicator, while label sweeps select by release position.
+- Improved Home top-tab pager tracking so indicator and viewport sync follow the target direction during swipes.
+- Standardized high-traffic Compose `collectAsState` calls with explicit non-null `context` arguments and added a source guard test.
+- Bumped the app to `8.1.2` with `versionCode` `185`.
 
 ---
 

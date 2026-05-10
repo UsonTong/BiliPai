@@ -57,7 +57,10 @@ fun CollectionSheet(
     }
     val sortMode by SettingsManager
         .getCollectionSortMode(context, collectionSubscriptionId)
-        .collectAsState(initial = CollectionSortMode.ASCENDING)
+        .collectAsState(
+            initial = CollectionSortMode.ASCENDING,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val sortedEpisodes = remember(allEpisodes, sortMode, currentBvid, currentCid) {
         sortCollectionEpisodes(
             episodes = allEpisodes,

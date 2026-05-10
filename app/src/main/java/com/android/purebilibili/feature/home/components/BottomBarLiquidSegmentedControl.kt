@@ -3,6 +3,9 @@ package com.android.purebilibili.feature.home.components
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -34,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -49,7 +54,7 @@ import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.ui.animation.horizontalDragGesture
+import com.android.purebilibili.core.ui.animation.DampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
@@ -133,6 +138,28 @@ internal fun resolveSegmentedControlIndicatorOffsetDp(
     return contentPaddingDp + (slotWidthDp * position)
 }
 
+internal fun shouldFollowSegmentedControlIndicatorDrag(
+    pointerX: Float,
+    indicatorPosition: Float,
+    itemWidthPx: Float
+): Boolean {
+    if (itemWidthPx <= 0f) return false
+    val startX = indicatorPosition * itemWidthPx
+    val endX = startX + itemWidthPx
+    return pointerX in startX..endX
+}
+
+internal fun resolveSegmentedControlSweepSelectionIndex(
+    pointerX: Float,
+    itemWidthPx: Float,
+    itemCount: Int
+): Int {
+    if (itemWidthPx <= 0f || itemCount <= 0) return 0
+    return (pointerX.coerceAtLeast(0f) / itemWidthPx)
+        .toInt()
+        .coerceIn(0, itemCount - 1)
+}
+
 internal fun shouldDrawSegmentedControlIndicatorBackdrop(
     liquidGlassEnabled: Boolean,
     motionProgress: Float,
@@ -187,6 +214,84 @@ internal fun resolveSegmentedControlMotionSpec(): BottomBarMotionSpec {
     )
 }
 
+private fun Modifier.segmentedControlSelectionGesture(
+    dragState: DampedDragAnimationState,
+    itemWidthPx: Float,
+    itemCount: Int,
+    currentSelectedIndex: Int,
+    onSweepSelected: (Int) -> Unit,
+    shouldFollowIndicatorFrom: (Float) -> Boolean
+): Modifier = this.pointerInput(
+    dragState,
+    itemWidthPx,
+    itemCount,
+    currentSelectedIndex,
+    shouldFollowIndicatorFrom
+) {
+    val velocityTracker = VelocityTracker()
+
+    awaitPointerEventScope {
+        while (true) {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val shouldFollowIndicator = shouldFollowIndicatorFrom(down.position.x)
+            var latestPositionX = down.position.x
+            velocityTracker.resetTracking()
+            velocityTracker.addPosition(down.uptimeMillis, down.position)
+
+            val dragStart = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                latestPositionX = change.position.x
+                change.consume()
+                if (shouldFollowIndicator) {
+                    dragState.onDrag(over, itemWidthPx)
+                }
+            }
+
+            if (dragStart != null) {
+                velocityTracker.addPosition(dragStart.uptimeMillis, dragStart.position)
+
+                var isCancelled = false
+                try {
+                    horizontalDrag(dragStart.id) { change ->
+                        change.consume()
+                        latestPositionX = change.position.x
+                        velocityTracker.addPosition(change.uptimeMillis, change.position)
+
+                        if (shouldFollowIndicator) {
+                            val dragAmount = change.position.x - change.previousPosition.x
+                            dragState.onDrag(dragAmount, itemWidthPx)
+                        }
+                    }
+                } catch (e: Exception) {
+                    isCancelled = true
+                }
+
+                if (shouldFollowIndicator) {
+                    val velocityX = if (isCancelled) {
+                        0f
+                    } else {
+                        velocityTracker.calculateVelocity().x
+                    }
+                    dragState.onDragEnd(
+                        velocityX = velocityX,
+                        itemWidthPx = itemWidthPx,
+                        settleIndex = null,
+                        notifyIndexChanged = true
+                    )
+                } else if (!isCancelled) {
+                    val releaseIndex = resolveSegmentedControlSweepSelectionIndex(
+                        pointerX = latestPositionX,
+                        itemWidthPx = itemWidthPx,
+                        itemCount = itemCount
+                    )
+                    if (releaseIndex != currentSelectedIndex) {
+                        onSweepSelected(releaseIndex)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun BottomBarLiquidSegmentedControl(
     items: List<String>,
@@ -214,7 +319,10 @@ fun BottomBarLiquidSegmentedControl(
     val uiPreset = LocalUiPreset.current
     val homeSettings by SettingsManager
         .getHomeSettings(context)
-        .collectAsState(initial = HomeSettings())
+        .collectAsState(
+            initial = HomeSettings(),
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val effectiveAndroidNativeLiquidGlassEnabled =
         forceLiquidChrome || homeSettings.androidNativeLiquidGlassEnabled
     val chromeStyle = resolveSegmentedControlChromeStyle(
@@ -314,12 +422,23 @@ fun BottomBarLiquidSegmentedControl(
         ).dp
         val itemWidthPx = with(density) { slotWidth.toPx() }.coerceAtLeast(1f)
         val dragModifier = if (enabled && itemCount > 1 && dragSelectionEnabled) {
-            Modifier.horizontalDragGesture(
+            Modifier.segmentedControlSelectionGesture(
                 dragState = dragState,
                 itemWidthPx = itemWidthPx,
-                consumePointerChanges = true,
-                settleIndex = null,
-                notifyIndexChanged = true
+                itemCount = itemCount,
+                currentSelectedIndex = safeSelectedIndex,
+                onSweepSelected = { index ->
+                    if (index != safeSelectedIndex) {
+                        onSelected(index)
+                    }
+                },
+                shouldFollowIndicatorFrom = { downX ->
+                    shouldFollowSegmentedControlIndicatorDrag(
+                        pointerX = downX,
+                        indicatorPosition = dragState.value,
+                        itemWidthPx = itemWidthPx
+                    )
+                }
             )
         } else {
             Modifier

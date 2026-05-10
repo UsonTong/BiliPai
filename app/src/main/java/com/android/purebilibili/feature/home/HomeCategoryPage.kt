@@ -141,7 +141,10 @@ internal fun HomeCategoryPageContent(
     val context = LocalContext.current
     val showOnlineCount by SettingsManager
         .getShowOnlineCount(context)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     TrackScrollJank(
         scrollableState = gridState,
         stateName = "home:feed:${category.name.lowercase()}"

@@ -49,6 +49,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlin.coroutines.EmptyCoroutineContext
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSOrange
@@ -167,9 +168,9 @@ fun ProfileScreen(
     onVideoClick: (String) -> Unit = {}  // [新增] 视频点击（三连彩蛋跳转用）
     // [注意] 移除了 globalHazeState - 双 hazeSource 模式与 Haze 库冲突
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
-    val activeAccountMid by viewModel.activeAccountMid.collectAsState()
+    val state by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val accounts by viewModel.accounts.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val activeAccountMid by viewModel.activeAccountMid.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val context = LocalContext.current
     val view = LocalView.current
     var showAccountSwitchDialog by remember { mutableStateOf(false) }
@@ -505,7 +506,10 @@ private fun BoxScope.ProfileBackground(
     val windowSizeClass = LocalWindowSizeClass.current
     val isTablet = windowSizeClass.shouldUseSplitLayout
     val isImmersive = user.topPhoto.isNotEmpty()
-    val bgTransform by viewModel.getProfileBgTransform(isTablet).collectAsState(ProfileWallpaperTransform())
+    val bgTransform by viewModel.getProfileBgTransform(isTablet).collectAsState(
+        initial = ProfileWallpaperTransform(),
+        context = EmptyCoroutineContext
+    )
     val profileWallpaperLayout = remember(windowSizeClass.widthSizeClass) {
         resolveProfileWallpaperLayout(windowSizeClass.widthSizeClass)
     }
@@ -839,7 +843,10 @@ fun MobileProfileContent(
     // [New] Adjustment Sheet State
     var showAdjustmentSheet by remember { mutableStateOf(false) }
     var tempSelectedUri by remember { mutableStateOf<Uri?>(null) }
-    val customBackgroundUri by viewModel.getProfileBgUri().collectAsState(null)
+    val customBackgroundUri by viewModel.getProfileBgUri().collectAsState(
+        initial = null,
+        context = EmptyCoroutineContext
+    )
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -1249,10 +1256,16 @@ private fun ProfileWallpaperActionCard(
     }
     val headerBlurEnabled by com.android.purebilibili.core.store.SettingsManager
         .getHeaderBlurEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val bottomBarBlurEnabled by com.android.purebilibili.core.store.SettingsManager
         .getBottomBarBlurEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val blurEnabled = remember(headerBlurEnabled, bottomBarBlurEnabled) {
         resolveProfileWallpaperActionBlurEnabled(
             headerBlurEnabled = headerBlurEnabled,

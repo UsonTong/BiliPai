@@ -22,7 +22,7 @@ fun PortraitCommentSheet(
     onReplyClick: (ReplyItem) -> Unit = {},
     onUserClick: (Long) -> Unit
 ) {
-    val subReplyState by commentViewModel.subReplyState.collectAsState()
+    val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val hostMainSheetVisible = resolvePortraitCommentHostMainSheetVisible(
         commentSheetVisible = visible,
         subReplyVisible = subReplyState.visible

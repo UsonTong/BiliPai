@@ -1,5 +1,25 @@
 # Changelog
 
+## v8.1.2 (2026-05-10)
+
+### 版本信息
+- 版本号从 `8.1.1` 升级到 `8.1.2`，`versionCode` 升级到 `185`。
+- 本次为“首页滑动误触修复 + 分段控件手势收敛 + Compose 状态采集稳定性”的维护更新。
+
+### 更新内容
+- **首页/底栏误触修复**：主底栏 `HorizontalPager` / `VerticalPager` 关闭用户手势滑动，保留底栏点击切页，避免在首页顶部搜索、分类等区域横滑时误跳到动态页。
+- **系统返回策略**：返回键策略改为先解析应用级动作，保留非首页 Tab 先回首页的拦截行为，避免预测返回开关打开后 retained bottom tab 直接退出或走错返回路径。
+- **分段控件手势**：共享液态分段控件区分“从指示器开始拖动”和“扫过标签后松手选择”，只有从当前指示器起手才连续跟随，普通横向扫动按释放位置选择目标，减少误拖和抖动。
+- **首页顶部 Tab 同步**：顶部分类指示器在 pager 目标页和 offset 符号不一致时按目标方向计算，视口跟随锚点改用目标分类，降低滑动时指示器反向或分类栏追踪错位。
+- **Compose 状态采集稳定性**：首页、收藏/历史通用列表、稍后再看、个人页、壁纸选择器、视频详情、竖屏播放器、平板布局、评论、合集、播放器覆盖层和音频模式等高频入口的 `collectAsState` 统一使用显式非空 `context`，减少不同 Compose 版本/重载解析下的编译和行为风险。
+- **回归覆盖**：新增 `ComposeCollectAsStateUsageTest` 扫描高频生产源码，锁定 `collectAsState` 命名参数和显式 `context`；补充分段控件拖拽、顶部 Tab pager 方向和主底栏 pager 手势策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.navigation.AppTopLevelNavigationPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.ComposeCollectAsStateUsageTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControlStructureTest' --tests 'com.android.purebilibili.feature.home.components.HomeInteractionMotionBudgetPolicyTest' --tests 'com.android.purebilibili.navigation.AppTopLevelNavigationPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.1.1 (2026-05-10)
 
 ### 版本信息

@@ -898,7 +898,10 @@ private fun VideoHeaderContent(
     val context = LocalContext.current
     val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
         .getVideoAiSummaryEntryEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -989,7 +992,10 @@ private fun VideoDetailDanmakuSettingsPanel(
     val danmakuScope = com.android.purebilibili.core.store.DanmakuSettingsScope.PORTRAIT
     val danmakuSettings by SettingsManager
         .getDanmakuSettings(context, danmakuScope)
-        .collectAsState(initial = DanmakuSettings())
+        .collectAsState(
+            initial = DanmakuSettings(),
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
 
     var localOpacity by remember(danmakuSettings.opacity) { mutableFloatStateOf(danmakuSettings.opacity) }
     var localFontScale by remember(danmakuSettings.fontScale) { mutableFloatStateOf(danmakuSettings.fontScale) }

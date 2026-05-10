@@ -206,7 +206,10 @@ fun PortraitVideoPager(
     val danmakuScope = com.android.purebilibili.core.store.DanmakuSettingsScope.PORTRAIT
     val danmakuSettings by SettingsManager
         .getDanmakuSettings(context, danmakuScope)
-        .collectAsState(initial = com.android.purebilibili.core.store.DanmakuSettings())
+        .collectAsState(
+            initial = com.android.purebilibili.core.store.DanmakuSettings(),
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val danmakuEnabled = danmakuSettings.enabled
     val danmakuOpacity = danmakuSettings.opacity
     val danmakuFontScale = danmakuSettings.fontScale
@@ -223,14 +226,23 @@ fun PortraitVideoPager(
     val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
     val autoPlayEnabled by SettingsManager
         .getAutoPlay(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val externalPlaylistAutoContinueEnabled by SettingsManager
         .getExternalPlaylistAutoContinue(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val playbackCompletionBehavior by SettingsManager
         .getPlaybackCompletionBehavior(context)
-        .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
-    val isExternalPlaylist by PlaylistManager.isExternalPlaylist.collectAsState()
+        .collectAsState(
+            initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
+    val isExternalPlaylist by PlaylistManager.isExternalPlaylist.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val recommendationShuffleSeed = remember(initialInfo.bvid, initialInfo.aid) {
         resolvePortraitRecommendationShuffleSeed(
             initialBvid = initialInfo.bvid,
@@ -996,8 +1008,14 @@ private fun VideoPageItem(
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val longPressSpeed by SettingsManager
         .getLongPressSpeed(context)
-        .collectAsState(initial = 2.0f)
-    val currentAudioQuality by viewModel.audioQualityPreference.collectAsState(initial = -1)
+        .collectAsState(
+            initial = 2.0f,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
+    val currentAudioQuality by viewModel.audioQualityPreference.collectAsState(
+        initial = -1,
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
     val bvid = if (item is ViewInfo) item.bvid else (item as RelatedVideo).bvid
     val aid = if (item is ViewInfo) item.aid else (item as RelatedVideo).aid
     
@@ -1777,13 +1795,13 @@ private fun VideoPageItem(
         }
 
         // Overlay & Interaction
-    val currentUiState = viewModel.uiState.collectAsState().value
+    val currentUiState = viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext).value
     val isCurrentModelVideo = (currentUiState as? PlayerUiState.Success)?.info?.bvid == bvid
     val currentSuccess = currentUiState as? PlayerUiState.Success
     var portraitInteractionOverride by remember(bvid) {
         mutableStateOf(PortraitVideoInteractionOverride())
     }
-    val favoriteSaveEvent by viewModel.favoriteFolderSaveEvent.collectAsState()
+    val favoriteSaveEvent by viewModel.favoriteFolderSaveEvent.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     var consumedFavoriteSaveEventVersion by remember(bvid) { mutableLongStateOf(0L) }
     val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
     val resolvedInteractionState = resolvePortraitVideoInteractionUiState(
@@ -2084,11 +2102,11 @@ private fun VideoPageItem(
         )
 
         if (isCurrentPage) {
-            val showCommentInput by viewModel.showCommentDialog.collectAsState()
-            val isSendingComment by viewModel.isSendingComment.collectAsState()
-            val replyingToComment by viewModel.replyingToComment.collectAsState()
-            val emotePackages by viewModel.emotePackages.collectAsState()
-            val commentState by commentViewModel.commentState.collectAsState()
+            val showCommentInput by viewModel.showCommentDialog.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+            val isSendingComment by viewModel.isSendingComment.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+            val replyingToComment by viewModel.replyingToComment.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+            val emotePackages by viewModel.emotePackages.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+            val commentState by commentViewModel.commentState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 
             LaunchedEffect(aid) {
                 viewModel.commentSentEvent.collect { reply ->

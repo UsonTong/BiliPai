@@ -677,7 +677,10 @@ fun VideoDetailScreen(
     val configuration = LocalConfiguration.current
     val homeUpBadgesVisible by com.android.purebilibili.core.store.SettingsManager
         .getHomeUpBadgesVisible(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val motionSpec = remember(transitionEnterDurationMillis) {
         resolveVideoDetailMotionSpec(transitionEnterDurationMillis)
     }
@@ -2316,7 +2319,10 @@ fun VideoDetailScreen(
                     //  读取竖屏播放器滚动缩小模式
                     val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
                         .getPortraitPlayerCollapseMode(context)
-                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
+                        .collectAsState(
+                            initial = PortraitPlayerCollapseMode.OFF,
+                            context = kotlin.coroutines.EmptyCoroutineContext
+                        )
                     val inlinePortraitScrollEnabled = shouldEnableInlinePortraitScrollTransform(
                         collapseMode = portraitPlayerCollapseMode,
                         selectedTabIndex = selectedVideoContentTabIndex,
@@ -2645,7 +2651,7 @@ fun VideoDetailScreen(
                                 val currentPageIndex = success.info.pages.indexOfFirst { it.cid == success.info.cid }.coerceAtLeast(0)
                                 
                                 //  下载进度
-                                val downloadProgress by viewModel.downloadProgress.collectAsState()
+                                val downloadProgress by viewModel.downloadProgress.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
                                 
                                 // 📱 [优化] 视频切换过渡动画
                                 AnimatedContent(
@@ -3141,9 +3147,9 @@ fun VideoDetailScreen(
         )
 
         //  [新增] 投币对话框
-        val coinDialogVisible by viewModel.coinDialogVisible.collectAsState()
+        val coinDialogVisible by viewModel.coinDialogVisible.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         val currentCoinCount = (uiState as? PlayerUiState.Success)?.coinCount ?: 0
-        val userBalance by viewModel.userCoinBalance.collectAsState()
+        val userBalance by viewModel.userCoinBalance.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         CoinDialog(
             visible = coinDialogVisible,
             currentCoinCount = currentCoinCount,
@@ -3152,11 +3158,11 @@ fun VideoDetailScreen(
             onConfirm = { count, alsoLike -> viewModel.doCoin(count, alsoLike) }
         )
 
-        val followGroupDialogVisible by viewModel.followGroupDialogVisible.collectAsState()
-        val followGroupTags by viewModel.followGroupTags.collectAsState()
-        val followGroupSelectedTagIds by viewModel.followGroupSelectedTagIds.collectAsState()
-        val isFollowGroupsLoading by viewModel.isFollowGroupsLoading.collectAsState()
-        val isSavingFollowGroups by viewModel.isSavingFollowGroups.collectAsState()
+        val followGroupDialogVisible by viewModel.followGroupDialogVisible.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val followGroupTags by viewModel.followGroupTags.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val followGroupSelectedTagIds by viewModel.followGroupSelectedTagIds.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val isFollowGroupsLoading by viewModel.isFollowGroupsLoading.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val isSavingFollowGroups by viewModel.isSavingFollowGroups.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         if (followGroupDialogVisible) {
             AlertDialog(
                 onDismissRequest = {
@@ -3261,7 +3267,7 @@ fun VideoDetailScreen(
         )
         
         // [新增] 播放完成选择对话框
-        val showPlaybackEndedDialog by viewModel.showPlaybackEndedDialog.collectAsState()
+        val showPlaybackEndedDialog by viewModel.showPlaybackEndedDialog.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         if (showPlaybackEndedDialog) {
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { viewModel.dismissPlaybackEndedDialog() }
@@ -3330,8 +3336,8 @@ fun VideoDetailScreen(
         }
         
         //  [新增] 弹幕发送对话框
-        val showDanmakuDialog by viewModel.showDanmakuDialog.collectAsState()
-        val isSendingDanmaku by viewModel.isSendingDanmaku.collectAsState()
+        val showDanmakuDialog by viewModel.showDanmakuDialog.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val isSendingDanmaku by viewModel.isSendingDanmaku.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         val fallbackPlayerBottomPx = with(LocalDensity.current) {
             val fallbackPlayerHeight = configuration.screenWidthDp.dp * 9f / 16f
             val fallbackStatusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -3359,13 +3365,22 @@ fun VideoDetailScreen(
         val danmakuSendPreferenceScope = rememberCoroutineScope()
         val rememberedDanmakuSendColor by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSendColor(context)
-            .collectAsState(initial = 16777215)
+            .collectAsState(
+                initial = 16777215,
+                context = kotlin.coroutines.EmptyCoroutineContext
+            )
         val rememberedDanmakuSendMode by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSendMode(context)
-            .collectAsState(initial = 1)
+            .collectAsState(
+                initial = 1,
+                context = kotlin.coroutines.EmptyCoroutineContext
+            )
         val rememberedDanmakuSendFontSize by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSendFontSize(context)
-            .collectAsState(initial = 25)
+            .collectAsState(
+                initial = 25,
+                context = kotlin.coroutines.EmptyCoroutineContext
+            )
         com.android.purebilibili.feature.video.ui.components.DanmakuSendDialog(
             visible = showDanmakuDialog,
             onDismiss = { viewModel.hideDanmakuSendDialog() },
@@ -3388,10 +3403,10 @@ fun VideoDetailScreen(
         )
         
         //  [新增] 评论输入对话框
-        val showCommentInput by viewModel.showCommentDialog.collectAsState()
-        val isSendingComment by viewModel.isSendingComment.collectAsState() // 暂时复用 ViewModel 状态?
-        val replyingToComment by viewModel.replyingToComment.collectAsState()
-        val emotePackages by viewModel.emotePackages.collectAsState() // [新增]
+        val showCommentInput by viewModel.showCommentDialog.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val isSendingComment by viewModel.isSendingComment.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext) // 暂时复用 ViewModel 状态?
+        val replyingToComment by viewModel.replyingToComment.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        val emotePackages by viewModel.emotePackages.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext) // [新增]
         
         com.android.purebilibili.feature.video.ui.components.CommentInputDialog(
             visible = showCommentInput,
@@ -3410,9 +3425,9 @@ fun VideoDetailScreen(
         )
         
         //  [新增] 下载选项菜单 & 画质选择
-        val showDownloadDialog by viewModel.showDownloadDialog.collectAsState()
+        val showDownloadDialog by viewModel.showDownloadDialog.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         val successForDownload = uiState as? PlayerUiState.Success
-        val downloadTasks by com.android.purebilibili.feature.download.DownloadManager.tasks.collectAsState()
+        val downloadTasks by com.android.purebilibili.feature.download.DownloadManager.tasks.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         
         // 本地状态控制画质选择弹窗
         var showQualitySelection by remember { mutableStateOf(false) }
@@ -3709,7 +3724,7 @@ fun VideoDetailScreen(
         }
         
         // 🎉 点赞成功爆裂动画
-        val likeBurstVisible by viewModel.likeBurstVisible.collectAsState()
+        val likeBurstVisible by viewModel.likeBurstVisible.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         if (likeBurstVisible) {
             Box(
                 modifier = Modifier
@@ -3728,7 +3743,7 @@ fun VideoDetailScreen(
         }
         
         // 🎉 三连成功庆祝动画
-        val tripleCelebrationVisible by viewModel.tripleCelebrationVisible.collectAsState()
+        val tripleCelebrationVisible by viewModel.tripleCelebrationVisible.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         val tripleCelebrationPlacement = resolveTripleCelebrationPlacement(
             isFullscreen = isFullscreenMode,
             isLandscape = isLandscape
@@ -3832,7 +3847,7 @@ fun VideoDetailScreen(
         }
 
         // 💬 弹幕上下文菜单
-        val danmakuMenuState by viewModel.danmakuMenuState.collectAsState()
+        val danmakuMenuState by viewModel.danmakuMenuState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         
         if (danmakuMenuState.visible) {
             DanmakuContextMenu(

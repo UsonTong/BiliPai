@@ -27,6 +27,7 @@ import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import androidx.compose.ui.draw.scale
 import android.widget.Toast
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 修复壁纸图片 URL (不添加缩放后缀，保持原图质量)
@@ -51,9 +52,9 @@ fun OfficialWallpaperSheet(
     viewModel: ProfileViewModel,
     onDismiss: () -> Unit
 ) {
-    val officialWallpapers by viewModel.officialWallpapers.collectAsState()
-    val isLoading by viewModel.officialWallpapersLoading.collectAsState()
-    val error by viewModel.officialWallpapersError.collectAsState()
+    val officialWallpapers by viewModel.officialWallpapers.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val isLoading by viewModel.officialWallpapersLoading.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val error by viewModel.officialWallpapersError.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 
     var selectedUrl by remember { mutableStateOf<String?>(null) }
     
@@ -201,8 +202,8 @@ fun OfficialWallpaperSheet(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // [New] Observe save state
-                    val saveState by viewModel.wallpaperSaveState.collectAsState()
-                    val splashSaveState by viewModel.splashSaveState.collectAsState()
+                    val saveState by viewModel.wallpaperSaveState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+                    val splashSaveState by viewModel.splashSaveState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
                     
                     val isSaving = saveState is WallpaperSaveState.Loading || splashSaveState is WallpaperSaveState.Loading
                     var saveToGallery by remember { mutableStateOf(false) }
@@ -238,8 +239,14 @@ fun OfficialWallpaperSheet(
                         // [New] Adjustment Sheet Logic
                         var showAdjustmentSheet by remember { mutableStateOf(false) }
                         var showSplashAdjustmentSheet by remember { mutableStateOf(false) }
-                        val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(0f)
-                        val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(0f)
+                        val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(
+                            initial = 0f,
+                            context = EmptyCoroutineContext
+                        )
+                        val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(
+                            initial = 0f,
+                            context = EmptyCoroutineContext
+                        )
                         
                         // [New] Adjustment Sheet
                          if (showAdjustmentSheet && selectedUrl != null) {

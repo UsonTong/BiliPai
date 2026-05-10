@@ -800,6 +800,16 @@ fun CategoryTabRow(
                     )
                 }
             }
+            val viewportAnchorIndex by remember(pagerState, selectedIndex, categories.size) {
+                derivedStateOf {
+                    resolveTopTabViewportAnchorIndex(
+                        selectedIndex = selectedIndex,
+                        pagerCurrentPage = pagerState?.currentPage,
+                        pagerTargetPage = pagerState?.targetPage,
+                        pagerIsScrolling = pagerState?.isScrollInProgress == true
+                    ).coerceIn(0, (categories.size - 1).coerceAtLeast(0))
+                }
+            }
             val indicatorVelocityPxPerSecond = 0f
             val isInteracting by remember(pagerState, effectiveLiquidGlassEnabled) {
                 derivedStateOf {
@@ -844,7 +854,8 @@ fun CategoryTabRow(
                 tabViewportWidthPx,
                 firstVisibleIndex,
                 lastVisibleIndex,
-                firstVisibleScrollOffsetPx
+                firstVisibleScrollOffsetPx,
+                viewportAnchorIndex
             ) {
                 if (!isViewportSyncEnabled) {
                     return@LaunchedEffect
@@ -863,9 +874,7 @@ fun CategoryTabRow(
                     maxScrollPx = maxScrollPx,
                     edgeBufferPx = with(localDensity) { 20.dp.toPx() }
                 )
-                val targetIndex = currentPosition
-                    .roundToInt()
-                    .coerceIn(0, categories.lastIndex)
+                val targetIndex = viewportAnchorIndex
                 val targetIsOutsideViewport = targetIndex < firstVisibleIndex ||
                     targetIndex > lastVisibleIndex
                 if (!shouldSyncHomeTopTabViewport(

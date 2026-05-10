@@ -166,17 +166,23 @@ fun CommonListScreen(
     globalHazeState: HazeState? = null, // [新增] 接收全局 HazeState
     scrollToTopChannel: Channel<Unit>? = null
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val primaryGridState = rememberLazyGridState()
     val subscribedFolderListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val favoritePagerGridStates = remember { mutableStateMapOf<Int, androidx.compose.foundation.lazy.grid.LazyGridState>() }
-    
+
     // 📱 响应式布局参数
     // Fix: 手机端(Compact)使用较小的最小宽度以保证2列显示 (360dp / 170dp = 2.1 -> 2列)
     // 平板端(Expanded)使用较大的最小宽度以避免卡片过小
     val context = LocalContext.current
-    val showOnlineCount by SettingsManager.getShowOnlineCount(context).collectAsState(initial = false)
-    val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(initial = com.android.purebilibili.core.store.HomeSettings())
+    val showOnlineCount by SettingsManager.getShowOnlineCount(context).collectAsState(
+        initial = false,
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
+    val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(
+        initial = com.android.purebilibili.core.store.HomeSettings(),
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
     val uiPreset = LocalUiPreset.current
     val androidNativeVariant = LocalAndroidNativeVariant.current
     val windowSizeClass = LocalWindowSizeClass.current
@@ -189,19 +195,19 @@ fun CommonListScreen(
         baseTier = deviceUiProfile.motionTier,
         animationEnabled = homeSettings.cardAnimationEnabled
     )
-    
+
     val minColWidth = rememberResponsiveValue(compact = 170.dp, medium = 170.dp, expanded = 240.dp)
     val adaptiveColumns = rememberAdaptiveGridColumns(minColumnWidth = minColWidth)
-    
+
     // [新增] 优先使用用户设置的列数
     val columns = if (homeSettings.gridColumnCount > 0) homeSettings.gridColumnCount else adaptiveColumns
     val spacing = rememberResponsiveSpacing()
-    
+
     //  [修复] 分页支持：收藏 + 历史记录
     val favoriteViewModel = viewModel as? FavoriteViewModel
     val historyViewModel = viewModel as? HistoryViewModel
     val seasonSeriesDetailViewModel = viewModel as? SeasonSeriesDetailViewModel
-    val historyDeleteSession by historyViewModel?.deleteSession?.collectAsState()
+    val historyDeleteSession by historyViewModel?.deleteSession?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<HistoryDeleteSession?>(null) }
     var isHistoryBatchMode by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var selectedHistoryKeys by rememberSaveable { androidx.compose.runtime.mutableStateOf(setOf<String>()) }
@@ -220,15 +226,15 @@ fun CommonListScreen(
             selectedHistoryKeys = emptySet()
         }
     }
-    
+
     // [Feature] BottomBar Scroll Hiding for CommonListScreen (History/Favorite)
     val setBottomBarVisible = com.android.purebilibili.core.ui.LocalSetBottomBarVisible.current
     val bottomBarChromeScrollOffset = LocalHomeScrollOffset.current
-    
+
     // 监听列表滚动实现底栏自动隐藏/显示
     var lastFirstVisibleItem by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var lastScrollOffset by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    
+
     // 离开页面时恢复底栏显示
     DisposableEffect(Unit) {
         onDispose {
@@ -236,22 +242,22 @@ fun CommonListScreen(
             bottomBarChromeScrollOffset.value = 0f
         }
     }
-    
+
     // [Fix] Import for launch
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // 📁 [新增] 收藏夹切换 Tab
-    val foldersState by favoriteViewModel?.folders?.collectAsState() 
+    val foldersState by favoriteViewModel?.folders?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyList()) }
-    val subscribedFoldersState by favoriteViewModel?.subscribedFolders?.collectAsState()
+    val subscribedFoldersState by favoriteViewModel?.subscribedFolders?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyList()) }
-    val subscribedFolderProgressState by favoriteViewModel?.subscribedFolderProgressState?.collectAsState()
+    val subscribedFolderProgressState by favoriteViewModel?.subscribedFolderProgressState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(FavoriteViewModel.SubscribedFolderProgressState())
         }
-    val selectedFolderIndex by favoriteViewModel?.selectedFolderIndex?.collectAsState() 
+    val selectedFolderIndex by favoriteViewModel?.selectedFolderIndex?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val favoriteDetailProgressState by seasonSeriesDetailViewModel?.favoriteDetailProgressState?.collectAsState()
+    val favoriteDetailProgressState by seasonSeriesDetailViewModel?.favoriteDetailProgressState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(SeasonSeriesDetailViewModel.FavoriteDetailProgressState())
         }
@@ -277,11 +283,11 @@ fun CommonListScreen(
     )
     val selectedFolderUiState by favoriteViewModel
         ?.getFolderUiState(selectedFolderIndex)
-        ?.collectAsState()
+        ?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(ListUiState()) }
     val singleFolderUiState by favoriteViewModel
         ?.getFolderUiState(0)
-        ?.collectAsState()
+        ?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(ListUiState()) }
     val activeFavoriteItems = resolveFavoritePlayAllItems(
         mode = favoriteContentMode,
@@ -425,16 +431,16 @@ fun CommonListScreen(
             scrollCommonListToTop()
         }
     }
-    
+
     // [Fix] 协程作用域 (用于 UI 事件触发的滚动)
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    
+
     // [Fix] 这里的模糊冲突核心：顶栏需要自己的独立 HazeState
     val localHazeState = com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState()
     val commonListChromeBackdrop = rememberLayerBackdrop()
-    
+
     // 🔍 搜索状态
     var searchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
     val favoriteBrowseOptions = remember {
@@ -447,7 +453,7 @@ fun CommonListScreen(
     // [New] 动态顶栏高度测量 (最准确的方式)
     var headerHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val headerHeightDp = with(LocalDensity.current) { headerHeightPx.toDp() }
-    
+
     // [Feature] Header Blur Optimization
     val isHeaderBlurEnabled = remember(homeSettings, uiPreset) {
         resolveCommonListHeaderBlurEnabled(
@@ -487,7 +493,7 @@ fun CommonListScreen(
         defaultSurfaceColor = MaterialTheme.colorScheme.surface,
         globalWallpaperVisible = globalWallpaperVisible
     )
-    
+
     // 决定顶栏背景 (使用私有的 localHazeState)
     val topBarBackgroundModifier = if (shouldUseHeaderLocalBlur) {
         Modifier
@@ -601,7 +607,7 @@ fun CommonListScreen(
                             beyondViewportPageCount = 1 // 预加载
                         ) { page ->
                             // 获取当前页面的状态
-                            val folderUiState by favoriteVm.getFolderUiState(page).collectAsState()
+                            val folderUiState by favoriteVm.getFolderUiState(page).collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 
                             // 确保数据加载
                             LaunchedEffect(page) {
@@ -641,7 +647,7 @@ fun CommonListScreen(
 
                     FavoriteContentMode.SINGLE_FOLDER -> {
                         val favoriteVm = requireNotNull(favoriteViewModel)
-                        val folderUiState by favoriteVm.getFolderUiState(0).collectAsState()
+                        val folderUiState by favoriteVm.getFolderUiState(0).collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
                         LaunchedEffect(favoriteVm) {
                             favoriteVm.loadFolder(0)
                         }
@@ -693,7 +699,7 @@ fun CommonListScreen(
                             }
                         },
                         onCollectionClick = onCollectionClick,
-                        onLoadMore = { 
+                        onLoadMore = {
                             when (loadMoreOwner) {
                                 CommonListLoadMoreOwner.FAVORITE -> favoriteViewModel?.loadMore()
                                 CommonListLoadMoreOwner.HISTORY -> historyViewModel?.loadMore()
@@ -701,8 +707,8 @@ fun CommonListScreen(
                                 CommonListLoadMoreOwner.NONE -> Unit
                             }
                         },
-                        onUnfavorite = if (favoriteViewModel != null) { 
-                            { favoriteViewModel.removeVideo(it) } 
+                        onUnfavorite = if (favoriteViewModel != null) {
+                            { favoriteViewModel.removeVideo(it) }
                         } else null,
                         historyDeleteSession = historyDeleteSession,
                         historyBatchMode = historyViewModel != null && isHistoryBatchMode,
@@ -849,7 +855,7 @@ fun CommonListScreen(
                         ),
                         scrollBehavior = scrollBehavior
                     )
-                    
+
                     // 🔍 搜索栏
                     Box(
                         modifier = Modifier
@@ -888,7 +894,7 @@ fun CommonListScreen(
                             }
                         )
                     }
-                    
+
                     // 📁 [新增] 收藏夹 Tab 栏（仅显示多个收藏夹时）
                     if (!isSubscribedBrowse && foldersState.size > 1) {
                         val favoriteVm = requireNotNull(favoriteViewModel)
@@ -1118,7 +1124,7 @@ private fun CommonListContent(
         val filteredItems = androidx.compose.runtime.remember(items, searchQuery) {
             if (searchQuery.isBlank()) items
             else {
-                items.filter { 
+                items.filter {
                     PinyinUtils.matches(it.title, searchQuery) ||
                     PinyinUtils.matches(it.owner.name, searchQuery)
                 }
@@ -1150,7 +1156,7 @@ private fun CommonListContent(
                     start = spacing,
                     end = spacing,
                     top = spacing,
-                    bottom = padding.calculateBottomPadding() + spacing + 80.dp 
+                    bottom = padding.calculateBottomPadding() + spacing + 80.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(spacing),
                 verticalArrangement = Arrangement.spacedBy(spacing),

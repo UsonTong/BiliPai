@@ -184,7 +184,10 @@ fun FullscreenPlayerOverlay(
     //  视频比例状态
     val fixedFullscreenAspectRatio by SettingsManager
         .getFullscreenAspectRatio(context)
-        .collectAsState(initial = FullscreenAspectRatio.FIT)
+        .collectAsState(
+            initial = FullscreenAspectRatio.FIT,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     var aspectRatio by remember { mutableStateOf(fixedFullscreenAspectRatio.toVideoAspectRatio()) }
     var showRatioMenu by remember { mutableStateOf(false) }
     
@@ -252,13 +255,22 @@ fun FullscreenPlayerOverlay(
     }
     val doubleTapSeekEnabled by SettingsManager
         .getDoubleTapSeekEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val seekForwardSeconds by SettingsManager
         .getSeekForwardSeconds(context)
-        .collectAsState(initial = 10)
+        .collectAsState(
+            initial = 10,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val seekBackwardSeconds by SettingsManager
         .getSeekBackwardSeconds(context)
-        .collectAsState(initial = 10)
+        .collectAsState(
+            initial = 10,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     
     // 亮度状态
     var currentBrightness by remember { 
@@ -646,7 +658,10 @@ fun FullscreenPlayerOverlay(
         val danmakuScope = com.android.purebilibili.core.store.DanmakuSettingsScope.LANDSCAPE
         val danmakuSettings by SettingsManager
             .getDanmakuSettings(context, danmakuScope)
-            .collectAsState(initial = DanmakuSettings())
+            .collectAsState(
+                initial = DanmakuSettings(),
+                context = kotlin.coroutines.EmptyCoroutineContext
+            )
         val danmakuEnabled = danmakuSettings.enabled
         val danmakuOpacity = danmakuSettings.opacity
         val danmakuFontScale = danmakuSettings.fontScale

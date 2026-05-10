@@ -166,8 +166,8 @@ fun HomeScreen(
     globalHazeState: dev.chrisbanes.haze.HazeState? = null,  //  [新增] 全局底栏模糊状态
     predictiveStableBackRouteMotionEnabled: Boolean = false
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val state by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val isRefreshing by viewModel.isRefreshing.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 // val pullRefreshState = rememberPullToRefreshState() // [Removed] Moved inside HorizontalPager
     val context = LocalContext.current
     val overlayMotionSpec = remember { resolveHomeOverlayMotionSpec() }
@@ -264,7 +264,8 @@ fun HomeScreen(
         initial = HomeTopTabSettings(
             orderIds = defaultTopTabIds,
             visibleIds = defaultTopTabIds.toSet()
-        )
+        ),
+        context = kotlin.coroutines.EmptyCoroutineContext
     )
     // [Refactor] Hoist PagerState to be available for both Content and Header
     // 确保 pagerState 在所有作用域均可见，以便传给 iOSHomeHeader
@@ -386,7 +387,7 @@ fun HomeScreen(
 
     //  [新增] JSON 插件过滤提示
     val snackbarHostState = remember { SnackbarHostState() }
-    val lastFilteredCount by com.android.purebilibili.core.plugin.json.JsonPluginManager.lastFilteredCount.collectAsState()
+    val lastFilteredCount by com.android.purebilibili.core.plugin.json.JsonPluginManager.lastFilteredCount.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     
     //  当有视频被过滤时显示提示
     LaunchedEffect(lastFilteredCount) {
@@ -416,7 +417,8 @@ fun HomeScreen(
 
     //  [性能优化] 合并首页设置为单一 Flow，减少 6 个 collectAsState → 1 个
     val homeSettings by SettingsManager.getHomeSettings(context).collectAsState(
-        initial = com.android.purebilibili.core.store.HomeSettings()
+        initial = com.android.purebilibili.core.store.HomeSettings(),
+        context = kotlin.coroutines.EmptyCoroutineContext
     )
     val uiPreset = LocalUiPreset.current
     val pullRefreshMotionStyle = remember(uiPreset) {
@@ -617,8 +619,14 @@ fun HomeScreen(
     val isLiquidGlassEnabled = homePerformanceConfig.isAnyLiquidGlassEnabled
     val isDataSaverActive = homePerformanceConfig.isDataSaverActive
     val preloadAheadCount = homePerformanceConfig.preloadAheadCount
-    val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(initial = "")
-    val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(initial = "")
+    val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsState(
+        initial = "",
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
+    val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context).collectAsState(
+        initial = "",
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
     val homeWallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
         resolveHomeWallpaperUri(
             homeWallpaperUri = configuredHomeWallpaperUri,
@@ -627,7 +635,8 @@ fun HomeScreen(
     }
 
     val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsState(
-        initial = AppNavigationSettings()
+        initial = AppNavigationSettings(),
+        context = kotlin.coroutines.EmptyCoroutineContext
     )
     // 将字符串 ID 转换为 BottomNavItem 枚举
     val visibleBottomBarItems = remember(appNavigationSettings.orderedVisibleTabIds) {

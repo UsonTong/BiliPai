@@ -49,7 +49,10 @@ fun CollectionRow(
     }
     val sortMode by SettingsManager
         .getCollectionSortMode(context, collectionSubscriptionId)
-        .collectAsState(initial = CollectionSortMode.ASCENDING)
+        .collectAsState(
+            initial = CollectionSortMode.ASCENDING,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
 
     // 计算当前视频在合集中的位置
     val currentIndex = resolveCurrentUgcEpisodeIndex(

@@ -79,6 +79,12 @@ internal fun resolveTopTabPagerPosition(
     if (!pagerIsScrolling) return (pagerCurrentPage ?: selectedIndex).toFloat()
     val currentPage = pagerCurrentPage ?: return selectedIndex.toFloat()
     val offsetFraction = pagerCurrentPageOffsetFraction ?: 0f
+    val targetPage = pagerTargetPage
+    if (targetPage != null && targetPage != currentPage) {
+        val direction = if (targetPage > currentPage) 1f else -1f
+        val progress = kotlin.math.abs(offsetFraction).coerceIn(0f, 1f)
+        return currentPage + direction * progress
+    }
     // currentPageOffsetFraction changes immediately during a drag. Compose reports
     // forward page movement as a positive offset, so adding it keeps the capsule
     // attached to the finger instead of mirroring the swipe direction.

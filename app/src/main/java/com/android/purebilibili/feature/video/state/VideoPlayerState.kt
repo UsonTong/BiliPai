@@ -883,7 +883,10 @@ fun rememberVideoPlayerState(
     }
     val playbackCompletionBehavior by SettingsManager
         .getPlaybackCompletionBehavior(context)
-        .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
+        .collectAsState(
+            initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     LaunchedEffect(player, playbackCompletionBehavior) {
         player.repeatMode = resolvePlaybackCompletionRepeatMode(playbackCompletionBehavior)
     }
@@ -908,7 +911,7 @@ fun rememberVideoPlayerState(
         VideoPlayerState(context, player, scope)
     }
 
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     LaunchedEffect(uiState) {
         if (uiState is PlayerUiState.Success) {
             val info = (uiState as PlayerUiState.Success).info

@@ -654,11 +654,24 @@ fun AppNavigation(
             shouldUseLinkedSettingsBackMotion(backRouteMotionMode)
         }
         val hasPreviousBackStackEntry = navController.previousBackStackEntry != null
-        val shouldInterceptSystemBack = remember(
-            predictiveBackAnimationEnabled
+        val systemBackAction = remember(
+            currentRoute,
+            currentBottomNavItem,
+            hasPreviousBackStackEntry
         ) {
-            shouldInterceptSystemBackForClassicMotion(
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
+            resolveAppSystemBackAction(
+                currentRoute = currentRoute,
+                currentBottomItem = currentBottomNavItem,
+                hasPreviousBackStackEntry = hasPreviousBackStackEntry
+            )
+        }
+        val shouldInterceptSystemBack = remember(
+            predictiveBackAnimationEnabled,
+            systemBackAction
+        ) {
+            shouldInterceptSystemBackForAppAction(
+                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
+                action = systemBackAction
             )
         }
         val activeBottomTabRoute = if (currentRoute?.substringBefore("?") == ScreenRoutes.Home.route) {
@@ -772,13 +785,7 @@ fun AppNavigation(
             com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
         ) {
             BackHandler(enabled = shouldInterceptSystemBack) {
-                when (
-                    resolveAppSystemBackAction(
-                        currentRoute = currentRoute,
-                        currentBottomItem = currentBottomNavItem,
-                        hasPreviousBackStackEntry = hasPreviousBackStackEntry
-                    )
-                ) {
+                when (systemBackAction) {
                     AppSystemBackAction.RETURN_TO_HOME_TAB -> navigateToBottomPagerItem(BottomNavItem.HOME)
                     AppSystemBackAction.NAVIGATE_UP -> navController.navigateUp()
                     AppSystemBackAction.FINISH_ACTIVITY -> context.findActivity()?.finish()
@@ -1041,6 +1048,7 @@ fun AppNavigation(
                             beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
                                 contentReady = bottomPagerContentReady
                             ),
+                            userScrollEnabled = shouldEnableBottomPagerUserScroll(),
                             pageContent = pageContent,
                         )
                     } else {
@@ -1050,6 +1058,7 @@ fun AppNavigation(
                             beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
                                 contentReady = bottomPagerContentReady
                             ),
+                            userScrollEnabled = shouldEnableBottomPagerUserScroll(),
                             pageContent = pageContent,
                         )
                     }

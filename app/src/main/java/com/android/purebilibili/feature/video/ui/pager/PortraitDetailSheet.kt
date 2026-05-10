@@ -162,7 +162,10 @@ fun PortraitDetailSheet(
                             // 标题
                             val context = LocalContext.current
                             val blockedUpRepository = remember { com.android.purebilibili.data.repository.BlockedUpRepository(context) }
-                            val isBlocked by blockedUpRepository.isBlocked(info.owner.mid).collectAsState(initial = false)
+                            val isBlocked by blockedUpRepository.isBlocked(info.owner.mid).collectAsState(
+                                initial = false,
+                                context = kotlin.coroutines.EmptyCoroutineContext
+                            )
                             val scope = rememberCoroutineScope()
                             var showBlockConfirmDialog by remember { mutableStateOf(false) }
                             

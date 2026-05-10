@@ -62,6 +62,16 @@ internal fun resolveAppSystemBackAction(
     }
 }
 
+internal fun shouldInterceptSystemBackForAppAction(
+    predictiveBackAnimationEnabled: Boolean,
+    action: AppSystemBackAction
+): Boolean {
+    return action == AppSystemBackAction.RETURN_TO_HOME_TAB ||
+        shouldInterceptSystemBackForClassicMotion(
+            predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
+        )
+}
+
 internal fun resolveBottomPagerPageForRoute(
     route: String?,
     visibleItems: List<BottomNavItem>
@@ -89,6 +99,8 @@ internal fun resolveBottomPagerNavigationDurationMillis(
 internal fun resolveBottomPagerBeyondViewportPageCount(contentReady: Boolean): Int {
     return if (contentReady) 1 else 0
 }
+
+internal fun shouldEnableBottomPagerUserScroll(): Boolean = false
 
 internal fun shouldComposeBottomPagerPage(
     page: Int,

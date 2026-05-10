@@ -71,6 +71,59 @@ class BottomBarLiquidSegmentedControlStructureTest {
     }
 
     @Test
+    fun `segmented control only follows continuous drag when touch starts on indicator`() {
+        assertTrue(
+            shouldFollowSegmentedControlIndicatorDrag(
+                pointerX = 132f,
+                indicatorPosition = 2f,
+                itemWidthPx = 64f
+            )
+        )
+        assertFalse(
+            shouldFollowSegmentedControlIndicatorDrag(
+                pointerX = 80f,
+                indicatorPosition = 2f,
+                itemWidthPx = 64f
+            )
+        )
+        assertFalse(
+            shouldFollowSegmentedControlIndicatorDrag(
+                pointerX = 196.1f,
+                indicatorPosition = 2f,
+                itemWidthPx = 64f
+            )
+        )
+    }
+
+    @Test
+    fun `segmented control sweep release resolves label without requiring indicator follow`() {
+        assertEquals(
+            0,
+            resolveSegmentedControlSweepSelectionIndex(
+                pointerX = -12f,
+                itemWidthPx = 64f,
+                itemCount = 4
+            )
+        )
+        assertEquals(
+            1,
+            resolveSegmentedControlSweepSelectionIndex(
+                pointerX = 82f,
+                itemWidthPx = 64f,
+                itemCount = 4
+            )
+        )
+        assertEquals(
+            3,
+            resolveSegmentedControlSweepSelectionIndex(
+                pointerX = 260f,
+                itemWidthPx = 64f,
+                itemCount = 4
+            )
+        )
+    }
+
+    @Test
     fun `segmented indicator only samples hidden tab backdrop while sliding without external backdrop`() {
         assertFalse(
             shouldDrawSegmentedControlIndicatorBackdrop(
@@ -183,7 +236,12 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("onIndicatorPositionChanged?.invoke(safeSelectedIndex.toFloat())"))
         assertTrue(source.contains(".widthIn(min = 28.dp, max = 56.dp)"))
         assertTrue(source.contains("if (enabled && itemCount > 1 && dragSelectionEnabled)"))
-        assertTrue(source.contains("consumePointerChanges = true"))
+        assertTrue(source.contains("Modifier.segmentedControlSelectionGesture("))
+        assertTrue(source.contains("change.consume()"))
+        assertTrue(source.contains("shouldFollowIndicatorFrom = { downX ->"))
+        assertTrue(source.contains("shouldFollowSegmentedControlIndicatorDrag("))
+        assertTrue(source.contains("onSweepSelected = { index ->"))
+        assertTrue(source.contains("resolveSegmentedControlSweepSelectionIndex("))
         assertTrue(source.contains("notifyIndexChanged = true"))
         assertTrue(source.contains("settleIndex = null"))
         assertTrue(source.contains("onPressChanged = dragState::setPressed"))

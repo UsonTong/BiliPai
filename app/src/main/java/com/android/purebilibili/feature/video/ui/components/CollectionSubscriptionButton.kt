@@ -33,7 +33,10 @@ internal fun CollectionSubscriptionButton(
     val scope = rememberCoroutineScope()
     val cachedIsSubscribed by SettingsManager
         .isCollectionSubscribed(context, collectionId)
-        .collectAsState(initial = false)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     var remoteIsSubscribed by remember(collectionId, currentBvid, currentAid) {
         mutableStateOf<Boolean?>(null)
     }

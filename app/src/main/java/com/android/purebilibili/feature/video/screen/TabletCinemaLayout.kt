@@ -159,7 +159,10 @@ fun TabletCinemaLayout(
     val appContext = LocalContext.current
     val tabletCommentPanelWidthPreset by SettingsManager
         .getTabletCommentPanelWidthPreset(appContext)
-        .collectAsState(initial = TabletCommentPanelWidthPreset.STANDARD)
+        .collectAsState(
+            initial = TabletCommentPanelWidthPreset.STANDARD,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val policy = remember(configuration.screenWidthDp, tabletCommentPanelWidthPreset) {
         resolveTabletCinemaLayoutPolicy(
             widthDp = configuration.screenWidthDp,
@@ -167,7 +170,7 @@ fun TabletCinemaLayout(
         )
     }
     val success = uiState as? PlayerUiState.Success
-    val downloadProgress by viewModel.downloadProgress.collectAsState()
+    val downloadProgress by viewModel.downloadProgress.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val initialCurtainState = remember(configuration.screenWidthDp) {
         resolveInitialCurtainState(configuration.screenWidthDp).name
     }
@@ -708,7 +711,10 @@ private fun CinemaVideoIntroSection(
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
         .getVideoAiSummaryEntryEnabled(context)
-        .collectAsState(initial = true)
+        .collectAsState(
+            initial = true,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -766,7 +772,7 @@ private fun CinemaSideCurtain(
     showUpBadge: Boolean,
     onSearchKeywordClick: (String) -> Unit
 ) {
-    val subReplyState by commentViewModel.subReplyState.collectAsState()
+    val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val transition = updateTransition(targetState = state, label = "SideCurtainAnimation")
     LaunchedEffect(subReplyState.visible) {
         if (subReplyState.visible) {

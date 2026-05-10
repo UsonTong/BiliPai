@@ -378,14 +378,23 @@ fun WatchLaterScreen(
     viewModel: WatchLaterViewModel = viewModel(),
     globalHazeState: HazeState? = null // [新增]
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val hazeState = rememberRecoverableHazeState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val context = LocalContext.current
-    val showOnlineCount by SettingsManager.getShowOnlineCount(context).collectAsState(initial = false)
+    val showOnlineCount by SettingsManager.getShowOnlineCount(context).collectAsState(
+        initial = false,
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
     val windowSizeClass = LocalWindowSizeClass.current
-    val cardAnimationEnabled by SettingsManager.getCardAnimationEnabled(context).collectAsState(initial = true)
-    val cardTransitionEnabled by SettingsManager.getCardTransitionEnabled(context).collectAsState(initial = true)
+    val cardAnimationEnabled by SettingsManager.getCardAnimationEnabled(context).collectAsState(
+        initial = true,
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
+    val cardTransitionEnabled by SettingsManager.getCardTransitionEnabled(context).collectAsState(
+        initial = true,
+        context = kotlin.coroutines.EmptyCoroutineContext
+    )
     val deviceUiProfile = remember(windowSizeClass.widthSizeClass) {
         resolveDeviceUiProfile(
             widthSizeClass = windowSizeClass.widthSizeClass

@@ -169,12 +169,13 @@ fun VideoCommentSheetHost(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val commentState by commentViewModel.commentState.collectAsState()
-    val subReplyState by commentViewModel.subReplyState.collectAsState()
+    val commentState by commentViewModel.commentState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val defaultSortMode by com.android.purebilibili.core.store.SettingsManager
         .getCommentDefaultSortMode(context)
         .collectAsState(
-            initial = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context)
+            initial = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context),
+            context = kotlin.coroutines.EmptyCoroutineContext
         )
     val preferredSortMode = remember(defaultSortMode) {
         CommentSortMode.fromApiMode(defaultSortMode)
@@ -477,7 +478,7 @@ private fun VideoCommentMainList(
     maxTimestampMs: Long?,
     onImagePreview: (List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit
 ) {
-    val state by viewModel.commentState.collectAsState()
+    val state by viewModel.commentState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appearance = rememberVideoCommentAppearance()

@@ -119,7 +119,7 @@ internal fun rememberVideoCardOnlineCount(
             cid = video.cid
         )
     }
-    val onlineCount by onlineCountFlow.collectAsState()
+    val onlineCount by onlineCountFlow.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 
     LaunchedEffect(showOnlineCount, video.bvid, video.cid) {
         if (shouldLoadVideoCardOnlineCount(showOnlineCount, video.bvid, video.cid)) {

@@ -32,6 +32,7 @@ import coil.request.ImageRequest
 import com.android.purebilibili.core.store.SettingsManager
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 🖼️ 开屏壁纸选择器 (用于设置页)
@@ -45,16 +46,22 @@ fun SplashWallpaperPickerSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val officialWallpapers by viewModel.officialWallpapers.collectAsState()
-    val isLoading by viewModel.officialWallpapersLoading.collectAsState()
-    val error by viewModel.officialWallpapersError.collectAsState()
-    val saveState by viewModel.splashSaveState.collectAsState()
+    val officialWallpapers by viewModel.officialWallpapers.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val isLoading by viewModel.officialWallpapersLoading.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val error by viewModel.officialWallpapersError.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+    val saveState by viewModel.splashSaveState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
 
     var selectedUrl by remember { mutableStateOf<String?>(null) }
     var saveToGallery by remember { mutableStateOf(false) }
     var showSplashAdjustmentSheet by remember { mutableStateOf(false) }
-    val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(0f)
-    val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(0f)
+    val initialSplashMobileBias by viewModel.getSplashAlignment(false).collectAsState(
+        initial = 0f,
+        context = EmptyCoroutineContext
+    )
+    val initialSplashTabletBias by viewModel.getSplashAlignment(true).collectAsState(
+        initial = 0f,
+        context = EmptyCoroutineContext
+    )
     val customWallpaperPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
