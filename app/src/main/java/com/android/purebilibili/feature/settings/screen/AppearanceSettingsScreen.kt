@@ -976,8 +976,8 @@ fun AppearanceSettingsContent(
                     IOSDivider()
                     IOSSwitchItem(
                         icon = CupertinoIcons.Default.WandAndStars,
-                        title = "开屏图标动画",
-                        subtitle = "启动时播放图标飞出动画",
+                        title = "开屏图标遮罩动画",
+                        subtitle = "关闭后不保留图标页，不播放遮罩和飞出动画",
                         checked = splashIconAnimationEnabled,
                         onCheckedChange = { viewModel.toggleSplashIconAnimationEnabled(it) },
                         iconTint = com.android.purebilibili.core.theme.iOSPink
@@ -1565,6 +1565,19 @@ fun AppearanceSettingsContent(
                                             }
                                         }
                                     }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    IOSSlidingSegmentedSetting(
+                                        title = "推荐流卡片宽度：${state.homeFeedCardWidthPreset.label}",
+                                        subtitle = if (state.gridColumnCount > 0) {
+                                            "当前固定 ${state.gridColumnCount} 列优先生效，自动列数时使用该宽度"
+                                        } else {
+                                            "自动列数时控制首页推荐卡片的最小宽度"
+                                        },
+                                        options = resolveHomeFeedCardWidthPresetSegmentOptions(),
+                                        selectedValue = state.homeFeedCardWidthPreset,
+                                        onSelectionChange = viewModel::setHomeFeedCardWidthPreset
+                                    )
                                 }
                             }
                         }

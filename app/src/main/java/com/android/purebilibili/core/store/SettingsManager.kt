@@ -329,6 +329,23 @@ internal fun normalizeHomeRefreshCount(count: Int): Int {
     return count.coerceIn(MIN_HOME_REFRESH_COUNT, MAX_HOME_REFRESH_COUNT)
 }
 
+enum class HomeFeedCardWidthPreset(
+    val value: Int,
+    val label: String,
+    val minCardWidthDp: Int?
+) {
+    AUTO(0, "自动", null),
+    COMPACT(1, "紧凑", 160),
+    BALANCED(2, "均衡", 200),
+    WIDE(3, "宽卡片", 260),
+    ULTRA_WIDE(4, "超宽", 320);
+
+    companion object {
+        fun fromValue(value: Int): HomeFeedCardWidthPreset =
+            entries.find { it.value == value } ?: AUTO
+    }
+}
+
 data class HomeSettings(
     val displayMode: Int = 0,              // 展示模式 (0=网格, 1=故事卡片)
     val isBottomBarFloating: Boolean = true,
@@ -351,6 +368,7 @@ data class HomeSettings(
     val liquidGlassProgress: Float = 0.5f,
     val isHeaderCollapseEnabled: Boolean = true, // [New] 首页顶部栏自动收缩开关
     val gridColumnCount: Int = 0, // [New] 网格列数 (0=自动, 1-6=固定)
+    val homeFeedCardWidthPreset: HomeFeedCardWidthPreset = HomeFeedCardWidthPreset.AUTO,
     val cardAnimationEnabled: Boolean = false,    //  卡片进场动画（默认关闭）
     val cardTransitionEnabled: Boolean = true,    //  卡片过渡动画（默认开启）
     val videoTransitionRealtimeBlurEnabled: Boolean = true, // 视频转场实时模糊（默认开启）
@@ -422,6 +440,21 @@ enum class DanmakuPanelWidthMode(val value: Int, val label: String, val widthFra
     companion object {
         fun fromValue(value: Int): DanmakuPanelWidthMode =
             entries.find { it.value == value } ?: THIRD
+    }
+}
+
+enum class TabletCommentPanelWidthPreset(
+    val value: Int,
+    val label: String
+) {
+    COMPACT(0, "窄"),
+    STANDARD(1, "标准"),
+    WIDE(2, "宽"),
+    ULTRA_WIDE(3, "超宽");
+
+    companion object {
+        fun fromValue(value: Int): TabletCommentPanelWidthPreset =
+            entries.find { it.value == value } ?: STANDARD
     }
 }
 
@@ -503,6 +536,9 @@ data class PlayerInteractionSettings(
     val fullscreenSwipeSeekSeconds: Int = 15,
     val fullscreenSwipeSeekEnabled: Boolean = true,
     val fullscreenGestureReverse: Boolean = false,
+    val hideVideoPageStatusBar: Boolean = false,
+    val tabletCommentPanelWidthPreset: TabletCommentPanelWidthPreset =
+        TabletCommentPanelWidthPreset.STANDARD,
     val autoEnterFullscreenEnabled: Boolean = false,
     val autoExitFullscreenEnabled: Boolean = true,
     val fixedFullscreenAspectRatio: FullscreenAspectRatio = FullscreenAspectRatio.FIT,
@@ -818,6 +854,8 @@ object SettingsManager {
     private val KEY_DISPLAY_MODE = intPreferencesKey("display_mode")
     //  [新增] 网格列数 (0=Auto)
     private val KEY_GRID_COLUMN_COUNT = intPreferencesKey("grid_column_count")
+    private val KEY_HOME_FEED_CARD_WIDTH_PRESET =
+        intPreferencesKey("home_feed_card_width_preset")
     //  [新增] 卡片动画开关
     private val KEY_CARD_ANIMATION_ENABLED = booleanPreferencesKey("card_animation_enabled")
     //  [新增] 卡片过渡动画开关
@@ -906,6 +944,9 @@ object SettingsManager {
             liquidGlassStrength = FIXED_LIQUID_GLASS_STRENGTH,
             liquidGlassProgress = FIXED_LIQUID_GLASS_PROGRESS,
             gridColumnCount = preferences[KEY_GRID_COLUMN_COUNT] ?: 0,
+            homeFeedCardWidthPreset = HomeFeedCardWidthPreset.fromValue(
+                preferences[KEY_HOME_FEED_CARD_WIDTH_PRESET] ?: HomeFeedCardWidthPreset.AUTO.value
+            ),
             cardAnimationEnabled = preferences[KEY_CARD_ANIMATION_ENABLED] ?: false,
             cardTransitionEnabled = preferences[KEY_CARD_TRANSITION_ENABLED] ?: true,
             videoTransitionRealtimeBlurEnabled =
@@ -972,6 +1013,11 @@ object SettingsManager {
             ),
             fullscreenSwipeSeekEnabled = preferences[KEY_FULLSCREEN_SWIPE_SEEK_ENABLED] ?: true,
             fullscreenGestureReverse = preferences[KEY_FULLSCREEN_GESTURE_REVERSE] ?: false,
+            hideVideoPageStatusBar = preferences[KEY_HIDE_VIDEO_PAGE_STATUS_BAR] ?: false,
+            tabletCommentPanelWidthPreset = TabletCommentPanelWidthPreset.fromValue(
+                preferences[KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET]
+                    ?: TabletCommentPanelWidthPreset.STANDARD.value
+            ),
             autoEnterFullscreenEnabled = preferences[KEY_AUTO_ENTER_FULLSCREEN] ?: false,
             autoExitFullscreenEnabled = preferences[KEY_AUTO_EXIT_FULLSCREEN] ?: true,
             fixedFullscreenAspectRatio = FullscreenAspectRatio.fromValue(
@@ -1513,6 +1559,21 @@ object SettingsManager {
             preferences[KEY_GRID_COLUMN_COUNT] = count
         }
     }
+
+    fun getHomeFeedCardWidthPreset(context: Context): Flow<HomeFeedCardWidthPreset> =
+        context.settingsDataStore.data
+            .map { preferences ->
+                HomeFeedCardWidthPreset.fromValue(
+                    preferences[KEY_HOME_FEED_CARD_WIDTH_PRESET]
+                        ?: HomeFeedCardWidthPreset.AUTO.value
+                )
+            }
+
+    suspend fun setHomeFeedCardWidthPreset(context: Context, preset: HomeFeedCardWidthPreset) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_FEED_CARD_WIDTH_PRESET] = preset.value
+        }
+    }
     
     //  [新增] --- 卡片进场动画开关 ---
     fun getCardAnimationEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -1779,7 +1840,7 @@ object SettingsManager {
         context.getSharedPreferences(SPLASH_PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(SPLASH_PREFS_KEY_ICON_ANIMATION_ENABLED, value)
-            .apply()
+            .commit()
     }
 
     fun isSplashIconAnimationEnabledSync(context: Context): Boolean {
@@ -4017,6 +4078,9 @@ object SettingsManager {
     private val KEY_FULLSCREEN_SWIPE_SEEK_ENABLED = booleanPreferencesKey("fullscreen_swipe_seek_enabled")
     private val KEY_FULLSCREEN_SWIPE_SEEK_SECONDS = intPreferencesKey("fullscreen_swipe_seek_seconds")
     private val KEY_FULLSCREEN_GESTURE_REVERSE = booleanPreferencesKey("fullscreen_gesture_reverse")
+    private val KEY_HIDE_VIDEO_PAGE_STATUS_BAR = booleanPreferencesKey("hide_video_page_status_bar")
+    private val KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET =
+        intPreferencesKey("tablet_comment_panel_width_preset")
     private val KEY_AUTO_ENTER_FULLSCREEN = booleanPreferencesKey("auto_enter_fullscreen")
     private val KEY_AUTO_EXIT_FULLSCREEN = booleanPreferencesKey("auto_exit_fullscreen")
     private val KEY_SHOW_FULLSCREEN_LOCK_BUTTON = booleanPreferencesKey("show_fullscreen_lock_button")
@@ -4129,6 +4193,33 @@ object SettingsManager {
     suspend fun setFullscreenGestureReverse(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_FULLSCREEN_GESTURE_REVERSE] = enabled
+        }
+    }
+
+    fun getHideVideoPageStatusBar(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_HIDE_VIDEO_PAGE_STATUS_BAR] ?: false }
+
+    suspend fun setHideVideoPageStatusBar(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HIDE_VIDEO_PAGE_STATUS_BAR] = enabled
+        }
+    }
+
+    fun getTabletCommentPanelWidthPreset(context: Context): Flow<TabletCommentPanelWidthPreset> =
+        context.settingsDataStore.data
+            .map { preferences ->
+                TabletCommentPanelWidthPreset.fromValue(
+                    preferences[KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET]
+                        ?: TabletCommentPanelWidthPreset.STANDARD.value
+                )
+            }
+
+    suspend fun setTabletCommentPanelWidthPreset(
+        context: Context,
+        preset: TabletCommentPanelWidthPreset
+    ) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET] = preset.value
         }
     }
 
@@ -4566,6 +4657,10 @@ object SettingsManager {
             StringShareablePreferenceDefinition(KEY_BLUR_INTENSITY, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_DISPLAY_MODE, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_GRID_COLUMN_COUNT, SettingsShareSection.APPEARANCE),
+            IntShareablePreferenceDefinition(
+                KEY_HOME_FEED_CARD_WIDTH_PRESET,
+                SettingsShareSection.APPEARANCE
+            ),
             BooleanShareablePreferenceDefinition(KEY_CARD_ANIMATION_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_CARD_TRANSITION_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(
@@ -4610,6 +4705,8 @@ object SettingsManager {
             IntShareablePreferenceDefinition(KEY_SUBTITLE_AUTO_PREFERENCE, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_BOTTOM_PROGRESS_BEHAVIOR, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_HORIZONTAL_ADAPTATION, SettingsShareSection.PLAYBACK),
+            BooleanShareablePreferenceDefinition(KEY_HIDE_VIDEO_PAGE_STATUS_BAR, SettingsShareSection.PLAYBACK),
+            IntShareablePreferenceDefinition(KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SHOW_ONLINE_COUNT, SettingsShareSection.PLAYBACK),
 
             BooleanShareablePreferenceDefinition(KEY_HAPTIC_FEEDBACK_ENABLED, SettingsShareSection.GESTURE),

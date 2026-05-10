@@ -63,6 +63,18 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByHomeFeedCardWidth_hitsAppearanceHomeEntry() {
+        val results = resolveSettingsSearchResults("推荐流卡片宽度")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.APPEARANCE &&
+                    it.focusId == SettingsSearchFocusIds.APPEARANCE_HOME
+            }
+        )
+    }
+
+    @Test
     fun queryByMd3Alias_hitsAppearanceEntry() {
         val results = resolveSettingsSearchResults("md3")
 
@@ -123,6 +135,30 @@ class SettingsSearchPolicyTest {
         val results = resolveSettingsSearchResults("自动横竖屏")
 
         assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+    }
+
+    @Test
+    fun queryByHideVideoPageStatusBar_hitsPlaybackFullscreenEntry() {
+        val results = resolveSettingsSearchResults("播放页隐藏状态栏")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            }
+        )
+    }
+
+    @Test
+    fun queryByTabletCommentPanelWidth_hitsPlaybackFullscreenEntry() {
+        val results = resolveSettingsSearchResults("平板评论区宽度")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            }
+        )
     }
 
     @Test

@@ -2,8 +2,10 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.FullscreenMode
+import com.android.purebilibili.core.store.HomeFeedCardWidthPreset
 import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
 import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
 import com.android.purebilibili.feature.screenshot.AppScreenshotGestureMode
 
@@ -113,6 +115,25 @@ internal fun resolvePortraitPlayerCollapseModeSegmentOptions(): List<PlaybackSeg
         PlaybackSegmentOption(PortraitPlayerCollapseMode.INTRO_ONLY, "竖屏"),
         PlaybackSegmentOption(PortraitPlayerCollapseMode.COMMENT_ONLY, "横屏"),
         PlaybackSegmentOption(PortraitPlayerCollapseMode.BOTH, "全部")
+    )
+}
+
+internal fun resolveHomeFeedCardWidthPresetSegmentOptions(): List<PlaybackSegmentOption<HomeFeedCardWidthPreset>> {
+    return listOf(
+        PlaybackSegmentOption(HomeFeedCardWidthPreset.AUTO, "自动"),
+        PlaybackSegmentOption(HomeFeedCardWidthPreset.COMPACT, "紧凑"),
+        PlaybackSegmentOption(HomeFeedCardWidthPreset.BALANCED, "均衡"),
+        PlaybackSegmentOption(HomeFeedCardWidthPreset.WIDE, "宽"),
+        PlaybackSegmentOption(HomeFeedCardWidthPreset.ULTRA_WIDE, "超宽")
+    )
+}
+
+internal fun resolveTabletCommentPanelWidthSegmentOptions(): List<PlaybackSegmentOption<TabletCommentPanelWidthPreset>> {
+    return listOf(
+        PlaybackSegmentOption(TabletCommentPanelWidthPreset.COMPACT, "窄"),
+        PlaybackSegmentOption(TabletCommentPanelWidthPreset.STANDARD, "标准"),
+        PlaybackSegmentOption(TabletCommentPanelWidthPreset.WIDE, "宽"),
+        PlaybackSegmentOption(TabletCommentPanelWidthPreset.ULTRA_WIDE, "超宽")
     )
 }
 

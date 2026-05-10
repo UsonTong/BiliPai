@@ -38,6 +38,14 @@ class AppIconAliasMappingTest {
             "com.android.purebilibili.MainActivityAlias3DLauncher",
             resolveAppIconLauncherAlias(packageName, "unknown")
         )
+        assertEquals(
+            "com.android.purebilibili.MainActivityAliasBiliPaiNoIcon",
+            resolveAppIconLauncherAlias(packageName, "icon_bilipai", splashIconVisible = false)
+        )
+        assertEquals(
+            "com.android.purebilibili.MainActivityAlias3DNoIcon",
+            resolveAppIconLauncherAlias(packageName, "unknown", splashIconVisible = false)
+        )
     }
 
     @Test
@@ -57,6 +65,8 @@ class AppIconAliasMappingTest {
         assertTrue(aliases.contains("com.android.purebilibili.MainActivityAliasBiliPaiMonet"))
         assertTrue(aliases.contains("com.android.purebilibili.MainActivityAliasHeadphone"))
         assertTrue(aliases.contains("com.android.purebilibili.MainActivityAlias3D"))
+        assertTrue(aliases.contains("com.android.purebilibili.MainActivityAliasBiliPaiNoIcon"))
+        assertTrue(aliases.contains("com.android.purebilibili.MainActivityAlias3DNoIcon"))
         kotlin.test.assertFalse(aliases.contains("com.android.purebilibili.MainActivityAliasBlue"))
         kotlin.test.assertFalse(aliases.contains("com.android.purebilibili.MainActivityAliasNeon"))
         kotlin.test.assertFalse(aliases.contains("com.android.purebilibili.MainActivityAliasTelegramBlueCoin"))

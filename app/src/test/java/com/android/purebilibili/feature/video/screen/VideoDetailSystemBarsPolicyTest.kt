@@ -52,6 +52,58 @@ class VideoDetailSystemBarsPolicyTest {
     }
 
     @Test
+    fun visibilityPolicy_defaultOrdinaryPageShowsSystemBars() {
+        val policy = resolveVideoDetailSystemBarsVisibilityPolicy(
+            isFullscreenMode = false,
+            hideVideoPageStatusBar = false,
+            isInPipMode = false,
+            isScreenActive = true
+        )
+
+        assertEquals(false, policy.hideStatusBars)
+        assertEquals(false, policy.hideNavigationBars)
+    }
+
+    @Test
+    fun visibilityPolicy_hideSettingOnlyHidesStatusBarOnOrdinaryPage() {
+        val policy = resolveVideoDetailSystemBarsVisibilityPolicy(
+            isFullscreenMode = false,
+            hideVideoPageStatusBar = true,
+            isInPipMode = false,
+            isScreenActive = true
+        )
+
+        assertEquals(true, policy.hideStatusBars)
+        assertEquals(false, policy.hideNavigationBars)
+    }
+
+    @Test
+    fun visibilityPolicy_fullscreenStillHidesAllSystemBars() {
+        val policy = resolveVideoDetailSystemBarsVisibilityPolicy(
+            isFullscreenMode = true,
+            hideVideoPageStatusBar = false,
+            isInPipMode = false,
+            isScreenActive = true
+        )
+
+        assertEquals(true, policy.hideStatusBars)
+        assertEquals(true, policy.hideNavigationBars)
+    }
+
+    @Test
+    fun visibilityPolicy_pipRestoresSystemBarsEvenWhenSettingEnabled() {
+        val policy = resolveVideoDetailSystemBarsVisibilityPolicy(
+            isFullscreenMode = false,
+            hideVideoPageStatusBar = true,
+            isInPipMode = true,
+            isScreenActive = true
+        )
+
+        assertEquals(false, policy.hideStatusBars)
+        assertEquals(false, policy.hideNavigationBars)
+    }
+
+    @Test
     fun restorePolicy_restoresSystemBarsAsSoonAsExitTransitionStarts() {
         assertTrue(
             shouldRestoreSystemBarsDuringVideoDetailExitTransition(

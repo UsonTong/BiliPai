@@ -4,13 +4,17 @@
 
 ### 版本信息
 - 版本号从 `8.1.0` 升级到 `8.1.1`，`versionCode` 升级到 `184`。
-- 本次为“应用内截图能力 + 首页/导航策略修复 + issue #313 图标美化阶段性落地”的维护更新。
+- 本次为“应用内截图能力 + 首页/导航策略修复 + 启动遮罩控制 + 底栏滑动视觉收敛 + issue #313 图标美化阶段性落地”的维护更新。
 
 ### 更新内容
 - **应用内干净截图**：新增前台手势截图能力，支持全窗口保存和手选区域截图；截图流程会避开启动页、PiP 过渡、全屏锁定和保存中的状态，降低误触与异常截图概率。
 - **截图设置入口**：播放设置新增“应用内干净截图”、触发方式和截图范围选项，并接入设置搜索。
 - **主页/导航策略**：顶部分类和底部 pager 的同步策略继续收敛，减少导航切换期间的多余页面组合和分类语义绕路。
 - **主题刷新**：主 Activity 增加系统深浅色快照刷新策略，降低系统主题变化后应用内状态不同步的概率。
+- **启动图标遮罩控制**：外观设置新增“开屏图标遮罩动画”开关；关闭后会切换到无图标启动入口，系统 Splash 不再停留或播放应用图标遮罩，开屏壁纸可更快接管启动画面。
+- **启动入口同步**：应用图标切换与遮罩开关共用 launcher alias 同步逻辑，桌面图标继续保持用户选择的图标，同时启动主题可独立使用透明图标。
+- **底栏滑动视觉收敛**：底栏 item 的选中态、颜色权重、图标透明度和缩放统一由指示器覆盖度驱动，滑动过程中前景颜色和图标填充更连续。
+- **底栏导出层位移修复**：底栏导出内容改用 `graphicsLayer.translationX` 叠加指示器位移，减少 `offset` 与玻璃捕获层不同步导致的滑动错位。
 - **图标美化阶段性落地**：补齐 `AppIcons` 的 watch-later / coin 语义入口，播放页、横屏/竖屏覆盖层、音频模式、预览弹窗、评论输入、合集和“我的/侧边栏/底栏”相关入口逐步改为统一图标映射。
 - **AI 总结布局**：时间节点固定到右侧列，正文区域使用权重布局，减少长中文挤压时间胶囊的问题。
 
@@ -19,6 +23,8 @@
 
 ### 验证
 - `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.ui.AppIconsPresetPolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileTopBarSystemUiPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarColorBindingPolicyTest' --tests 'com.android.purebilibili.feature.settings.BottomBarSettingsScreenIconPolicyTest' --tests 'com.android.purebilibili.feature.video.ui.VideoInteractionIconPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.store.AppIconAliasMappingTest' --tests 'com.android.purebilibili.MainActivityAppCompatContractTest' --tests 'com.android.purebilibili.StartupSplashPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest'`
 - `./gradlew :app:compileDebugKotlin`
 - `git diff --check`
 

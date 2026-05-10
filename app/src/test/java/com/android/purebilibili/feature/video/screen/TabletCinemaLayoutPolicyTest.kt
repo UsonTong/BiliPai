@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -41,13 +42,58 @@ class TabletCinemaLayoutPolicyTest {
     @Test
     fun mediumTabletUsesBalancedCinemaPolicy() {
         val policy = resolveTabletCinemaLayoutPolicy(
-            widthDp = 1280
+            widthDp = 1280,
+            commentWidthPreset = TabletCommentPanelWidthPreset.STANDARD
         )
 
         assertTrue(policy.curtainPeekWidthDp in 61..64)
         assertTrue(policy.curtainOpenWidthDp in 379..382)
         assertTrue(policy.horizontalPaddingDp in 16..17)
         assertTrue(policy.playerMaxWidthDp in 1090..1100)
+    }
+
+    @Test
+    fun commentWidthPresetsScaleCurtainWidthAroundCurrentStandard() {
+        val compact = resolveTabletCinemaLayoutPolicy(
+            widthDp = 1280,
+            commentWidthPreset = TabletCommentPanelWidthPreset.COMPACT
+        )
+        val standard = resolveTabletCinemaLayoutPolicy(
+            widthDp = 1280,
+            commentWidthPreset = TabletCommentPanelWidthPreset.STANDARD
+        )
+        val wide = resolveTabletCinemaLayoutPolicy(
+            widthDp = 1280,
+            commentWidthPreset = TabletCommentPanelWidthPreset.WIDE
+        )
+        val ultraWide = resolveTabletCinemaLayoutPolicy(
+            widthDp = 1280,
+            commentWidthPreset = TabletCommentPanelWidthPreset.ULTRA_WIDE
+        )
+
+        assertTrue(compact.curtainOpenWidthDp < standard.curtainOpenWidthDp)
+        assertTrue(wide.curtainOpenWidthDp > standard.curtainOpenWidthDp)
+        assertTrue(ultraWide.curtainOpenWidthDp >= wide.curtainOpenWidthDp)
+    }
+
+    @Test
+    fun compactTabletClampsWideCurtainToProtectPlayerSpace() {
+        val ultraWide = resolveTabletCinemaLayoutPolicy(
+            widthDp = 960,
+            commentWidthPreset = TabletCommentPanelWidthPreset.ULTRA_WIDE
+        )
+
+        assertEquals(332, ultraWide.curtainOpenWidthDp)
+    }
+
+    @Test
+    fun ultraWideScreenCapsCommentCurtainWidth() {
+        val ultraWide = resolveTabletCinemaLayoutPolicy(
+            widthDp = 1920,
+            commentWidthPreset = TabletCommentPanelWidthPreset.ULTRA_WIDE
+        )
+
+        assertEquals(560, ultraWide.curtainOpenWidthDp)
     }
 
     @Test

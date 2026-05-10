@@ -33,6 +33,20 @@ private val LAUNCHER_ALIAS_SUFFIX_BY_KEY = mapOf(
     "Headphone" to "MainActivityAliasHeadphone"
 )
 
+private val NO_ICON_LAUNCHER_ALIAS_SUFFIX_BY_KEY = mapOf(
+    "icon_3d" to "MainActivityAlias3DNoIcon",
+    "icon_bilipai" to "MainActivityAliasBiliPaiNoIcon",
+    "icon_bilipai_pink" to "MainActivityAliasBiliPaiPinkNoIcon",
+    "icon_bilipai_white" to "MainActivityAliasBiliPaiWhiteNoIcon",
+    "icon_bilipai_monet" to "MainActivityAliasBiliPaiMonetNoIcon",
+    "icon_anime" to "MainActivityAliasAnimeNoIcon",
+    "icon_flat" to "MainActivityAliasFlatNoIcon",
+    "icon_telegram_blue" to "MainActivityAliasTelegramBlueNoIcon",
+    "icon_telegram_dark" to "MainActivityAliasDarkNoIcon",
+    "Yuki" to "MainActivityAliasYukiNoIcon",
+    "Headphone" to "MainActivityAliasHeadphoneNoIcon"
+)
+
 fun normalizeAppIconKey(rawKey: String?): String {
     val key = rawKey?.trim().orEmpty()
     if (key.isEmpty()) return DEFAULT_APP_ICON_KEY
@@ -52,15 +66,24 @@ fun normalizeAppIconKey(rawKey: String?): String {
     }
 }
 
-fun resolveAppIconLauncherAlias(packageName: String, rawKey: String?): String {
+fun resolveAppIconLauncherAlias(
+    packageName: String,
+    rawKey: String?,
+    splashIconVisible: Boolean = true
+): String {
     val normalizedKey = normalizeAppIconKey(rawKey)
-    val aliasSuffix = LAUNCHER_ALIAS_SUFFIX_BY_KEY[normalizedKey]
-        ?: LAUNCHER_ALIAS_SUFFIX_BY_KEY.getValue(DEFAULT_APP_ICON_KEY)
+    val aliasMap = if (splashIconVisible) {
+        LAUNCHER_ALIAS_SUFFIX_BY_KEY
+    } else {
+        NO_ICON_LAUNCHER_ALIAS_SUFFIX_BY_KEY
+    }
+    val aliasSuffix = aliasMap[normalizedKey]
+        ?: aliasMap.getValue(DEFAULT_APP_ICON_KEY)
     return "$APP_ICON_COMPONENT_PACKAGE_NAME.$aliasSuffix"
 }
 
 fun allManagedAppIconLauncherAliases(packageName: String): Set<String> {
-    return LAUNCHER_ALIAS_SUFFIX_BY_KEY.values
+    return (LAUNCHER_ALIAS_SUFFIX_BY_KEY.values + NO_ICON_LAUNCHER_ALIAS_SUFFIX_BY_KEY.values)
         .map { aliasSuffix -> "$APP_ICON_COMPONENT_PACKAGE_NAME.$aliasSuffix" }
         .plus(APP_ICON_COMPAT_ALIAS_CLASS_NAME)
         .toSet()

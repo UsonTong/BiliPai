@@ -1066,6 +1066,12 @@ fun PlaybackSettingsContent(
                         val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
                             .getHorizontalAdaptationEnabled(context)
                             .collectAsState(initial = isLargeScreenDevice)
+                        val hideVideoPageStatusBar by com.android.purebilibili.core.store.SettingsManager
+                            .getHideVideoPageStatusBar(context)
+                            .collectAsState(initial = false)
+                        val tabletCommentPanelWidthPreset by com.android.purebilibili.core.store.SettingsManager
+                            .getTabletCommentPanelWidthPreset(context)
+                            .collectAsState(initial = com.android.purebilibili.core.store.TabletCommentPanelWidthPreset.STANDARD)
                         val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
                             .getFullscreenMode(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
@@ -1112,6 +1118,23 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSlidingSegmentedSetting(
+                            title = "平板评论区宽度：${tabletCommentPanelWidthPreset.label}",
+                            subtitle = if (horizontalAdaptationEnabled) {
+                                "调整横屏适配下右侧评论/推荐栏宽度"
+                            } else {
+                                "开启横屏适配后生效"
+                            },
+                            options = resolveTabletCommentPanelWidthSegmentOptions(),
+                            selectedValue = tabletCommentPanelWidthPreset,
+                            onSelectionChange = { preset ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setTabletCommentPanelWidthPreset(context, preset)
+                                }
+                            }
+                        )
+                        IOSDivider()
+                        IOSSlidingSegmentedSetting(
                             title = "默认全屏方向：${fullscreenMode.label}",
                             subtitle = fullscreenModeSubtitle,
                             options = resolveFullscreenModeSegmentOptions(),
@@ -1149,6 +1172,24 @@ fun PlaybackSettingsContent(
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPurple
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.EyeSlash,
+                            title = "播放页隐藏状态栏",
+                            subtitle = if (hideVideoPageStatusBar) {
+                                "普通播放页隐藏顶部系统状态栏，底部手势条保持显示"
+                            } else {
+                                "关闭后播放页跟随系统状态栏显示"
+                            },
+                            checked = hideVideoPageStatusBar,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setHideVideoPageStatusBar(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSTeal
                         )
                         IOSDivider()
                         IOSSwitchItem(

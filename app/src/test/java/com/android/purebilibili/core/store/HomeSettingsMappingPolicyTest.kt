@@ -35,6 +35,8 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(LiquidGlassStyle.SUKISU, result.liquidGlassStyle)
         assertEquals(LiquidGlassMode.BALANCED, result.liquidGlassMode)
         assertEquals(0.52f, result.liquidGlassStrength)
+        assertEquals(0, result.gridColumnCount)
+        assertEquals(HomeFeedCardWidthPreset.AUTO, result.homeFeedCardWidthPreset)
         assertFalse(result.cardAnimationEnabled)
         assertTrue(result.cardTransitionEnabled)
         assertTrue(result.videoTransitionRealtimeBlurEnabled)
@@ -68,6 +70,7 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("android_native_liquid_glass_enabled") to true,
             intPreferencesKey("liquid_glass_style") to LiquidGlassStyle.IOS26.value,
             intPreferencesKey("grid_column_count") to 4,
+            intPreferencesKey("home_feed_card_width_preset") to HomeFeedCardWidthPreset.WIDE.value,
             booleanPreferencesKey("card_animation_enabled") to true,
             booleanPreferencesKey("card_transition_enabled") to false,
             booleanPreferencesKey("video_transition_realtime_blur_enabled") to false,
@@ -105,6 +108,7 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(0.52f, result.liquidGlassStrength)
         assertEquals(0.5f, result.liquidGlassProgress)
         assertEquals(4, result.gridColumnCount)
+        assertEquals(HomeFeedCardWidthPreset.WIDE, result.homeFeedCardWidthPreset)
         assertTrue(result.cardAnimationEnabled)
         assertFalse(result.cardTransitionEnabled)
         assertFalse(result.videoTransitionRealtimeBlurEnabled)
@@ -118,6 +122,17 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.showHomeUpBadges)
         assertTrue(result.easterEggEnabled)
         assertTrue(result.crashTrackingConsentShown)
+    }
+
+    @Test
+    fun invalidHomeFeedCardWidthPresetFallsBackToAuto() {
+        val prefs = mutablePreferencesOf(
+            intPreferencesKey("home_feed_card_width_preset") to 99
+        )
+
+        val result = mapHomeSettingsFromPreferences(prefs)
+
+        assertEquals(HomeFeedCardWidthPreset.AUTO, result.homeFeedCardWidthPreset)
     }
 
     @Test

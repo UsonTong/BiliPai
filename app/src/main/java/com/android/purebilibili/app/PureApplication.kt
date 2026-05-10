@@ -350,6 +350,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 val currentIcon = normalizeAppIconKey(
                     SettingsManager.getAppIcon(this@PureApplication).first()
                 )
+                val splashIconVisible = SettingsManager.isSplashIconAnimationEnabledSync(this@PureApplication)
                 val cacheSynced = this@PureApplication
                     .getSharedPreferences("app_icon_cache", Context.MODE_PRIVATE)
                     .edit()
@@ -358,7 +359,11 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 Logger.d(PureApplicationRuntimeConfig.TAG, " Synced app icon cache from DataStore: $currentIcon (success=$cacheSynced)")
 
                 val allUniqueAliases = allManagedAppIconLauncherAliases(packageName)
-                val targetAlias = resolveAppIconLauncherAlias(packageName, currentIcon)
+                val targetAlias = resolveAppIconLauncherAlias(
+                    packageName = packageName,
+                    rawKey = currentIcon,
+                    splashIconVisible = splashIconVisible
+                )
                 
                 val targetAliasComponent = android.content.ComponentName(packageName, targetAlias)
                 val targetState = pm.getComponentEnabledSetting(targetAliasComponent)

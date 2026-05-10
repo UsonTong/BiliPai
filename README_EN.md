@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-08 · Synced to v8.1.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-10 · Synced to v8.1.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.1.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.0 · 2026-05-08)
+### Latest (v8.1.1 · 2026-05-10)
 
-- Reduced Coil's memory-cache budget to 10%, trims the hot cache when the app enters the background, and clears it under stronger background pressure.
-- Made Home cover preloading wait for settled scrolling and cap the preload window to two covers.
-- Let shared-element-ready video transitions use sharedBounds as the single main motion chain, reducing stacked route animations.
-- Tuned shared segmented-control springs/refraction and disabled tap-time refraction on video detail tabs and comment sort bars.
-- Added focused policy tests for background cache trimming, Home preloading, navigation transitions, and segmented-control motion.
-- Bumped the app to `8.1.0` with `versionCode` `183`.
+- Added in-app clean screenshot capture with foreground gestures, full-window saves, and manual region capture.
+- Added a startup icon mask toggle; when disabled, launcher aliases switch to a no-icon splash theme so Android Splash no longer lingers on the app icon mask.
+- Tightened bottom-bar sliding visuals so icon fill, foreground color, scaling, and exported-layer translation follow indicator coverage continuously.
+- Continued Home/navigation, system theme refresh, and AI summary layout fixes to reduce transition detours, stale theme state, and long-text compression.
+- Continued issue #313 icon polish by moving more player, overlay, audio, comment, collection, and bottom-bar entry points onto the shared icon mapping.
+- Bumped the app to `8.1.1` with `versionCode` `184`.
 
 ---
 

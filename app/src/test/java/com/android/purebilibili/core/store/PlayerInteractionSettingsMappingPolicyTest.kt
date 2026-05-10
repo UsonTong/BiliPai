@@ -25,6 +25,8 @@ class PlayerInteractionSettingsMappingPolicyTest {
         assertEquals(FullscreenAspectRatio.FIT, result.fixedFullscreenAspectRatio)
         assertEquals(SubtitleAutoPreference.OFF, result.subtitleAutoPreference)
         assertEquals(2.0f, result.longPressSpeed)
+        assertFalse(result.hideVideoPageStatusBar)
+        assertEquals(TabletCommentPanelWidthPreset.STANDARD, result.tabletCommentPanelWidthPreset)
         assertFalse(result.hiResLongPressCompatHintShown)
     }
 
@@ -37,6 +39,8 @@ class PlayerInteractionSettingsMappingPolicyTest {
             intPreferencesKey("fullscreen_swipe_seek_seconds") to 14,
             intPreferencesKey("fullscreen_aspect_ratio") to FullscreenAspectRatio.RATIO_4_3.value,
             intPreferencesKey("subtitle_auto_preference") to SubtitleAutoPreference.ON.ordinal,
+            booleanPreferencesKey("hide_video_page_status_bar") to true,
+            intPreferencesKey("tablet_comment_panel_width_preset") to TabletCommentPanelWidthPreset.ULTRA_WIDE.value,
             floatPreferencesKey("long_press_speed") to 4.6f,
             booleanPreferencesKey("two_finger_vertical_speed_enabled") to true,
             booleanPreferencesKey("hi_res_long_press_compat_hint_shown") to true
@@ -50,8 +54,21 @@ class PlayerInteractionSettingsMappingPolicyTest {
         assertEquals(15, result.fullscreenSwipeSeekSeconds)
         assertEquals(FullscreenAspectRatio.RATIO_4_3, result.fixedFullscreenAspectRatio)
         assertEquals(SubtitleAutoPreference.ON, result.subtitleAutoPreference)
+        assertTrue(result.hideVideoPageStatusBar)
+        assertEquals(TabletCommentPanelWidthPreset.ULTRA_WIDE, result.tabletCommentPanelWidthPreset)
         assertEquals(3.0f, result.longPressSpeed)
         assertTrue(result.twoFingerVerticalSpeedEnabled)
         assertTrue(result.hiResLongPressCompatHintShown)
+    }
+
+    @Test
+    fun invalidTabletCommentPanelWidthPresetFallsBackToStandard() {
+        val prefs = mutablePreferencesOf(
+            intPreferencesKey("tablet_comment_panel_width_preset") to 99
+        )
+
+        val result = mapPlayerInteractionSettingsFromPreferences(prefs)
+
+        assertEquals(TabletCommentPanelWidthPreset.STANDARD, result.tabletCommentPanelWidthPreset)
     }
 }

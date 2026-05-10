@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
 import androidx.compose.ui.graphics.Color
 
 data class TabletVideoLayoutPolicy(
@@ -94,10 +95,11 @@ internal fun resolveTabletSecondaryDefaultTab(
 }
 
 fun resolveTabletCinemaLayoutPolicy(
-    widthDp: Int
+    widthDp: Int,
+    commentWidthPreset: TabletCommentPanelWidthPreset = TabletCommentPanelWidthPreset.STANDARD
 ): TabletCinemaLayoutPolicy {
     val normalizedWidth = widthDp.coerceIn(960, 1800)
-    val curtainOpenWidthDp = interpolateByWidth(
+    val baseCurtainOpenWidthDp = interpolateByWidth(
         widthDp = normalizedWidth,
         minWidthDp = 960,
         maxWidthDp = 1800,
@@ -125,6 +127,24 @@ fun resolveTabletCinemaLayoutPolicy(
         minValue = 980,
         maxValue = 1280
     )
+    val minimumPlayerWidthDp = interpolateByWidth(
+        widthDp = normalizedWidth,
+        minWidthDp = 960,
+        maxWidthDp = 1800,
+        minValue = 600,
+        maxValue = 960
+    )
+    val targetCurtainOpenWidthDp = when (commentWidthPreset) {
+        TabletCommentPanelWidthPreset.COMPACT -> (baseCurtainOpenWidthDp * 0.85f).toInt()
+        TabletCommentPanelWidthPreset.STANDARD -> baseCurtainOpenWidthDp
+        TabletCommentPanelWidthPreset.WIDE -> (baseCurtainOpenWidthDp * 1.15f).toInt()
+        TabletCommentPanelWidthPreset.ULTRA_WIDE -> (baseCurtainOpenWidthDp * 1.30f).toInt()
+    }
+    val maxCurtainWidthWithPlayerGuard =
+        widthDp - horizontalPaddingDp * 2 - minimumPlayerWidthDp - 4
+    val curtainOpenWidthDp = targetCurtainOpenWidthDp
+        .coerceIn(280, 560)
+        .coerceAtMost(maxCurtainWidthWithPlayerGuard.coerceAtLeast(280))
 
     return TabletCinemaLayoutPolicy(
         curtainPeekWidthDp = curtainPeekWidthDp,

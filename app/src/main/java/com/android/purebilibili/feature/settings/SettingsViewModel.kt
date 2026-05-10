@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.BottomBarSearchAutoExpandMode
+import com.android.purebilibili.core.store.HomeFeedCardWidthPreset
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.allManagedAppIconLauncherAliases
 import com.android.purebilibili.core.store.resolveDefaultLiquidGlassStrength
@@ -85,7 +86,8 @@ data class SettingsUiState(
     // [New] 平板导航模式
     val tabletUseSidebar: Boolean = false,
     val isHeaderCollapseEnabled: Boolean = true, // [New]
-    val gridColumnCount: Int = 0 // [New]
+    val gridColumnCount: Int = 0, // [New]
+    val homeFeedCardWidthPreset: HomeFeedCardWidthPreset = HomeFeedCardWidthPreset.AUTO
 ) {
     val isLiquidGlassEnabled: Boolean
         get() = topBarLiquidGlassEnabled || bottomBarLiquidGlassEnabled
@@ -136,7 +138,8 @@ data class ExtraSettings(
     val liquidGlassProgress: Float, // [New]
     val tabletUseSidebar: Boolean, // [New]
     val isHeaderCollapseEnabled: Boolean, // [New]
-    val gridColumnCount: Int // [New]
+    val gridColumnCount: Int, // [New]
+    val homeFeedCardWidthPreset: HomeFeedCardWidthPreset
 )
 
 
@@ -191,7 +194,8 @@ private data class BaseSettings(
     val liquidGlassProgress: Float, // [New]
     val tabletUseSidebar: Boolean, // [New]
     val isHeaderCollapseEnabled: Boolean, // [New]
-    val gridColumnCount: Int // [New]
+    val gridColumnCount: Int, // [New]
+    val homeFeedCardWidthPreset: HomeFeedCardWidthPreset
 )
 
 private fun <T> Flow<T>.asAnyFlow(): Flow<Any?> = map { it }
@@ -281,7 +285,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getLiquidGlassProgress(context).asAnyFlow(), // [New]
         SettingsManager.getTabletUseSidebar(context).asAnyFlow(), // [New]
         SettingsManager.getHeaderCollapseEnabled(context).asAnyFlow(), // [New]
-        SettingsManager.getGridColumnCount(context).asAnyFlow() // [New]
+        SettingsManager.getGridColumnCount(context).asAnyFlow(), // [New]
+        SettingsManager.getHomeFeedCardWidthPreset(context).asAnyFlow()
     ) { values ->
         val isBottomBarFloating = values[0] as Boolean
         val labelMode = values[1] as Int
@@ -304,6 +309,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val tabletUseSidebar = values[18] as Boolean
         val headerCollapse = values[19] as Boolean
         val gridColumnCount = values[20] as Int
+        val homeFeedCardWidthPreset = values[21] as HomeFeedCardWidthPreset
         
         data class Ui2(
             val f: Boolean,
@@ -326,7 +332,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val lgp: Float,
             val tus: Boolean,
             val hc: Boolean,
-            val gcc: Int
+            val gcc: Int,
+            val hfcwp: HomeFeedCardWidthPreset
         )
         Ui2(
             isBottomBarFloating,
@@ -349,7 +356,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             liquidGlassProgress,
             tabletUseSidebar,
             headerCollapse,
-            gridColumnCount
+            gridColumnCount,
+            homeFeedCardWidthPreset
         )
     }
 
@@ -384,6 +392,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             tabletUseSidebar = ui2.tus, // [New]
             isHeaderCollapseEnabled = ui2.hc, // [New]
             gridColumnCount = ui2.gcc, // [New]
+            homeFeedCardWidthPreset = ui2.hfcwp,
             headerBlurEnabled = false, // 暂存，将在下一步合并
             bottomBarBlurEnabled = false, // 暂存
             blurIntensity = BlurIntensity.THIN // 暂存
@@ -469,7 +478,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             liquidGlassProgress = extra.liquidGlassProgress, // [New]
             tabletUseSidebar = extra.tabletUseSidebar, // [New]
             isHeaderCollapseEnabled = extra.isHeaderCollapseEnabled, // [New]
-            gridColumnCount = extra.gridColumnCount // [New]
+            gridColumnCount = extra.gridColumnCount, // [New]
+            homeFeedCardWidthPreset = extra.homeFeedCardWidthPreset
         )
 
     }
@@ -525,6 +535,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             tabletUseSidebar = settings.tabletUseSidebar, // [New]
             isHeaderCollapseEnabled = settings.isHeaderCollapseEnabled, // [New]
             gridColumnCount = settings.gridColumnCount, // [New]
+            homeFeedCardWidthPreset = settings.homeFeedCardWidthPreset,
 
             cacheSize = cache.first,
             cacheBreakdown = cache.second,  //  详细缓存统计
@@ -631,32 +642,42 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val normalizedIconKey = normalizeAppIconKey(iconKey)
             // 1. 保存偏好
             SettingsManager.setAppIcon(context, normalizedIconKey)
-            
-            // 2. 应用 Alias
-            val pm = context.packageManager
-            val packageName = context.packageName
+            applyLauncherAliasForCurrentSplashIconSetting(normalizedIconKey)
+        }
+    }
 
-            val targetAlias = resolveAppIconLauncherAlias(packageName, normalizedIconKey)
-            val allUniqueAliases = allManagedAppIconLauncherAliases(packageName)
-            
-            android.util.Log.d("SettingsViewModel", "Switching icon to: $iconKey -> $normalizedIconKey -> $targetAlias")
-            
-            try {
-                // 第一步：先启用目标 alias（确保始终有一个活动入口点）
-                // ⚠️ [修复] 在尝试杀死进程的操作前，再次延迟，确保 DataStore/SharedPrefs 完全写入磁盘
-                kotlinx.coroutines.delay(100)
-                
-                pm.setComponentEnabledSetting(
-                    android.content.ComponentName(packageName, targetAlias),
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
-                )
-                android.util.Log.d("SettingsViewModel", "Enabled alias: $targetAlias")
+    private suspend fun applyLauncherAliasForCurrentSplashIconSetting(iconKey: String) {
+        val normalizedIconKey = normalizeAppIconKey(iconKey)
+        // 2. 应用 Alias
+        val pm = context.packageManager
+        val packageName = context.packageName
+        val splashIconVisible = SettingsManager.isSplashIconAnimationEnabledSync(context)
 
-                // 第二步：立即禁用其他 alias，避免部分桌面出现“双图标”残留
-                allUniqueAliases
-                    .filter { it != targetAlias }
-                    .forEach { aliasFullName ->
+        val targetAlias = resolveAppIconLauncherAlias(
+            packageName = packageName,
+            rawKey = normalizedIconKey,
+            splashIconVisible = splashIconVisible
+        )
+        val allUniqueAliases = allManagedAppIconLauncherAliases(packageName)
+
+        android.util.Log.d("SettingsViewModel", "Switching icon to: $normalizedIconKey, splashIconVisible=$splashIconVisible -> $targetAlias")
+
+        try {
+            // 第一步：先启用目标 alias（确保始终有一个活动入口点）
+            // ⚠️ [修复] 在尝试杀死进程的操作前，再次延迟，确保 DataStore/SharedPrefs 完全写入磁盘
+            kotlinx.coroutines.delay(100)
+
+            pm.setComponentEnabledSetting(
+                android.content.ComponentName(packageName, targetAlias),
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                android.content.pm.PackageManager.DONT_KILL_APP
+            )
+            android.util.Log.d("SettingsViewModel", "Enabled alias: $targetAlias")
+
+            // 第二步：立即禁用其他 alias，避免部分桌面出现“双图标”残留
+            allUniqueAliases
+                .filter { it != targetAlias }
+                .forEach { aliasFullName ->
                     try {
                         pm.setComponentEnabledSetting(
                             android.content.ComponentName(packageName, aliasFullName),
@@ -667,10 +688,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         android.util.Log.w("SettingsViewModel", "Failed to disable alias: $aliasFullName", e)
                     }
                 }
-                android.util.Log.d("SettingsViewModel", "Icon switch completed: $normalizedIconKey")
-            } catch (e: Exception) {
-                android.util.Log.e("SettingsViewModel", "Failed to switch app icon to $normalizedIconKey", e)
-            }
+            android.util.Log.d("SettingsViewModel", "Icon switch completed: $normalizedIconKey")
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsViewModel", "Failed to switch app icon to $normalizedIconKey", e)
         }
     }
 
@@ -762,7 +782,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // [New] Splash Screen
     fun toggleSplashEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashEnabled(context, value) } }
     fun toggleSplashRandomEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashRandomEnabled(context, value) } }
-    fun toggleSplashIconAnimationEnabled(value: Boolean) { viewModelScope.launch { SettingsManager.setSplashIconAnimationEnabled(context, value) } }
+    fun toggleSplashIconAnimationEnabled(value: Boolean) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            SettingsManager.setSplashIconAnimationEnabled(context, value)
+            val currentIcon = SettingsManager.getAppIconSync(context)
+            applyLauncherAliasForCurrentSplashIconSetting(currentIcon)
+        }
+    }
 
     // [New] 触感反馈
     fun toggleHapticFeedback(value: Boolean) { viewModelScope.launch { SettingsManager.setHapticFeedbackEnabled(context, value) } }
@@ -871,6 +897,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setGridColumnCount(count: Int) {
         viewModelScope.launch {
             SettingsManager.setGridColumnCount(context, count)
+        }
+    }
+
+    fun setHomeFeedCardWidthPreset(preset: HomeFeedCardWidthPreset) {
+        viewModelScope.launch {
+            SettingsManager.setHomeFeedCardWidthPreset(context, preset)
         }
     }
     

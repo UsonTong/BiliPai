@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.0-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.0" />
+  <img src="https://img.shields.io/badge/Version-8.1.1-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.1" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.0 / versionCode 183`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.0`：
+当前仓库版本号已更新到 `8.1.1 / versionCode 184`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.1`：
 
-- 图片内存缓存上限收紧到 10%，普通后台隐藏时裁剪热缓存，系统继续施加后台压力时清空热缓存，降低后台常驻占用。
-- 首页封面预加载改为滑动停稳后保守触发，避免快速滑动时抢占资源。
-- 共享元素就绪时路由动画让位给 sharedBounds，减少视频详情进出时的多层动画叠加。
-- 共享分段控件使用更克制的 spring 与折射参数，视频详情 Tab 和评论排序条减少点按晃动。
-- 补充后台缓存裁剪、首页预加载、导航转场和分段控件 motion 策略测试。
+- 新增应用内干净截图能力，支持前台手势触发、全窗口保存和手选区域截图。
+- 启动画面新增“开屏图标遮罩动画”开关，关闭后系统 Splash 不再停留或播放应用图标遮罩。
+- 底栏滑动视觉继续收敛，图标填充、前景颜色、缩放和导出层位移改为跟随指示器覆盖度。
+- 首页/导航策略、主题刷新和 AI 总结布局继续修复，减少切换绕路、主题不同步和长文本挤压。
+- issue #313 图标美化阶段性落地，播放页、覆盖层、音频模式、评论输入、合集和底栏等入口逐步统一图标映射。
 
 ## 路线图
 

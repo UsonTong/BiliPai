@@ -200,8 +200,20 @@ internal fun shouldShowNextEpisodeButtonInControlBar(
 
 internal fun shouldShowEpisodeButtonInControlBar(
     isFullscreen: Boolean,
-    hasEpisodeEntry: Boolean
-): Boolean = isFullscreen && hasEpisodeEntry
+    hasEpisodeEntry: Boolean,
+    widthDp: Int = Int.MAX_VALUE
+): Boolean = isFullscreen && hasEpisodeEntry && widthDp >= 600
+
+internal fun shouldShowEpisodeInMoreActions(
+    isFullscreen: Boolean,
+    hasEpisodeEntry: Boolean,
+    showInlineEpisodeButton: Boolean
+): Boolean = isFullscreen && hasEpisodeEntry && !showInlineEpisodeButton
+
+internal fun shouldShowDanmakuInputInControlBar(
+    isFullscreen: Boolean,
+    widthDp: Int
+): Boolean = isFullscreen && widthDp >= 600
 
 internal fun shouldShowPlaybackOrderLabelInControlBar(
     isFullscreen: Boolean,
@@ -214,13 +226,15 @@ internal fun shouldShowAspectRatioButtonInControlBar(
 
 internal fun shouldShowMoreActionsButtonInControlBar(
     isFullscreen: Boolean,
+    showEpisodeInMoreActions: Boolean = false,
     showNextEpisodeButton: Boolean,
     showPlaybackOrderLabel: Boolean,
     showAspectRatioButton: Boolean,
     showPortraitSwitchButton: Boolean
 ): Boolean {
     return isFullscreen && (
-        showNextEpisodeButton ||
+        showEpisodeInMoreActions ||
+            showNextEpisodeButton ||
             showPlaybackOrderLabel ||
             showAspectRatioButton ||
             showPortraitSwitchButton
@@ -418,10 +432,24 @@ fun BottomControlBar(
     val fullscreenToggleTouchTargetDp = remember(layoutPolicy.fullscreenIconSizeDp) {
         resolveFullscreenToggleTouchTargetDp(iconSizeDp = layoutPolicy.fullscreenIconSizeDp)
     }
-    val showEpisodeButton = remember(isFullscreen, hasEpisodeEntry) {
+    val showEpisodeButton = remember(isFullscreen, hasEpisodeEntry, configuration.screenWidthDp) {
         shouldShowEpisodeButtonInControlBar(
             isFullscreen = isFullscreen,
-            hasEpisodeEntry = hasEpisodeEntry
+            hasEpisodeEntry = hasEpisodeEntry,
+            widthDp = configuration.screenWidthDp
+        )
+    }
+    val showEpisodeInMoreActions = remember(isFullscreen, hasEpisodeEntry, showEpisodeButton) {
+        shouldShowEpisodeInMoreActions(
+            isFullscreen = isFullscreen,
+            hasEpisodeEntry = hasEpisodeEntry,
+            showInlineEpisodeButton = showEpisodeButton
+        )
+    }
+    val showDanmakuInput = remember(isFullscreen, configuration.screenWidthDp) {
+        shouldShowDanmakuInputInControlBar(
+            isFullscreen = isFullscreen,
+            widthDp = configuration.screenWidthDp
         )
     }
     var showMoreActionsPanel by remember { mutableStateOf(false) }
@@ -462,6 +490,7 @@ fun BottomControlBar(
     }
     val showMoreActionsButton = remember(
         isFullscreen,
+        showEpisodeInMoreActions,
         showNextEpisodeButton,
         showPlaybackOrderLabel,
         showAspectRatioButton,
@@ -469,6 +498,7 @@ fun BottomControlBar(
     ) {
         shouldShowMoreActionsButtonInControlBar(
             isFullscreen = isFullscreen,
+            showEpisodeInMoreActions = showEpisodeInMoreActions,
             showNextEpisodeButton = showNextEpisodeButton,
             showPlaybackOrderLabel = showPlaybackOrderLabel,
             showAspectRatioButton = showAspectRatioButton,
@@ -597,50 +627,54 @@ fun BottomControlBar(
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(layoutPolicy.danmakuSwitchToInputSpacingDp.dp))
-                
-                // Danmaku Input Box
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(layoutPolicy.danmakuInputHeightDp.dp)
-                        .clip(RoundedCornerShape((layoutPolicy.danmakuInputHeightDp / 2).dp))
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .consumeTap(onDanmakuInputClick),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = "发个友善的弹幕见证当下...",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = layoutPolicy.danmakuInputFontSp.sp,
-                        maxLines = danmakuPlaceholderPolicy.maxLines,
-                        overflow = if (danmakuPlaceholderPolicy.ellipsis) TextOverflow.Ellipsis else TextOverflow.Clip,
+                if (showDanmakuInput) {
+                    Spacer(modifier = Modifier.width(layoutPolicy.danmakuSwitchToInputSpacingDp.dp))
+
+                    // Danmaku Input Box
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = layoutPolicy.danmakuInputStartPaddingDp.dp,
-                                end = danmakuPlaceholderPolicy.trailingTextPaddingDp.dp
-                            )
-                    )
-                    
-                    // Settings Icon inside input bar (right)
-                    IconButton(
-                        onClick = onDanmakuSettingsClick,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = layoutPolicy.danmakuSettingEndPaddingDp.dp)
-                            .size(layoutPolicy.danmakuSettingButtonSizeDp.dp)
+                            .weight(1f)
+                            .height(layoutPolicy.danmakuInputHeightDp.dp)
+                            .clip(RoundedCornerShape((layoutPolicy.danmakuInputHeightDp / 2).dp))
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .consumeTap(onDanmakuInputClick),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(
-                            imageVector = CupertinoIcons.Default.Gearshape,
-                            contentDescription = "Settings",
-                            tint = Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(layoutPolicy.danmakuSettingIconSizeDp.dp)
+                        Text(
+                            text = "发个友善的弹幕见证当下...",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = layoutPolicy.danmakuInputFontSp.sp,
+                            maxLines = danmakuPlaceholderPolicy.maxLines,
+                            overflow = if (danmakuPlaceholderPolicy.ellipsis) TextOverflow.Ellipsis else TextOverflow.Clip,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = layoutPolicy.danmakuInputStartPaddingDp.dp,
+                                    end = danmakuPlaceholderPolicy.trailingTextPaddingDp.dp
+                                )
                         )
+
+                        // Settings Icon inside input bar (right)
+                        IconButton(
+                            onClick = onDanmakuSettingsClick,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = layoutPolicy.danmakuSettingEndPaddingDp.dp)
+                                .size(layoutPolicy.danmakuSettingButtonSizeDp.dp)
+                        ) {
+                            Icon(
+                                imageVector = CupertinoIcons.Default.Gearshape,
+                                contentDescription = "Settings",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(layoutPolicy.danmakuSettingIconSizeDp.dp)
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.width(layoutPolicy.afterInputSpacingDp.dp))
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-                
-                Spacer(modifier = Modifier.width(layoutPolicy.afterInputSpacingDp.dp))
             } else {
                 Spacer(modifier = Modifier.weight(1f))
             }
@@ -861,6 +895,16 @@ fun BottomControlBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    if (showEpisodeInMoreActions) {
+                        MoreActionTextButton(
+                            label = "分集",
+                            minWidthDp = moreActionItemMinWidthDp,
+                            onClick = {
+                                showMoreActionsPanel = false
+                                onEpisodeClick()
+                            }
+                        )
+                    }
                     if (showNextEpisodeButton) {
                         MoreActionTextButton(
                             label = "下集",

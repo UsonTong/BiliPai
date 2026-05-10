@@ -717,26 +717,17 @@ fun HomeScreen(
     // 是否为单列模式 (Story or Cinematic)
     val isSingleColumnMode = displayMode == 1
     
-    val adaptiveColumns = remember(contentWidth, displayMode, homeSettings.gridColumnCount) {
-        // [新增] 如果用户自定义了列数 (且非单列模式)，优先使用用户设置
-        if (!isSingleColumnMode && homeSettings.gridColumnCount > 0) {
-            return@remember homeSettings.gridColumnCount
-        }
-
-        val minColumnWidth = if (isSingleColumnMode) 280.dp else 180.dp // 单列模式给更宽的基准
-        val maxColumns = if (isSingleColumnMode) 2 else 6
-        val columns = (contentWidth / minColumnWidth).toInt()
-        columns.coerceIn(1, maxColumns)
-    }
-    
-    val gridColumns = if (!isSingleColumnMode && homeSettings.gridColumnCount > 0) {
-        homeSettings.gridColumnCount
-    } else if (windowSizeClass.isExpandedScreen) {
-        adaptiveColumns
-    } else {
-        com.android.purebilibili.core.util.rememberResponsiveValue(
-            compact = if (isSingleColumnMode) 1 else 2,  // 手机：单列模式1列，其他2列
-            medium = if (isSingleColumnMode) 2 else 3    // 中等宽度：单列模式2列，其它3列
+    val gridColumns = remember(
+        contentWidth,
+        displayMode,
+        homeSettings.gridColumnCount,
+        homeSettings.homeFeedCardWidthPreset
+    ) {
+        resolveHomeFeedGridColumns(
+            contentWidthDp = contentWidth.value.toInt(),
+            displayMode = displayMode,
+            fixedColumnCount = homeSettings.gridColumnCount,
+            cardWidthPreset = homeSettings.homeFeedCardWidthPreset
         )
     }
     

@@ -13,10 +13,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -59,7 +61,11 @@ private const val COMMENT_INPUT_FOCUS_RETRY_DELAY_MS = 80L
 internal data class CommentInputDialogLayoutPolicy(
     val inputBoxMinHeightDp: Int,
     val inputBoxMaxHeightDp: Int,
-    val emojiPanelHeightDp: Int
+    val emojiPanelHeightDp: Int,
+    val sheetHorizontalPaddingDp: Int,
+    val toolbarToolButtonSizeDp: Int,
+    val toolbarToolSpacingDp: Int,
+    val sendButtonHorizontalPaddingDp: Int
 )
 
 internal fun resolveCommentInputDialogLayoutPolicy(
@@ -69,13 +75,21 @@ internal fun resolveCommentInputDialogLayoutPolicy(
         CommentInputDialogLayoutPolicy(
             inputBoxMinHeightDp = 64,
             inputBoxMaxHeightDp = 112,
-            emojiPanelHeightDp = 196
+            emojiPanelHeightDp = 196,
+            sheetHorizontalPaddingDp = 16,
+            toolbarToolButtonSizeDp = 40,
+            toolbarToolSpacingDp = 6,
+            sendButtonHorizontalPaddingDp = 18
         )
     } else {
         CommentInputDialogLayoutPolicy(
             inputBoxMinHeightDp = 84,
             inputBoxMaxHeightDp = 136,
-            emojiPanelHeightDp = 220
+            emojiPanelHeightDp = 220,
+            sheetHorizontalPaddingDp = 16,
+            toolbarToolButtonSizeDp = 40,
+            toolbarToolSpacingDp = 6,
+            sendButtonHorizontalPaddingDp = 16
         )
     }
 }
@@ -225,7 +239,7 @@ fun CommentInputDialog(
                 ) {
                     Column(
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(layoutPolicy.sheetHorizontalPaddingDp.dp)
                             .navigationBarsPadding() // 避让底部导航栏(手势条)
                     ) {
                         // 1. 顶部：输入框
@@ -349,98 +363,108 @@ fun CommentInputDialog(
                                 .padding(top = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 转发到动态
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable(enabled = canInputComment && !isSending) { isForwardToDynamic = !isForwardToDynamic }
-                                    .padding(4.dp)
+                                    .weight(1f)
+                                    .horizontalScroll(rememberScrollState()),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(layoutPolicy.toolbarToolSpacingDp.dp)
                             ) {
-                                // 模拟 RadioButton/Checkbox
-                                Icon(
-                                    imageVector = if (isForwardToDynamic) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                                    contentDescription = null,
-                                    tint = if (isForwardToDynamic) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "转发到动态",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            // 图标栏: 表情 @ 图片
-                            IconButton(
-                                onClick = { showEmojiPanel = !showEmojiPanel },
-                                enabled = canInputComment && !isSending
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Face,
-                                    contentDescription = "Emoji",
-                                    tint = if (showEmojiPanel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                            
-                            IconButton(
-                                onClick = {
-                                    text += "@"
-                                    // 切换回键盘
-                                    showEmojiPanel = false
-                                },
-                                enabled = canInputComment && !isSending
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Email,
-                                    contentDescription = "At",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(26.dp)
-                                )
+                                // 转发到动态
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable(enabled = canInputComment && !isSending) { isForwardToDynamic = !isForwardToDynamic }
+                                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                                ) {
+                                    // 模拟 RadioButton/Checkbox
+                                    Icon(
+                                        imageVector = if (isForwardToDynamic) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                                        contentDescription = null,
+                                        tint = if (isForwardToDynamic) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "转发到动态",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                // 图标栏: 表情 @ 图片
+                                IconButton(
+                                    onClick = { showEmojiPanel = !showEmojiPanel },
+                                    enabled = canInputComment && !isSending,
+                                    modifier = Modifier.size(layoutPolicy.toolbarToolButtonSizeDp.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Face,
+                                        contentDescription = "Emoji",
+                                        tint = if (showEmojiPanel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        text += "@"
+                                        // 切换回键盘
+                                        showEmojiPanel = false
+                                    },
+                                    enabled = canInputComment && !isSending,
+                                    modifier = Modifier.size(layoutPolicy.toolbarToolButtonSizeDp.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Email,
+                                        contentDescription = "At",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        text += resolveCommentProgressInsertText(currentVideoPositionMsProvider())
+                                        showEmojiPanel = false
+                                    },
+                                    enabled = canInputComment && !isSending,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text(
+                                        text = "进度",
+                                        fontSize = 13.sp,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        imagePickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    enabled = canUploadImage && canInputComment && !isSending,
+                                    modifier = Modifier.size(layoutPolicy.toolbarToolButtonSizeDp.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.AddCircle,
+                                        contentDescription = "Add",
+                                        tint = if (canUploadImage) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                        },
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
                             }
 
-                            TextButton(
-                                onClick = {
-                                    text += resolveCommentProgressInsertText(currentVideoPositionMsProvider())
-                                    showEmojiPanel = false
-                                },
-                                enabled = canInputComment && !isSending,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text(
-                                    text = "进度",
-                                    fontSize = 13.sp,
-                                    maxLines = 1
-                                )
-                            }
-                            
-                            IconButton(
-                                onClick = {
-                                    imagePickerLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                                enabled = canUploadImage && canInputComment && !isSending
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.AddCircle,
-                                    contentDescription = "Add",
-                                    tint = if (canUploadImage) {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                                    },
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.weight(1f))
-                            
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             // 发送按钮
                             Button(
                                 onClick = {
@@ -457,7 +481,7 @@ fun CommentInputDialog(
                                     containerColor = MaterialTheme.colorScheme.primary, // 应该是粉色
                                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 ),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
+                                contentPadding = PaddingValues(horizontal = layoutPolicy.sendButtonHorizontalPaddingDp.dp, vertical = 0.dp),
                                 modifier = Modifier.height(36.dp)
                             ) {
                                 if (isSending) {

@@ -80,6 +80,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "毛玻璃",
             "封面玻璃",
             "信息区玻璃",
+            "推荐流卡片宽度",
+            "卡片宽度",
+            "首页卡片宽度",
             "动态取色",
             "material you",
             "materialyou",
@@ -96,6 +99,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "首页壁纸",
             "首页壁纸效果",
             "随机壁纸",
+            "开屏图标遮罩动画",
+            "图标遮罩动画",
+            "显示开屏图标",
+            "隐藏开屏图标",
             "开屏图标动画",
             "应用图标",
             "统计信息贴封面",
@@ -152,6 +159,11 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "全屏方向",
             "固定全屏比例",
             "横屏适配",
+            "平板评论区宽度",
+            "评论区宽度",
+            "播放页隐藏状态栏",
+            "隐藏状态栏",
+            "状态栏",
             "自动横竖屏",
             "自动旋转",
             "全屏手势反向",
@@ -388,9 +400,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "开屏壁纸 / 启动画面",
-        subtitle = "开屏壁纸、自定义壁纸、随机壁纸、开屏图标动画",
+        subtitle = "开屏壁纸、自定义壁纸、随机壁纸、图标遮罩动画",
         section = "外观设置",
-        aliases = listOf("开屏壁纸", "自定义壁纸", "相册壁纸", "启动画面", "随机壁纸", "开屏图标动画", "启动壁纸"),
+        aliases = listOf("开屏壁纸", "自定义壁纸", "相册壁纸", "启动画面", "随机壁纸", "开屏图标遮罩动画", "图标遮罩动画", "显示开屏图标", "隐藏开屏图标", "开屏图标动画", "启动壁纸"),
         focusId = SettingsSearchFocusIds.APPEARANCE_SPLASH
     ),
     SettingsSearchEntry(
@@ -404,9 +416,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "首页展示",
-        subtitle = "展示样式、首页壁纸效果、玻璃样式、UP主标识",
+        subtitle = "展示样式、首页壁纸效果、玻璃样式、推荐流卡片宽度",
         section = "外观设置",
-        aliases = listOf("首页展示", "展示样式", "首页壁纸", "首页壁纸效果", "原图壁纸", "壁纸模糊", "强模糊", "封面玻璃样式", "信息区玻璃样式", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
+        aliases = listOf("首页展示", "展示样式", "首页壁纸", "首页壁纸效果", "原图壁纸", "壁纸模糊", "强模糊", "封面玻璃样式", "信息区玻璃样式", "推荐流卡片宽度", "首页卡片宽度", "卡片宽度", "统计信息贴封面", "UP主标识", "UP标识", "up主标识", "up标识"),
         focusId = SettingsSearchFocusIds.APPEARANCE_HOME
     ),
     SettingsSearchEntry(
@@ -451,10 +463,10 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK,
-        title = "自动横竖屏 / 全屏方向",
+        title = "自动横竖屏 / 全屏方向 / 平板布局",
         subtitle = "交互",
         section = "播放设置",
-        aliases = listOf("自动横竖屏", "自动旋转", "全屏方向", "固定全屏比例", "全屏手势反向", "自动进入全屏", "自动退出全屏", "横屏适配"),
+        aliases = listOf("自动横竖屏", "自动旋转", "全屏方向", "固定全屏比例", "全屏手势反向", "自动进入全屏", "自动退出全屏", "横屏适配", "平板评论区宽度", "评论区宽度", "播放页隐藏状态栏", "隐藏状态栏", "状态栏"),
         focusId = SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
     ),
     SettingsSearchEntry(

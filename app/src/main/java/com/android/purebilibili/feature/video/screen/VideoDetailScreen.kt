@@ -272,6 +272,35 @@ internal fun shouldShowSystemBarsOnVideoDetailExit(): Boolean {
     return true
 }
 
+internal data class VideoDetailSystemBarsVisibilityPolicy(
+    val hideStatusBars: Boolean,
+    val hideNavigationBars: Boolean
+)
+
+internal fun resolveVideoDetailSystemBarsVisibilityPolicy(
+    isFullscreenMode: Boolean,
+    hideVideoPageStatusBar: Boolean,
+    isInPipMode: Boolean,
+    isScreenActive: Boolean
+): VideoDetailSystemBarsVisibilityPolicy {
+    if (!isScreenActive || isInPipMode) {
+        return VideoDetailSystemBarsVisibilityPolicy(
+            hideStatusBars = false,
+            hideNavigationBars = false
+        )
+    }
+    if (isFullscreenMode) {
+        return VideoDetailSystemBarsVisibilityPolicy(
+            hideStatusBars = true,
+            hideNavigationBars = true
+        )
+    }
+    return VideoDetailSystemBarsVisibilityPolicy(
+        hideStatusBars = hideVideoPageStatusBar,
+        hideNavigationBars = false
+    )
+}
+
 internal fun shouldRestoreSystemBarsDuringVideoDetailExitTransition(
     isExitTransitionInProgress: Boolean,
     isActuallyLeaving: Boolean
@@ -829,6 +858,12 @@ fun VideoDetailScreen(
         .getHorizontalAdaptationEnabled(context)
         .collectAsStateWithLifecycle(
             initialValue = windowSizeClass.isTabletDevice,
+            lifecycle = lifecycleOwner.lifecycle
+        )
+    val hideVideoPageStatusBar by com.android.purebilibili.core.store.SettingsManager
+        .getHideVideoPageStatusBar(context)
+        .collectAsStateWithLifecycle(
+            initialValue = false,
             lifecycle = lifecycleOwner.lifecycle
         )
     val useTabletLayout = shouldUseTabletVideoLayout(
@@ -2038,6 +2073,19 @@ fun VideoDetailScreen(
     // 沉浸式状态栏控制
     val backgroundColor = MaterialTheme.colorScheme.background
     val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
+    val systemBarsVisibilityPolicy = remember(
+        isFullscreenMode,
+        hideVideoPageStatusBar,
+        isPipMode,
+        isScreenActive
+    ) {
+        resolveVideoDetailSystemBarsVisibilityPolicy(
+            isFullscreenMode = isFullscreenMode,
+            hideVideoPageStatusBar = hideVideoPageStatusBar,
+            isInPipMode = isPipMode,
+            isScreenActive = isScreenActive
+        )
+    }
 
     //  iOS风格：竖屏时状态栏黑色背景（与播放器融为一体）
     //  只在页面活跃时修改状态栏，避免退出时覆盖恢复操作
@@ -2046,7 +2094,7 @@ fun VideoDetailScreen(
             val window = (view.context.findActivity())?.window ?: return@SideEffect
             val insetsController = WindowCompat.getInsetsController(window, view)
 
-            if (isFullscreenMode) {
+            if (systemBarsVisibilityPolicy.hideNavigationBars) {
                 // 📱 手机全屏隐藏状态栏
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -2054,7 +2102,14 @@ fun VideoDetailScreen(
                 window.navigationBarColor = Color.Black.toArgb()
             } else {
                 //  [沉浸式] 非全屏模式：手机保持透明沉浸，平板使用实体状态栏提升可读性
-                insetsController.show(WindowInsetsCompat.Type.systemBars())
+                if (systemBarsVisibilityPolicy.hideStatusBars) {
+                    insetsController.hide(WindowInsetsCompat.Type.statusBars())
+                    insetsController.show(WindowInsetsCompat.Type.navigationBars())
+                    insetsController.systemBarsBehavior =
+                        androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                } else {
+                    insetsController.show(WindowInsetsCompat.Type.systemBars())
+                }
                 if (useTabletLayout) {
                     insetsController.isAppearanceLightStatusBars = isLightBackground
                     insetsController.isAppearanceLightNavigationBars = isLightBackground

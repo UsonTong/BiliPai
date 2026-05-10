@@ -427,102 +427,96 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `sliding item visuals follow indicator instead of fixed selected tab`() {
-        val home = resolveBottomBarItemMotionVisual(
+    fun `sliding item coverage follows indicator instead of fixed selected tab`() {
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertTrue(dynamic.themeWeight > home.themeWeight)
-        assertTrue(dynamic.scale > home.scale)
+        assertTrue(dynamic > home)
+        assertTrue(
+            resolveBottomBarItemMotionScale(dynamic, motionProgress = 1f) >
+                resolveBottomBarItemMotionScale(home, motionProgress = 1f)
+        )
     }
 
     @Test
-    fun `sliding item visual fills icon for item covered by indicator`() {
-        val home = resolveBottomBarItemMotionVisual(
+    fun `sliding item coverage fills icon for item covered by indicator`() {
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertTrue(home.themeWeight in 0f..1f)
-        assertTrue(dynamic.themeWeight in 0f..1f)
-        assertFalse(home.useSelectedIcon)
-        assertTrue(dynamic.useSelectedIcon)
+        assertTrue(home in 0f..1f)
+        assertTrue(dynamic in 0f..1f)
+        assertFalse(home >= 0.5f)
+        assertTrue(dynamic >= 0.5f)
     }
 
     @Test
-    fun `sliding item selected icon alpha follows indicator position continuously`() {
-        val home = resolveBottomBarItemMotionVisual(
+    fun `sliding item coverage drives selected icon alpha continuously`() {
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertEquals(0.2f, home.selectedIconAlpha, 0.001f)
-        assertEquals(0.8f, dynamic.selectedIconAlpha, 0.001f)
+        assertEquals(0.2f, home, 0.001f)
+        assertEquals(0.8f, dynamic, 0.001f)
     }
 
     @Test
-    fun `sliding item color weight follows indicator position without emphasis cap`() {
-        val dynamic = resolveBottomBarItemMotionVisual(
+    fun `sliding item color weight is the indicator coverage`() {
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertEquals(0.8f, dynamic.themeWeight, 0.001f)
+        assertEquals(0.8f, dynamic, 0.001f)
     }
 
     @Test
-    fun `sliding item scale remains active for indicator refraction feel`() {
-        val home = resolveBottomBarItemMotionVisual(
+    fun `sliding item scale is derived from shared coverage`() {
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.8f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertTrue(dynamic.scale > 1f)
-        assertTrue(home.scale > 1f)
+        assertTrue(resolveBottomBarItemMotionScale(dynamic, motionProgress = 1f) > 1f)
+        assertTrue(resolveBottomBarItemMotionScale(home, motionProgress = 1f) > 1f)
     }
 
     @Test
@@ -557,47 +551,42 @@ class BottomBarIndicatorPolicyTest {
 
     @Test
     fun `sliding color transfers continuously from current tab to next tab`() {
-        val home = resolveBottomBarItemMotionVisual(
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.2f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.2f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
 
-        assertEquals(0.8f, home.themeWeight, 0.001f)
-        assertEquals(0.2f, dynamic.themeWeight, 0.001f)
+        assertEquals(0.8f, home, 0.001f)
+        assertEquals(0.2f, dynamic, 0.001f)
     }
 
     @Test
     fun `sliding item scale only affects indicator neighbors`() {
-        val home = resolveBottomBarItemMotionVisual(
+        val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.5f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val dynamic = resolveBottomBarItemMotionVisual(
+        val dynamic = resolveBottomBarItemCoverage(
             itemIndex = 1,
             indicatorPosition = 0.5f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
-        val history = resolveBottomBarItemMotionVisual(
+        val history = resolveBottomBarItemCoverage(
             itemIndex = 2,
             indicatorPosition = 0.5f,
             currentSelectedIndex = 0,
-            motionProgress = 1f,
-            selectionEmphasis = 0.28f
+            motionProgress = 1f
         )
         val profile = resolveBottomBarRefractionMotionProfile(
             position = 0.5f,
@@ -605,11 +594,31 @@ class BottomBarIndicatorPolicyTest {
             isDragging = true
         )
 
-        assertTrue(home.scale > 1f)
-        assertTrue(dynamic.scale > 1f)
-        assertEquals(1f, history.scale)
-        assertEquals(0f, history.themeWeight)
+        assertTrue(resolveBottomBarItemMotionScale(home, motionProgress = 1f) > 1f)
+        assertTrue(resolveBottomBarItemMotionScale(dynamic, motionProgress = 1f) > 1f)
+        assertEquals(1f, resolveBottomBarItemMotionScale(history, motionProgress = 1f))
+        assertEquals(0f, history)
         assertTrue(profile.progress > 0f)
+    }
+
+    @Test
+    fun `idle item coverage only fills current selected tab`() {
+        val home = resolveBottomBarItemCoverage(
+            itemIndex = 0,
+            indicatorPosition = 0.5f,
+            currentSelectedIndex = 0,
+            motionProgress = 0f
+        )
+        val dynamic = resolveBottomBarItemCoverage(
+            itemIndex = 1,
+            indicatorPosition = 0.5f,
+            currentSelectedIndex = 0,
+            motionProgress = 0f
+        )
+
+        assertEquals(1f, home, 0.001f)
+        assertEquals(0f, dynamic, 0.001f)
+        assertEquals(1f, resolveBottomBarItemMotionScale(home, motionProgress = 0f), 0.001f)
     }
 
     @Test

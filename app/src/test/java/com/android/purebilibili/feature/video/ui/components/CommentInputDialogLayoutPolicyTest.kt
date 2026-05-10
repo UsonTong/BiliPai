@@ -15,6 +15,10 @@ class CommentInputDialogLayoutPolicyTest {
         assertEquals(84, policy.inputBoxMinHeightDp)
         assertEquals(136, policy.inputBoxMaxHeightDp)
         assertEquals(220, policy.emojiPanelHeightDp)
+        assertEquals(16, policy.sheetHorizontalPaddingDp)
+        assertEquals(40, policy.toolbarToolButtonSizeDp)
+        assertEquals(6, policy.toolbarToolSpacingDp)
+        assertEquals(16, policy.sendButtonHorizontalPaddingDp)
     }
 
     @Test
@@ -29,6 +33,7 @@ class CommentInputDialogLayoutPolicyTest {
         assertEquals(64, landscapePolicy.inputBoxMinHeightDp)
         assertEquals(112, landscapePolicy.inputBoxMaxHeightDp)
         assertEquals(196, landscapePolicy.emojiPanelHeightDp)
+        assertEquals(18, landscapePolicy.sendButtonHorizontalPaddingDp)
         assertTrue(landscapePolicy.inputBoxMinHeightDp < portraitPolicy.inputBoxMinHeightDp)
         assertTrue(landscapePolicy.inputBoxMaxHeightDp < portraitPolicy.inputBoxMaxHeightDp)
         assertTrue(landscapePolicy.emojiPanelHeightDp < portraitPolicy.emojiPanelHeightDp)

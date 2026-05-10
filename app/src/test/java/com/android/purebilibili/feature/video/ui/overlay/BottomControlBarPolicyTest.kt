@@ -66,6 +66,36 @@ class BottomControlBarPolicyTest {
     }
 
     @Test
+    fun compactFullscreenMovesEpisodeAndDanmakuInputOutOfInlineRow() {
+        assertFalse(
+            shouldShowEpisodeButtonInControlBar(
+                isFullscreen = true,
+                hasEpisodeEntry = true,
+                widthDp = 393
+            )
+        )
+        assertTrue(
+            shouldShowEpisodeInMoreActions(
+                isFullscreen = true,
+                hasEpisodeEntry = true,
+                showInlineEpisodeButton = false
+            )
+        )
+        assertFalse(
+            shouldShowDanmakuInputInControlBar(
+                isFullscreen = true,
+                widthDp = 393
+            )
+        )
+        assertTrue(
+            shouldShowDanmakuInputInControlBar(
+                isFullscreen = true,
+                widthDp = 720
+            )
+        )
+    }
+
+    @Test
     fun playbackOrderLabelShownWhenFullscreenAndLabelPresent() {
         assertTrue(
             shouldShowPlaybackOrderLabelInControlBar(
@@ -125,6 +155,16 @@ class BottomControlBarPolicyTest {
 
     @Test
     fun moreActionsButtonVisibleWhenFullscreenAndAnyActionAvailable() {
+        assertTrue(
+            shouldShowMoreActionsButtonInControlBar(
+                isFullscreen = true,
+                showEpisodeInMoreActions = true,
+                showNextEpisodeButton = false,
+                showPlaybackOrderLabel = false,
+                showAspectRatioButton = false,
+                showPortraitSwitchButton = false
+            )
+        )
         assertTrue(
             shouldShowMoreActionsButtonInControlBar(
                 isFullscreen = true,

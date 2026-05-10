@@ -419,26 +419,37 @@ internal fun resolveSplashIconResIdForComponentClassName(className: String?): In
     return when (className?.substringAfterLast('.')) {
         "MainActivityAlias3DLauncher",
         "MainActivityAlias3D",
+        "MainActivityAlias3DNoIcon",
         "MainActivitySplashIcon3D" -> R.mipmap.ic_launcher_3d
         "MainActivityAliasBiliPai",
+        "MainActivityAliasBiliPaiNoIcon",
         "MainActivitySplashBiliPai" -> R.mipmap.ic_launcher_bilipai
         "MainActivityAliasBiliPaiPink",
+        "MainActivityAliasBiliPaiPinkNoIcon",
         "MainActivitySplashBiliPaiPink" -> R.mipmap.ic_launcher_bilipai_pink
         "MainActivityAliasBiliPaiWhite",
+        "MainActivityAliasBiliPaiWhiteNoIcon",
         "MainActivitySplashBiliPaiWhite" -> R.mipmap.ic_launcher_bilipai_white
         "MainActivityAliasBiliPaiMonet",
+        "MainActivityAliasBiliPaiMonetNoIcon",
         "MainActivitySplashBiliPaiMonet" -> R.mipmap.ic_launcher_bilipai_monet
         "MainActivityAliasFlat",
+        "MainActivityAliasFlatNoIcon",
         "MainActivitySplashFlat" -> R.mipmap.ic_launcher_flat
         "MainActivityAliasTelegramBlue",
+        "MainActivityAliasTelegramBlueNoIcon",
         "MainActivitySplashTelegramBlue" -> R.mipmap.ic_launcher_telegram_blue
         "MainActivityAliasDark",
+        "MainActivityAliasDarkNoIcon",
         "MainActivitySplashTelegramDark" -> R.mipmap.ic_launcher_telegram_dark
         "MainActivityAliasYuki",
+        "MainActivityAliasYukiNoIcon",
         "MainActivitySplashYuki" -> R.mipmap.ic_launcher
         "MainActivityAliasAnime",
+        "MainActivityAliasAnimeNoIcon",
         "MainActivitySplashAnime" -> R.mipmap.ic_launcher_anime
         "MainActivityAliasHeadphone",
+        "MainActivityAliasHeadphoneNoIcon",
         "MainActivitySplashHeadphone" -> R.mipmap.ic_launcher_headphone
         else -> 0
     }
@@ -512,6 +523,13 @@ internal fun shouldEnableSplashFlyoutAnimation(
     if (!splashIconAnimationEnabled) return false
     if (sdkInt < Build.VERSION_CODES.S) return false
     return hasCompletedOnboarding && hasAcceptedReleaseDisclaimer
+}
+
+internal fun shouldKeepSystemSplashForPreload(
+    runColdStartSplash: Boolean,
+    splashIconVisible: Boolean
+): Boolean {
+    return runColdStartSplash && splashIconVisible
 }
 
 internal fun shouldApplySplashRealtimeBlur(
@@ -722,17 +740,22 @@ open class MainActivity : AppCompatActivity() {
         val splashScreen = installSplashScreen()
         val runColdStartSplash = shouldRunColdStartSplash(savedInstanceStatePresent = savedInstanceState != null)
         val welcomePrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val splashIconVisible = SettingsManager.isSplashIconAnimationEnabledSync(this)
         val splashFlyoutEnabled = runColdStartSplash && shouldEnableSplashFlyoutAnimation(
             sdkInt = Build.VERSION.SDK_INT,
             hasCompletedOnboarding = welcomePrefs.getBoolean(KEY_FIRST_LAUNCH, false),
             hasAcceptedReleaseDisclaimer = welcomePrefs.getBoolean(RELEASE_DISCLAIMER_ACK_KEY, false),
-            splashIconAnimationEnabled = SettingsManager.isSplashIconAnimationEnabledSync(this)
+            splashIconAnimationEnabled = splashIconVisible
+        )
+        val keepSystemSplashForPreload = shouldKeepSystemSplashForPreload(
+            runColdStartSplash = runColdStartSplash,
+            splashIconVisible = splashIconVisible
         )
         val splashFlyoutIconResId = resolveLaunchIconResId(this, intent)
         splashFlyoutEnabledAtCreate = splashFlyoutEnabled
         Logger.d(
             TAG,
-            "🚀 Splash setup. coldStart=$runColdStartSplash, flyoutEnabled=$splashFlyoutEnabled, firstLaunchShown=${welcomePrefs.getBoolean(KEY_FIRST_LAUNCH, false)}, disclaimerAck=${welcomePrefs.getBoolean(RELEASE_DISCLAIMER_ACK_KEY, false)}, taskRoot=$isTaskRoot, savedState=${savedInstanceState != null}, intentFlags=0x${intent?.flags?.toString(16) ?: "0"}, launchIconResId=$splashFlyoutIconResId"
+            "🚀 Splash setup. coldStart=$runColdStartSplash, iconVisible=$splashIconVisible, keepForPreload=$keepSystemSplashForPreload, flyoutEnabled=$splashFlyoutEnabled, firstLaunchShown=${welcomePrefs.getBoolean(KEY_FIRST_LAUNCH, false)}, disclaimerAck=${welcomePrefs.getBoolean(RELEASE_DISCLAIMER_ACK_KEY, false)}, taskRoot=$isTaskRoot, savedState=${savedInstanceState != null}, intentFlags=0x${intent?.flags?.toString(16) ?: "0"}, launchIconResId=$splashFlyoutIconResId"
         )
         
         //  🚀 [启动优化] 立即开始预加载首页数据
@@ -754,7 +777,7 @@ open class MainActivity : AppCompatActivity() {
         windowMetrics = WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this)
 
         splashScreen.setKeepOnScreenCondition {
-            if (!runColdStartSplash) {
+            if (!keepSystemSplashForPreload) {
                 return@setKeepOnScreenCondition false
             }
 

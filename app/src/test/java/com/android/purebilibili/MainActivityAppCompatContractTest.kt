@@ -184,6 +184,51 @@ class MainActivityAppCompatContractTest {
     }
 
     @Test
+    fun noIconLauncherAliases_shouldKeepLauncherIconButUseTransparentSplashTheme() {
+        val manifest = loadResourceText("../AndroidManifest.xml")
+        val lightThemes = loadResourceText("values/themes.xml")
+        val nightThemes = loadResourceText("values-night/themes.xml")
+
+        assertTrue(
+            lightThemes.contains("""<style name="Theme.PureBiliBili.Splash.NoIcon" parent="Theme.PureBiliBili">""") &&
+                lightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>"""),
+            "Light no-icon splash theme should use the transparent splash icon drawable"
+        )
+        assertTrue(
+            nightThemes.contains("""<style name="Theme.PureBiliBili.Splash.NoIcon" parent="Theme.PureBiliBili">""") &&
+                nightThemes.contains("""<item name="windowSplashScreenAnimatedIcon">@drawable/splash_no_icon</item>"""),
+            "Night no-icon splash theme should use the transparent splash icon drawable"
+        )
+
+        listOf(
+            "MainActivityAlias3DNoIcon" to "ic_launcher_3d",
+            "MainActivityAliasBiliPaiNoIcon" to "ic_launcher_bilipai",
+            "MainActivityAliasBiliPaiPinkNoIcon" to "ic_launcher_bilipai_pink",
+            "MainActivityAliasBiliPaiWhiteNoIcon" to "ic_launcher_bilipai_white",
+            "MainActivityAliasBiliPaiMonetNoIcon" to "ic_launcher_bilipai_monet",
+            "MainActivityAliasFlatNoIcon" to "ic_launcher_flat",
+            "MainActivityAliasTelegramBlueNoIcon" to "ic_launcher_telegram_blue",
+            "MainActivityAliasDarkNoIcon" to "ic_launcher_telegram_dark",
+            "MainActivityAliasYukiNoIcon" to "ic_launcher",
+            "MainActivityAliasAnimeNoIcon" to "ic_launcher_anime",
+            "MainActivityAliasHeadphoneNoIcon" to "ic_launcher_headphone"
+        ).forEach { (alias, launcherIcon) ->
+            val aliasBlock = Regex(
+                """<activity-alias\b(?=[^>]*android:name="\.$alias")[\s\S]*?</activity-alias>"""
+            ).find(manifest)?.value.orEmpty()
+
+            assertTrue(
+                aliasBlock.contains("""android:targetActivity=".MainActivitySplashNoIcon""""),
+                "$alias should target the transparent splash activity"
+            )
+            assertTrue(
+                aliasBlock.contains("""android:icon="@mipmap/$launcherIcon""""),
+                "$alias should keep the selected launcher icon on the home screen"
+            )
+        }
+    }
+
+    @Test
     fun splashFlyout_shouldReuseLauncherIconForSelectedLauncherComponent() {
         mapOf(
             "com.android.purebilibili.MainActivityAlias3DLauncher" to R.mipmap.ic_launcher_3d,
@@ -198,7 +243,8 @@ class MainActivityAppCompatContractTest {
             "com.android.purebilibili.MainActivityAliasDark" to R.mipmap.ic_launcher_telegram_dark,
             "com.android.purebilibili.MainActivityAliasYuki" to R.mipmap.ic_launcher,
             "com.android.purebilibili.MainActivityAliasAnime" to R.mipmap.ic_launcher_anime,
-            "com.android.purebilibili.MainActivityAliasHeadphone" to R.mipmap.ic_launcher_headphone
+            "com.android.purebilibili.MainActivityAliasHeadphone" to R.mipmap.ic_launcher_headphone,
+            "com.android.purebilibili.MainActivityAlias3DNoIcon" to R.mipmap.ic_launcher_3d
         ).forEach { (className, iconResId) ->
             assertTrue(
                 resolveSplashIconResIdForComponentClassName(className) == iconResId,
@@ -210,16 +256,18 @@ class MainActivityAppCompatContractTest {
     @Test
     fun appIconSwitch_shouldNotRequestAppRestartOrRecreate() {
         val settingsViewModelSource = loadSettingsViewModelSource()
-        val setAppIconBody = Regex(
+        val launcherAliasSwitchBody = Regex(
+            """private suspend fun applyLauncherAliasForCurrentSplashIconSetting\(iconKey: String\) \{[\s\S]*?\n    \}"""
+        ).find(settingsViewModelSource)?.value ?: Regex(
             """fun setAppIcon\(iconKey: String\) \{[\s\S]*?\n    \}"""
         ).find(settingsViewModelSource)?.value.orEmpty()
 
         assertTrue(
-            setAppIconBody.contains("PackageManager.DONT_KILL_APP"),
+            launcherAliasSwitchBody.contains("PackageManager.DONT_KILL_APP"),
             "Icon switching should request DONT_KILL_APP to avoid reloading the running app"
         )
         assertTrue(
-            !setAppIconBody.contains("restartApp") && !setAppIconBody.contains(".recreate("),
+            !launcherAliasSwitchBody.contains("restartApp") && !launcherAliasSwitchBody.contains(".recreate("),
             "Icon switching should not explicitly restart or recreate the current app UI"
         )
     }
