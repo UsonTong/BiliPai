@@ -485,17 +485,10 @@ fun VideoTitleWithDesc(
         }
         if (displayBgmList.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            if (displayBgmList.size == 1) {
-                BgmInfoRow(
-                    bgmInfo = displayBgmList.first(),
-                    onBgmClick = onBgmClick
-                )
-            } else {
-                BgmInfoListRow(
-                    bgmList = displayBgmList,
-                    onBgmClick = onBgmClick
-                )
-            }
+            InlineBgmSection(
+                bgmList = displayBgmList,
+                onBgmClick = onBgmClick
+            )
         }
         
         //  Description - 默认隐藏，展开后显示
@@ -996,6 +989,26 @@ fun DescriptionSection(desc: String) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InlineBgmSection(
+    bgmList: List<BgmInfo>,
+    onBgmClick: (BgmInfo) -> Unit = {}
+) {
+    if (bgmList.isEmpty()) return
+
+    if (bgmList.size == 1) {
+        BgmInfoRow(
+            bgmInfo = bgmList.first(),
+            onBgmClick = onBgmClick
+        )
+    } else {
+        BgmInfoListRow(
+            bgmList = bgmList,
+            onBgmClick = onBgmClick
+        )
     }
 }
 
