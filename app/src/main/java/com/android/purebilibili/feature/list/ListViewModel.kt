@@ -32,10 +32,7 @@ abstract class BaseListViewModel(application: Application, private val pageTitle
     protected val _uiState = MutableStateFlow(ListUiState(title = pageTitle, isLoading = true))
     val uiState = _uiState.asStateFlow()
 
-    init {
-        loadData()
-    }
-
+    // 应当在子类初始化完成后调用
     fun loadData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -432,6 +429,10 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
         private const val HISTORY_DELETE_MAX_ATTEMPTS = 3
         private const val HISTORY_DELETE_RETRY_BASE_DELAY_MS = 300L
     }
+
+    init {
+        loadData()
+    }
 }
 
 // --- 收藏 ViewModel (支持分页加载所有收藏夹) ---
@@ -757,5 +758,9 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
                  _uiState.value = _uiState.value.copy(error = message)
             }
         }
+    }
+
+    init {
+        loadData()
     }
 }

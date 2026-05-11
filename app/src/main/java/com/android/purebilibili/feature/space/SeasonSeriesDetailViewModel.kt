@@ -223,4 +223,8 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
             }
         }
     }
+
+    init {
+        loadData()
+    }
 }
