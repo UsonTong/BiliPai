@@ -1,14 +1,9 @@
 // File: feature/video/ui/section/VideoInfoSection.kt
 package com.android.purebilibili.feature.video.ui.section
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,7 +19,6 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1007,9 +1001,6 @@ private fun InlineBgmSection(
 ) {
     if (bgmList.isEmpty()) return
 
-    var expanded by rememberSaveable(
-        inputs = arrayOf(bgmList.map(BgmInfo::musicId))
-    ) { mutableStateOf(false) }
     val leadSong = bgmList.first()
     val headerText = remember(bgmList, leadSong) {
         buildString {
@@ -1029,29 +1020,11 @@ private fun InlineBgmSection(
     BgmInfoRow(
         title = headerText,
         subtitle = leadSong.actor.takeIf { it.isNotBlank() },
-        expanded = expanded,
         showIndicator = bgmList.size > 1,
         onClick = {
-            if (bgmList.size > 1) {
-                expanded = !expanded
-            } else {
-                onBgmClick(leadSong)
-            }
+            onBgmClick(leadSong)
         }
     )
-
-    if (bgmList.size > 1) {
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            BgmInfoListRow(
-                bgmList = bgmList,
-                onBgmClick = onBgmClick
-            )
-        }
-    }
 }
 
 /**
