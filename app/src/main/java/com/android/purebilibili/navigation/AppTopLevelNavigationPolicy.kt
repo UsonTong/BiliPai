@@ -92,8 +92,8 @@ internal fun resolveBottomPagerNavigationDurationMillis(
     currentPage: Int,
     targetPage: Int
 ): Int {
-    val distance = kotlin.math.abs(targetPage - currentPage).coerceAtLeast(2)
-    return 100 * distance + 100
+    val distance = kotlin.math.abs(targetPage - currentPage).coerceAtLeast(1)
+    return (250 + 35 * (distance - 1)).coerceAtMost(350)
 }
 
 internal fun resolveBottomPagerBeyondViewportPageCount(contentReady: Boolean): Int {

@@ -163,6 +163,7 @@ internal fun <T> IOSSlidingSegmentedControl(
     indicatorHeight: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP.dp,
     labelFontSize: TextUnit = 14.sp,
     backdrop: Backdrop? = null,
+    tapPressRefractionEnabled: Boolean = true,
     onSelectionChange: (T) -> Unit
 ) {
     if (options.isEmpty()) return
@@ -199,6 +200,7 @@ internal fun <T> IOSSlidingSegmentedControl(
         indicatorHeight = indicatorHeight,
         labelFontSize = labelFontSize,
         backdrop = backdrop,
+        tapPressRefractionEnabled = tapPressRefractionEnabled,
         onSelectionChange = onSelectionChange
     )
 }
@@ -290,6 +292,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
     indicatorHeight: Dp = BOTTOM_BAR_LIQUID_SEGMENTED_CONTROL_INDICATOR_HEIGHT_DP.dp,
     labelFontSize: TextUnit = 14.sp,
     backdrop: Backdrop? = null,
+    tapPressRefractionEnabled: Boolean = true,
     onSelectionChange: (T) -> Unit
 ) {
     val selectedIndex = resolveSelectionIndex(options = options, selectedValue = selectedValue)
@@ -307,6 +310,7 @@ private fun <T> IOSSlidingSegmentedControlImpl(
         indicatorHeight = indicatorHeight,
         labelFontSize = labelFontSize,
         backdrop = backdrop,
-        forceLiquidChrome = forceLiquidIndicator
+        forceLiquidChrome = forceLiquidIndicator,
+        tapPressRefractionEnabled = tapPressRefractionEnabled
     )
 }

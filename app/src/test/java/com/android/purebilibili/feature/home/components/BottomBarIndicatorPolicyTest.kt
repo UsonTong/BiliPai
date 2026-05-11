@@ -363,6 +363,20 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `settle rebound transform is subtle and returns to neutral`() {
+        val compressed = resolveBottomBarSettleReboundTransform(progress = 0.1f)
+        val rebound = resolveBottomBarSettleReboundTransform(progress = 0.46f)
+        val idle = resolveBottomBarSettleReboundTransform(progress = 1f)
+
+        assertTrue(compressed.scaleX < 1f)
+        assertTrue(compressed.scaleX >= 0.97f)
+        assertTrue(rebound.scaleX > 1f)
+        assertTrue(rebound.scaleX <= 1.06f)
+        assertEquals(1f, idle.scaleX, 0.001f)
+        assertEquals(1f, idle.scaleY, 0.001f)
+    }
+
+    @Test
     fun `shared segmented control ignores tap press for refraction when disabled`() {
         assertEquals(
             0f,
@@ -498,6 +512,80 @@ class BottomBarIndicatorPolicyTest {
         )
 
         assertEquals(0.8f, dynamic, 0.001f)
+    }
+
+    @Test
+    fun `edge overscroll clamps visual indicator position and keeps selected coverage stable`() {
+        val startVisualPosition = resolveBottomBarVisualIndicatorPosition(
+            rawPosition = -0.36f,
+            itemCount = 5
+        )
+        val endVisualPosition = resolveBottomBarVisualIndicatorPosition(
+            rawPosition = 4.36f,
+            itemCount = 5
+        )
+
+        assertEquals(0f, startVisualPosition, 0.001f)
+        assertEquals(4f, endVisualPosition, 0.001f)
+        assertEquals(
+            1f,
+            resolveBottomBarItemCoverage(
+                itemIndex = 0,
+                indicatorPosition = startVisualPosition,
+                currentSelectedIndex = 0,
+                motionProgress = 1f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveBottomBarItemCoverage(
+                itemIndex = 1,
+                indicatorPosition = startVisualPosition,
+                currentSelectedIndex = 0,
+                motionProgress = 1f
+            ),
+            0.001f
+        )
+        assertEquals(
+            1f,
+            resolveBottomBarItemCoverage(
+                itemIndex = 4,
+                indicatorPosition = endVisualPosition,
+                currentSelectedIndex = 4,
+                motionProgress = 1f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveBottomBarItemCoverage(
+                itemIndex = 3,
+                indicatorPosition = endVisualPosition,
+                currentSelectedIndex = 4,
+                motionProgress = 1f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `edge strain reports only overscroll beyond the visual bounds`() {
+        assertEquals(
+            -0.36f,
+            resolveBottomBarEdgeStrain(rawPosition = -0.36f, itemCount = 5),
+            0.001f
+        )
+        assertEquals(
+            0.36f,
+            resolveBottomBarEdgeStrain(rawPosition = 4.36f, itemCount = 5),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveBottomBarEdgeStrain(rawPosition = 2.25f, itemCount = 5),
+            0.001f
+        )
     }
 
     @Test

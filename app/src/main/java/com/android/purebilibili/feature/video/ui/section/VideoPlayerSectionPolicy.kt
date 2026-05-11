@@ -330,14 +330,20 @@ internal fun resolveHorizontalSeekDeltaMs(
     totalDragDistanceX: Float,
     containerWidthPx: Float,
     fullscreenSwipeSeekSeconds: Int?,
+    inlineSwipeSeekSeconds: Int,
     gestureSensitivity: Float
 ): Long? {
     if (isFullscreen && fullscreenSwipeSeekEnabled) {
         val seekSeconds = fullscreenSwipeSeekSeconds ?: return null
-        val stepWidthPx = (containerWidthPx / 8f).coerceAtLeast(1f)
-        val stepCount = (totalDragDistanceX / stepWidthPx).toInt()
-        val steppedDelta = stepCount * seekSeconds * 1000L
-        if (steppedDelta != 0L) return steppedDelta
+        val maxDeltaMs = seekSeconds.coerceAtLeast(1) * 1000L
+        val rawDeltaMs = (totalDragDistanceX * 200f * gestureSensitivity).toLong()
+        return rawDeltaMs.coerceIn(-maxDeltaMs, maxDeltaMs)
+    }
+    if (!isFullscreen) {
+        val safeWidthPx = containerWidthPx.coerceAtLeast(1f)
+        val maxDeltaMs = inlineSwipeSeekSeconds.coerceIn(1, 120) * 1000L
+        val rawDeltaMs = (totalDragDistanceX / safeWidthPx * maxDeltaMs * gestureSensitivity).toLong()
+        return rawDeltaMs.coerceIn(-maxDeltaMs, maxDeltaMs)
     }
     return (totalDragDistanceX * 200f * gestureSensitivity).toLong()
 }

@@ -43,6 +43,19 @@ class HomeFeedGridPolicyTest {
     }
 
     @Test
+    fun doubleGridKeepsTwoColumnsOnCompactPhones() {
+        assertEquals(
+            2,
+            resolveHomeFeedGridColumns(
+                contentWidthDp = 320,
+                displayMode = 0,
+                fixedColumnCount = 0,
+                cardWidthPreset = HomeFeedCardWidthPreset.AUTO
+            )
+        )
+    }
+
+    @Test
     fun widePresetsReduceTabletColumnsAndMakeCardsWider() {
         val auto = resolveHomeFeedGridColumns(
             contentWidthDp = 1280,

@@ -642,6 +642,7 @@ fun FullscreenPlayerOverlay(
                                     totalDragDistanceX = dragDelta,
                                     containerWidthPx = screenWidth,
                                     fullscreenSwipeSeekSeconds = fullscreenSwipeSeekSeconds,
+                                    inlineSwipeSeekSeconds = 30,
                                     gestureSensitivity = 1f
                                 )
                                 if (seekDelta != null) {

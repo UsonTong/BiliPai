@@ -671,6 +671,8 @@ fun PlaybackSettingsContent(
                         .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
                     val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
+                    val inlineSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getInlineSwipeSeekSeconds(context).collectAsState(initial = 30)
                     val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
                     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
@@ -972,6 +974,42 @@ fun PlaybackSettingsContent(
                             },
                             iconTint = iOSOrange
                         )
+
+                        IOSDivider()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "非全屏滑动调进度范围",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "左右拖动一屏最多调整 ${inlineSwipeSeekSeconds} 秒，数值越小越精确",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val inlineSeekOptions = listOf(
+                                PlaybackSegmentOption(5, "5秒"),
+                                PlaybackSegmentOption(10, "10秒"),
+                                PlaybackSegmentOption(15, "15秒"),
+                                PlaybackSegmentOption(30, "30秒"),
+                                PlaybackSegmentOption(60, "60秒")
+                            )
+                            IOSSlidingSegmentedControl(
+                                options = inlineSeekOptions,
+                                selectedValue = inlineSwipeSeekSeconds,
+                                onSelectionChange = { seconds ->
+                                    scope.launch {
+                                        com.android.purebilibili.core.store.SettingsManager
+                                            .setInlineSwipeSeekSeconds(context, seconds)
+                                    }
+                                }
+                            )
+                        }
 
                         IOSDivider()
                         Column(

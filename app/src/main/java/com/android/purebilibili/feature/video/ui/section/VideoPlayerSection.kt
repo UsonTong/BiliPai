@@ -429,6 +429,7 @@ fun VideoPlayerSection(
     val pipNoDanmakuEnabled = playerInteractionSettings.pipNoDanmakuEnabled
     val seekForwardSeconds = playerInteractionSettings.seekForwardSeconds
     val seekBackwardSeconds = playerInteractionSettings.seekBackwardSeconds
+    val inlineSwipeSeekSeconds = playerInteractionSettings.inlineSwipeSeekSeconds
     val fullscreenSwipeSeekSeconds = playerInteractionSettings.fullscreenSwipeSeekSeconds
     val fullscreenSwipeSeekEnabled = playerInteractionSettings.fullscreenSwipeSeekEnabled
     val fullscreenGestureReverse = playerInteractionSettings.fullscreenGestureReverse
@@ -1099,6 +1100,7 @@ fun VideoPlayerSection(
                 showControls,
                 portraitSwipeToFullscreenEnabled,
                 centerSwipeToFullscreenEnabled,
+                inlineSwipeSeekSeconds,
                 fullscreenSwipeSeekSeconds,
                 bottomGestureExclusionHeightDp,
                 gestureSeekFallbackDurationMs
@@ -1360,6 +1362,7 @@ fun VideoPlayerSection(
                                         totalDragDistanceX = totalDragDistanceX,
                                         containerWidthPx = size.width.toFloat(),
                                         fullscreenSwipeSeekSeconds = fullscreenSwipeSeekSeconds,
+                                        inlineSwipeSeekSeconds = inlineSwipeSeekSeconds,
                                         gestureSensitivity = gestureSensitivity
                                     )
                                     if (seekDelta != null) {

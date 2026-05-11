@@ -1107,6 +1107,56 @@ internal fun resolveBottomBarIndicatorLayerTransform(
     )
 }
 
+internal fun resolveBottomBarVisualIndicatorPosition(
+    rawPosition: Float,
+    itemCount: Int
+): Float {
+    if (itemCount <= 1) return 0f
+    return rawPosition.coerceIn(0f, (itemCount - 1).toFloat())
+}
+
+internal fun resolveBottomBarEdgeStrain(
+    rawPosition: Float,
+    itemCount: Int
+): Float {
+    if (itemCount <= 1) return 0f
+    val visualPosition = resolveBottomBarVisualIndicatorPosition(
+        rawPosition = rawPosition,
+        itemCount = itemCount
+    )
+    return (rawPosition - visualPosition).coerceIn(-1f, 1f)
+}
+
+internal fun resolveBottomBarEdgeCompressionScaleX(
+    edgeStrain: Float,
+    maxCompression: Float = 0.035f
+): Float {
+    val progress = abs(edgeStrain).coerceIn(0f, 1f)
+    return 1f - maxCompression * EaseOut.transform(progress)
+}
+
+internal fun resolveBottomBarSettleReboundTransform(
+    progress: Float
+): BottomBarClickPulseTransform {
+    val clamped = progress.coerceIn(0f, 1f)
+    val compressionEnd = 0.20f
+    val compressionAmount = 0.025f
+    val reboundAmount = 0.045f
+    val scaleX = when {
+        clamped >= 1f -> 1f
+        clamped <= compressionEnd -> {
+            val compressionProgress = (clamped / compressionEnd).coerceIn(0f, 1f)
+            1f - compressionAmount * EaseOut.transform(compressionProgress)
+        }
+        else -> {
+            val releaseProgress = ((clamped - compressionEnd) / (1f - compressionEnd)).coerceIn(0f, 1f)
+            val damping = ((1f - releaseProgress) * exp(-3.2 * releaseProgress)).toFloat()
+            1f + reboundAmount * damping * sin(PI * releaseProgress).toFloat()
+        }
+    }
+    return BottomBarClickPulseTransform(scaleX = scaleX)
+}
+
 @Composable
 private fun rememberBottomBarClickPulseTransform(
     pulseKey: Int
@@ -1124,6 +1174,25 @@ private fun rememberBottomBarClickPulseTransform(
         )
     }
     return resolveBottomBarClickPulseTransform(progress.value)
+}
+
+@Composable
+private fun rememberBottomBarSettleReboundTransform(
+    pulseKey: Int
+): BottomBarClickPulseTransform {
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(pulseKey) {
+        if (pulseKey <= 0) return@LaunchedEffect
+        progress.snapTo(0f)
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 260,
+                easing = LinearEasing
+            )
+        )
+    }
+    return resolveBottomBarSettleReboundTransform(progress.value)
 }
 
 internal fun resolveBottomBarItemCoverage(
@@ -2140,8 +2209,29 @@ private fun KernelSuAlignedBottomBar(
     val pressMotionProgress by remember {
         derivedStateOf { dampedDragState.pressProgress }
     }
+    val visualIndicatorPosition by remember(totalItems, dampedDragState) {
+        derivedStateOf {
+            resolveBottomBarVisualIndicatorPosition(
+                rawPosition = dampedDragState.value,
+                itemCount = totalItems
+            )
+        }
+    }
+    val edgeStrain by remember(totalItems, dampedDragState) {
+        derivedStateOf {
+            resolveBottomBarEdgeStrain(
+                rawPosition = dampedDragState.value,
+                itemCount = totalItems
+            )
+        }
+    }
+    val edgeCompressionScaleX by remember {
+        derivedStateOf {
+            resolveBottomBarEdgeCompressionScaleX(edgeStrain)
+        }
+    }
     val tunedRefractionMotionProfile = resolveBottomBarRefractionMotionProfile(
-        position = dampedDragState.value,
+        position = visualIndicatorPosition,
         velocity = dampedDragState.velocityPxPerSecond,
         isDragging = dampedDragState.isDragging,
         motionSpec = bottomBarMotionSpec
@@ -2166,6 +2256,9 @@ private fun KernelSuAlignedBottomBar(
     var searchQuery by remember { mutableStateOf("") }
     var homeClickPulseKey by remember { mutableIntStateOf(0) }
     val homeClickPulseTransform = rememberBottomBarClickPulseTransform(homeClickPulseKey)
+    val indicatorSettleReboundTransform = rememberBottomBarSettleReboundTransform(
+        dampedDragState.settledReleaseCount
+    )
     val searchEnabled = resolveBottomBarSearchEnabledForItem(
         currentItem = currentItem,
         bottomBarSearchEnabled = bottomBarSearchEnabled
@@ -2310,10 +2403,10 @@ private fun KernelSuAlignedBottomBar(
                     }
                 }
             }
-            val indicatorTranslationXPx by remember(density, contentPadding, indicatorWidth) {
+            val indicatorTranslationXPx by remember(density, contentPadding, indicatorWidth, visualIndicatorPosition) {
                 derivedStateOf {
                     with(density) {
-                        (contentPadding + indicatorWidth * dampedDragState.value).toPx()
+                        (contentPadding + indicatorWidth * visualIndicatorPosition).toPx()
                     }
                 }
             }
@@ -2341,7 +2434,7 @@ private fun KernelSuAlignedBottomBar(
             )
             fun itemCoverage(index: Int): Float = resolveBottomBarItemCoverage(
                 itemIndex = index,
-                indicatorPosition = dampedDragState.value,
+                indicatorPosition = visualIndicatorPosition,
                 currentSelectedIndex = selectedIndex,
                 motionProgress = motionProgress
             )
@@ -2406,11 +2499,13 @@ private fun KernelSuAlignedBottomBar(
                         .graphicsLayer {
                             translationX = panelOffsetPx
                             val progress = backdropPresetProgress.shellProgress
-                            if (glassEnabled && size.width > 0f) {
-                                val bumpScale = lerp(1f, 1f + 16.dp.toPx() / size.width, progress)
-                                scaleX = bumpScale
-                                scaleY = bumpScale
+                            val bumpScale = if (glassEnabled && size.width > 0f) {
+                                lerp(1f, 1f + 16.dp.toPx() / size.width, progress)
+                            } else {
+                                1f
                             }
+                            scaleX = edgeCompressionScaleX * bumpScale
+                            scaleY = bumpScale
                         }
                         .kernelSuFloatingDockSurface(
                             shape = shellShape,
@@ -2648,11 +2743,19 @@ private fun KernelSuAlignedBottomBar(
                         modifier = Modifier
                             .alpha(dockContentAlpha)
                             .graphicsLayer {
-                                translationX = indicatorTranslationXPx + panelOffsetPx
-                                if (selectedIndex == homeIndex) {
-                                    scaleX = homeClickPulseTransform.scaleX
-                                    scaleY = homeClickPulseTransform.scaleY
+                                translationX = indicatorTranslationXPx
+                                val homeScaleX = if (selectedIndex == homeIndex) {
+                                    homeClickPulseTransform.scaleX
+                                } else {
+                                    1f
                                 }
+                                val homeScaleY = if (selectedIndex == homeIndex) {
+                                    homeClickPulseTransform.scaleY
+                                } else {
+                                    1f
+                                }
+                                scaleX = homeScaleX * indicatorSettleReboundTransform.scaleX
+                                scaleY = homeScaleY * indicatorSettleReboundTransform.scaleY
                             }
                             .width(indicatorWidth)
                             .height(56.dp)

@@ -160,8 +160,8 @@ fun CommonListScreen(
     viewModel: BaseListViewModel,
     onBack: () -> Unit,
     onVideoClick: (String, Long, String) -> Unit,
-    onCollectionClick: ((Long, Long, String) -> Unit)? = null,
-    onFavoriteFolderClick: ((Long, Long, String) -> Unit)? = null,
+    onCollectionClick: ((Long, Long, String, String) -> Unit)? = null,
+    onFavoriteFolderClick: ((Long, Long, String, String) -> Unit)? = null,
     onPlayAllAudioClick: ((String, Long) -> Unit)? = null,
     globalHazeState: HazeState? = null, // [新增] 接收全局 HazeState
     scrollToTopChannel: Channel<Unit>? = null
@@ -558,13 +558,15 @@ fun CommonListScreen(
                                 onCollectionClick?.invoke(
                                     collectionRoute.id,
                                     collectionRoute.mid,
-                                    collectionRoute.title
+                                    collectionRoute.title,
+                                    collectionRoute.ownerName
                                 )
                             } else {
                                 onFavoriteFolderClick?.invoke(
                                     resolveFavoriteFolderMediaId(folder),
                                     folder.mid,
-                                    folder.title
+                                    folder.title,
+                                    folder.upper?.name.orEmpty()
                                 )
                             }
                         }
@@ -888,6 +890,7 @@ fun CommonListScreen(
                             indicatorHeight = favoriteHeaderLayout.browseToggleIndicatorHeightDp.dp,
                             labelFontSize = favoriteHeaderLayout.browseToggleLabelFontSizeSp.sp,
                             backdrop = commonListChromeBackdrop,
+                            tapPressRefractionEnabled = false,
                             onSelectionChange = { section ->
                                 favoriteBrowseSection = section
                                 searchQuery = ""
@@ -1077,7 +1080,7 @@ private fun CommonListContent(
     showOnlineCount: Boolean,
     videoCardAppearance: CommonListVideoCardAppearance,
     onVideoClick: (String, Long, String) -> Unit,
-    onCollectionClick: ((Long, Long, String) -> Unit)? = null,
+    onCollectionClick: ((Long, Long, String, String) -> Unit)? = null,
     onLoadMore: () -> Unit,
     onUnfavorite: ((com.android.purebilibili.data.model.response.VideoItem) -> Unit)?,
     historyDeleteSession: HistoryDeleteSession? = null,
@@ -1192,7 +1195,12 @@ private fun CommonListContent(
                                     item = video,
                                     onClick = {
                                         resolveFavoriteCollectionRoute(video)?.let { route ->
-                                            onCollectionClick?.invoke(route.id, route.mid, route.title)
+                                            onCollectionClick?.invoke(
+                                                route.id,
+                                                route.mid,
+                                                route.title,
+                                                route.ownerName
+                                            )
                                         }
                                     }
                                 )

@@ -21,6 +21,7 @@ class PlayerInteractionSettingsMappingPolicyTest {
         assertEquals(1.0f, result.gestureSensitivity)
         assertTrue(result.doubleTapLikeEnabled)
         assertTrue(result.doubleTapSeekEnabled)
+        assertEquals(30, result.inlineSwipeSeekSeconds)
         assertEquals(15, result.fullscreenSwipeSeekSeconds)
         assertEquals(FullscreenAspectRatio.FIT, result.fixedFullscreenAspectRatio)
         assertEquals(SubtitleAutoPreference.OFF, result.subtitleAutoPreference)
@@ -36,6 +37,7 @@ class PlayerInteractionSettingsMappingPolicyTest {
             floatPreferencesKey("gesture_sensitivity") to 2.8f,
             booleanPreferencesKey("exp_double_tap_like") to false,
             booleanPreferencesKey("double_tap_seek_enabled") to false,
+            intPreferencesKey("inline_swipe_seek_seconds") to 12,
             intPreferencesKey("fullscreen_swipe_seek_seconds") to 14,
             intPreferencesKey("fullscreen_aspect_ratio") to FullscreenAspectRatio.RATIO_4_3.value,
             intPreferencesKey("subtitle_auto_preference") to SubtitleAutoPreference.ON.ordinal,
@@ -51,6 +53,7 @@ class PlayerInteractionSettingsMappingPolicyTest {
         assertEquals(2.0f, result.gestureSensitivity)
         assertFalse(result.doubleTapLikeEnabled)
         assertFalse(result.doubleTapSeekEnabled)
+        assertEquals(10, result.inlineSwipeSeekSeconds)
         assertEquals(15, result.fullscreenSwipeSeekSeconds)
         assertEquals(FullscreenAspectRatio.RATIO_4_3, result.fixedFullscreenAspectRatio)
         assertEquals(SubtitleAutoPreference.ON, result.subtitleAutoPreference)

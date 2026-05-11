@@ -1269,23 +1269,25 @@ fun AppNavigation(
                                 globalHazeState = mainHazeState,
                                 scrollToTopChannel = favoriteScrollChannel,
                                 onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
-                                onFavoriteFolderClick = { mediaId, ownerMid, title ->
+                                onFavoriteFolderClick = { mediaId, ownerMid, title, ownerName ->
                                     navController.navigate(
                                         ScreenRoutes.SeasonSeriesDetail.createRoute(
                                             type = "favorite",
                                             id = mediaId,
                                             mid = ownerMid,
-                                            title = title
+                                            title = title,
+                                            ownerName = ownerName
                                         )
                                     )
                                 },
-                                onCollectionClick = { collectionId, collectionMid, title ->
+                                onCollectionClick = { collectionId, collectionMid, title, ownerName ->
                                     navController.navigate(
                                         ScreenRoutes.SeasonSeriesDetail.createRoute(
                                             type = "season",
                                             id = collectionId,
                                             mid = collectionMid,
-                                            title = title
+                                            title = title,
+                                            ownerName = ownerName
                                         )
                                     )
                                 },
@@ -1893,23 +1895,25 @@ fun AppNavigation(
                     globalHazeState = mainHazeState, // [新增] 传入全局 HazeState
                     scrollToTopChannel = favoriteScrollChannel,
                     onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
-                    onFavoriteFolderClick = { mediaId, ownerMid, title ->
+                    onFavoriteFolderClick = { mediaId, ownerMid, title, ownerName ->
                         navController.navigate(
                             ScreenRoutes.SeasonSeriesDetail.createRoute(
                                 type = "favorite",
                                 id = mediaId,
                                 mid = ownerMid,
-                                title = title
+                                title = title,
+                                ownerName = ownerName
                             )
                         )
                     },
-                    onCollectionClick = { collectionId, collectionMid, title ->
+                    onCollectionClick = { collectionId, collectionMid, title, ownerName ->
                         navController.navigate(
                             ScreenRoutes.SeasonSeriesDetail.createRoute(
                                 type = "season",
                                 id = collectionId,
                                 mid = collectionMid,
-                                title = title
+                                title = title,
+                                ownerName = ownerName
                             )
                         )
                     },
@@ -2694,13 +2698,14 @@ fun AppNavigation(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                     onVideoClick = { bvid, cid, cover -> navigateToVideo(bvid, cid, cover) },
-                    onCollectionClick = { collectionId, collectionMid, collectionTitle ->
+                    onCollectionClick = { collectionId, collectionMid, collectionTitle, ownerName ->
                         navController.navigate(
                             ScreenRoutes.SeasonSeriesDetail.createRoute(
                                 type = "season",
                                 id = collectionId,
                                 mid = collectionMid,
-                                title = collectionTitle
+                                title = collectionTitle,
+                                ownerName = ownerName
                             )
                         )
                     }

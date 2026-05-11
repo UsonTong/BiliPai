@@ -79,4 +79,22 @@ class DampedDragAnimationPolicyTest {
         assertTrue(releaseSource.contains("animatable.animateTo("))
         assertTrue(releaseSource.contains("offsetAnimation.animateTo(0f"))
     }
+
+    @Test
+    fun `release settle pulse is emitted only after drag release settles`() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt"),
+            File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
+        ).first { it.exists() }.readText()
+        val releaseSource = source
+            .substringAfter("fun onDragEnd(")
+            .substringBefore("fun updateIndex(index: Int)")
+        val updateIndexSource = source
+            .substringAfter("fun updateIndex(index: Int)")
+            .substringBefore("}\n}\n\n/**\n * 创建并记住阻尼拖拽动画状态")
+
+        assertTrue(source.contains("var settledReleaseCount by mutableIntStateOf(0)"))
+        assertTrue(releaseSource.contains("settledReleaseCount += 1"))
+        assertFalse(updateIndexSource.contains("settledReleaseCount += 1"))
+    }
 }

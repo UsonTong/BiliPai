@@ -20,5 +20,6 @@ internal fun resolveHomeFeedGridColumns(
     }
     val maxColumns = if (isSingleColumnMode) 2 else 6
     val columns = contentWidthDp / minColumnWidthDp
-    return columns.coerceIn(1, maxColumns)
+    val minColumns = if (!isSingleColumnMode && contentWidthDp >= 300) 2 else 1
+    return columns.coerceIn(minColumns, maxColumns)
 }

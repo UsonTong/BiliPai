@@ -533,6 +533,7 @@ data class PlayerInteractionSettings(
     val pipNoDanmakuEnabled: Boolean = false,
     val seekForwardSeconds: Int = 10,
     val seekBackwardSeconds: Int = 10,
+    val inlineSwipeSeekSeconds: Int = 30,
     val fullscreenSwipeSeekSeconds: Int = 15,
     val fullscreenSwipeSeekEnabled: Boolean = true,
     val fullscreenGestureReverse: Boolean = false,
@@ -1008,6 +1009,9 @@ object SettingsManager {
             pipNoDanmakuEnabled = preferences[KEY_PIP_NO_DANMAKU] ?: false,
             seekForwardSeconds = (preferences[KEY_SEEK_FORWARD_SECONDS] ?: 10).coerceIn(1, 60),
             seekBackwardSeconds = (preferences[KEY_SEEK_BACKWARD_SECONDS] ?: 10).coerceIn(1, 60),
+            inlineSwipeSeekSeconds = normalizeInlineSwipeSeekSeconds(
+                preferences[KEY_INLINE_SWIPE_SEEK_SECONDS] ?: 30
+            ),
             fullscreenSwipeSeekSeconds = normalizeFullscreenSwipeSeekSeconds(
                 preferences[KEY_FULLSCREEN_SWIPE_SEEK_SECONDS] ?: 15
             ),
@@ -4075,6 +4079,7 @@ object SettingsManager {
     private val KEY_PORTRAIT_PLAYER_COLLAPSE_MODE = intPreferencesKey("portrait_player_collapse_mode")
     private val KEY_PORTRAIT_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("portrait_swipe_to_fullscreen")
     private val KEY_CENTER_SWIPE_TO_FULLSCREEN = booleanPreferencesKey("center_swipe_to_fullscreen")
+    private val KEY_INLINE_SWIPE_SEEK_SECONDS = intPreferencesKey("inline_swipe_seek_seconds")
     private val KEY_FULLSCREEN_SWIPE_SEEK_ENABLED = booleanPreferencesKey("fullscreen_swipe_seek_enabled")
     private val KEY_FULLSCREEN_SWIPE_SEEK_SECONDS = intPreferencesKey("fullscreen_swipe_seek_seconds")
     private val KEY_FULLSCREEN_GESTURE_REVERSE = booleanPreferencesKey("fullscreen_gesture_reverse")
@@ -4102,6 +4107,7 @@ object SettingsManager {
     private val KEY_HORIZONTAL_ADAPTATION = booleanPreferencesKey("horizontal_adaptation_enabled")
     private val KEY_FULLSCREEN_MODE = intPreferencesKey("fullscreen_mode")
     private val KEY_FULLSCREEN_ASPECT_RATIO = intPreferencesKey("fullscreen_aspect_ratio")
+    private val INLINE_SWIPE_SEEK_OPTIONS = listOf(5, 10, 15, 30, 60)
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
     
     // --- 播放器滚动缩小方向策略 ---
@@ -4154,6 +4160,23 @@ object SettingsManager {
 
     suspend fun setCenterSwipeToFullscreenEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_CENTER_SWIPE_TO_FULLSCREEN] = value }
+    }
+
+    // --- 非全屏左右滑动调进度范围（秒，默认 30） ---
+    fun getInlineSwipeSeekSeconds(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences ->
+            val raw = preferences[KEY_INLINE_SWIPE_SEEK_SECONDS] ?: 30
+            normalizeInlineSwipeSeekSeconds(raw)
+        }
+
+    suspend fun setInlineSwipeSeekSeconds(context: Context, seconds: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_INLINE_SWIPE_SEEK_SECONDS] = normalizeInlineSwipeSeekSeconds(seconds)
+        }
+    }
+
+    private fun normalizeInlineSwipeSeekSeconds(seconds: Int): Int {
+        return INLINE_SWIPE_SEEK_OPTIONS.minByOrNull { option -> abs(option - seconds) } ?: 30
     }
 
     // --- 横屏左右滑动固定步长快进/快退开关（默认开启） ---
@@ -4723,6 +4746,7 @@ object SettingsManager {
             IntShareablePreferenceDefinition(KEY_PORTRAIT_PLAYER_COLLAPSE_MODE, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_PORTRAIT_SWIPE_TO_FULLSCREEN, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_CENTER_SWIPE_TO_FULLSCREEN, SettingsShareSection.GESTURE),
+            IntShareablePreferenceDefinition(KEY_INLINE_SWIPE_SEEK_SECONDS, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_FULLSCREEN_SWIPE_SEEK_ENABLED, SettingsShareSection.GESTURE),
             IntShareablePreferenceDefinition(KEY_FULLSCREEN_SWIPE_SEEK_SECONDS, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_FULLSCREEN_GESTURE_REVERSE, SettingsShareSection.GESTURE),

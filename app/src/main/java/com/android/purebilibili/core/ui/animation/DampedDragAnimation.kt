@@ -107,6 +107,9 @@ internal class DampedDragAnimationState(
     /** 动画是否正在运行 */
     val isRunning: Boolean get() = animatable.isRunning
 
+    var settledReleaseCount by mutableIntStateOf(0)
+        private set
+
     private var desiredValue = initialIndex.toFloat()
     private var desiredDragOffsetPx = 0f
     private var motionGeneration = 0
@@ -253,6 +256,7 @@ internal class DampedDragAnimationState(
             )
             if (generation == motionGeneration) {
                 velocityPxPerSecond = 0f
+                settledReleaseCount += 1
                 if (notifyIndexChanged && !notifyIndexChangedOnReleaseStart) {
                     onIndexChanged(releaseTargetIndex)
                 }

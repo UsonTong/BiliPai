@@ -218,14 +218,14 @@ class AppTopLevelNavigationPolicyTest {
     @Test
     fun bottomPagerNavigationDuration_matchesKernelSuDistanceTiming() {
         assertEquals(
-            300,
+            250,
             resolveBottomPagerNavigationDurationMillis(
                 currentPage = 0,
                 targetPage = 1
             )
         )
         assertEquals(
-            500,
+            350,
             resolveBottomPagerNavigationDurationMillis(
                 currentPage = 0,
                 targetPage = 4
