@@ -92,6 +92,7 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
 import com.android.purebilibili.core.util.ShareUtils
+import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
@@ -140,6 +141,7 @@ fun TabletCinemaLayout(
     coverUrl: String = "",
     onBack: () -> Unit,
     onUpClick: (Long) -> Unit,
+    onBgmClick: (BgmInfo) -> Unit = {},
     onNavigateToAudioMode: () -> Unit,
     onToggleFullscreen: () -> Unit,
     isInPipMode: Boolean,
@@ -639,6 +641,7 @@ private fun CinemaMetaPanel(
                         CinemaVideoIntroSection(
                             success = success,
                             onOpenBilibiliLink = onOpenBilibiliLink,
+                            onBgmClick = onBgmClick,
                             onRetryAiSummary = onRetryAiSummary
                         )
                     }
@@ -729,6 +732,8 @@ private fun CinemaMetaUpInfo(
 private fun CinemaVideoIntroSection(
     success: PlayerUiState.Success,
     onOpenBilibiliLink: ((String) -> Unit)? = null,
+    onBgmClick: (BgmInfo) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     onRetryAiSummary: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -758,7 +763,8 @@ private fun CinemaVideoIntroSection(
                 videoTags = success.videoTags,
                 bgmInfo = success.bgmInfo,
                 bgmInfoList = success.bgmInfoList,
-                onDescriptionUrlClick = onOpenBilibiliLink
+                onDescriptionUrlClick = onOpenBilibiliLink,
+                onBgmClick = onBgmClick
             )
         }
         if (shouldShowAiSummaryEntry(

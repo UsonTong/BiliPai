@@ -2412,6 +2412,8 @@ fun VideoDetailScreen(
                             handleBack()
                         },
                         onUpClick = navigateToUserSpaceFromVideo,
+                        onBgmClick = onBgmClick,
+                        onUpClick = navigateToUserSpaceFromVideo,
                         onNavigateToAudioMode = {
                             isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
                             onNavigateToAudioMode()
