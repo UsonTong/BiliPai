@@ -297,6 +297,7 @@ fun TabletCinemaLayout(
                         onCollectionEpisodeClick = onRelatedVideoClick,
                         onPageSelect = { pageIndex -> viewModel.switchPage(pageIndex) },
                         onOpenBilibiliLink = onOpenBilibiliLink,
+                        onBgmClick = onBgmClick,
                         onRetryAiSummary = viewModel::retryAiSummary
                     )
                 } else {
@@ -501,6 +502,8 @@ private fun CinemaMetaPanel(
     onOpenComments: () -> Unit,
     onCollectionEpisodeClick: (String, android.os.Bundle?) -> Unit,
     onPageSelect: (Int) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?,
+    onBgmClick: (BgmInfo) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)?,
     onRetryAiSummary: () -> Unit
 ) {
@@ -731,7 +734,6 @@ private fun CinemaMetaUpInfo(
 @Composable
 private fun CinemaVideoIntroSection(
     success: PlayerUiState.Success,
-    onOpenBilibiliLink: ((String) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)? = null,
     onRetryAiSummary: () -> Unit = {}
