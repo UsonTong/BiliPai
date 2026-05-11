@@ -1596,7 +1596,7 @@ fun VideoPlayerSection(
         val danmakuAllowBottom = danmakuSettings.allowBottom
         val danmakuAllowColorful = danmakuSettings.allowColorful
         val danmakuAllowSpecial = danmakuSettings.allowSpecial
-        val danmakuBlockAttentionCommands = danmakuSettings.blockAttentionCommands
+        val danmakuHideInteractiveCommands = danmakuSettings.hideInteractiveCommands
         val danmakuSmartOcclusion = danmakuSettings.smartOcclusion
         val danmakuFullscreenPanelWidthMode by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuFullscreenPanelWidthMode(context)
@@ -2594,10 +2594,10 @@ fun VideoPlayerSection(
         }
 
         val commandDanmakuList by danmakuManager.commandDanmakuFlow.collectAsStateWithLifecycle()
-        val visibleCommandDanmakuList = remember(commandDanmakuList, danmakuBlockAttentionCommands) {
+        val visibleCommandDanmakuList = remember(commandDanmakuList, danmakuHideInteractiveCommands) {
             filterVisibleCommandDanmakuItems(
                 items = commandDanmakuList,
-                blockAttentionCommands = danmakuBlockAttentionCommands
+                hideInteractiveCommands = danmakuHideInteractiveCommands
             )
         }
         if (shouldShowDanmakuLayer && visibleCommandDanmakuList.isNotEmpty()) {
@@ -3413,6 +3413,7 @@ fun VideoPlayerSection(
                 danmakuAllowBottom = danmakuAllowBottom,
                 danmakuAllowColorful = danmakuAllowColorful,
                 danmakuAllowSpecial = danmakuAllowSpecial,
+                danmakuHideInteractiveCommands = danmakuHideInteractiveCommands,
                 danmakuBlockRulesRaw = danmakuBlockRulesRaw,
                 danmakuSmartOcclusion = danmakuSmartOcclusion,
                 danmakuFullscreenPanelWidthMode = danmakuFullscreenPanelWidthMode,
@@ -3600,6 +3601,12 @@ fun VideoPlayerSection(
                         )
                     }
                     queueDanmakuCloudSync(allowSpecial = value)
+                },
+                onDanmakuHideInteractiveCommandsChange = { value ->
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setDanmakuHideInteractiveCommands(context, value)
+                    }
                 },
                 onDanmakuSmartOcclusionChange = { value ->
                     scope.launch {

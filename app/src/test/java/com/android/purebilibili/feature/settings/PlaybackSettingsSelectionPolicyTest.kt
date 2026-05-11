@@ -239,13 +239,13 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
-    fun `playback settings exposes attention command danmaku blocking switch`() {
+    fun `playback settings exposes interactive command danmaku hiding switch`() {
         val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
             .readText()
 
-        assertTrue(source.contains("屏蔽关注/点赞弹幕"))
-        assertTrue(source.contains("getDanmakuBlockAttentionCommands"))
-        assertTrue(source.contains("setDanmakuBlockAttentionCommands"))
+        assertTrue(source.contains("隐藏视频内互动提示"))
+        assertTrue(source.contains("getDanmakuHideInteractiveCommands"))
+        assertTrue(source.contains("setDanmakuHideInteractiveCommands"))
     }
 
     private fun loadSource(path: String): String {

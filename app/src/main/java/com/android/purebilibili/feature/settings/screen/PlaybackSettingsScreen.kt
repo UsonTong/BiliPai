@@ -695,8 +695,8 @@ fun PlaybackSettingsContent(
                     val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getVideoAiSummaryEntryEnabled(context)
                         .collectAsState(initial = true)
-                    val blockAttentionCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
-                        .getDanmakuBlockAttentionCommands(context)
+                    val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
+                        .getDanmakuHideInteractiveCommands(context)
                         .collectAsState(initial = false)
                     val subtitlePreferenceDescription = when (subtitleAutoPreference) {
                         SubtitleAutoPreference.OFF -> "默认关闭字幕"
@@ -863,17 +863,17 @@ fun PlaybackSettingsContent(
                         IOSDivider()
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.EyeSlash,
-                            title = "屏蔽关注/点赞弹幕",
-                            subtitle = if (blockAttentionCommandDanmaku) {
-                                "已开启：不显示关注、点赞、三连互动弹幕"
+                            title = "隐藏视频内互动提示",
+                            subtitle = if (hideInteractiveCommandDanmaku) {
+                                "已开启：不显示关注、一键三连、UP 提示和投票等视频内互动提示"
                             } else {
-                                "关闭后：播放时仍显示关注、点赞、三连互动弹幕"
+                                "关闭后：播放时仍显示关注、一键三连、UP 提示和投票等视频内互动提示"
                             },
-                            checked = blockAttentionCommandDanmaku,
+                            checked = hideInteractiveCommandDanmaku,
                             onCheckedChange = {
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager
-                                        .setDanmakuBlockAttentionCommands(context, it)
+                                        .setDanmakuHideInteractiveCommands(context, it)
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPink

@@ -1007,6 +1007,9 @@ private fun VideoDetailDanmakuSettingsPanel(
     var localAllowBottom by remember(danmakuSettings.allowBottom) { mutableStateOf(danmakuSettings.allowBottom) }
     var localAllowColorful by remember(danmakuSettings.allowColorful) { mutableStateOf(danmakuSettings.allowColorful) }
     var localAllowSpecial by remember(danmakuSettings.allowSpecial) { mutableStateOf(danmakuSettings.allowSpecial) }
+    var localHideInteractiveCommands by remember(danmakuSettings.hideInteractiveCommands) {
+        mutableStateOf(danmakuSettings.hideInteractiveCommands)
+    }
     var localBlockRulesRaw by remember(danmakuSettings.blockRulesRaw) { mutableStateOf(danmakuSettings.blockRulesRaw) }
 
     DanmakuSettingsPanel(
@@ -1022,6 +1025,7 @@ private fun VideoDetailDanmakuSettingsPanel(
         allowBottom = localAllowBottom,
         allowColorful = localAllowColorful,
         allowSpecial = localAllowSpecial,
+        hideInteractiveCommands = localHideInteractiveCommands,
         showBlockRuleEditor = true,
         showSmartOcclusionSection = false,
         blockRulesRaw = localBlockRulesRaw,
@@ -1065,6 +1069,10 @@ private fun VideoDetailDanmakuSettingsPanel(
         onAllowSpecialChange = {
             localAllowSpecial = it
             scope.launch { SettingsManager.setDanmakuAllowSpecial(context, it, danmakuScope) }
+        },
+        onHideInteractiveCommandsChange = {
+            localHideInteractiveCommands = it
+            scope.launch { SettingsManager.setDanmakuHideInteractiveCommands(context, it) }
         },
         onBlockRulesRawChange = {
             localBlockRulesRaw = it

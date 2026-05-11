@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.2-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.2" />
+  <img src="https://img.shields.io/badge/Version-8.1.3-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.3" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.2 / versionCode 185`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.2`：
+当前仓库版本号已更新到 `8.1.3 / versionCode 186`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.3`：
 
-- 主底栏 Pager 关闭用户手势滑动，保留底栏点击切页，修复首页顶部横滑误跳动态页。
-- 返回键策略先解析应用级动作，保留非首页 Tab 先回首页的行为。
-- 分段控件区分指示器拖动和扫过标签选择，减少液态控件误拖和抖动。
-- 首页顶部分类按 pager 目标方向同步指示器与视口，降低滑动时反向或追踪错位。
-- 高频 Compose 页面统一 `collectAsState` 显式非空 `context`，并新增结构测试锁定用法。
+- 收敛播放器滑动/拖动判定和进度条手势策略，降低播放器区域操作冲突。
+- 优化底栏指示器位移、液态拖拽阻尼和首页网格策略，减少滑动抖动与布局跳动。
+- 修正收藏夹、合集/系列详情和通用列表的状态映射与空数据处理。
+- 合入 PR #316，修复列表/合集 ViewModel 初始化顺序导致的偶发空指针。
+- “屏蔽关注/点赞弹幕”扩展为“隐藏视频内互动提示”，可隐藏关注、一键三连、UP 提示和投票等命令弹幕。
 
 ## 路线图
 

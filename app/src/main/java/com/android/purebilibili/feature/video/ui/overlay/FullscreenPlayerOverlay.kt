@@ -1063,6 +1063,9 @@ fun FullscreenPlayerOverlay(
             var localAllowBottom by remember(danmakuAllowBottom) { mutableStateOf(danmakuAllowBottom) }
             var localAllowColorful by remember(danmakuAllowColorful) { mutableStateOf(danmakuAllowColorful) }
             var localAllowSpecial by remember(danmakuAllowSpecial) { mutableStateOf(danmakuAllowSpecial) }
+            var localHideInteractiveCommands by remember(danmakuSettings.hideInteractiveCommands) {
+                mutableStateOf(danmakuSettings.hideInteractiveCommands)
+            }
             var localSmartOcclusion by remember(danmakuSmartOcclusion) { mutableStateOf(danmakuSmartOcclusion) }
             var localBlockRulesRaw by remember(danmakuBlockRulesRaw) { mutableStateOf(danmakuBlockRulesRaw) }
             var localFullscreenPanelWidthMode by remember(danmakuSettings.fullscreenPanelWidthMode) {
@@ -1082,6 +1085,7 @@ fun FullscreenPlayerOverlay(
                 allowBottom = localAllowBottom,
                 allowColorful = localAllowColorful,
                 allowSpecial = localAllowSpecial,
+                hideInteractiveCommands = localHideInteractiveCommands,
                 showBlockRuleEditor = true,
                 blockRulesRaw = localBlockRulesRaw,
                 smartOcclusion = localSmartOcclusion,
@@ -1131,6 +1135,10 @@ fun FullscreenPlayerOverlay(
                 onAllowSpecialChange = {
                     localAllowSpecial = it
                     scope.launch { SettingsManager.setDanmakuAllowSpecial(context, it, danmakuScope) }
+                },
+                onHideInteractiveCommandsChange = {
+                    localHideInteractiveCommands = it
+                    scope.launch { SettingsManager.setDanmakuHideInteractiveCommands(context, it) }
                 },
                 onSmartOcclusionChange = {
                     localSmartOcclusion = it

@@ -269,6 +269,7 @@ fun DanmakuSettingsPanel(
     allowBottom: Boolean = true,
     allowColorful: Boolean = true,
     allowSpecial: Boolean = true,
+    hideInteractiveCommands: Boolean = false,
     showBlockRuleEditor: Boolean = false,
     showSmartOcclusionSection: Boolean = false,
     showSyncSection: Boolean = false,
@@ -294,6 +295,7 @@ fun DanmakuSettingsPanel(
     onAllowBottomChange: (Boolean) -> Unit = {},
     onAllowColorfulChange: (Boolean) -> Unit = {},
     onAllowSpecialChange: (Boolean) -> Unit = {},
+    onHideInteractiveCommandsChange: (Boolean) -> Unit = {},
     onBlockRulesRawChange: (String) -> Unit = {},
     onSmartOcclusionChange: (Boolean) -> Unit = {},
     onFullscreenWidthModeChange: (DanmakuPanelWidthMode) -> Unit = {},
@@ -895,6 +897,13 @@ fun DanmakuSettingsPanel(
                                 label = "高级弹幕",
                                 checked = allowSpecial,
                                 onCheckedChange = onAllowSpecialChange,
+                                colors = panelColors,
+                                fullscreenStyle = isFullscreenStyle
+                            )
+                            DanmakuFilterSwitchRow(
+                                label = "视频内互动提示",
+                                checked = !hideInteractiveCommands,
+                                onCheckedChange = { onHideInteractiveCommandsChange(!it) },
                                 showDivider = false,
                                 colors = panelColors,
                                 fullscreenStyle = isFullscreenStyle

@@ -60,10 +60,10 @@ internal fun buildCommandDanmaku(cmd: DanmakuProto.CommandDm): AdvancedDanmakuDa
 
 internal fun filterVisibleCommandDanmakuItems(
     items: List<CommandDanmakuItem>,
-    blockAttentionCommands: Boolean
+    hideInteractiveCommands: Boolean
 ): List<CommandDanmakuItem> {
-    if (!blockAttentionCommands) return items
-    return items.filterNot { it.type == CommandDanmakuType.ATTENTION }
+    if (!hideInteractiveCommands) return items
+    return emptyList()
 }
 
 internal fun buildCommandDanmakuItem(cmd: DanmakuProto.CommandDm): CommandDanmakuItem? {

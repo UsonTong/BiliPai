@@ -503,6 +503,7 @@ data class DanmakuSettings(
     val allowBottom: Boolean = true,
     val allowColorful: Boolean = true,
     val allowSpecial: Boolean = true,
+    val hideInteractiveCommands: Boolean = false,
     val blockAttentionCommands: Boolean = false,
     val smartOcclusion: Boolean = false,
     val fullscreenPanelWidthMode: DanmakuPanelWidthMode = DanmakuPanelWidthMode.THIRD,
@@ -2521,6 +2522,7 @@ object SettingsManager {
                 legacyKey = KEY_DANMAKU_ALLOW_SPECIAL,
                 defaultValue = true
             ),
+            hideInteractiveCommands = preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] ?: false,
             blockAttentionCommands = preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] ?: false,
             smartOcclusion = readScopedDanmakuPreference(
                 preferences = preferences,
@@ -2986,15 +2988,22 @@ object SettingsManager {
         }
     }
 
-    fun getDanmakuBlockAttentionCommands(context: Context): Flow<Boolean> =
+    fun getDanmakuHideInteractiveCommands(context: Context): Flow<Boolean> =
         context.settingsDataStore.data
             .map { preferences -> preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] ?: false }
             .distinctUntilChanged()
 
-    suspend fun setDanmakuBlockAttentionCommands(context: Context, value: Boolean) {
+    suspend fun setDanmakuHideInteractiveCommands(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS] = value
         }
+    }
+
+    fun getDanmakuBlockAttentionCommands(context: Context): Flow<Boolean> =
+        getDanmakuHideInteractiveCommands(context)
+
+    suspend fun setDanmakuBlockAttentionCommands(context: Context, value: Boolean) {
+        setDanmakuHideInteractiveCommands(context, value)
     }
 
     fun getDanmakuSmartOcclusion(
@@ -4788,6 +4797,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_DANMAKU_ALLOW_BOTTOM, SettingsShareSection.DANMAKU),
             BooleanShareablePreferenceDefinition(KEY_DANMAKU_ALLOW_COLORFUL, SettingsShareSection.DANMAKU),
             BooleanShareablePreferenceDefinition(KEY_DANMAKU_ALLOW_SPECIAL, SettingsShareSection.DANMAKU),
+            BooleanShareablePreferenceDefinition(KEY_DANMAKU_BLOCK_ATTENTION_COMMANDS, SettingsShareSection.DANMAKU),
             BooleanShareablePreferenceDefinition(KEY_DANMAKU_SMART_OCCLUSION, SettingsShareSection.DANMAKU),
             StringShareablePreferenceDefinition(KEY_DANMAKU_BLOCK_RULES, SettingsShareSection.DANMAKU),
             BooleanShareablePreferenceDefinition(KEY_DANMAKU_MERGE_DUPLICATES, SettingsShareSection.DANMAKU),

@@ -119,7 +119,7 @@ class CommandDanmakuPolicyTest {
     }
 
     @Test
-    fun `attention command can be filtered from command overlay items`() {
+    fun `interactive command overlay items can be hidden together`() {
         val attention = buildCommandDanmakuItem(
             commandDm(
                 command = "#ATTENTION#",
@@ -133,21 +133,28 @@ class CommandDanmakuPolicyTest {
                 content = "UP 主提示"
             )
         )
+        val vote = buildCommandDanmakuItem(
+            commandDm(
+                command = "VIDEO_VOTE_MSG",
+                content = "投票提示"
+            )
+        )
 
         assertNotNull(attention)
         assertNotNull(up)
+        assertNotNull(vote)
         assertEquals(
-            listOf(up),
+            emptyList(),
             filterVisibleCommandDanmakuItems(
-                items = listOf(attention, up),
-                blockAttentionCommands = true
+                items = listOf(attention, up, vote),
+                hideInteractiveCommands = true
             )
         )
         assertEquals(
-            listOf(attention, up),
+            listOf(attention, up, vote),
             filterVisibleCommandDanmakuItems(
-                items = listOf(attention, up),
-                blockAttentionCommands = false
+                items = listOf(attention, up, vote),
+                hideInteractiveCommands = false
             )
         )
     }

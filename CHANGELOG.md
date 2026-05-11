@@ -1,5 +1,24 @@
 # Changelog
 
+## v8.1.3 (2026-05-11)
+
+### 版本信息
+- 版本号从 `8.1.2` 升级到 `8.1.3`，`versionCode` 升级到 `186`。
+- 本次为“播放手势与底栏手感修复 + 收藏/合集空指针修复 + 视频内互动提示隐藏能力”的维护更新。
+
+### 更新内容
+- **播放手势修复**：收敛播放器滑动/拖动判定和进度条手势策略，补充长按倍速、seek 手势与全屏覆盖层相关设置链路，降低横屏/播放器区域操作冲突。
+- **底栏与首页手感**：继续优化底栏指示器位移、液态拖拽阻尼和首页网格策略，降低滑动时的抖动、回弹错位和布局跳动。
+- **收藏与合集稳定性**：修正收藏夹、合集/系列详情和通用列表的本地状态映射与空数据处理，降低列表聚合、模式切换和详情初始化时的异常概率。
+- **PR #316 空指针修复**：合入 `@chenx-dust` 的初始化顺序修复，避免列表/合集 ViewModel 在父类 `init` 阶段访问尚未初始化的子类 Map 时触发 `NullPointerException`。
+- **视频内互动提示隐藏**：原“屏蔽关注/点赞弹幕”扩展为“隐藏视频内互动提示”，设置会同时隐藏关注、一键三连、UP 提示和投票等命令弹幕，并接入播放设置、视频详情弹幕面板、横屏/竖屏播放器覆盖层和设置分享。
+- **视频操作图标整理**：视频详情点赞、投币、收藏、稍后看和下载入口继续收敛到统一图标语义，减少旧 `rememberApp*Icon` 与新图标体系混用。
+- **回归覆盖**：补充播放器手势、底栏指示器、收藏映射、收藏夹聚合、弹幕设置映射、播放设置入口和命令弹幕过滤策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.store.DanmakuSettingsMappingPolicyTest' --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.video.danmaku.CommandDanmakuPolicyTest'`
+- `git diff --check`
+
 ## v8.1.2 (2026-05-10)
 
 ### 版本信息
