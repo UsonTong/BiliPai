@@ -9,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -1127,43 +1129,84 @@ fun BgmInfoListRow(
     bgmList: List<BgmInfo>,
     onBgmClick: (BgmInfo) -> Unit = {}
 ) {
+    val context = LocalContext.current
+
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+            Text(
+                text = "共 ${bgmList.size} 首音乐",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
             bgmList.forEachIndexed { index, bgm ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
                         .clickable { onBgmClick(bgm) }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = buildString {
-                            append(index + 1)
-                            append('.')
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.78f),
-                        modifier = Modifier.width(28.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = bgm.musicTitle.ifEmpty { "未知音乐" },
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Medium
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                                shape = RoundedCornerShape(12.dp)
                             ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (bgm.coverUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(FormatUtils.fixImageUrl(bgm.coverUrl))
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = bgm.musicTitle,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = CupertinoIcons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "#${index + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.78f)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = bgm.musicTitle.ifEmpty { "未知音乐" },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
                         if (bgm.actor.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = bgm.actor,
                                 style = MaterialTheme.typography.bodySmall,
@@ -1173,6 +1216,7 @@ fun BgmInfoListRow(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = CupertinoIcons.Default.ChevronForward,
                         contentDescription = null,
@@ -1181,7 +1225,10 @@ fun BgmInfoListRow(
                     )
                 }
                 if (index != bgmList.lastIndex) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
                 }
             }
         }
