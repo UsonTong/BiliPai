@@ -434,11 +434,11 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Latest (v8.1.4 · 2026-05-13)
 
-- Removed duplicate History entry from Profile when the bottom bar already exposes History, and added favorite-folder shortcuts under My Favorites.
-- Centered small Home top-tab sets, expanded video descriptions by default, and clarified the entry autoplay setting.
-- Added a configurable comment reply preview limit to reduce repeated expand taps.
-- Added image preview sharing, so comment images can be shared through the system sheet while preserving common image formats.
-- Refined bangumi comments, live viewer/panel parsing, stream selection, and the related policy tests.
+- Removed duplicate History entry from Profile and added favorite-folder shortcuts under My Favorites.
+- Centered small Home top-tab sets, expanded video descriptions by default, and improved searchability for the entry autoplay setting.
+- Added comment-send detection, a comment decoration toggle, and a configurable reply preview limit.
+- Remembered image-preview text visibility and added system image sharing for comment images while preserving common formats.
+- Refined bangumi comments, live viewer/panel parsing, stream diagnostics, and the related policy tests.
 - Bumped the app to `8.1.4` with `versionCode` `187`.
 
 ---
