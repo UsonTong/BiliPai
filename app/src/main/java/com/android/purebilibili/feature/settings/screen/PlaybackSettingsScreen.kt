@@ -712,8 +712,12 @@ fun PlaybackSettingsContent(
 
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.PlayCircle,
-                            title = "点击视频直接播放",
-                            subtitle = "进入视频详情页时自动开始播放",
+                            title = "进入视频自动播放",
+                            subtitle = if (clickToPlayEnabled) {
+                                "进入视频详情页时自动开始播放"
+                            } else {
+                                "关闭后进入视频详情页需手动播放"
+                            },
                             checked = clickToPlayEnabled,
                             onCheckedChange = {
                                 scope.launch {

@@ -464,7 +464,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         title = "自动连播 / 双击点赞 / 弹幕屏蔽 / 字幕",
         subtitle = "交互",
         section = "播放设置",
-        aliases = listOf("自动连播", "自动播放下一个", "双击点赞", "关注点赞弹幕", "关注弹幕", "点赞弹幕", "三连弹幕", "弹幕屏蔽", "字幕", "自动启用字幕", "ai总结", "播放器缩小策略", "竖屏视频缩小", "横屏视频缩小", "上滑隐藏播放器", "点击视频直接播放"),
+        aliases = listOf("自动连播", "自动播放下一个", "进入视频自动播放", "进入视频不要自动播放", "不要自动播放", "双击点赞", "关注点赞弹幕", "关注弹幕", "点赞弹幕", "三连弹幕", "弹幕屏蔽", "字幕", "自动启用字幕", "ai总结", "播放器缩小策略", "竖屏视频缩小", "横屏视频缩小", "上滑隐藏播放器", "点击视频直接播放"),
         focusId = SettingsSearchFocusIds.PLAYBACK_INTERACTION
     ),
     SettingsSearchEntry(
