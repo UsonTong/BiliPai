@@ -37,7 +37,8 @@ fun BangumiPlayerContent(
     detail: BangumiDetail,
     currentEpisode: BangumiEpisode,
     onEpisodeClick: (BangumiEpisode) -> Unit,
-    onFollowStatusSelect: (Int) -> Unit
+    onFollowStatusSelect: (Int) -> Unit,
+    onCommentClick: () -> Unit
 ) {
     val isFollowing = isBangumiFollowed(detail.userStatus)
     var showFollowStatusDialog by remember { mutableStateOf(false) }
@@ -78,12 +79,13 @@ fun BangumiPlayerContent(
             }
         }
         
-        // 追番按钮
+        // 追番与评论入口
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Button(
                     onClick = {
@@ -107,6 +109,19 @@ fun BangumiPlayerContent(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(resolveBangumiFollowStatusLabel(detail.userStatus))
+                }
+                OutlinedButton(
+                    onClick = onCommentClick,
+                    modifier = Modifier.weight(1f),
+                    enabled = currentEpisode.aid > 0L
+                ) {
+                    Icon(
+                        CupertinoIcons.Outlined.BubbleLeft,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("评论")
                 }
             }
         }

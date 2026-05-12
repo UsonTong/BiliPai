@@ -31,6 +31,8 @@ import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.ui.components.CoinDialog
+import com.android.purebilibili.feature.video.ui.components.VideoCommentSheetHost
+import com.android.purebilibili.feature.video.viewmodel.VideoCommentViewModel
 //  使用提取后的组件
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerView
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerContent
@@ -49,7 +51,8 @@ fun BangumiPlayerScreen(
     resumePositionMs: Long = 0L,
     onBack: () -> Unit,
     onNavigateToLogin: () -> Unit = {},
-    viewModel: BangumiPlayerViewModel = viewModel()
+    viewModel: BangumiPlayerViewModel = viewModel(),
+    commentViewModel: VideoCommentViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -179,6 +182,7 @@ fun BangumiPlayerScreen(
     
     //  倍速状态
     var currentSpeed by remember { mutableFloatStateOf(1.0f) }
+    var showCommentSheet by remember { mutableStateOf(false) }
     
     //  弹幕设置状态
     val danmakuOpacity = danmakuSettings.opacity
@@ -539,12 +543,31 @@ fun BangumiPlayerScreen(
                                 detail = state.seasonDetail,
                                 currentEpisode = state.currentEpisode,
                                 onEpisodeClick = { viewModel.switchEpisode(it) },
-                                onFollowStatusSelect = { viewModel.updateFollowStatus(it) }
+                                onFollowStatusSelect = { viewModel.updateFollowStatus(it) },
+                                onCommentClick = {
+                                    if (state.currentEpisode.aid > 0L) {
+                                        showCommentSheet = true
+                                    } else {
+                                        Toast.makeText(context, "当前剧集暂无评论区", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         }
                     }
                 }
             }
+        }
+
+        if (!isLandscape && currentAid > 0L) {
+            VideoCommentSheetHost(
+                mainSheetVisible = showCommentSheet,
+                onDismiss = { showCommentSheet = false },
+                commentViewModel = commentViewModel,
+                aid = currentAid,
+                expectedReplyCount = successState?.seasonDetail?.stat?.reply?.toInt() ?: 0,
+                onUserClick = { },
+                maxTimestampMs = exoPlayer.duration.takeIf { it > 0L }
+            )
         }
     }
 
