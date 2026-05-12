@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -166,6 +167,7 @@ fun ProfileScreen(
     onHistoryClick: () -> Unit,
     showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
+    onFavoriteFolderClick: (Long, Long, String) -> Unit = { _, _, _ -> },
     onFollowingClick: (Long) -> Unit = {},  //  关注列表点击
     onDownloadClick: () -> Unit = {},  //  离线缓存点击
     onWatchLaterClick: () -> Unit = {}, // 稍后再看点击
@@ -410,6 +412,12 @@ fun ProfileScreen(
             } else {
                 TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             }
+            val favoriteFolderShortcuts = remember(currentUiState.favoriteFolders, currentUiState.user.mid) {
+                resolveProfileFavoriteFolderShortcuts(
+                    folders = currentUiState.favoriteFolders,
+                    ownerMid = currentUiState.user.mid
+                )
+            }
             
             AdaptiveScaffold(
                 modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -461,6 +469,8 @@ fun ProfileScreen(
                             onHistoryClick = onHistoryClick,
                             showHistoryService = showHistoryService,
                             onFavoriteClick = onFavoriteClick,
+                            favoriteFolderShortcuts = favoriteFolderShortcuts,
+                            onFavoriteFolderClick = onFavoriteFolderClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
                             onWatchLaterClick = onWatchLaterClick,
@@ -478,6 +488,8 @@ fun ProfileScreen(
                             onHistoryClick = onHistoryClick,
                             showHistoryService = showHistoryService,
                             onFavoriteClick = onFavoriteClick,
+                            favoriteFolderShortcuts = favoriteFolderShortcuts,
+                            onFavoriteFolderClick = onFavoriteFolderClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
                             onWatchLaterClick = onWatchLaterClick,
@@ -725,6 +737,8 @@ fun TabletProfileContent(
     onHistoryClick: () -> Unit,
     showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
+    favoriteFolderShortcuts: List<ProfileFavoriteFolderShortcut> = emptyList(),
+    onFavoriteFolderClick: (Long, Long, String) -> Unit = { _, _, _ -> },
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
@@ -785,6 +799,8 @@ fun TabletProfileContent(
                         onHistoryClick = onHistoryClick, 
                         showHistoryService = showHistoryService,
                         onFavoriteClick = onFavoriteClick, 
+                        favoriteFolderShortcuts = favoriteFolderShortcuts,
+                        onFavoriteFolderClick = onFavoriteFolderClick,
                         onDownloadClick = onDownloadClick, 
                         onWatchLaterClick = onWatchLaterClick,
                         onAccountManageClick = onAccountManageClick,
@@ -835,6 +851,8 @@ fun MobileProfileContent(
     onHistoryClick: () -> Unit,
     showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
+    favoriteFolderShortcuts: List<ProfileFavoriteFolderShortcut> = emptyList(),
+    onFavoriteFolderClick: (Long, Long, String) -> Unit = { _, _, _ -> },
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
@@ -1049,6 +1067,8 @@ fun MobileProfileContent(
                     onHistoryClick = onHistoryClick, 
                     showHistoryService = showHistoryService,
                     onFavoriteClick = onFavoriteClick, 
+                    favoriteFolderShortcuts = favoriteFolderShortcuts,
+                    onFavoriteFolderClick = onFavoriteFolderClick,
                     onDownloadClick = onDownloadClick, 
                     onWatchLaterClick = onWatchLaterClick,
                     onInboxClick = onInboxClick,  //  [新增]
@@ -1616,6 +1636,8 @@ fun ServicesSection(
     onHistoryClick: () -> Unit,
     showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
+    favoriteFolderShortcuts: List<ProfileFavoriteFolderShortcut> = emptyList(),
+    onFavoriteFolderClick: (Long, Long, String) -> Unit = { _, _, _ -> },
     onDownloadClick: () -> Unit = {},
     onWatchLaterClick: () -> Unit = {},
     onInboxClick: () -> Unit = {},  //  [新增] 私信入口
@@ -1651,32 +1673,42 @@ fun ServicesSection(
         // Actually, since it's a fixed list, a hardcoded Row/Column grid is safer than LazyGrid inside Scrollable.
         
         // 2 columns x N rows
-        Column(
-            modifier = modifier
-                .heightIn(max = ((items.size + 1) / 2) * 160.dp)
-        ) {
-            items.chunked(2).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    rowItems.forEach { (title, icon, onClick) ->
-                        IOSGridItem(
-                            icon = icon,
-                            title = title,
-                            onClick = onClick,
-                            iconTint = contentColor, // Use content color for icon in this mode?
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), // Slightly distinct background
-                            contentColor = contentColor,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    // Fill empty space if odd number
-                    if (rowItems.size < 2) {
-                        Spacer(modifier = Modifier.weight(1f))
+        Column(modifier = modifier) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = ((items.size + 1) / 2) * 160.dp)
+            ) {
+                items.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        rowItems.forEach { (title, icon, onClick) ->
+                            IOSGridItem(
+                                icon = icon,
+                                title = title,
+                                onClick = onClick,
+                                iconTint = contentColor, // Use content color for icon in this mode?
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), // Slightly distinct background
+                                contentColor = contentColor,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // Fill empty space if odd number
+                        if (rowItems.size < 2) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
+            }
+            if (favoriteFolderShortcuts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(18.dp))
+                ProfileFavoriteFolderShortcutGrid(
+                    shortcuts = favoriteFolderShortcuts,
+                    onFavoriteFolderClick = onFavoriteFolderClick,
+                    contentColor = contentColor
+                )
             }
         }
 
@@ -1727,6 +1759,14 @@ fun ServicesSection(
                 iconTint = iOSYellow,
                 textColor = contentColor
             )
+            if (favoriteFolderShortcuts.isNotEmpty()) {
+                ProfileFavoriteFolderShortcutGrid(
+                    shortcuts = favoriteFolderShortcuts,
+                    onFavoriteFolderClick = onFavoriteFolderClick,
+                    contentColor = contentColor,
+                    modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp)
+                )
+            }
             IOSClickableItem(
                 icon = watchLaterIcon,
                 title = "稍后再看",
@@ -1759,6 +1799,86 @@ fun ServicesSection(
             )
         }
     }
+    }
+}
+
+@Composable
+private fun ProfileFavoriteFolderShortcutGrid(
+    shortcuts: List<ProfileFavoriteFolderShortcut>,
+    onFavoriteFolderClick: (Long, Long, String) -> Unit,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val folderIcon = rememberAppFolderIcon()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        shortcuts.chunked(2).forEach { rowShortcuts ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowShortcuts.forEach { shortcut ->
+                    ProfileFavoriteFolderShortcutChip(
+                        shortcut = shortcut,
+                        icon = folderIcon,
+                        contentColor = contentColor,
+                        onClick = {
+                            onFavoriteFolderClick(shortcut.mediaId, shortcut.ownerMid, shortcut.title)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (rowShortcuts.size < 2) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileFavoriteFolderShortcutChip(
+    shortcut: ProfileFavoriteFolderShortcut,
+    icon: ImageVector,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.28f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iOSYellow,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = shortcut.title,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "${shortcut.mediaCount} 个内容",
+                color = contentColor.copy(alpha = 0.68f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
     }
 }
 

@@ -7,6 +7,8 @@ import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.AccountSessionStore
 import com.android.purebilibili.core.store.StoredAccountSession
 import com.android.purebilibili.core.store.TokenManager
+import com.android.purebilibili.data.model.response.FavFolder
+import com.android.purebilibili.data.repository.FavoriteRepository
 import com.android.purebilibili.feature.home.UserState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +31,10 @@ import java.io.FileOutputStream
 
 sealed class ProfileUiState {
     object Loading : ProfileUiState()
-    data class Success(val user: UserState) : ProfileUiState()
+    data class Success(
+        val user: UserState,
+        val favoriteFolders: List<FavFolder> = emptyList()
+    ) : ProfileUiState()
     // LoggedOut 代表“当前是游客/未登录状态”，UI 应该显示“去登录”
     // [Modified] Support wallpaper in guest mode
     data class LoggedOut(val topPhoto: String = "") : ProfileUiState()
@@ -149,25 +154,25 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         data.top_photo
                     }
                     
-                    _uiState.value = ProfileUiState.Success(
-                        UserState(
-                            isLogin = true,
-                            face = data.face,
-                            name = data.uname,
-                            mid = data.mid,
-                            level = data.level_info.current_level,
-                            coin = data.money,
-                            bcoin = data.wallet.bcoin_balance,
-                            isVip = data.vip.status == 1,
-                            vipLabel = data.vip.label.text,
-                            // 绑定统计数据
-                            following = statData?.following ?: 0,
-                            follower = statData?.follower ?: 0,
-                            dynamic = statData?.dynamic_count ?: 0,
-                            // 绑定背景图
-                            topPhoto = finalTopPhoto
-                        )
+                    val userState = UserState(
+                        isLogin = true,
+                        face = data.face,
+                        name = data.uname,
+                        mid = data.mid,
+                        level = data.level_info.current_level,
+                        coin = data.money,
+                        bcoin = data.wallet.bcoin_balance,
+                        isVip = data.vip.status == 1,
+                        vipLabel = data.vip.label.text,
+                        // 绑定统计数据
+                        following = statData?.following ?: 0,
+                        follower = statData?.follower ?: 0,
+                        dynamic = statData?.dynamic_count ?: 0,
+                        // 绑定背景图
+                        topPhoto = finalTopPhoto
                     )
+                    _uiState.value = ProfileUiState.Success(userState)
+                    refreshFavoriteFolders(data.mid)
                     TokenManager.saveMid(getApplication(), data.mid)
                     TokenManager.saveVipStatus(data.vip.status == 1)
                     AccountSessionStore.upsertCurrentAccount(getApplication(), data)
@@ -203,6 +208,17 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 }
             } finally {
                 isProfileLoadInFlight = false
+            }
+        }
+    }
+
+    private fun refreshFavoriteFolders(mid: Long) {
+        if (mid <= 0L) return
+        viewModelScope.launch {
+            val folders = FavoriteRepository.getFavFolders(mid).getOrElse { emptyList() }
+            val current = _uiState.value as? ProfileUiState.Success ?: return@launch
+            if (current.user.mid == mid) {
+                _uiState.value = current.copy(favoriteFolders = folders)
             }
         }
     }

@@ -1165,6 +1165,16 @@ fun AppNavigation(
                                     visibleBottomBarItems.map { it.name }
                                 ),
                                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
+                                onFavoriteFolderClick = { mediaId, ownerMid, title ->
+                                    navController.navigate(
+                                        ScreenRoutes.SeasonSeriesDetail.createRoute(
+                                            type = "favorite",
+                                            id = mediaId,
+                                            mid = ownerMid,
+                                            title = title
+                                        )
+                                    )
+                                },
                                 onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
                                 onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
                                 onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
@@ -1749,6 +1759,16 @@ fun AppNavigation(
                     visibleBottomBarItems.map { it.name }
                 ),
                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
+                onFavoriteFolderClick = { mediaId, ownerMid, title ->
+                    navController.navigate(
+                        ScreenRoutes.SeasonSeriesDetail.createRoute(
+                            type = "favorite",
+                            id = mediaId,
+                            mid = ownerMid,
+                            title = title
+                        )
+                    )
+                },
                 onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
                 onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
                 onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
