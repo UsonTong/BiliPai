@@ -150,6 +150,10 @@ internal fun resolveProfileLightStatusBars(
 
 internal fun shouldPinProfileTopBarOnScroll(useSplitLayout: Boolean): Boolean = true
 
+internal fun shouldShowProfileHistoryService(bottomBarVisibleTabIds: Collection<String>): Boolean {
+    return bottomBarVisibleTabIds.none { it.equals("HISTORY", ignoreCase = true) }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -160,6 +164,7 @@ fun ProfileScreen(
     onAccountSwitchSuccess: () -> Unit = {},
     onSettingsClick: () -> Unit,
     onHistoryClick: () -> Unit,
+    showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
     onFollowingClick: (Long) -> Unit = {},  //  关注列表点击
     onDownloadClick: () -> Unit = {},  //  离线缓存点击
@@ -307,6 +312,7 @@ fun ProfileScreen(
                     onLogout = onGoToLogin, // "退出登录" 变为 "登录"
                     onAccountManageClick = { showAccountSwitchDialog = true },
                     onHistoryClick = onGoToLogin, // 游客点击功能需登录
+                    showHistoryService = showHistoryService,
                     onFavoriteClick = onGoToLogin,
                     onFollowingClick = { onGoToLogin() },
                     onDownloadClick = onGoToLogin,
@@ -453,6 +459,7 @@ fun ProfileScreen(
                             },
                             onAccountManageClick = { showAccountSwitchDialog = true },
                             onHistoryClick = onHistoryClick,
+                            showHistoryService = showHistoryService,
                             onFavoriteClick = onFavoriteClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
@@ -469,6 +476,7 @@ fun ProfileScreen(
                             },
                             onAccountManageClick = { showAccountSwitchDialog = true },
                             onHistoryClick = onHistoryClick,
+                            showHistoryService = showHistoryService,
                             onFavoriteClick = onFavoriteClick,
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
@@ -715,6 +723,7 @@ fun TabletProfileContent(
     onLogout: () -> Unit,
     onAccountManageClick: () -> Unit = {},
     onHistoryClick: () -> Unit,
+    showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -774,6 +783,7 @@ fun TabletProfileContent(
                     // [Modified] Use new grid layout
                     ServicesSection(
                         onHistoryClick = onHistoryClick, 
+                        showHistoryService = showHistoryService,
                         onFavoriteClick = onFavoriteClick, 
                         onDownloadClick = onDownloadClick, 
                         onWatchLaterClick = onWatchLaterClick,
@@ -823,6 +833,7 @@ fun MobileProfileContent(
     onLogout: () -> Unit,
     onAccountManageClick: () -> Unit = {},
     onHistoryClick: () -> Unit,
+    showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -1036,6 +1047,7 @@ fun MobileProfileContent(
 
                 ServicesSection(
                     onHistoryClick = onHistoryClick, 
+                    showHistoryService = showHistoryService,
                     onFavoriteClick = onFavoriteClick, 
                     onDownloadClick = onDownloadClick, 
                     onWatchLaterClick = onWatchLaterClick,
@@ -1602,6 +1614,7 @@ fun VipBannerSection(user: UserState) {
 @Composable
 fun ServicesSection(
     onHistoryClick: () -> Unit,
+    showHistoryService: Boolean = true,
     onFavoriteClick: () -> Unit,
     onDownloadClick: () -> Unit = {},
     onWatchLaterClick: () -> Unit = {},
@@ -1623,14 +1636,14 @@ fun ServicesSection(
     val accountIcon = rememberAppProfileAddIcon()
     if (isTablet) {
         // [New] Grid Layout for Tablet
-        val items = listOf(
-            Triple("离线缓存", downloadIcon, onDownloadClick),
-            Triple("历史记录", historyIcon, onHistoryClick),
-            Triple("我的收藏", bookmarkIcon, onFavoriteClick),
-            Triple("稍后再看", watchLaterIcon, onWatchLaterClick),
-            Triple("消息中心", inboxIcon, onInboxClick),
-            Triple("账号切换", accountIcon, onAccountManageClick)
-        )
+        val items = buildList {
+            add(Triple("离线缓存", downloadIcon, onDownloadClick))
+            if (showHistoryService) add(Triple("历史记录", historyIcon, onHistoryClick))
+            add(Triple("我的收藏", bookmarkIcon, onFavoriteClick))
+            add(Triple("稍后再看", watchLaterIcon, onWatchLaterClick))
+            add(Triple("消息中心", inboxIcon, onInboxClick))
+            add(Triple("账号切换", accountIcon, onAccountManageClick))
+        }
         
         // Simple Grid implementation since LazyVerticalGrid might be overkill inside a Column if not scrolling?
         // But tablet right pane has plenty space.
@@ -1640,7 +1653,7 @@ fun ServicesSection(
         // 2 columns x N rows
         Column(
             modifier = modifier
-                .heightIn(max = (items.size / 2) * 160.dp)
+                .heightIn(max = ((items.size + 1) / 2) * 160.dp)
         ) {
             items.chunked(2).forEach { rowItems ->
                 Row(
@@ -1698,13 +1711,15 @@ fun ServicesSection(
                 iconTint = MaterialTheme.colorScheme.primary,
                 textColor = contentColor
             )
-            IOSClickableItem(
-                icon = historyIcon,
-                title = "历史记录",
-                onClick = onHistoryClick,
-                iconTint = iOSBlue,
-                textColor = contentColor
-            )
+            if (showHistoryService) {
+                IOSClickableItem(
+                    icon = historyIcon,
+                    title = "历史记录",
+                    onClick = onHistoryClick,
+                    iconTint = iOSBlue,
+                    textColor = contentColor
+                )
+            }
             IOSClickableItem(
                 icon = bookmarkIcon,
                 title = "我的收藏",

@@ -139,6 +139,7 @@ internal fun resolveTopTabVisibleSlots(
     categoryCount: Int,
     longestLabelLength: Int = 0
 ): Int {
+    if (categoryCount in 1..3) return categoryCount
     if (categoryCount <= 4) return 4
     return if (longestLabelLength >= 8) 4 else 5
 }

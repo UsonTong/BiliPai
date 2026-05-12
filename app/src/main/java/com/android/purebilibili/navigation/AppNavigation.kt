@@ -108,6 +108,7 @@ import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
 // import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi (Removed)
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
+import com.android.purebilibili.feature.profile.shouldShowProfileHistoryService
 import com.android.purebilibili.core.store.AppNavigationSettings
 import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
@@ -1160,6 +1161,9 @@ fun AppNavigation(
                                 onAccountSwitchSuccess = { homeViewModel.refresh() },
                                 onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
                                 onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
+                                showHistoryService = shouldShowProfileHistoryService(
+                                    visibleBottomBarItems.map { it.name }
+                                ),
                                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
                                 onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
                                 onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
@@ -1741,6 +1745,9 @@ fun AppNavigation(
                 onAccountSwitchSuccess = { homeViewModel.refresh() },
                 onSettingsClick = { navigateFromProfile(ScreenRoutes.Settings.route) },
                 onHistoryClick = { navigateFromProfile(ScreenRoutes.History.route) },
+                showHistoryService = shouldShowProfileHistoryService(
+                    visibleBottomBarItems.map { it.name }
+                ),
                 onFavoriteClick = { navigateFromProfile(ScreenRoutes.Favorite.route) },
                 onFollowingClick = { mid -> navigateFromProfile(ScreenRoutes.Following.createRoute(mid)) },
                 onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },

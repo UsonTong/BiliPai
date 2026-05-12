@@ -9,7 +9,8 @@ class TopTabLayoutPolicyTest {
 
     @Test
     fun `visible slot count should stay in compact range`() {
-        assertEquals(4, resolveTopTabVisibleSlots(1))
+        assertEquals(1, resolveTopTabVisibleSlots(1))
+        assertEquals(3, resolveTopTabVisibleSlots(3))
         assertEquals(4, resolveTopTabVisibleSlots(4))
         assertEquals(5, resolveTopTabVisibleSlots(5, longestLabelLength = 6))
         assertEquals(4, resolveTopTabVisibleSlots(5, longestLabelLength = 9))
@@ -34,7 +35,9 @@ class TopTabLayoutPolicyTest {
     @Test
     fun `ios top tab action shares centered slot with visible categories`() {
         assertEquals(1, resolveTopTabVisibleCategorySlots(1, longestLabelLength = 2))
+        assertEquals(3, resolveTopTabVisibleCategorySlots(3, longestLabelLength = 2))
         assertEquals(5, resolveTopTabVisibleCategorySlots(5, longestLabelLength = 6))
+        assertEquals(150f, resolveTopTabActionSlotWidthDp(600f, 3, longestLabelLength = 2), 0.001f)
         assertEquals(100f, resolveTopTabActionSlotWidthDp(600f, 5, longestLabelLength = 6), 0.001f)
         assertEquals(100f, resolveTopTabItemWidthDp(500f, 5, isFloatingStyle = false), 0.001f)
     }
