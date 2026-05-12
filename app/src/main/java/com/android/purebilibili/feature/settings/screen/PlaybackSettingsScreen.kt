@@ -1120,6 +1120,11 @@ fun PlaybackSettingsContent(
                         val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
                             .getCommentMemberDecorationsEnabled(context)
                             .collectAsState(initial = false)
+                        val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
+                            .getCommentCollapsedReplyPreviewLimit(context)
+                            .collectAsState(
+                                initial = com.android.purebilibili.core.store.SettingsManager.DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
+                            )
                         val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
                             .getFullscreenMode(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
@@ -1178,6 +1183,24 @@ fun PlaybackSettingsContent(
                                 scope.launch {
                                     com.android.purebilibili.core.store.SettingsManager
                                         .setTabletCommentPanelWidthPreset(context, preset)
+                                }
+                            }
+                        )
+                        IOSDivider()
+                        IOSSlidingSegmentedSetting(
+                            title = "评论回复预览：${commentCollapsedReplyPreviewLimit}条",
+                            subtitle = "一级评论下默认展开的回复数量",
+                            options = listOf(
+                                PlaybackSegmentOption(3, "3条"),
+                                PlaybackSegmentOption(5, "5条"),
+                                PlaybackSegmentOption(8, "8条"),
+                                PlaybackSegmentOption(10, "10条")
+                            ),
+                            selectedValue = commentCollapsedReplyPreviewLimit,
+                            onSelectionChange = { limit ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentCollapsedReplyPreviewLimit(context, limit)
                                 }
                             }
                         )

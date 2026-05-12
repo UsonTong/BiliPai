@@ -198,6 +198,18 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByCommentCollapsedPreviewLimit_hitsPlaybackFullscreenEntry() {
+        val results = resolveSettingsSearchResults("评论折叠数量")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            }
+        )
+    }
+
+    @Test
     fun queryByAppScreenshotGesture_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("应用内干净截图")
 

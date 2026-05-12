@@ -42,6 +42,7 @@ import coil.request.ImageRequest
 import coil.ImageLoader
 import coil.imageLoader
 //  已改用 MaterialTheme.colorScheme.primary
+import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.calculateContrastRatio
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.BilibiliUrlParser
@@ -203,6 +204,8 @@ internal fun shouldShowReplySubPreview(
     hideSubPreview: Boolean,
     lightweightMode: Boolean
 ): Boolean = !hideSubPreview
+
+internal fun normalizeCollapsedSubReplyPreviewLimit(value: Int): Int = value.coerceIn(1, 10)
 
 internal fun resolveReplySpecialLabelText(
     cardLabels: List<ReplyCardLabel>?,
@@ -680,13 +683,14 @@ internal fun resolveVisibleSubReplies(
     collapsedLimit: Int = COLLAPSED_SUB_REPLY_PREVIEW_LIMIT
 ): List<ReplyItem> {
     val previewReplies = replies.orEmpty()
-    return if (expanded) previewReplies else previewReplies.take(collapsedLimit)
+    val limit = normalizeCollapsedSubReplyPreviewLimit(collapsedLimit)
+    return if (expanded) previewReplies else previewReplies.take(limit)
 }
 
 internal fun shouldShowInlineSubReplyToggle(
     previewReplyCount: Int,
     collapsedLimit: Int = COLLAPSED_SUB_REPLY_PREVIEW_LIMIT
-): Boolean = previewReplyCount > collapsedLimit
+): Boolean = previewReplyCount > normalizeCollapsedSubReplyPreviewLimit(collapsedLimit)
 
 internal fun resolveInlineSubReplyToggleLabel(expanded: Boolean): String {
     return if (expanded) "收起回复" else "展开回复"
@@ -862,6 +866,9 @@ fun ReplyItemView(
         hideSubPreview = hideSubPreview,
         lightweightMode = lightweightMode
     )
+    val collapsedSubReplyPreviewLimit = remember(context) {
+        SettingsManager.getCommentCollapsedReplyPreviewLimitSync(context)
+    }
     val localEmoteMap = remember(item.content.emote, emoteMap) {
         val inlineEmotes = item.content.emote.orEmpty()
         if (inlineEmotes.isEmpty()) {
@@ -936,14 +943,18 @@ fun ReplyItemView(
     }
     val piliPlusDecoration = fanGroupVisual
     var isSubPreviewExpanded by remember(item.rpid) { mutableStateOf(false) }
-    val visibleSubReplies = remember(item.replies, isSubPreviewExpanded) {
+    val visibleSubReplies = remember(item.replies, isSubPreviewExpanded, collapsedSubReplyPreviewLimit) {
         resolveVisibleSubReplies(
             replies = item.replies,
-            expanded = isSubPreviewExpanded
+            expanded = isSubPreviewExpanded,
+            collapsedLimit = collapsedSubReplyPreviewLimit
         )
     }
-    val showInlineSubReplyToggle = remember(item.replies) {
-        shouldShowInlineSubReplyToggle(item.replies.orEmpty().size)
+    val showInlineSubReplyToggle = remember(item.replies, collapsedSubReplyPreviewLimit) {
+        shouldShowInlineSubReplyToggle(
+            previewReplyCount = item.replies.orEmpty().size,
+            collapsedLimit = collapsedSubReplyPreviewLimit
+        )
     }
     val threadReplyCount = remember(item.count, item.rcount, item.replies) {
         resolveReplyThreadCount(item)

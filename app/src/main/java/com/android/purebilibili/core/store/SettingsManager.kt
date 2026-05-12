@@ -4146,6 +4146,8 @@ object SettingsManager {
     private val KEY_SHOW_FULLSCREEN_TIME = booleanPreferencesKey("show_fullscreen_time")
     private val KEY_SHOW_FULLSCREEN_ACTION_ITEMS = booleanPreferencesKey("show_fullscreen_action_items")
     private val KEY_SHOW_ONLINE_COUNT = booleanPreferencesKey("show_online_count")
+    private val KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT =
+        intPreferencesKey("comment_collapsed_reply_preview_limit")
     private val KEY_PLAYER_DIAGNOSTIC_LOGGING_ENABLED =
         booleanPreferencesKey("player_diagnostic_logging_enabled")
     private val KEY_SUBTITLE_AUTO_PREFERENCE = intPreferencesKey("subtitle_auto_preference")
@@ -4155,6 +4157,11 @@ object SettingsManager {
     private val KEY_FULLSCREEN_ASPECT_RATIO = intPreferencesKey("fullscreen_aspect_ratio")
     private val INLINE_SWIPE_SEEK_OPTIONS = listOf(5, 10, 15, 30, 60)
     private val FULLSCREEN_SWIPE_SEEK_OPTIONS = listOf(10, 15, 20, 30)
+    const val DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT = 3
+    private const val COMMENT_PREVIEW_CACHE_PREFS = "comment_preview_cache"
+    private const val CACHE_KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT = "comment_collapsed_reply_preview_limit"
+
+    fun normalizeCommentCollapsedReplyPreviewLimit(value: Int): Int = value.coerceIn(1, 10)
     
     // --- 播放器滚动缩小方向策略 ---
     fun getPortraitPlayerCollapseMode(context: Context): Flow<PortraitPlayerCollapseMode> =
@@ -4408,6 +4415,35 @@ object SettingsManager {
     fun getShowOnlineCountSync(context: Context): Boolean {
         return context.getSharedPreferences("video_overlay_cache", Context.MODE_PRIVATE)
             .getBoolean("show_online_count", false)
+    }
+
+    fun getCommentCollapsedReplyPreviewLimit(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences ->
+            normalizeCommentCollapsedReplyPreviewLimit(
+                preferences[KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT]
+                    ?: DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
+            )
+        }
+
+    suspend fun setCommentCollapsedReplyPreviewLimit(context: Context, value: Int) {
+        val normalized = normalizeCommentCollapsedReplyPreviewLimit(value)
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT] = normalized
+        }
+        context.getSharedPreferences(COMMENT_PREVIEW_CACHE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(CACHE_KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT, normalized)
+            .apply()
+    }
+
+    fun getCommentCollapsedReplyPreviewLimitSync(context: Context): Int {
+        return normalizeCommentCollapsedReplyPreviewLimit(
+            context.getSharedPreferences(COMMENT_PREVIEW_CACHE_PREFS, Context.MODE_PRIVATE)
+                .getInt(
+                    CACHE_KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT,
+                    DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
+                )
+        )
     }
 
     fun getPlayerDiagnosticLoggingEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -4779,6 +4815,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_HIDE_VIDEO_PAGE_STATUS_BAR, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SHOW_ONLINE_COUNT, SettingsShareSection.PLAYBACK),
+            IntShareablePreferenceDefinition(KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT, SettingsShareSection.PLAYBACK),
 
             BooleanShareablePreferenceDefinition(KEY_HAPTIC_FEEDBACK_ENABLED, SettingsShareSection.GESTURE),
             FloatShareablePreferenceDefinition(KEY_GESTURE_SENSITIVITY, SettingsShareSection.GESTURE),

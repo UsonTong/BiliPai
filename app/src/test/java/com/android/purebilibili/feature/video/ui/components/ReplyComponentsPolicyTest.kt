@@ -902,6 +902,14 @@ class ReplyComponentsPolicyTest {
             resolveVisibleSubReplies(replies = replies, expanded = false).map { it.rpid }
         )
         assertEquals(
+            listOf(1L, 2L),
+            resolveVisibleSubReplies(
+                replies = replies,
+                expanded = false,
+                collapsedLimit = 2
+            ).map { it.rpid }
+        )
+        assertEquals(
             listOf(1L, 2L, 3L, 4L),
             resolveVisibleSubReplies(replies = replies, expanded = true).map { it.rpid }
         )
@@ -913,6 +921,13 @@ class ReplyComponentsPolicyTest {
         assertTrue(shouldShowInlineSubReplyToggle(previewReplyCount = 4))
         assertEquals("展开回复", resolveInlineSubReplyToggleLabel(expanded = false))
         assertEquals("收起回复", resolveInlineSubReplyToggleLabel(expanded = true))
+    }
+
+    @Test
+    fun `normalizeCollapsedSubReplyPreviewLimit clamps supported range`() {
+        assertEquals(1, normalizeCollapsedSubReplyPreviewLimit(0))
+        assertEquals(3, normalizeCollapsedSubReplyPreviewLimit(3))
+        assertEquals(10, normalizeCollapsedSubReplyPreviewLimit(99))
     }
 
     @Test
