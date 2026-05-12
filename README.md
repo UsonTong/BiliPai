@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.3-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.3" />
+  <img src="https://img.shields.io/badge/Version-8.1.4-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.4" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.3 / versionCode 186`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.3`：
+当前仓库版本号已更新到 `8.1.4 / versionCode 187`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.4`：
 
-- 收敛播放器滑动/拖动判定和进度条手势策略，降低播放器区域操作冲突。
-- 优化底栏指示器位移、液态拖拽阻尼和首页网格策略，减少滑动抖动与布局跳动。
-- 修正收藏夹、合集/系列详情和通用列表的状态映射与空数据处理。
-- 合入 PR #316，修复列表/合集 ViewModel 初始化顺序导致的偶发空指针。
-- “屏蔽关注/点赞弹幕”扩展为“隐藏视频内互动提示”，可隐藏关注、一键三连、UP 提示和投票等命令弹幕。
+- 个人页去重历史入口，并在“我的收藏”下显示收藏夹快捷入口。
+- 首页少量顶部标签自动居中，视频介绍默认展开。
+- 进入视频自动播放设置更易搜索，评论回复预览数量可自定义。
+- 图片预览新增系统分享按钮，评论区图片可直接分享。
+- 补充番剧评论、直播人数/面板、播放流选择与相关策略测试。
 
 ## 路线图
 

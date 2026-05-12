@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-11 · Synced to v8.1.3 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-13 · Synced to v8.1.4 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.3-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.1.4-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.3 · 2026-05-11)
+### Latest (v8.1.4 · 2026-05-13)
 
-- Refined player drag and seek gesture policy to reduce control conflicts inside the video area.
-- Tuned bottom-bar indicator movement, liquid drag damping, and Home grid behavior to reduce jitter and layout jumps.
-- Hardened favorites, collection aggregation, and season/series detail state mapping for empty or late-initialized data.
-- Merged PR #316 to fix a ViewModel initialization-order null pointer in list and collection flows.
-- Expanded the danmaku command switch into a broader “hide in-video interaction prompts” setting for follow, triple-action, UP prompt, and vote commands.
-- Bumped the app to `8.1.3` with `versionCode` `186`.
+- Removed duplicate History entry from Profile when the bottom bar already exposes History, and added favorite-folder shortcuts under My Favorites.
+- Centered small Home top-tab sets, expanded video descriptions by default, and clarified the entry autoplay setting.
+- Added a configurable comment reply preview limit to reduce repeated expand taps.
+- Added image preview sharing, so comment images can be shared through the system sheet while preserving common image formats.
+- Refined bangumi comments, live viewer/panel parsing, stream selection, and the related policy tests.
+- Bumped the app to `8.1.4` with `versionCode` `187`.
 
 ---
 
