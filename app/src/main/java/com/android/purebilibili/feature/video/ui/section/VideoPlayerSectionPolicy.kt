@@ -335,8 +335,9 @@ internal fun resolveHorizontalSeekDeltaMs(
 ): Long? {
     if (isFullscreen && fullscreenSwipeSeekEnabled) {
         val seekSeconds = fullscreenSwipeSeekSeconds ?: return null
+        val safeWidthPx = containerWidthPx.coerceAtLeast(1f)
         val maxDeltaMs = seekSeconds.coerceAtLeast(1) * 1000L
-        val rawDeltaMs = (totalDragDistanceX * 200f * gestureSensitivity).toLong()
+        val rawDeltaMs = (totalDragDistanceX / safeWidthPx * maxDeltaMs * gestureSensitivity).toLong()
         return rawDeltaMs.coerceIn(-maxDeltaMs, maxDeltaMs)
     }
     if (!isFullscreen) {
@@ -366,7 +367,7 @@ internal fun resolveRelativeSeekTargetPosition(
 internal fun shouldCommitGestureSeek(
     currentPositionMs: Long,
     targetPositionMs: Long,
-    minDeltaMs: Long = 300L
+    minDeltaMs: Long = 800L
 ): Boolean {
     return abs(targetPositionMs - currentPositionMs) >= minDeltaMs
 }

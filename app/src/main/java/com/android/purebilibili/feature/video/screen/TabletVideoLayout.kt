@@ -119,6 +119,12 @@ fun TabletVideoLayout(
     
     // 🖥️ [修复] 使用 LocalContext 获取 Activity，而非 playerState.context
     val context = LocalContext.current
+    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentMemberDecorationsEnabled(context)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val activity = remember(context) {
         (context as? android.app.Activity)
             ?: (context as? android.content.ContextWrapper)?.baseContext as? android.app.Activity
@@ -279,6 +285,7 @@ fun TabletVideoLayout(
                     },
                     onRelatedVideoClick = onRelatedVideoClick,
                     showUpBadge = showUpBadge,
+                    showIdentityDecorations = commentMemberDecorationsEnabled,
                     onSearchKeywordClick = onSearchKeywordClick
                 )
             }
@@ -303,6 +310,7 @@ private fun TabletSecondaryContent(
     onPaneModeCycle: () -> Unit,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showUpBadge: Boolean,
+    showIdentityDecorations: Boolean,
     onSearchKeywordClick: (String) -> Unit
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
@@ -514,6 +522,7 @@ private fun TabletSecondaryContent(
                             onCommentLike = commentViewModel::likeComment,
                             onReportComment = commentViewModel::reportComment,
                             onUrlClick = openCommentUrl,
+                            showIdentityDecorations = showIdentityDecorations,
                             onAvatarClick = { mid -> mid.toLongOrNull()?.let(onUpClick) ?: Unit }
                         )
                     } else {
@@ -571,6 +580,7 @@ private fun TabletSecondaryContent(
                                         emoteMap = success.emoteMap,
                                         upMid = success.info.owner.mid,
                                         showUpFlag = commentState.showUpFlag,
+                                        showIdentityDecorations = showIdentityDecorations,
                                         isPinned = reply.rpid in commentState.pinnedReplyIds,
                                         onClick = {},
                                         onSubClick = { commentViewModel.openSubReply(it) },

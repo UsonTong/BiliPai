@@ -32,6 +32,7 @@ fun SubReplySheet(
     onCommentLike: ((Long) -> Unit)? = null,
     likedComments: Set<Long> = emptySet(),
     onUrlClick: ((String) -> Unit)? = null,
+    showIdentityDecorations: Boolean = true,
     onAvatarClick: ((String) -> Unit)? = null
 ) {
     if (state.visible && state.rootReply != null) {
@@ -63,6 +64,7 @@ fun SubReplySheet(
                 onCommentLike = onCommentLike,
                 likedComments = likedComments,
                 onUrlClick = onUrlClick,
+                showIdentityDecorations = showIdentityDecorations,
                 onAvatarClick = onAvatarClick
             )
         }

@@ -163,6 +163,12 @@ fun TabletCinemaLayout(
             initial = TabletCommentPanelWidthPreset.STANDARD,
             context = kotlin.coroutines.EmptyCoroutineContext
         )
+    val commentMemberDecorationsEnabled by SettingsManager
+        .getCommentMemberDecorationsEnabled(appContext)
+        .collectAsState(
+            initial = false,
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
     val policy = remember(configuration.screenWidthDp, tabletCommentPanelWidthPreset) {
         resolveTabletCinemaLayoutPolicy(
             widthDp = configuration.screenWidthDp,
@@ -325,6 +331,7 @@ fun TabletCinemaLayout(
                 onRelatedVideoClick = onRelatedVideoClick,
                 context = appContext,
                 showUpBadge = showUpBadge,
+                showIdentityDecorations = commentMemberDecorationsEnabled,
                 onSearchKeywordClick = onSearchKeywordClick
             )
         }
@@ -770,6 +777,7 @@ private fun CinemaSideCurtain(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     context: android.content.Context,
     showUpBadge: Boolean,
+    showIdentityDecorations: Boolean,
     onSearchKeywordClick: (String) -> Unit
 ) {
     val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
@@ -904,6 +912,7 @@ private fun CinemaSideCurtain(
                                             onUpClick = onUpClick,
                                             context = context,
                                             onRelatedVideoClick = onRelatedVideoClick,
+                                            showIdentityDecorations = showIdentityDecorations,
                                             onSearchKeywordClick = onSearchKeywordClick
                                         )
                                     }
@@ -937,6 +946,7 @@ private fun CinemaCommentsPane(
     onUpClick: (Long) -> Unit,
     context: android.content.Context,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
+    showIdentityDecorations: Boolean,
     onSearchKeywordClick: (String) -> Unit
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
@@ -1028,6 +1038,7 @@ private fun CinemaCommentsPane(
             onCommentLike = commentViewModel::likeComment,
             onReportComment = commentViewModel::reportComment,
             onUrlClick = openCommentUrl,
+            showIdentityDecorations = showIdentityDecorations,
             onAvatarClick = { mid -> mid.toLongOrNull()?.let(onUpClick) ?: Unit }
         )
     } else {
@@ -1079,6 +1090,7 @@ private fun CinemaCommentsPane(
                     item = reply,
                     upMid = success.info.owner.mid,
                     showUpFlag = commentState.showUpFlag,
+                    showIdentityDecorations = showIdentityDecorations,
                     isPinned = reply.rpid in commentState.pinnedReplyIds,
                     emoteMap = success.emoteMap,
                     onClick = {},

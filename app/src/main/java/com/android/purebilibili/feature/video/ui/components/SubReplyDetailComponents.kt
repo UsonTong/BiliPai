@@ -246,6 +246,7 @@ internal fun VideoInlineSubReplyDetailContent(
     onCommentLike: (Long) -> Unit,
     onReportComment: (Long, Int) -> Unit,
     onUrlClick: (String) -> Unit,
+    showIdentityDecorations: Boolean,
     onAvatarClick: (String) -> Unit
 ) {
     val rootReply = state.rootReply
@@ -281,6 +282,7 @@ internal fun VideoInlineSubReplyDetailContent(
         onReportComment = onReportComment,
         likedComments = commentState.likedComments,
         onUrlClick = onUrlClick,
+        showIdentityDecorations = showIdentityDecorations,
         onAvatarClick = onAvatarClick,
         maxTimestampMs = maxTimestampMs
     )
@@ -313,6 +315,7 @@ internal fun SubReplyDetailContent(
     onReportComment: ((Long, Int) -> Unit)? = null,
     likedComments: Set<Long> = emptySet(),
     onUrlClick: ((String) -> Unit)? = null,
+    showIdentityDecorations: Boolean = true,
     onAvatarClick: ((String) -> Unit)? = null,
     maxTimestampMs: Long? = null
 ) {
@@ -534,7 +537,11 @@ internal fun SubReplyDetailContent(
                                 conversationAnchor = item
                             }
                         },
-                        auxiliaryLabel = resolveSubReplyAuxiliaryLabel(item),
+                        auxiliaryLabel = if (showIdentityDecorations) {
+                            resolveSubReplyAuxiliaryLabel(item)
+                        } else {
+                            null
+                        },
                         showTrailingDivider = true
                     )
                 }

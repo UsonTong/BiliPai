@@ -18,6 +18,7 @@ import android.provider.Settings
 import android.view.OrientationEventListener
 import android.view.Window
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -83,6 +84,9 @@ import androidx.core.view.WindowCompat
 import com.android.purebilibili.EXTRA_PENDING_NAVIGATION_ROUTE
 import com.android.purebilibili.resolveMainActivityVideoRoute
 import com.android.purebilibili.data.model.response.BgmInfo
+import com.android.purebilibili.data.model.CommentFraudStatus
+import com.android.purebilibili.data.repository.resolveCommentFraudLightMessage
+import com.android.purebilibili.data.repository.shouldShowCommentFraudResultDialog
 import androidx.core.view.WindowInsetsCompat
 import androidx.media3.common.Player
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -121,6 +125,7 @@ import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
 import com.android.purebilibili.feature.video.ui.section.shouldKeepVideoPlaybackAwake
 import com.android.purebilibili.feature.video.ui.components.ReplyHeader
 import com.android.purebilibili.feature.video.ui.components.ReplyItemView
+import com.android.purebilibili.feature.video.ui.components.CommentFraudResultDialog
 import com.android.purebilibili.feature.video.ui.components.VideoCommentSheetHost
 
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode  //  新增
@@ -818,8 +823,60 @@ fun VideoDetailScreen(
             initialValue = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context),
             lifecycle = lifecycleOwner.lifecycle
         )
+    val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentFraudDetectionEnabled(context)
+        .collectAsStateWithLifecycle(
+            initialValue = true,
+            lifecycle = lifecycleOwner.lifecycle
+        )
+    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentMemberDecorationsEnabled(context)
+        .collectAsStateWithLifecycle(
+            initialValue = false,
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val preferredCommentSortMode = remember(commentDefaultSortMode) {
         CommentSortMode.fromApiMode(commentDefaultSortMode)
+    }
+    LaunchedEffect(commentFraudDetectionEnabled, uiState) {
+        val success = uiState as? PlayerUiState.Success ?: return@LaunchedEffect
+        viewModel.commentSentEvent.collect { reply ->
+            commentViewModel.onExternalCommentSent(
+                aid = success.info.aid,
+                newReply = reply,
+                fraudDetectionEnabled = commentFraudDetectionEnabled
+            )
+        }
+    }
+    var fraudDialogStatus by remember { mutableStateOf<CommentFraudStatus?>(null) }
+    LaunchedEffect(Unit) {
+        commentViewModel.fraudEvent.collect { status ->
+            val lightMessage = resolveCommentFraudLightMessage(status)
+            if (lightMessage != null) {
+                Toast.makeText(context, lightMessage, Toast.LENGTH_SHORT).show()
+            } else if (shouldShowCommentFraudResultDialog(status)) {
+                fraudDialogStatus = status
+            }
+        }
+    }
+    fraudDialogStatus?.let { status ->
+        CommentFraudResultDialog(
+            status = status,
+            onDismiss = {
+                fraudDialogStatus = null
+                commentViewModel.dismissFraudResult()
+            },
+            onDeleteComment = if (status == CommentFraudStatus.SHADOW_BANNED) {
+                {
+                    val rpid = commentViewModel.commentState.value.fraudDetectRpid
+                    if (rpid > 0L) {
+                        commentViewModel.startDissolve(rpid)
+                    }
+                }
+            } else {
+                null
+            }
+        )
     }
     val sortPreferenceScope = rememberCoroutineScope()
     val danmakuEnabledForDetail by com.android.purebilibili.core.store.SettingsManager
@@ -2706,6 +2763,7 @@ fun VideoDetailScreen(
                                                         // [新增] 传递删除相关参数
                                                         currentMid = commentState.currentMid,
                                                         showUpFlag = commentState.showUpFlag,
+                                                        showIdentityDecorations = commentMemberDecorationsEnabled,
                                                         dissolvingIds = commentState.dissolvingIds,
                                                         // [新增] 删除评论
                                                         onDeleteComment = { rpid ->
@@ -4676,7 +4734,8 @@ private fun DetachedVideoCommentThreadHost(
         screenHeightPx = screenHeightPx,
         topReservedPx = topReservedPx,
         onTimestampClick = onTimestampClick,
-        maxTimestampMs = successState?.videoDurationMs?.takeIf { it > 0L }
+        maxTimestampMs = successState?.videoDurationMs?.takeIf { it > 0L },
+        handleFraudEvents = false
     )
 }
 

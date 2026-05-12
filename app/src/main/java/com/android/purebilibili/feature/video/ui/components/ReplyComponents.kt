@@ -197,7 +197,7 @@ internal fun shouldShowReplyAncillaryDecorations(
     lightweightMode: Boolean
 ): Boolean = !lightweightMode
 
-internal fun shouldShowReplyIdentityDecorations(): Boolean = true
+internal fun shouldShowReplyIdentityDecorations(enabled: Boolean): Boolean = enabled
 
 internal fun shouldShowReplySubPreview(
     hideSubPreview: Boolean,
@@ -833,6 +833,7 @@ fun ReplyItemView(
     isPinned: Boolean = false,
     emoteMap: Map<String, String> = emptyMap(),
     lightweightMode: Boolean = false,
+    showIdentityDecorations: Boolean = true,
     onClick: () -> Unit,
     onSubClick: (ReplyItem) -> Unit,
     onTimestampClick: ((Long) -> Unit)? = null,
@@ -856,7 +857,7 @@ fun ReplyItemView(
     val scope = rememberCoroutineScope()
     val isUpComment = upMid > 0 && item.mid == upMid
     val showAncillaryDecorations = shouldShowReplyAncillaryDecorations(lightweightMode)
-    val showIdentityDecorations = shouldShowReplyIdentityDecorations()
+    val showResolvedIdentityDecorations = shouldShowReplyIdentityDecorations(showIdentityDecorations)
     val showSubPreview = shouldShowReplySubPreview(
         hideSubPreview = hideSubPreview,
         lightweightMode = lightweightMode
@@ -910,22 +911,22 @@ fun ReplyItemView(
             isLiked = isLiked
         )
     }
-    val fansDetail = if (showIdentityDecorations) {
+    val fansDetail = if (showResolvedIdentityDecorations) {
         item.member.fansDetail?.takeIf { it.medalName.isNotBlank() && it.level > 0 }
     } else {
         null
     }
-    val nameplateImage = if (showIdentityDecorations) {
+    val nameplateImage = if (showResolvedIdentityDecorations) {
         item.member.nameplate?.imageSmall?.takeIf { it.isNotBlank() }
     } else {
         null
     }
-    val sailingCardBgs = if (showIdentityDecorations) {
+    val sailingCardBgs = if (showResolvedIdentityDecorations) {
         resolveFanGroupDecorationCardBgs(item.member)
     } else {
         emptyList()
     }
-    val fanGroupVisual = if (showIdentityDecorations) {
+    val fanGroupVisual = if (showResolvedIdentityDecorations) {
         resolveFanGroupVisualFromMemberAndSailing(
             member = item.member,
             cardBgs = sailingCardBgs

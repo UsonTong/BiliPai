@@ -1024,7 +1024,7 @@ fun PlaybackSettingsContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "横屏滑动快进/快退步长",
+                                    text = "横屏滑动调进度范围",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -1040,9 +1040,9 @@ fun PlaybackSettingsContent(
                             }
                             Text(
                                 text = if (fullscreenSwipeSeekEnabled) {
-                                    "左右滑动时每档跳转秒数：当前 ${fullscreenSwipeSeekSeconds} 秒"
+                                    "左右拖动一屏最多调整 ${fullscreenSwipeSeekSeconds} 秒，数值越小越精确"
                                 } else {
-                                    "已关闭固定步长（当前设定 ${fullscreenSwipeSeekSeconds} 秒，重新开启后生效）"
+                                    "已关闭横屏精细调进度（当前范围 ${fullscreenSwipeSeekSeconds} 秒，重新开启后生效）"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1110,6 +1110,12 @@ fun PlaybackSettingsContent(
                         val tabletCommentPanelWidthPreset by com.android.purebilibili.core.store.SettingsManager
                             .getTabletCommentPanelWidthPreset(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.TabletCommentPanelWidthPreset.STANDARD)
+                        val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
+                            .getCommentFraudDetectionEnabled(context)
+                            .collectAsState(initial = true)
+                        val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+                            .getCommentMemberDecorationsEnabled(context)
+                            .collectAsState(initial = false)
                         val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
                             .getFullscreenMode(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
@@ -1170,6 +1176,34 @@ fun PlaybackSettingsContent(
                                         .setTabletCommentPanelWidthPreset(context, preset)
                                 }
                             }
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.TextBubble,
+                            title = "评论发送检测",
+                            subtitle = "发送成功后自动检查评论是否正常显示",
+                            checked = commentFraudDetectionEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentFraudDetectionEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Sparkles,
+                            title = "评论区个性装扮",
+                            subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
+                            checked = commentMemberDecorationsEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentMemberDecorationsEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = iOSOrange
                         )
                         IOSDivider()
                         IOSSlidingSegmentedSetting(

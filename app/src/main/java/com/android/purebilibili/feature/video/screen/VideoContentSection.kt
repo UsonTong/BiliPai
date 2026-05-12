@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.video.screen
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,6 +53,8 @@ import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.data.model.response.RelatedVideo
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.VideoTag
@@ -192,6 +195,19 @@ internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): V
     }
 }
 
+internal data class VideoContentTabSwitchAnimationSpec(
+    val durationMs: Int
+)
+
+internal fun resolveVideoContentTabSwitchAnimationSpec(
+    uiPreset: UiPreset
+): VideoContentTabSwitchAnimationSpec {
+    return when (uiPreset) {
+        UiPreset.IOS -> VideoContentTabSwitchAnimationSpec(durationMs = 360)
+        UiPreset.MD3 -> VideoContentTabSwitchAnimationSpec(durationMs = 240)
+    }
+}
+
 /**
  * 视频详情内容区域
  * 从 VideoDetailScreen.kt 提取出来，提高代码可维护性
@@ -240,6 +256,7 @@ fun VideoContentSection(
     // [新增] 删除与动画参数
     currentMid: Long = 0,
     showUpFlag: Boolean = false,
+    showIdentityDecorations: Boolean = false,
     dissolvingIds: Set<Long> = emptySet(),
     onDeleteComment: (Long) -> Unit = {},
     onDissolveStart: (Long) -> Unit = {},
@@ -324,9 +341,21 @@ fun VideoContentSection(
     // 合集展开状态
     var showCollectionSheet by remember { mutableStateOf(false) }
     var showDanmakuSettings by remember { mutableStateOf(false) }
+    val uiPreset = LocalUiPreset.current
+    val tabSwitchAnimationSpec = remember(uiPreset) {
+        resolveVideoContentTabSwitchAnimationSpec(uiPreset)
+    }
 
     val onTabSelected: (Int) -> Unit = { index ->
-        scope.launch { pagerState.animateScrollToPage(index) }
+        scope.launch {
+            pagerState.animateScrollToPage(
+                page = index,
+                animationSpec = tween(
+                    durationMillis = tabSwitchAnimationSpec.durationMs,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        }
     }
     LaunchedEffect(pagerState.currentPage) {
         onSelectedTabChange(pagerState.currentPage)
@@ -460,6 +489,7 @@ fun VideoContentSection(
                         onCommentUrlClick = onCommentUrlClick,
                         onReportComment = onReportComment,
                         onToggleTopComment = onToggleTopComment,
+                        showIdentityDecorations = showIdentityDecorations,
                         lightweightCommentRendering = lightweightCommentRendering
                     )
                 }
@@ -674,6 +704,7 @@ private fun VideoCommentTab(
     onCommentUrlClick: (String) -> Unit,
     onReportComment: (Long, Int) -> Unit,
     onToggleTopComment: (ReplyItem) -> Unit,
+    showIdentityDecorations: Boolean,
     lightweightCommentRendering: Boolean
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
@@ -755,6 +786,7 @@ private fun VideoCommentTab(
                             upMid = info.owner.mid,
                             emoteMap = emoteMap,
                             lightweightMode = lightweightCommentRendering,
+                            showIdentityDecorations = showIdentityDecorations,
                             onClick = {},
                             onSubClick = { onSubReplyClick(reply) },
                             onTimestampClick = onTimestampClick,

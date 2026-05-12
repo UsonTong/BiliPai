@@ -231,7 +231,7 @@ class PlaybackSettingsSelectionPolicyTest {
         val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
             .readText()
         val block = source
-            .substringAfter("text = \"横屏滑动快进/快退步长\"")
+            .substringAfter("text = \"横屏滑动调进度范围\"")
             .substringBefore("val seekStepOptions = listOf(")
 
         assertTrue(block.contains("AppAdaptiveSwitch("))

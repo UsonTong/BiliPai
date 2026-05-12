@@ -104,7 +104,10 @@ data class PlaybackSelectionResult(
     val cachedDashAudios: List<DashAudio>,
     val switchableQualityIds: List<Int>,
     val qualityIds: List<Int>,
-    val qualityLabels: List<String>
+    val qualityLabels: List<String>,
+    val videoCodec: String? = null,
+    val videoBandwidth: Int? = null,
+    val audioBandwidth: Int? = null
 )
 
 internal fun shouldPreparePlayerOnLoad(playWhenReady: Boolean): Boolean = true
@@ -553,6 +556,9 @@ class VideoPlaybackUseCase(
                             targetQuality = targetQn,
                             returnedQuality = playData.quality,
                             selectedDashQuality = selection.actualQuality.takeIf { selection.isDashPlayback },
+                            selectedDashCodec = selection.videoCodec,
+                            selectedDashBandwidth = selection.videoBandwidth,
+                            selectedAudioBandwidth = selection.audioBandwidth,
                             mergedQualityIds = qualitySelectionState.qualityIds,
                             isLoggedIn = isLogin,
                             isVip = isEffectiveVip
@@ -987,7 +993,10 @@ class VideoPlaybackUseCase(
             cachedDashAudios = playUrlData.dash?.audio ?: emptyList(),
             switchableQualityIds = qualitySelectionState.switchableQualityIds,
             qualityIds = qualitySelectionState.qualityIds,
-            qualityLabels = qualitySelectionState.qualityLabels
+            qualityLabels = qualitySelectionState.qualityLabels,
+            videoCodec = dashVideo?.codecs,
+            videoBandwidth = dashVideo?.bandwidth,
+            audioBandwidth = dashAudio?.bandwidth
         )
     }
 
@@ -1178,12 +1187,26 @@ class VideoPlaybackUseCase(
         targetQuality: Int,
         returnedQuality: Int,
         selectedDashQuality: Int?,
+        selectedDashCodec: String? = null,
+        selectedDashBandwidth: Int? = null,
+        selectedAudioBandwidth: Int? = null,
         mergedQualityIds: List<Int>,
         isLoggedIn: Boolean,
         isVip: Boolean
     ): String {
+        val streamSummary = buildString {
+            if (!selectedDashCodec.isNullOrBlank()) {
+                append(" selectedCodec=$selectedDashCodec")
+            }
+            if (selectedDashBandwidth != null && selectedDashBandwidth > 0) {
+                append(" selectedBandwidth=$selectedDashBandwidth")
+            }
+            if (selectedAudioBandwidth != null && selectedAudioBandwidth > 0) {
+                append(" selectedAudioBandwidth=$selectedAudioBandwidth")
+            }
+        }
         return "PLAY_DIAG playback_selection bvid=$bvid cid=$cid default=$defaultQuality target=$targetQuality " +
-            "returned=$returnedQuality selectedDash=${selectedDashQuality ?: "null"} " +
+            "returned=$returnedQuality selectedDash=${selectedDashQuality ?: "null"}$streamSummary " +
             "merged=$mergedQualityIds isLoggedIn=$isLoggedIn isVip=$isVip"
     }
 }

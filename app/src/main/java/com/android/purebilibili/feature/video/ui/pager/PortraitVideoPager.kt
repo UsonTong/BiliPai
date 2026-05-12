@@ -2107,10 +2107,20 @@ private fun VideoPageItem(
             val replyingToComment by viewModel.replyingToComment.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
             val emotePackages by viewModel.emotePackages.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
             val commentState by commentViewModel.commentState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+            val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
+                .getCommentFraudDetectionEnabled(context)
+                .collectAsState(
+                    initial = true,
+                    context = kotlin.coroutines.EmptyCoroutineContext
+                )
 
-            LaunchedEffect(aid) {
+            LaunchedEffect(aid, commentFraudDetectionEnabled) {
                 viewModel.commentSentEvent.collect { reply ->
-                    commentViewModel.onExternalCommentSent(aid = aid, newReply = reply)
+                    commentViewModel.onExternalCommentSent(
+                        aid = aid,
+                        newReply = reply,
+                        fraudDetectionEnabled = commentFraudDetectionEnabled
+                    )
                 }
             }
 

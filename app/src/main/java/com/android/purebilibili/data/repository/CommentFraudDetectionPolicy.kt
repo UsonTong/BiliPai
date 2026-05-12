@@ -8,6 +8,23 @@ internal data class CommentPresenceProbe(
     val deletedHint: Boolean = false
 )
 
+internal fun shouldStartCommentFraudDetection(
+    enabled: Boolean,
+    rpid: Long
+): Boolean = enabled && rpid > 0L
+
+internal fun shouldShowCommentFraudResultDialog(status: CommentFraudStatus): Boolean {
+    return status != CommentFraudStatus.NORMAL
+}
+
+internal fun resolveCommentFraudLightMessage(status: CommentFraudStatus): String? {
+    return if (status == CommentFraudStatus.NORMAL) {
+        "评论已正常显示"
+    } else {
+        null
+    }
+}
+
 internal fun resolveReplyFraudStatus(
     guestProbe: CommentPresenceProbe,
     authProbe: CommentPresenceProbe,

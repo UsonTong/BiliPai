@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.screen
 
+import com.android.purebilibili.core.theme.UiPreset
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -83,6 +84,16 @@ class VideoContentTabBarPolicyTest {
             .substringBefore("// [新增] 恢复画面按钮")
 
         assertTrue(tabBarBlock.contains("tapPressRefractionEnabled = false"))
+    }
+
+    @Test
+    fun `ios preset uses calmer intro comment tab switch motion`() {
+        val iosSpec = resolveVideoContentTabSwitchAnimationSpec(UiPreset.IOS)
+        val md3Spec = resolveVideoContentTabSwitchAnimationSpec(UiPreset.MD3)
+
+        assertEquals(360, iosSpec.durationMs)
+        assertEquals(240, md3Spec.durationMs)
+        assertTrue(iosSpec.durationMs > md3Spec.durationMs)
     }
 
     private fun loadSource(path: String): String {

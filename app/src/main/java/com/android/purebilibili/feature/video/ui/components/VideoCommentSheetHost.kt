@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.ui.components
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -65,6 +66,8 @@ import com.android.purebilibili.core.ui.bottomSheetScrimExitTransition
 import com.android.purebilibili.core.ui.resolveAdaptiveBottomSheetMotionSpec
 import com.android.purebilibili.data.model.CommentFraudStatus
 import com.android.purebilibili.data.model.response.ReplyItem
+import com.android.purebilibili.data.repository.resolveCommentFraudLightMessage
+import com.android.purebilibili.data.repository.shouldShowCommentFraudResultDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.video.screen.CommentUrlNavigationTarget
@@ -165,7 +168,8 @@ fun VideoCommentSheetHost(
     topReservedPx: Int = 0,
     onTimestampClick: ((Long) -> Unit)? = null,
     maxTimestampMs: Long? = null,
-    onImagePreview: ((List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit)? = null
+    onImagePreview: ((List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit)? = null,
+    handleFraudEvents: Boolean = true
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -175,6 +179,12 @@ fun VideoCommentSheetHost(
         .getCommentDefaultSortMode(context)
         .collectAsState(
             initial = com.android.purebilibili.core.store.SettingsManager.getCommentDefaultSortModeSync(context),
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
+    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentMemberDecorationsEnabled(context)
+        .collectAsState(
+            initial = false,
             context = kotlin.coroutines.EmptyCoroutineContext
         )
     val preferredSortMode = remember(defaultSortMode) {
@@ -279,9 +289,13 @@ fun VideoCommentSheetHost(
     }
 
     var fraudDialogStatus by remember { mutableStateOf<CommentFraudStatus?>(null) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(handleFraudEvents) {
+        if (!handleFraudEvents) return@LaunchedEffect
         commentViewModel.fraudEvent.collect { status ->
-            if (status != CommentFraudStatus.NORMAL) {
+            val lightMessage = resolveCommentFraudLightMessage(status)
+            if (lightMessage != null) {
+                Toast.makeText(context, lightMessage, Toast.LENGTH_SHORT).show()
+            } else if (shouldShowCommentFraudResultDialog(status)) {
                 fraudDialogStatus = status
             }
         }
@@ -412,6 +426,7 @@ fun VideoCommentSheetHost(
                         VideoCommentSheetHostContent.MAIN_LIST -> {
                             VideoCommentMainList(
                                 viewModel = commentViewModel,
+                                showIdentityDecorations = commentMemberDecorationsEnabled,
                                 onRootCommentClick = onRootCommentClick,
                                 onReplyClick = onReplyClick,
                                 onUserClick = onUserClick,
@@ -438,6 +453,7 @@ fun VideoCommentSheetHost(
                                     onTimestampClick = onTimestampClick,
                                     upMid = subReplyState.upMid,
                                     showUpFlag = commentState.showUpFlag,
+                                    showIdentityDecorations = commentMemberDecorationsEnabled,
                                     onImagePreview = previewCallback,
                                     onReplyClick = onReplyClick,
                                     onConversationClick = commentViewModel::openSubReplyConversation,
@@ -470,6 +486,7 @@ fun VideoCommentSheetHost(
 @Composable
 private fun VideoCommentMainList(
     viewModel: VideoCommentViewModel,
+    showIdentityDecorations: Boolean,
     onRootCommentClick: () -> Unit,
     onReplyClick: (ReplyItem) -> Unit,
     onUserClick: (Long) -> Unit,
@@ -547,6 +564,7 @@ private fun VideoCommentMainList(
                             item = reply,
                             upMid = state.upMid,
                             showUpFlag = state.showUpFlag,
+                            showIdentityDecorations = showIdentityDecorations,
                             isPinned = reply.rpid in state.pinnedReplyIds,
                             onClick = {},
                             onSubClick = { parentReply ->

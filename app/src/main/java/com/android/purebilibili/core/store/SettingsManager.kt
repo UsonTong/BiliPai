@@ -787,6 +787,8 @@ object SettingsManager {
     private val KEY_TOP_TAB_ORDER = stringPreferencesKey("top_tab_order")
     private val KEY_TOP_TAB_VISIBLE_TABS = stringPreferencesKey("top_tab_visible_tabs")
     private val KEY_DYNAMIC_TAB_VISIBLE_TABS = stringPreferencesKey("dynamic_tab_visible_tabs")
+    private val KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE =
+        booleanPreferencesKey("dynamic_image_preview_text_visible")
     private val KEY_LIVE_FAVORITE_TAGS = stringPreferencesKey("live_favorite_tags")
     
     //  [新增] 开屏壁纸
@@ -897,6 +899,10 @@ object SettingsManager {
     private const val DEFAULT_BOTTOM_BAR_VISIBLE_TABS = "HOME,DYNAMIC,HISTORY,PROFILE"
     //  [新增] 评论默认排序（1=回复,2=最新,3=最热,4=点赞）
     private val KEY_COMMENT_DEFAULT_SORT_MODE = intPreferencesKey("comment_default_sort_mode")
+    private val KEY_COMMENT_FRAUD_DETECTION_ENABLED =
+        booleanPreferencesKey("comment_fraud_detection_enabled")
+    private val KEY_COMMENT_MEMBER_DECORATIONS_ENABLED =
+        booleanPreferencesKey("comment_member_decorations_enabled")
     //  [新增] 离开播放页后停止播放（优先于小窗/画中画模式）
     private val KEY_STOP_PLAYBACK_ON_EXIT = booleanPreferencesKey("stop_playback_on_exit")
     private val KEY_BACKGROUND_PLAYBACK_ENABLED = booleanPreferencesKey("background_playback_enabled")
@@ -1961,6 +1967,17 @@ object SettingsManager {
     suspend fun setDynamicTabVisibleTabs(context: Context, tabs: Set<String>) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_TAB_VISIBLE_TABS] = tabs.joinToString(",")
+        }
+    }
+
+    fun getDynamicImagePreviewTextVisible(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE] ?: true
+        }
+
+    suspend fun setDynamicImagePreviewTextVisible(context: Context, visible: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE] = visible
         }
     }
 
@@ -3602,6 +3619,26 @@ object SettingsManager {
             .getInt("default_sort_mode", 3)
         return if (value in 1..4) value else 3
     }
+
+    fun getCommentFraudDetectionEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data
+            .map { preferences -> preferences[KEY_COMMENT_FRAUD_DETECTION_ENABLED] ?: true }
+
+    suspend fun setCommentFraudDetectionEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_COMMENT_FRAUD_DETECTION_ENABLED] = enabled
+        }
+    }
+
+    fun getCommentMemberDecorationsEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data
+            .map { preferences -> preferences[KEY_COMMENT_MEMBER_DECORATIONS_ENABLED] ?: false }
+
+    suspend fun setCommentMemberDecorationsEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_COMMENT_MEMBER_DECORATIONS_ENABLED] = enabled
+        }
+    }
     
     // ==========  空降助手 (SponsorBlock) ==========
     
@@ -4188,7 +4225,7 @@ object SettingsManager {
         return INLINE_SWIPE_SEEK_OPTIONS.minByOrNull { option -> abs(option - seconds) } ?: 30
     }
 
-    // --- 横屏左右滑动固定步长快进/快退开关（默认开启） ---
+    // --- 横屏左右滑动精细调进度开关（默认开启） ---
     fun getFullscreenSwipeSeekEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_FULLSCREEN_SWIPE_SEEK_ENABLED] ?: true }
 
@@ -4198,7 +4235,7 @@ object SettingsManager {
         }
     }
 
-    // --- 横屏左右滑动快进/快退步长（秒，默认 15） ---
+    // --- 横屏左右滑动调进度范围（秒，默认 15） ---
     fun getFullscreenSwipeSeekSeconds(context: Context): Flow<Int> = context.settingsDataStore.data
         .map { preferences ->
             val raw = preferences[KEY_FULLSCREEN_SWIPE_SEEK_SECONDS] ?: 15
@@ -4713,6 +4750,8 @@ object SettingsManager {
             FloatShareablePreferenceDefinition(KEY_DEFAULT_PLAYBACK_SPEED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_REMEMBER_LAST_PLAYBACK_SPEED, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_COMMENT_DEFAULT_SORT_MODE, SettingsShareSection.PLAYBACK),
+            BooleanShareablePreferenceDefinition(KEY_COMMENT_FRAUD_DETECTION_ENABLED, SettingsShareSection.PLAYBACK),
+            BooleanShareablePreferenceDefinition(KEY_COMMENT_MEMBER_DECORATIONS_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_STOP_PLAYBACK_ON_EXIT, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_BACKGROUND_PLAYBACK_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_AUDIO_FOCUS_ENABLED, SettingsShareSection.PLAYBACK),
@@ -4810,6 +4849,10 @@ object SettingsManager {
             IntShareablePreferenceDefinition(KEY_DYNAMIC_PAGE_LAYOUT_DIRECTION, SettingsShareSection.NAVIGATION),
             IntShareablePreferenceDefinition(KEY_FEED_API_TYPE, SettingsShareSection.NAVIGATION),
             BooleanShareablePreferenceDefinition(KEY_INCREMENTAL_TIMELINE_REFRESH, SettingsShareSection.NAVIGATION),
+            BooleanShareablePreferenceDefinition(
+                KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE,
+                SettingsShareSection.NAVIGATION
+            ),
             IntShareablePreferenceDefinition(KEY_HOME_REFRESH_COUNT, SettingsShareSection.NAVIGATION)
         )
     }

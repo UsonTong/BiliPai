@@ -534,10 +534,11 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
-    fun `lightweight reply mode keeps identity badges and sub previews while hiding ancillary labels`() {
+    fun `lightweight reply mode preserves independent identity toggle and sub previews while hiding ancillary labels`() {
         assertFalse(shouldShowReplyAncillaryDecorations(lightweightMode = true))
         assertTrue(shouldShowReplyAncillaryDecorations(lightweightMode = false))
-        assertTrue(shouldShowReplyIdentityDecorations())
+        assertFalse(shouldShowReplyIdentityDecorations(enabled = false))
+        assertTrue(shouldShowReplyIdentityDecorations(enabled = true))
         assertTrue(
             shouldShowReplySubPreview(
                 hideSubPreview = false,

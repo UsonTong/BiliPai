@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.data.model.CommentFraudStatus
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.repository.CommentRepository
+import com.android.purebilibili.data.repository.shouldStartCommentFraudDetection
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -299,7 +300,11 @@ class VideoCommentViewModel : ViewModel() {
         _subReplyState.value = _subReplyState.value.copy(visible = false)
     }
 
-    fun onExternalCommentSent(aid: Long, newReply: ReplyItem?) {
+    fun onExternalCommentSent(
+        aid: Long,
+        newReply: ReplyItem?,
+        fraudDetectionEnabled: Boolean = true
+    ) {
         if (currentAid != aid || aid <= 0L) return
 
         val current = _commentState.value
@@ -320,6 +325,15 @@ class VideoCommentViewModel : ViewModel() {
                 reloadCommentsFromStart()
             }
             return
+        }
+
+        if (shouldStartCommentFraudDetection(fraudDetectionEnabled, newReply.rpid)) {
+            launchFraudDetection(
+                aid = aid,
+                rpid = newReply.rpid,
+                rootId = newReply.root,
+                hasPictures = !newReply.content.pictures.isNullOrEmpty()
+            )
         }
 
         val updatedAllReplies = when {
@@ -530,7 +544,10 @@ class VideoCommentViewModel : ViewModel() {
     
     // --- [新增] 评论交互逻辑 ---
     
-    fun sendComment(message: String) {
+    fun sendComment(
+        message: String,
+        fraudDetectionEnabled: Boolean = true
+    ) {
         if (message.isBlank()) return
         val currentState = _commentState.value
         if (currentState.isSending) return
@@ -562,7 +579,7 @@ class VideoCommentViewModel : ViewModel() {
 
                 // [新增] 启动评论反诈检测（后台协程，不阻塞 UI）
                 val rpidToCheck = newReply?.rpid ?: 0L
-                if (rpidToCheck > 0) {
+                if (shouldStartCommentFraudDetection(fraudDetectionEnabled, rpidToCheck)) {
                     launchFraudDetection(currentAid, rpidToCheck, root)
                 }
                 
@@ -707,7 +724,12 @@ class VideoCommentViewModel : ViewModel() {
     /**
      * 启动评论反诈后台检测
      */
-    private fun launchFraudDetection(aid: Long, rpid: Long, rootId: Long) {
+    private fun launchFraudDetection(
+        aid: Long,
+        rpid: Long,
+        rootId: Long,
+        hasPictures: Boolean = false
+    ) {
         _commentState.value = _commentState.value.copy(
             isDetectingFraud = true,
             fraudDetectResult = null,
@@ -717,7 +739,8 @@ class VideoCommentViewModel : ViewModel() {
             val result = CommentRepository.checkCommentStatus(
                 aid = aid,
                 rpid = rpid,
-                rootId = rootId
+                rootId = rootId,
+                hasPictures = hasPictures
             )
             result.onSuccess { status ->
                 android.util.Log.d("CommentVM", "评论反诈检测结果: $status (rpid=$rpid)")
