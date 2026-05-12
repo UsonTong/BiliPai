@@ -64,22 +64,32 @@ fun resolveLiveRoomLayoutMode(
 fun shouldShowLiveChatToggle(
     layoutMode: LiveRoomLayoutMode
 ): Boolean {
-    return layoutMode == LiveRoomLayoutMode.LandscapeSplit ||
+    return layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay ||
+        layoutMode == LiveRoomLayoutMode.LandscapeSplit ||
         layoutMode == LiveRoomLayoutMode.LandscapeOverlay
 }
 
+fun defaultLiveInteractionPanelVisible(): Boolean = false
+
 fun shouldShowLiveSplitChatPanel(
     layoutMode: LiveRoomLayoutMode,
-    isChatVisible: Boolean
+    isInteractionPanelVisible: Boolean
 ): Boolean {
-    return layoutMode == LiveRoomLayoutMode.LandscapeSplit && isChatVisible
+    return layoutMode == LiveRoomLayoutMode.LandscapeSplit && isInteractionPanelVisible
 }
 
 fun shouldShowLiveLandscapeChatOverlay(
     layoutMode: LiveRoomLayoutMode,
-    isChatVisible: Boolean
+    isInteractionPanelVisible: Boolean
 ): Boolean {
-    return layoutMode == LiveRoomLayoutMode.LandscapeOverlay && isChatVisible
+    return layoutMode == LiveRoomLayoutMode.LandscapeOverlay && isInteractionPanelVisible
+}
+
+fun shouldReserveLivePortraitInteractionPanel(
+    layoutMode: LiveRoomLayoutMode,
+    isInteractionPanelVisible: Boolean
+): Boolean {
+    return layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay && isInteractionPanelVisible
 }
 
 fun shouldApplyLiveTopControlSystemInsets(
@@ -138,14 +148,20 @@ fun resolveLivePortraitOverlayPanelHeightDp(
 fun resolveLiveOverlayContentInsets(
     layoutMode: LiveRoomLayoutMode,
     portraitPanelHeightDp: Int,
-    portraitMetrics: LivePortraitOverlayMetrics
+    portraitMetrics: LivePortraitOverlayMetrics,
+    isInteractionPanelVisible: Boolean
 ): LiveOverlayContentInsets {
     if (layoutMode != LiveRoomLayoutMode.PortraitVerticalOverlay) {
         return LiveOverlayContentInsets(topDp = 0, bottomDp = 0)
     }
+    val interactionPanelReserveDp = if (isInteractionPanelVisible) {
+        portraitPanelHeightDp
+    } else {
+        0
+    }
     return LiveOverlayContentInsets(
         topDp = portraitMetrics.topChromeReserveDp,
-        bottomDp = portraitPanelHeightDp +
+        bottomDp = interactionPanelReserveDp +
             portraitMetrics.playerControlsGapDp +
             portraitMetrics.playerControlsReserveDp
     )

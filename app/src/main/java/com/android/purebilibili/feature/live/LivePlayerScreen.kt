@@ -142,7 +142,9 @@ fun LivePlayerScreen(
     var showSendDanmakuSheet by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(true) }
-    var isChatVisible by remember { mutableStateOf(true) } // 控制侧边栏显示
+    var isInteractionPanelVisible by remember {
+        mutableStateOf(defaultLiveInteractionPanelVisible())
+    }
     var selectedInteractionTab by remember { mutableIntStateOf(0) }
     var isPipRequested by remember { mutableStateOf(false) }
     var wasPlaybackActiveBeforePause by remember { mutableStateOf(false) }
@@ -190,14 +192,24 @@ fun LivePlayerScreen(
             metrics = portraitOverlayMetrics
         )
     }
-    val overlayContentInsets = remember(liveLayoutMode, portraitOverlayPanelHeightDp, portraitOverlayMetrics) {
+    val overlayContentInsets = remember(
+        liveLayoutMode,
+        portraitOverlayPanelHeightDp,
+        portraitOverlayMetrics,
+        isInteractionPanelVisible
+    ) {
         resolveLiveOverlayContentInsets(
             layoutMode = liveLayoutMode,
             portraitPanelHeightDp = portraitOverlayPanelHeightDp,
-            portraitMetrics = portraitOverlayMetrics
+            portraitMetrics = portraitOverlayMetrics,
+            isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
-    val reservedBottomOverlayDp = if (liveLayoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay) {
+    val reservedBottomOverlayDp = if (shouldReserveLivePortraitInteractionPanel(
+            layoutMode = liveLayoutMode,
+            isInteractionPanelVisible = isInteractionPanelVisible
+        )
+    ) {
         portraitOverlayPanelHeightDp
     } else {
         0
@@ -205,16 +217,16 @@ fun LivePlayerScreen(
     val showChatToggle = remember(liveLayoutMode) {
         shouldShowLiveChatToggle(liveLayoutMode)
     }
-    val showSplitChatPanel = remember(liveLayoutMode, isChatVisible) {
+    val showSplitChatPanel = remember(liveLayoutMode, isInteractionPanelVisible) {
         shouldShowLiveSplitChatPanel(
             layoutMode = liveLayoutMode,
-            isChatVisible = isChatVisible
+            isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
-    val showLandscapeChatOverlay = remember(liveLayoutMode, isChatVisible) {
+    val showLandscapeChatOverlay = remember(liveLayoutMode, isInteractionPanelVisible) {
         shouldShowLiveLandscapeChatOverlay(
             layoutMode = liveLayoutMode,
-            isChatVisible = isChatVisible
+            isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
     val useTextureSurfaceForLivePlayer = remember(sharedTransitionScope, animatedVisibilityScope) {
@@ -704,8 +716,8 @@ fun LivePlayerScreen(
                 onToggleFullscreen = { toggleFullscreen() },
                 onBack = { exitLiveRoom() },
                 // 侧边栏开关
-                isChatVisible = isChatVisible,
-                onToggleChat = { isChatVisible = !isChatVisible },
+                isChatVisible = isInteractionPanelVisible,
+                onToggleChat = { isInteractionPanelVisible = !isInteractionPanelVisible },
                 showChatToggle = showChatToggle,
                 // 弹幕开关
                 isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
@@ -990,13 +1002,15 @@ fun LivePlayerScreen(
                     },
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(portraitOverlayPanelHeightDp.dp)
-                ) {
-                    interactionContent(true)
+                if (isInteractionPanelVisible) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(portraitOverlayPanelHeightDp.dp)
+                    ) {
+                        interactionContent(true)
+                    }
                 }
             }
         }
@@ -1080,9 +1094,9 @@ fun LivePlayerScreen(
     if (showDanmakuSettingsDialog) {
         LiveDanmakuSettingsDialog(
             danmakuEnabled = successState?.isDanmakuEnabled ?: true,
-            chatVisible = isChatVisible,
+            chatVisible = isInteractionPanelVisible,
             onToggleDanmaku = { viewModel.toggleDanmaku() },
-            onToggleChat = { isChatVisible = !isChatVisible },
+            onToggleChat = { isInteractionPanelVisible = !isInteractionPanelVisible },
             onOpenBlock = {
                 showDanmakuSettingsDialog = false
                 showBlockDialog = true

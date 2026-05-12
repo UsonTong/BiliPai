@@ -44,10 +44,16 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
-    fun `landscape modes expose chat toggle`() {
+    fun `overlaying live layouts expose chat toggle`() {
+        assertTrue(shouldShowLiveChatToggle(LiveRoomLayoutMode.PortraitVerticalOverlay))
         assertTrue(shouldShowLiveChatToggle(LiveRoomLayoutMode.LandscapeSplit))
         assertTrue(shouldShowLiveChatToggle(LiveRoomLayoutMode.LandscapeOverlay))
         assertFalse(shouldShowLiveChatToggle(LiveRoomLayoutMode.PortraitPanel))
+    }
+
+    @Test
+    fun `live interaction panel defaults to collapsed`() {
+        assertFalse(defaultLiveInteractionPanelVisible())
     }
 
     @Test
@@ -55,25 +61,37 @@ class LiveRoomLayoutPolicyTest {
         assertTrue(
             shouldShowLiveSplitChatPanel(
                 layoutMode = LiveRoomLayoutMode.LandscapeSplit,
-                isChatVisible = true
+                isInteractionPanelVisible = true
+            )
+        )
+        assertFalse(
+            shouldShowLiveSplitChatPanel(
+                layoutMode = LiveRoomLayoutMode.LandscapeSplit,
+                isInteractionPanelVisible = false
             )
         )
         assertFalse(
             shouldShowLiveSplitChatPanel(
                 layoutMode = LiveRoomLayoutMode.LandscapeOverlay,
-                isChatVisible = true
+                isInteractionPanelVisible = true
             )
         )
         assertTrue(
             shouldShowLiveLandscapeChatOverlay(
                 layoutMode = LiveRoomLayoutMode.LandscapeOverlay,
-                isChatVisible = true
+                isInteractionPanelVisible = true
+            )
+        )
+        assertFalse(
+            shouldShowLiveLandscapeChatOverlay(
+                layoutMode = LiveRoomLayoutMode.LandscapeOverlay,
+                isInteractionPanelVisible = false
             )
         )
         assertFalse(
             shouldShowLiveLandscapeChatOverlay(
                 layoutMode = LiveRoomLayoutMode.LandscapeSplit,
-                isChatVisible = true
+                isInteractionPanelVisible = true
             )
         )
     }
@@ -170,7 +188,7 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
-    fun `portrait overlay danmaku avoids app bar controls and interaction panel`() {
+    fun `portrait overlay danmaku avoids app bar controls and visible interaction panel`() {
         val metrics = resolveLivePortraitOverlayMetrics(screenHeightDp = 844)
         val panelHeight = resolveLivePortraitOverlayPanelHeightDp(
             screenHeightDp = 844,
@@ -179,7 +197,8 @@ class LiveRoomLayoutPolicyTest {
         val insets = resolveLiveOverlayContentInsets(
             layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
             portraitPanelHeightDp = panelHeight,
-            portraitMetrics = metrics
+            portraitMetrics = metrics,
+            isInteractionPanelVisible = true
         )
 
         assertTrue(insets.topDp >= metrics.topChromeReserveDp)
@@ -190,7 +209,41 @@ class LiveRoomLayoutPolicyTest {
             resolveLiveOverlayContentInsets(
                 layoutMode = LiveRoomLayoutMode.PortraitPanel,
                 portraitPanelHeightDp = panelHeight,
-                portraitMetrics = metrics
+                portraitMetrics = metrics,
+                isInteractionPanelVisible = true
+            )
+        )
+    }
+
+    @Test
+    fun `portrait overlay does not reserve interaction panel when it is collapsed`() {
+        val metrics = resolveLivePortraitOverlayMetrics(screenHeightDp = 844)
+        val panelHeight = resolveLivePortraitOverlayPanelHeightDp(
+            screenHeightDp = 844,
+            metrics = metrics
+        )
+        val insets = resolveLiveOverlayContentInsets(
+            layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+            portraitPanelHeightDp = panelHeight,
+            portraitMetrics = metrics,
+            isInteractionPanelVisible = false
+        )
+
+        assertEquals(metrics.topChromeReserveDp, insets.topDp)
+        assertEquals(
+            metrics.playerControlsGapDp + metrics.playerControlsReserveDp,
+            insets.bottomDp
+        )
+        assertFalse(
+            shouldReserveLivePortraitInteractionPanel(
+                layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+                isInteractionPanelVisible = false
+            )
+        )
+        assertTrue(
+            shouldReserveLivePortraitInteractionPanel(
+                layoutMode = LiveRoomLayoutMode.PortraitVerticalOverlay,
+                isInteractionPanelVisible = true
             )
         )
     }

@@ -57,6 +57,19 @@ class LiveCategorySegmentedControlStructureTest {
         assertTrue(source.contains("selectedIndex = pagerState.currentPage"))
     }
 
+    @Test
+    fun `live room interaction panel is collapsed by default and gated before rendering`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/live/LivePlayerScreen.kt"
+        )
+
+        assertTrue(source.contains("defaultLiveInteractionPanelVisible()"))
+        assertTrue(source.contains("isInteractionPanelVisible"))
+        assertTrue(source.contains("shouldReserveLivePortraitInteractionPanel("))
+        assertTrue(source.contains("if (isInteractionPanelVisible)"))
+        assertFalse(source.contains("var isChatVisible by remember { mutableStateOf(true) }"))
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

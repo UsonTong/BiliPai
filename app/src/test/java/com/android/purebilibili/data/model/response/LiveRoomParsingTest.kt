@@ -45,4 +45,34 @@ class LiveRoomParsingTest {
         assertEquals("网游", room?.parentName)
         assertEquals("https://example.com/keyframe.jpg", room?.displayCover())
     }
+
+    @Test
+    fun `v3 area room list uses watched show when online is zero`() {
+        val response = json.decodeFromString(
+            LiveResponse.serializer(),
+            """
+            {
+              "code": 0,
+              "message": "success",
+              "data": {
+                "list": [
+                  {
+                    "roomid": 6,
+                    "title": "直播中",
+                    "online": 0,
+                    "watched_show": {
+                      "num": 45678,
+                      "text_small": "4.5万"
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent()
+        )
+
+        val room = response.data?.list?.first()
+
+        assertEquals(45678, room?.viewerCount())
+    }
 }

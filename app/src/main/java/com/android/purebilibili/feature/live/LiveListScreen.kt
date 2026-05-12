@@ -130,7 +130,7 @@ class LiveListViewModel(application: Application) : AndroidViewModel(application
                         cover = room.displayCover(),
                         uname = room.uname,
                         face = room.face,
-                        online = room.online,
+                        online = room.viewerCount(),
                         areaName = room.areaName
                     )
                 }
@@ -163,7 +163,7 @@ class LiveListViewModel(application: Application) : AndroidViewModel(application
                             cover = room.displayCover(),
                             uname = room.uname,
                             face = room.face,
-                            online = room.online,
+                            online = room.viewerCount(),
                             areaName = room.areaName,
                             liveStatus = 1
                         )
@@ -199,7 +199,7 @@ class LiveListViewModel(application: Application) : AndroidViewModel(application
                             cover = room.displayCover(),
                             uname = room.uname,
                             face = room.face,
-                            online = room.online,
+                            online = room.viewerCount(),
                             areaName = room.areaName
                         )
                     }

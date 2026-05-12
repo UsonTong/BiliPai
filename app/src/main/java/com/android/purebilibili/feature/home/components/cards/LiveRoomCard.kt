@@ -69,6 +69,7 @@ fun LiveRoomCard(
             useLowQuality = useLowQualityCover
         )
     }
+    val viewerCount = remember(room.online, room.watchedShow) { room.viewerCount() }
     val triggerCardClick = { onClick(room.roomid) }
 
     Column(
@@ -184,7 +185,7 @@ fun LiveRoomCard(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = FormatUtils.formatStat(room.online.toLong()),
+                    text = FormatUtils.formatStat(viewerCount.toLong()),
                     color = Color.White.copy(0.95f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
