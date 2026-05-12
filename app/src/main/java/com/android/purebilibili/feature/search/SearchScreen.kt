@@ -323,6 +323,34 @@ internal fun resolveSearchFilterControls(
     }
 }
 
+internal data class SearchTypeTabLayoutSpec(
+    val horizontalSpacingDp: Int,
+    val verticalSpacingDp: Int,
+    val horizontalPaddingDp: Int,
+    val minHeightDp: Int,
+    val fontSizeSp: Int
+)
+
+internal fun resolveSearchTypeTabLayoutSpec(widthDp: Int): SearchTypeTabLayoutSpec {
+    return if (widthDp < 400) {
+        SearchTypeTabLayoutSpec(
+            horizontalSpacingDp = 6,
+            verticalSpacingDp = 6,
+            horizontalPaddingDp = 10,
+            minHeightDp = 36,
+            fontSizeSp = 13
+        )
+    } else {
+        SearchTypeTabLayoutSpec(
+            horizontalSpacingDp = 8,
+            verticalSpacingDp = 8,
+            horizontalPaddingDp = 16,
+            minHeightDp = 40,
+            fontSizeSp = 14
+        )
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun SearchScreen(
@@ -1932,6 +1960,10 @@ fun SearchFilterBar(
     var showUpOrderSortMenu by remember { mutableStateOf(false) }
     var showUpUserTypeMenu by remember { mutableStateOf(false) }
     var showLiveOrderMenu by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val typeTabLayoutSpec = remember(configuration.screenWidthDp) {
+        resolveSearchTypeTabLayoutSpec(configuration.screenWidthDp)
+    }
 
     val videoTidOptions = remember {
         listOf(
@@ -1962,8 +1994,8 @@ fun SearchFilterBar(
         //  搜索类型切换 Tab
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(typeTabLayoutSpec.horizontalSpacingDp.dp),
+            verticalArrangement = Arrangement.spacedBy(typeTabLayoutSpec.verticalSpacingDp.dp)
         ) {
             resolveSearchFilterTabs().forEach { type ->
                 val isSelected = currentType == type
@@ -1978,13 +2010,13 @@ fun SearchFilterBar(
                 ) {
                     Box(
                         modifier = Modifier
-                            .heightIn(min = 40.dp)
-                            .padding(horizontal = 16.dp),
+                            .heightIn(min = typeTabLayoutSpec.minHeightDp.dp)
+                            .padding(horizontal = typeTabLayoutSpec.horizontalPaddingDp.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = type.displayName,
-                            fontSize = 14.sp,
+                            fontSize = typeTabLayoutSpec.fontSizeSp.sp,
                             color = chipColors.textColor,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1

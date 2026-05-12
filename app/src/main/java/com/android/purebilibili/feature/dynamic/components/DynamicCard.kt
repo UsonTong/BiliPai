@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
@@ -73,6 +74,9 @@ fun DynamicCardV2(
     val author = item.modules.module_author
     val content = item.modules.module_dynamic
     val stat = item.modules.module_stat
+    val context = LocalContext.current
+    val dynamicPreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
+        .collectAsState(initial = true)
     val type = DynamicType.fromApiValue(item.type)
     val cardClickAction = remember(item) { resolveDynamicCardPrimaryAction(item) }
     val watchLaterAid = remember(item) { resolveDynamicWatchLaterAid(item) }
@@ -304,6 +308,7 @@ fun DynamicCardV2(
                     initialIndex = selectedImageIndex,
                     sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
                     textContent = drawPreviewText,
+                    defaultTextVisible = dynamicPreviewTextVisible,
                     onDismiss = { selectedImageIndex = -1 }
                 )
             }
@@ -381,6 +386,7 @@ fun DynamicCardV2(
                         initialIndex = selectedImageIndex,
                         sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
                         textContent = opusPreviewText,
+                        defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { selectedImageIndex = -1 }
                     )
                 }
@@ -439,7 +445,8 @@ fun DynamicCardV2(
                 onVideoClick = onVideoClick,
                 onBangumiClick = onBangumiClick,
                 onUserClick = onUserClick,
-                gifImageLoader = gifImageLoader
+                gifImageLoader = gifImageLoader,
+                defaultPreviewTextVisible = dynamicPreviewTextVisible
             )
             Spacer(modifier = Modifier.height(12.dp))
         }

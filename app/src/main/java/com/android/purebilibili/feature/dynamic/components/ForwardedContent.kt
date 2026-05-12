@@ -68,7 +68,8 @@ fun ForwardedContent(
     onVideoClick: (String) -> Unit,
     onBangumiClick: (Long, Long) -> Unit,
     onUserClick: (Long) -> Unit,
-    gifImageLoader: ImageLoader
+    gifImageLoader: ImageLoader,
+    defaultPreviewTextVisible: Boolean = true
 ) {
     val author = orig.modules.module_author
     val content = orig.modules.module_dynamic
@@ -216,6 +217,7 @@ fun ForwardedContent(
             initialIndex = state.initialIndex,
             sourceRect = previewSourceRect,
             textContent = previewTextContent,
+            defaultTextVisible = defaultPreviewTextVisible,
             onDismiss = {
                 previewState = null
                 previewSourceRect = null

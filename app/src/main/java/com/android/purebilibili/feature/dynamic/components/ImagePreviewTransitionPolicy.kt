@@ -331,6 +331,11 @@ internal fun shouldShowImagePreviewText(
     textVisible: Boolean
 ): Boolean = hasText && textVisible
 
+internal fun resolveImagePreviewInitialTextVisibility(
+    hasText: Boolean,
+    defaultVisible: Boolean
+): Boolean = hasText && defaultVisible
+
 internal fun resolveImagePreviewTextVisibilityAfterToggle(currentVisible: Boolean): Boolean {
     return !currentVisible
 }

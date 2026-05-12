@@ -325,6 +325,8 @@ fun FeedApiSection(
     onFeedApiTypeChange: (com.android.purebilibili.core.store.SettingsManager.FeedApiType) -> Unit,
     incrementalTimelineRefreshEnabled: Boolean,
     onIncrementalTimelineRefreshChange: (Boolean) -> Unit,
+    dynamicImagePreviewTextVisible: Boolean,
+    onDynamicImagePreviewTextVisibleChange: (Boolean) -> Unit,
     dynamicVisibleTabIds: Set<String>,
     onDynamicTabVisibilityChange: (String) -> Unit,
     homeRefreshCount: Int,
@@ -336,6 +338,7 @@ fun FeedApiSection(
     val feedIcon = rememberAppDynamicIcon()
     val refreshIcon = rememberAppRefreshIcon()
     val visibilityIcon = rememberAppVisibilityOffIcon()
+    val previewTextIcon = CupertinoIcons.Outlined.Eye
     SettingsCardGroup {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -379,6 +382,15 @@ fun FeedApiSection(
             checked = incrementalTimelineRefreshEnabled,
             onCheckedChange = onIncrementalTimelineRefreshChange,
             iconTint = incrementalRefreshTint
+        )
+        SettingsDivider(startIndent = 66.dp)
+        FeedSwitchItem(
+            icon = previewTextIcon,
+            title = "动态图片默认显示文字",
+            subtitle = "打开图文动态图片时默认显示下方文字，可用右上角眼睛临时切换",
+            checked = dynamicImagePreviewTextVisible,
+            onCheckedChange = onDynamicImagePreviewTextVisibleChange,
+            iconTint = feedTint
         )
         SettingsDivider(startIndent = 66.dp)
         FeedDynamicTabVisibilityItem(

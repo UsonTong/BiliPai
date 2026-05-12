@@ -120,6 +120,8 @@ fun SettingsScreen(
         .collectAsState(initial = com.android.purebilibili.core.store.DEFAULT_HOME_REFRESH_COUNT)
     val dynamicVisibleTabIds by SettingsManager.getDynamicTabVisibleTabs(context)
         .collectAsState(initial = defaultDynamicTabVisibleIds)
+    val dynamicImagePreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
+        .collectAsState(initial = true)
     
     // Local UI State
     var showCacheDialog by remember { mutableStateOf(false) }
@@ -921,6 +923,12 @@ fun SettingsScreen(
                             SettingsManager.setIncrementalTimelineRefresh(context, enabled)
                         }
                     },
+                    dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                    onDynamicImagePreviewTextVisibleChange = { visible ->
+                        scope.launch {
+                            SettingsManager.setDynamicImagePreviewTextVisible(context, visible)
+                        }
+                    },
                     dynamicVisibleTabIds = dynamicVisibleTabIds,
                     onDynamicTabVisibilityChange = { tabId ->
                         scope.launch {
@@ -1006,6 +1014,12 @@ fun SettingsScreen(
                     onIncrementalTimelineRefreshChange = { enabled ->
                         scope.launch {
                             SettingsManager.setIncrementalTimelineRefresh(context, enabled)
+                        }
+                    },
+                    dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                    onDynamicImagePreviewTextVisibleChange = { visible ->
+                        scope.launch {
+                            SettingsManager.setDynamicImagePreviewTextVisible(context, visible)
                         }
                     },
                     dynamicVisibleTabIds = dynamicVisibleTabIds,
@@ -1161,6 +1175,8 @@ private fun MobileSettingsLayout(
     onFeedApiTypeChange: (SettingsManager.FeedApiType) -> Unit,
     incrementalTimelineRefreshEnabled: Boolean,
     onIncrementalTimelineRefreshChange: (Boolean) -> Unit,
+    dynamicImagePreviewTextVisible: Boolean,
+    onDynamicImagePreviewTextVisibleChange: (Boolean) -> Unit,
     dynamicVisibleTabIds: Set<String>,
     onDynamicTabVisibilityChange: (String) -> Unit,
     homeRefreshCount: Int,
@@ -1297,6 +1313,8 @@ private fun MobileSettingsLayout(
                                         onFeedApiTypeChange = onFeedApiTypeChange,
                                         incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
                                         onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
+                                        dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                                        onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
                                         dynamicVisibleTabIds = dynamicVisibleTabIds,
                                         onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
                                         homeRefreshCount = homeRefreshCount,

@@ -138,4 +138,20 @@ class SearchScreenPolicyTest {
             )
         )
     }
+
+    @Test
+    fun searchTypeTabs_useCompactDensityOnNarrowScreens() {
+        val compact = resolveSearchTypeTabLayoutSpec(widthDp = 360)
+        val regular = resolveSearchTypeTabLayoutSpec(widthDp = 412)
+
+        assertEquals(6, compact.horizontalSpacingDp)
+        assertEquals(10, compact.horizontalPaddingDp)
+        assertEquals(13, compact.fontSizeSp)
+        assertEquals(36, compact.minHeightDp)
+
+        assertEquals(8, regular.horizontalSpacingDp)
+        assertEquals(16, regular.horizontalPaddingDp)
+        assertEquals(14, regular.fontSizeSp)
+        assertEquals(40, regular.minHeightDp)
+    }
 }

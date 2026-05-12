@@ -162,6 +162,30 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByCommentFraudDetection_hitsPlaybackFullscreenEntry() {
+        val results = resolveSettingsSearchResults("发评反诈")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            }
+        )
+    }
+
+    @Test
+    fun queryByCommentDecorations_hitsPlaybackFullscreenEntry() {
+        val results = resolveSettingsSearchResults("个性装扮")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            }
+        )
+    }
+
+    @Test
     fun queryByAppScreenshotGesture_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("应用内干净截图")
 

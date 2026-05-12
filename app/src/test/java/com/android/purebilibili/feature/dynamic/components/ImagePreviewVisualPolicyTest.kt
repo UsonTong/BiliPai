@@ -55,4 +55,11 @@ class ImagePreviewVisualPolicyTest {
         assertEquals(false, shouldShowImagePreviewText(hasText = true, textVisible = false))
         assertEquals(false, shouldShowImagePreviewText(hasText = false, textVisible = true))
     }
+
+    @Test
+    fun `initial caption visibility follows user default only when text exists`() {
+        assertEquals(true, resolveImagePreviewInitialTextVisibility(hasText = true, defaultVisible = true))
+        assertEquals(false, resolveImagePreviewInitialTextVisibility(hasText = true, defaultVisible = false))
+        assertEquals(false, resolveImagePreviewInitialTextVisibility(hasText = false, defaultVisible = true))
+    }
 }

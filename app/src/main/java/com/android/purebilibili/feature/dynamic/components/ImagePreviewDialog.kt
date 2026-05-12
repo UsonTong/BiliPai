@@ -86,6 +86,7 @@ private data class ImagePreviewOverlayRequest(
     val sourceRect: androidx.compose.ui.geometry.Rect?,
     val sourceCornerRadiusDp: Float,
     val textContent: ImagePreviewTextContent?,
+    val defaultTextVisible: Boolean,
     val onImageLongPress: ((String) -> Unit)?,
     val onDismiss: () -> Unit
 )
@@ -113,6 +114,7 @@ fun ImagePreviewDialog(
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
     sourceCornerRadiusDp: Float = 12f,
     textContent: ImagePreviewTextContent? = null,
+    defaultTextVisible: Boolean = true,
     onImageLongPress: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
@@ -128,6 +130,7 @@ fun ImagePreviewDialog(
                 sourceRect = sourceRect,
                 sourceCornerRadiusDp = sourceCornerRadiusDp,
                 textContent = textContent,
+                defaultTextVisible = defaultTextVisible,
                 onImageLongPress = onImageLongPress,
                 onDismiss = { latestOnDismiss() }
             )
@@ -163,6 +166,7 @@ fun ImagePreviewOverlayHost(
                 sourceRect = request.sourceRect,
                 sourceCornerRadiusDp = request.sourceCornerRadiusDp,
                 textContent = request.textContent,
+                defaultTextVisible = request.defaultTextVisible,
                 onImageLongPress = request.onImageLongPress,
                 onDismiss = {
                     ImagePreviewOverlayController.dismiss(request.token)
@@ -183,6 +187,7 @@ private fun ImagePreviewOverlayContent(
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
     sourceCornerRadiusDp: Float = 12f,
     textContent: ImagePreviewTextContent? = null,
+    defaultTextVisible: Boolean = true,
     onImageLongPress: ((String) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -229,7 +234,14 @@ private fun ImagePreviewOverlayContent(
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
     var isVerticalDismissDragging by remember { mutableStateOf(false) }
-    var imagePreviewTextVisible by remember(textContent) { mutableStateOf(true) }
+    var imagePreviewTextVisible by remember(textContent, defaultTextVisible) {
+        mutableStateOf(
+            resolveImagePreviewInitialTextVisibility(
+                hasText = textContent != null,
+                defaultVisible = defaultTextVisible
+            )
+        )
+    }
     val verticalDismissOffsetYPx = remember { androidx.compose.animation.core.Animatable(0f) }
 
     fun handleImageSaveResult(success: Boolean) {
@@ -652,11 +664,11 @@ private fun ImagePreviewOverlayContent(
                 if (resolvedText != null && shouldShowResolvedText && textPlacement == ImagePreviewTextPlacement.OVERLAY_BOTTOM) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
+                            .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .padding(
-                                start = overlayPadding.start,
-                                end = overlayPadding.end,
+                                start = overlayPadding.start + 8.dp,
+                                end = overlayPadding.end + 8.dp,
                                 bottom = overlayPadding.bottom + 66.dp
                             )
                             .graphicsLayer {
@@ -673,17 +685,18 @@ private fun ImagePreviewOverlayContent(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(18.dp))
+                                .align(Alignment.Center)
+                                .widthIn(max = 560.dp)
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(
                                     androidx.compose.ui.graphics.Brush.verticalGradient(
                                         colors = listOf(
-                                            Color.Black.copy(alpha = 0.68f),
-                                            Color.Black.copy(alpha = 0.48f)
+                                            Color.Black.copy(alpha = 0.72f),
+                                            Color.Black.copy(alpha = 0.56f)
                                         )
                                     )
                                 )
-                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                                .padding(horizontal = 16.dp, vertical = 13.dp)
                         ) {
                             AnimatedContent(
                                 targetState = pagerState.currentPage,
@@ -704,29 +717,41 @@ private fun ImagePreviewOverlayContent(
                                 ) ?: resolvedText
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    if (currentText.headline.isNotBlank()) {
-                                        Text(
-                                            text = currentText.headline,
-                                            color = Color.White.copy(alpha = 0.96f),
-                                            fontSize = 14.sp
-                                        )
+                                    if (currentText.headline.isNotBlank() || currentText.pageIndicator.isNotBlank()) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (currentText.headline.isNotBlank()) {
+                                                Text(
+                                                    text = currentText.headline,
+                                                    color = Color.White.copy(alpha = 0.9f),
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f, fill = false)
+                                                )
+                                            }
+                                            if (currentText.pageIndicator.isNotBlank()) {
+                                                Text(
+                                                    text = currentText.pageIndicator,
+                                                    color = Color.White.copy(alpha = 0.64f),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
                                     }
                                     if (currentText.body.isNotBlank()) {
                                         Text(
                                             text = currentText.body,
-                                            color = Color.White.copy(alpha = 0.92f),
-                                            fontSize = 15.sp,
-                                            maxLines = 3,
+                                            color = Color.White.copy(alpha = 0.94f),
+                                            fontSize = 16.sp,
+                                            lineHeight = 22.sp,
+                                            maxLines = 4,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    if (currentText.pageIndicator.isNotBlank()) {
-                                        Text(
-                                            text = currentText.pageIndicator,
-                                            color = Color.White.copy(alpha = 0.7f),
-                                            fontSize = 12.sp
                                         )
                                     }
                                 }
