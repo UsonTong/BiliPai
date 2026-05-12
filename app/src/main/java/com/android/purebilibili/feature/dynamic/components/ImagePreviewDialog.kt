@@ -2,6 +2,8 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
@@ -61,9 +63,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import android.app.Activity
+import android.content.ClipData
 import android.content.ContextWrapper
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.toArgb
+import com.android.purebilibili.core.ui.rememberAppShareIcon
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
 import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.expressiveSnapSpring
@@ -71,6 +76,7 @@ import com.android.purebilibili.core.ui.motion.indicatorSpring
 import com.android.purebilibili.core.ui.motion.interactiveSnapSpring
 import com.android.purebilibili.core.ui.motion.softLandingSpring
 import com.android.purebilibili.core.util.rememberHapticFeedback
+import java.io.File
 
 /**
  *  图片预览对话框 - 支持左右滑动切换和3D立体动画
@@ -78,6 +84,7 @@ import com.android.purebilibili.core.util.rememberHapticFeedback
 
 internal const val IMAGE_PREVIEW_BACKDROP_TAG = "image_preview_backdrop"
 internal const val IMAGE_PREVIEW_PAGE_TAG = "image_preview_page"
+private const val IMAGE_PREVIEW_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L
 
 private data class ImagePreviewOverlayRequest(
     val token: Long,
@@ -197,7 +204,9 @@ private fun ImagePreviewOverlayContent(
     val layoutDirection = LocalLayoutDirection.current
     val scope = rememberCoroutineScope()
     val haptic = rememberHapticFeedback()
+    val shareIcon = rememberAppShareIcon()
     var isSaving by remember { mutableStateOf(false) }
+    var isSharing by remember { mutableStateOf(false) }
     
     //  获取 Activity 和 Window 用于沉浸式控制
     val activity = remember {
@@ -253,6 +262,13 @@ private fun ImagePreviewOverlayContent(
         ).show()
     }
 
+    fun handleImageShareResult(success: Boolean) {
+        haptic(resolveImagePreviewSaveFeedback(success))
+        if (!success) {
+            Toast.makeText(context, "分享失败，请重试", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     //  GIF 图片加载器
     val gifImageLoader = context.imageLoader
 
@@ -305,6 +321,18 @@ private fun ImagePreviewOverlayContent(
         } else {
             pendingSaveUrl = imageUrl
             storagePermission.request()
+        }
+    }
+
+    fun requestShareCurrentImage(imageUrl: String) {
+        if (imageUrl.isEmpty() || isSharing) return
+        isSharing = true
+        scope.launch {
+            val success = shareImageFromPreview(context, imageUrl)
+            isSharing = false
+            withContext(Dispatchers.Main) {
+                handleImageShareResult(success)
+            }
         }
     }
     
@@ -941,12 +969,39 @@ private fun ImagePreviewOverlayContent(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     
+                    // 分享按钮
+                    FilledIconButton(
+                        onClick = {
+                            requestShareCurrentImage(currentImageUrl)
+                        },
+                        enabled = !isSharing && !isSaving,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = Color.Black.copy(0.5f)
+                        )
+                    ) {
+                        if (isSharing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = shareIcon,
+                                contentDescription = "分享图片",
+                                tint = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
                     //  下载按钮
                     FilledIconButton(
                         onClick = {
                             requestSaveCurrentImage(currentImageUrl)
                         },
-                        enabled = !isSaving,
+                        enabled = !isSaving && !isSharing,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = Color.Black.copy(0.5f)
                         )
@@ -994,6 +1049,104 @@ private fun normalizeImageUrl(rawSrc: String): String {
     }
     
     return result
+}
+
+internal fun resolveImageShareMimeType(imageUrl: String): String {
+    val normalizedUrl = imageUrl.substringBefore('?').substringBefore('@').lowercase()
+    return when {
+        normalizedUrl.endsWith(".gif") -> "image/gif"
+        normalizedUrl.endsWith(".webp") -> "image/webp"
+        normalizedUrl.endsWith(".png") -> "image/png"
+        else -> "image/jpeg"
+    }
+}
+
+private fun resolveImageShareExtension(mimeType: String): String = when (mimeType) {
+    "image/gif" -> "gif"
+    "image/webp" -> "webp"
+    "image/png" -> "png"
+    else -> "jpg"
+}
+
+/**
+ *  分享图片 - 下载原始图片到应用缓存，再通过 FileProvider 交给系统分享面板
+ */
+suspend fun shareImageFromPreview(context: Context, imageUrl: String): Boolean {
+    val normalizedUrl = normalizeImageUrl(imageUrl)
+    if (normalizedUrl.isEmpty()) return false
+    val mimeType = resolveImageShareMimeType(normalizedUrl)
+    val sharedFile = withContext(Dispatchers.IO) {
+        createImagePreviewShareFile(context, normalizedUrl, mimeType)
+    } ?: return false
+
+    return withContext(Dispatchers.Main) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                sharedFile
+            )
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newUri(context.contentResolver, "BiliPai image", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(sendIntent, "分享图片").apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (context !is Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            context.startActivity(chooser)
+            true
+        } catch (e: Exception) {
+            Log.e("ImagePreview", "Error sharing image", e)
+            false
+        }
+    }
+}
+
+private fun createImagePreviewShareFile(
+    context: Context,
+    imageUrl: String,
+    mimeType: String
+): File? {
+    return try {
+        val cacheDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
+        cleanupImagePreviewShareCache(cacheDir)
+        val extension = resolveImageShareExtension(mimeType)
+        val outputFile = File(cacheDir, "BiliPai_${System.currentTimeMillis()}.$extension")
+        val connection = java.net.URL(imageUrl).openConnection() as java.net.HttpURLConnection
+        try {
+            connection.setRequestProperty("Referer", "https://www.bilibili.com/")
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                Log.e("ImagePreview", "Failed to download for sharing: ${connection.responseCode}")
+                return null
+            }
+            connection.inputStream.use { inputStream ->
+                outputFile.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            outputFile
+        } finally {
+            connection.disconnect()
+        }
+    } catch (e: Exception) {
+        Log.e("ImagePreview", "Error preparing image share", e)
+        null
+    }
+}
+
+private fun cleanupImagePreviewShareCache(cacheDir: File) {
+    val expireBefore = System.currentTimeMillis() - IMAGE_PREVIEW_SHARE_CACHE_MAX_AGE_MS
+    cacheDir.listFiles()?.forEach { file ->
+        if (file.lastModified() < expireBefore) {
+            file.delete()
+        }
+    }
 }
 
 /**

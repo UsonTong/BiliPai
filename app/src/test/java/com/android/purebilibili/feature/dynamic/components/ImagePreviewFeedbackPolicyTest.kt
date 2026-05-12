@@ -15,4 +15,12 @@ class ImagePreviewFeedbackPolicyTest {
     fun saveFeedback_usesHeavyHapticOnFailure() {
         assertEquals(HapticType.HEAVY, resolveImagePreviewSaveFeedback(success = false))
     }
+
+    @Test
+    fun imageShareMimeType_preservesAnimatedAndStaticFormats() {
+        assertEquals("image/gif", resolveImageShareMimeType("https://i0.hdslb.com/a.gif"))
+        assertEquals("image/webp", resolveImageShareMimeType("https://i0.hdslb.com/a.webp@640w"))
+        assertEquals("image/png", resolveImageShareMimeType("https://i0.hdslb.com/a.png"))
+        assertEquals("image/jpeg", resolveImageShareMimeType("https://i0.hdslb.com/a.jpg"))
+    }
 }
