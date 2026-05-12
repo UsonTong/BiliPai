@@ -62,6 +62,11 @@ import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
  * Requirement Reference: AC3.1 - Video info components in dedicated file
  */
 
+internal fun resolveVideoInfoInitialExpandedState(
+    hasDescription: Boolean,
+    hasTags: Boolean
+): Boolean = hasDescription || hasTags
+
 /**
  * Video Title Section (Bilibili official style: compact layout)
  */
@@ -178,7 +183,14 @@ fun VideoTitleWithDesc(
     animateLayout: Boolean = true,
     onBgmClick: (BgmInfo) -> Unit = {}
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember(info.bvid, info.desc, videoTags.size) {
+        mutableStateOf(
+            resolveVideoInfoInitialExpandedState(
+                hasDescription = info.desc.isNotBlank(),
+                hasTags = videoTags.isNotEmpty()
+            )
+        )
+    }
     val publishTimeRowText = remember(info.pubdate, info.tname, info.title) {
         resolvePublishTimeRowText(
             pubdate = info.pubdate,

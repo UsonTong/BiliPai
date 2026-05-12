@@ -16,6 +16,13 @@ import kotlin.test.assertTrue
 class VideoInfoDisplayPolicyTest {
 
     @Test
+    fun videoInfoInitialExpanded_whenDescriptionOrTagsExist() {
+        assertTrue(resolveVideoInfoInitialExpandedState(hasDescription = true, hasTags = false))
+        assertTrue(resolveVideoInfoInitialExpandedState(hasDescription = false, hasTags = true))
+        assertFalse(resolveVideoInfoInitialExpandedState(hasDescription = false, hasTags = false))
+    }
+
+    @Test
     fun aiSummaryEntryShownOnlyWhenEnabledAndContentExists() {
         val aiSummary = AiSummaryData(
             code = 0,
