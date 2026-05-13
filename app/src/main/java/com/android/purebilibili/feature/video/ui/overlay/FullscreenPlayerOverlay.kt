@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.SettingsManager
@@ -861,7 +862,9 @@ fun FullscreenPlayerOverlay(
                 showControls = true
                 lastInteractionTime = System.currentTimeMillis()
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(60f)
         )
         
         // 手势指示器
@@ -885,7 +888,8 @@ fun FullscreenPlayerOverlay(
         AnimatedVisibility(
             visible = showControls && gestureMode == FullscreenGestureMode.None,
             enter = fadeIn(tween(200)),
-            exit = fadeOut(tween(300))
+            exit = fadeOut(tween(300)),
+            modifier = Modifier.zIndex(80f)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // 顶部渐变 + 返回按钮和标题

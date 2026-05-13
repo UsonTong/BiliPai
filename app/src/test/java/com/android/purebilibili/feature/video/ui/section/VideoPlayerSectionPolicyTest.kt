@@ -1018,7 +1018,7 @@ class VideoPlayerSectionPolicyTest {
 
         val playerViewIndex = source.indexOf("AndroidView(")
         val restoreLayerIndex = source.indexOf("HiddenControlsTapRestoreLayer(", startIndex = playerViewIndex)
-        val overlayIndex = source.indexOf("RenderVideoPlayerOverlay()")
+        val overlayIndex = source.lastIndexOf("RenderVideoPlayerOverlay()")
 
         assertTrue(playerViewIndex >= 0)
         assertTrue(
@@ -1028,6 +1028,16 @@ class VideoPlayerSectionPolicyTest {
         assertTrue(
             restoreLayerIndex < overlayIndex,
             "The tap restore layer must stay below the real controls so it cannot block danmaku/settings buttons."
+        )
+        val restoreLayerSource = source.substring(restoreLayerIndex, (restoreLayerIndex + 420).coerceAtMost(source.length))
+        assertTrue(
+            restoreLayerSource.contains(".zIndex("),
+            "The tap restore layer needs explicit zIndex because release/native AndroidView ordering can differ from debug."
+        )
+        val overlayCallSource = source.substring((overlayIndex - 160).coerceAtLeast(0), overlayIndex)
+        assertTrue(
+            overlayCallSource.contains(".zIndex("),
+            "The visible controls overlay also needs explicit zIndex; otherwise release can toggle state without drawing UI above AndroidView."
         )
     }
 

@@ -152,6 +152,16 @@ class FullscreenPlayerOverlayPolicyTest {
             restoreLayerIndex < controlsIndex,
             "The fullscreen tap restore layer must stay below the visible controls."
         )
+        val restoreLayerSource = source.substring(restoreLayerIndex, (restoreLayerIndex + 480).coerceAtMost(source.length))
+        assertTrue(
+            restoreLayerSource.contains(".zIndex("),
+            "The fullscreen tap restore layer needs explicit zIndex because release/native AndroidView ordering can differ from debug."
+        )
+        val controlsSource = source.substring(controlsIndex, (controlsIndex + 360).coerceAtMost(source.length))
+        assertTrue(
+            controlsSource.contains(".zIndex("),
+            "Fullscreen controls also need explicit zIndex; otherwise release can toggle state without drawing UI above AndroidView."
+        )
     }
 
     @Test

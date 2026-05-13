@@ -2635,7 +2635,9 @@ fun VideoPlayerSection(
         HiddenControlsTapRestoreLayer(
             visible = !showControls && !isInPipMode,
             onShowControls = { showControls = true },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(60f)
         )
         
         // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
@@ -3945,7 +3947,13 @@ fun VideoPlayerSection(
             )
             }
 
-            RenderVideoPlayerOverlay()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(80f)
+            ) {
+                RenderVideoPlayerOverlay()
+            }
 
             SponsorSkipButton(
                 segment = sponsorSegment,
