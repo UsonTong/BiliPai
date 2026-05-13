@@ -95,7 +95,6 @@ import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.video.state.VideoPlayerState
-import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.ui.components.CommentSortFilterBar
 import com.android.purebilibili.feature.video.ui.components.CollectionRow
 import com.android.purebilibili.feature.video.ui.components.CollectionSheet
@@ -133,7 +132,6 @@ fun TabletCinemaLayout(
     isVerticalVideo: Boolean,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
-    pbpProgressData: PbpProgressData?,
     bvid: String,
     coverUrl: String = "",
     onBack: () -> Unit,
@@ -253,7 +251,6 @@ fun TabletCinemaLayout(
                     onPipClick = onPipClick,
                     sleepTimerMinutes = sleepTimerMinutes,
                     viewPoints = viewPoints,
-                    pbpProgressData = pbpProgressData,
                     isVerticalVideo = isVerticalVideo,
                     isPortraitFullscreen = isPortraitFullscreen,
                     currentCodec = currentCodec,
@@ -355,7 +352,6 @@ private fun CinemaStagePlayer(
     onPipClick: () -> Unit,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
-    pbpProgressData: PbpProgressData?,
     isVerticalVideo: Boolean,
     isPortraitFullscreen: Boolean,
     currentCodec: String,
@@ -439,7 +435,6 @@ private fun CinemaStagePlayer(
                 onSleepTimerChange = { viewModel.setSleepTimer(it) },
                 videoshotData = success?.videoshotData,
                 viewPoints = viewPoints,
-                pbpProgressData = pbpProgressData,
                 isVerticalVideo = isVerticalVideo,
                 onPortraitFullscreen = { playerState.setPortraitFullscreen(true) },
                 isPortraitFullscreen = isPortraitFullscreen,

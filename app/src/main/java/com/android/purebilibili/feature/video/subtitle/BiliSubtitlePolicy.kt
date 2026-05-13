@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.video.subtitle
 
-import com.android.purebilibili.data.model.response.SubtitleItem
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -16,11 +15,6 @@ data class SubtitleCue(
     val content: String
 )
 
-data class SubtitleLoadResult(
-    val track: SubtitleTrackMeta,
-    val cues: List<SubtitleCue>
-)
-
 data class SubtitleTrackMeta(
     val id: Long = 0L,
     val idStr: String = "",
@@ -30,15 +24,7 @@ data class SubtitleTrackMeta(
     val aiStatus: Int = 0,
     val aiType: Int = 0,
     val type: Int = 0
-) {
-    val trackKey: String
-        get() = buildSubtitleTrackKey(
-            subtitleId = id,
-            subtitleIdStr = idStr,
-            languageCode = lan,
-            subtitleUrl = subtitleUrl
-        )
-}
+)
 
 data class SubtitleLanguageSelection(
     val primaryLanguage: String?,
@@ -115,43 +101,6 @@ fun isLikelyAiSubtitleTrack(track: SubtitleTrackMeta): Boolean {
         label.contains("自动") ||
         label.contains("机翻") ||
         label.contains("机器")
-}
-
-fun buildSubtitleTrackKey(
-    subtitleId: Long,
-    subtitleIdStr: String,
-    languageCode: String?,
-    subtitleUrl: String
-): String {
-    return listOf(
-        subtitleId.coerceAtLeast(0L).toString(),
-        subtitleIdStr.trim(),
-        languageCode?.trim().orEmpty(),
-        normalizeBilibiliSubtitleUrl(subtitleUrl)
-    ).joinToString("|")
-}
-
-fun mapPlayerInfoSubtitleTracks(subtitles: List<SubtitleItem>): List<SubtitleTrackMeta> {
-    return orderSubtitleTracksByPreference(
-        subtitles.mapNotNull { item ->
-            val normalizedUrl = normalizeBilibiliSubtitleUrl(item.subtitleUrl)
-            if (!isTrustedBilibiliSubtitleUrl(normalizedUrl)) return@mapNotNull null
-            SubtitleTrackMeta(
-                id = item.id,
-                idStr = item.idStr,
-                lan = item.lan,
-                lanDoc = item.lanDoc,
-                subtitleUrl = normalizedUrl,
-                aiStatus = item.aiStatus,
-                aiType = item.aiType,
-                type = item.type
-            )
-        }.distinctBy { meta -> meta.trackKey }
-    )
-}
-
-fun normalizeSubtitleVerticalOffsetFraction(value: Float): Float {
-    return value.coerceIn(-0.30f, 0.30f)
 }
 
 private fun subtitleTrackPreferenceScore(track: SubtitleTrackMeta): Int {

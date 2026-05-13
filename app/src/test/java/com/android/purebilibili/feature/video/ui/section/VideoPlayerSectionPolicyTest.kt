@@ -139,47 +139,6 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun appPlaybackVolume_normalizesGestureVolumeWithoutTouchingSystemRange() {
-        assertEquals(0.0f, normalizeAppPlaybackVolume(-0.4f))
-        assertEquals(0.64f, normalizeAppPlaybackVolume(0.64f))
-        assertEquals(1.0f, normalizeAppPlaybackVolume(1.7f))
-    }
-
-    @Test
-    fun pinchExitFullscreen_onlyTriggersForInwardPinchWithoutConflictingGestures() {
-        assertTrue(
-            shouldTriggerPinchExitFullscreen(
-                isFullscreen = true,
-                isScreenLocked = false,
-                twoFingerSpeedAxisLocked = false,
-                currentViewportScale = 1.0f,
-                cumulativeZoom = 0.78f,
-                minExitZoom = 0.82f
-            )
-        )
-        assertFalse(
-            shouldTriggerPinchExitFullscreen(
-                isFullscreen = true,
-                isScreenLocked = false,
-                twoFingerSpeedAxisLocked = true,
-                currentViewportScale = 1.0f,
-                cumulativeZoom = 0.78f,
-                minExitZoom = 0.82f
-            )
-        )
-        assertFalse(
-            shouldTriggerPinchExitFullscreen(
-                isFullscreen = true,
-                isScreenLocked = false,
-                twoFingerSpeedAxisLocked = false,
-                currentViewportScale = 1.4f,
-                cumulativeZoom = 0.78f,
-                minExitZoom = 0.82f
-            )
-        )
-    }
-
-    @Test
     fun keepScreenAwake_onlyWhilePlaybackIsActiveOrStarting() {
         assertTrue(
             shouldKeepVideoPlaybackAwake(

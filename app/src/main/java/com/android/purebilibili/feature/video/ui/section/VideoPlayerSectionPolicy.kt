@@ -213,24 +213,6 @@ internal fun shouldEnableViewportTransformGesture(
     return false
 }
 
-fun normalizeAppPlaybackVolume(volume: Float): Float {
-    return volume.coerceIn(0f, 1f)
-}
-
-internal fun shouldTriggerPinchExitFullscreen(
-    isFullscreen: Boolean,
-    isScreenLocked: Boolean,
-    twoFingerSpeedAxisLocked: Boolean,
-    currentViewportScale: Float,
-    cumulativeZoom: Float,
-    minExitZoom: Float = 0.82f
-): Boolean {
-    if (!isFullscreen || isScreenLocked) return false
-    if (twoFingerSpeedAxisLocked) return false
-    if (currentViewportScale > 1.01f) return false
-    return cumulativeZoom < minExitZoom.coerceIn(0.1f, 1.0f)
-}
-
 internal fun shouldLockLongPressSpeedInTargetZone(
     isLongPressing: Boolean,
     alreadyLocked: Boolean,
