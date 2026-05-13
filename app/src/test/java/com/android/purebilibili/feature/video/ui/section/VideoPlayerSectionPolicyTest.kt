@@ -972,29 +972,6 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun rootVideoTap_ownsVisibleAndHiddenControlsToggle() {
-        val source = loadVideoPlayerSectionSource()
-
-        val rootTapIndex = source.indexOf("detectTapGestures(")
-        assertTrue(rootTapIndex >= 0)
-        val rootTapSource = source.substring(rootTapIndex, (rootTapIndex + 700).coerceAtMost(source.length))
-        assertTrue(
-            rootTapSource.contains("showControls = !showControls"),
-            "Root video tap must toggle controls both ways; hidden-state tap restore layers were not reliable in release."
-        )
-        assertFalse(
-            source.contains("HiddenControlsTapRestoreLayer("),
-            "Hidden controls should not depend on a second tap layer that can race with the root tap detector."
-        )
-        val overlayIndex = source.lastIndexOf("RenderVideoPlayerOverlay()")
-        val overlayCallSource = source.substring((overlayIndex - 160).coerceAtLeast(0), overlayIndex)
-        assertTrue(
-            overlayCallSource.contains(".zIndex("),
-            "The visible controls overlay also needs explicit zIndex; otherwise release can toggle state without drawing UI above AndroidView."
-        )
-    }
-
-    @Test
     fun longPressExclusiveDrag_onlyConsumesBeforeSpeedIsLocked() {
         assertTrue(
             shouldConsumeExclusiveLongPressSpeedDrag(
@@ -1126,12 +1103,6 @@ class VideoPlayerSectionPolicyTest {
                 nowMs = 1_120L
             )
         )
-    }
-
-    @Test
-    fun rootVideoTap_handlesHiddenAndVisibleControls() {
-        assertTrue(shouldHandleRootVideoTap(showControls = false))
-        assertTrue(shouldHandleRootVideoTap(showControls = true))
     }
 
     @Test

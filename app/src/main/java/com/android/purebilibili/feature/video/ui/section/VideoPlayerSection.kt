@@ -1488,14 +1488,12 @@ fun VideoPlayerSection(
                 seekForwardSeconds,
                 seekBackwardSeconds,
                 doubleTapSeekEnabled,
-                isScreenLocked,
-                showControls
+                isScreenLocked
             ) {
                 detectTapGestures(
                     onTap = { 
                         // 🔒 锁定时点击只显示解锁按钮
                         if (
-                            !shouldHandleRootVideoTap(showControls) ||
                             !shouldToggleControlsForVideoTap(
                                 longPressSpeedEndedAtMs = longPressSpeedEndedAtMs,
                                 nowMs = android.os.SystemClock.elapsedRealtime()
@@ -1503,7 +1501,11 @@ fun VideoPlayerSection(
                         ) {
                             return@detectTapGestures
                         }
-                        showControls = !showControls
+                        if (isScreenLocked) {
+                            showControls = !showControls  // 显示/隐藏解锁按钮
+                        } else {
+                            showControls = !showControls
+                        }
                     },
                     onDoubleTap = { offset ->
                         // 🔒 锁定时禁用双击
@@ -1568,7 +1570,7 @@ fun VideoPlayerSection(
         val activeDanmakuScope = remember(isFullscreen) {
             com.android.purebilibili.core.store.resolveDanmakuSettingsScope(isLandscape = isFullscreen)
         }
-        
+
         val danmakuSettings by com.android.purebilibili.core.store.SettingsManager
             .getDanmakuSettings(context, activeDanmakuScope)
             .collectAsStateWithLifecycle(
@@ -3840,13 +3842,7 @@ fun VideoPlayerSection(
             )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(80f)
-            ) {
-                RenderVideoPlayerOverlay()
-            }
+            RenderVideoPlayerOverlay()
 
             SponsorSkipButton(
                 segment = sponsorSegment,

@@ -135,37 +135,6 @@ class FullscreenPlayerOverlayPolicyTest {
     }
 
     @Test
-    fun fullscreenRootTap_ownsVisibleAndHiddenControlsToggle() {
-        val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
-            .readText()
-
-        val playerViewIndex = source.indexOf("AndroidView(")
-        val controlsIndex = source.indexOf("AnimatedVisibility(", startIndex = playerViewIndex)
-
-        assertTrue(playerViewIndex >= 0)
-        assertTrue(controlsIndex > playerViewIndex)
-        val rootTapIndex = source.indexOf("detectTapGestures(")
-        assertTrue(
-            rootTapIndex >= 0,
-            "Fullscreen root must own tap handling because long-press/drag proves the root gesture chain receives touches."
-        )
-        assertTrue(
-            source.substring(rootTapIndex, (rootTapIndex + 520).coerceAtMost(source.length))
-                .contains("showControls = !showControls"),
-            "Fullscreen root tap must toggle controls both ways."
-        )
-        assertFalse(
-            source.contains("FullscreenHiddenControlsTapRestoreLayer("),
-            "Fullscreen hidden controls should not depend on a second restore layer that can race with root tap handling."
-        )
-        val controlsSource = source.substring(controlsIndex, (controlsIndex + 360).coerceAtMost(source.length))
-        assertTrue(
-            controlsSource.contains(".zIndex("),
-            "Fullscreen controls also need explicit zIndex; otherwise release can toggle state without drawing UI above AndroidView."
-        )
-    }
-
-    @Test
     fun fullscreenDragGestures_protectVisibleBottomControls() {
         assertFalse(
             shouldStartFullscreenDragGesture(

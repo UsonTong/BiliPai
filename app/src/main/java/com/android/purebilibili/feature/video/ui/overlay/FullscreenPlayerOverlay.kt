@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.FullscreenAspectRatio
 import com.android.purebilibili.core.store.SettingsManager
@@ -328,7 +327,7 @@ fun FullscreenPlayerOverlay(
         val activity = (context as? Activity) ?: return@DisposableEffect onDispose {}
         val window = activity.window
         val originalOrientation = activity.requestedOrientation
-        
+
         //  [重构] 定义设置沉浸式模式的函数（可复用）
         val applyImmersiveMode = {
             @Suppress("DEPRECATION")
@@ -494,8 +493,7 @@ fun FullscreenPlayerOverlay(
                 gesturesEnabled,
                 doubleTapSeekEnabled,
                 seekForwardSeconds,
-                seekBackwardSeconds,
-                showControls
+                seekBackwardSeconds
             ) {
                 if (!gesturesEnabled) return@pointerInput
                 
@@ -503,11 +501,8 @@ fun FullscreenPlayerOverlay(
                 
                 detectTapGestures(
                     onTap = {
-                        if (!shouldHandleRootFullscreenTap(showControls, gesturesEnabled)) {
-                            return@detectTapGestures
-                        }
                         showControls = !showControls
-                        lastInteractionTime = System.currentTimeMillis()
+                        if (showControls) lastInteractionTime = System.currentTimeMillis()
                     },
                     onDoubleTap = { offset ->
                         // 分区双击策略可由设置和当前播放意图控制。
@@ -851,8 +846,7 @@ fun FullscreenPlayerOverlay(
         AnimatedVisibility(
             visible = showControls && gestureMode == FullscreenGestureMode.None,
             enter = fadeIn(tween(200)),
-            exit = fadeOut(tween(300)),
-            modifier = Modifier.zIndex(80f)
+            exit = fadeOut(tween(300))
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // 顶部渐变 + 返回按钮和标题

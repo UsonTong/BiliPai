@@ -120,26 +120,4 @@ class FullscreenPlayerOverlayPollingPolicyTest {
             )
         )
     }
-
-    @Test
-    fun rootFullscreenTap_handlesHiddenAndVisibleControlsWhenGesturesEnabled() {
-        assertTrue(
-            shouldHandleRootFullscreenTap(
-                showControls = false,
-                gesturesEnabled = true
-            )
-        )
-        assertTrue(
-            shouldHandleRootFullscreenTap(
-                showControls = true,
-                gesturesEnabled = true
-            )
-        )
-        assertFalse(
-            shouldHandleRootFullscreenTap(
-                showControls = true,
-                gesturesEnabled = false
-            )
-        )
-    }
 }
