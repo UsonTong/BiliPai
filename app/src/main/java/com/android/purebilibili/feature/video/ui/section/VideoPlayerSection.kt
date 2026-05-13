@@ -54,6 +54,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -273,6 +274,28 @@ private fun GesturePercentValue(
             modifier = Modifier.padding(start = 2.dp)
         )
     }
+}
+
+@Composable
+private fun HiddenControlsTapRestoreLayer(
+    visible: Boolean,
+    onShowControls: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!visible) return
+
+    Box(
+        modifier = modifier.pointerInput(onShowControls) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                val up = waitForUpOrCancellation()
+                if (up != null) {
+                    up.consume()
+                    onShowControls()
+                }
+            }
+        }
+    )
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -2608,6 +2631,12 @@ fun VideoPlayerSection(
                 )
             }
         }
+
+        HiddenControlsTapRestoreLayer(
+            visible = !showControls && !isInPipMode,
+            onShowControls = { showControls = true },
+            modifier = Modifier.fillMaxSize()
+        )
         
         // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
         val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsStateWithLifecycle()

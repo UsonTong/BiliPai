@@ -1013,6 +1013,25 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
+    fun hiddenControls_keepDedicatedTapRestoreLayerAbovePlayerView() {
+        val source = loadVideoPlayerSectionSource()
+
+        val playerViewIndex = source.indexOf("AndroidView(")
+        val restoreLayerIndex = source.indexOf("HiddenControlsTapRestoreLayer(", startIndex = playerViewIndex)
+        val overlayIndex = source.indexOf("RenderVideoPlayerOverlay()")
+
+        assertTrue(playerViewIndex >= 0)
+        assertTrue(
+            restoreLayerIndex > playerViewIndex,
+            "Hidden controls need a Compose tap restore layer above PlayerView because AndroidView can consume surface taps."
+        )
+        assertTrue(
+            restoreLayerIndex < overlayIndex,
+            "The tap restore layer must stay below the real controls so it cannot block danmaku/settings buttons."
+        )
+    }
+
+    @Test
     fun longPressExclusiveDrag_onlyConsumesBeforeSpeedIsLocked() {
         assertTrue(
             shouldConsumeExclusiveLongPressSpeedDrag(

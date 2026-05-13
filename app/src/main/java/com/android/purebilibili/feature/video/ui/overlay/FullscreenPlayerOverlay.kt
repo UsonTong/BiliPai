@@ -26,8 +26,11 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -146,6 +149,28 @@ internal fun shouldStartFullscreenDragGesture(
     val topControlsBottom = visibleTopControlsHeightPx.coerceAtLeast(statusBarExclusionZonePx)
     val bottomControlsTop = (screenHeight - visibleBottomControlsHeightPx).coerceAtLeast(0f)
     return startY >= topControlsBottom && startY <= bottomControlsTop
+}
+
+@Composable
+private fun FullscreenHiddenControlsTapRestoreLayer(
+    visible: Boolean,
+    onShowControls: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!visible) return
+
+    Box(
+        modifier = modifier.pointerInput(onShowControls) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                val up = waitForUpOrCancellation()
+                if (up != null) {
+                    up.consume()
+                    onShowControls()
+                }
+            }
+        }
+    )
 }
 
 /**
@@ -829,6 +854,15 @@ fun FullscreenPlayerOverlay(
                 }
             }
         }
+
+        FullscreenHiddenControlsTapRestoreLayer(
+            visible = !showControls && gestureMode == FullscreenGestureMode.None,
+            onShowControls = {
+                showControls = true
+                lastInteractionTime = System.currentTimeMillis()
+            },
+            modifier = Modifier.fillMaxSize()
+        )
         
         // 手势指示器
         if (gestureMode != FullscreenGestureMode.None) {

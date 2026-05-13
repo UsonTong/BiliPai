@@ -135,6 +135,26 @@ class FullscreenPlayerOverlayPolicyTest {
     }
 
     @Test
+    fun fullscreenHiddenControls_keepTapRestoreLayerAbovePlayerView() {
+        val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
+            .readText()
+
+        val playerViewIndex = source.indexOf("AndroidView(")
+        val restoreLayerIndex = source.indexOf("FullscreenHiddenControlsTapRestoreLayer(", startIndex = playerViewIndex)
+        val controlsIndex = source.indexOf("AnimatedVisibility(", startIndex = playerViewIndex)
+
+        assertTrue(playerViewIndex >= 0)
+        assertTrue(
+            restoreLayerIndex > playerViewIndex,
+            "Fullscreen overlay also needs a Compose tap restore layer above PlayerView/DanmakuView."
+        )
+        assertTrue(
+            restoreLayerIndex < controlsIndex,
+            "The fullscreen tap restore layer must stay below the visible controls."
+        )
+    }
+
+    @Test
     fun fullscreenDragGestures_protectVisibleBottomControls() {
         assertFalse(
             shouldStartFullscreenDragGesture(
