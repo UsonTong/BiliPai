@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.video.ui.section
 
+import android.view.MotionEvent
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
 import java.io.File
@@ -1179,6 +1180,51 @@ class VideoPlayerSectionPolicyTest {
     fun hiddenControls_ignoreRootVideoTapBecauseRestoreLayerOwnsIt() {
         assertFalse(shouldHandleRootVideoTap(showControls = false))
         assertTrue(shouldHandleRootVideoTap(showControls = true))
+    }
+
+    @Test
+    fun hiddenControls_nativeVideoSurfaceActionUpRestoresControls() {
+        assertTrue(
+            shouldRestoreControlsFromNativeVideoSurfaceTap(
+                showControls = false,
+                actionMasked = MotionEvent.ACTION_UP
+            )
+        )
+        assertFalse(
+            shouldRestoreControlsFromNativeVideoSurfaceTap(
+                showControls = true,
+                actionMasked = MotionEvent.ACTION_UP
+            )
+        )
+        assertFalse(
+            shouldRestoreControlsFromNativeVideoSurfaceTap(
+                showControls = false,
+                actionMasked = MotionEvent.ACTION_DOWN
+            )
+        )
+    }
+
+    @Test
+    fun inlinePlayer_installsNativeTapFallbackOnPlayerAndDanmakuSurfaces() {
+        val source = File(
+            "src/main/java/com/android/purebilibili/feature/video/ui/section/VideoPlayerSection.kt"
+        ).readText()
+
+        val playerViewIndex = source.indexOf("basePlayerView.apply")
+        val danmakuViewIndex = source.indexOf("DanmakuView(ctx).apply")
+
+        assertTrue(playerViewIndex >= 0)
+        assertTrue(danmakuViewIndex > playerViewIndex)
+        assertTrue(
+            source.substring(playerViewIndex, (playerViewIndex + 900).coerceAtMost(source.length))
+                .contains("installNativeVideoSurfaceTapRestoreFallback("),
+            "PlayerView must restore hidden controls because release AndroidView surfaces can receive taps before Compose."
+        )
+        assertTrue(
+            source.substring(danmakuViewIndex, (danmakuViewIndex + 700).coerceAtMost(source.length))
+                .contains("installNativeVideoSurfaceTapRestoreFallback("),
+            "DanmakuView must restore hidden controls because it covers the player surface and can receive taps before Compose."
+        )
     }
 
     @Test

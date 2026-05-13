@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.video.ui.section
 
 import android.view.SurfaceView
 import android.view.TextureView
+import android.view.MotionEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackParameters
@@ -294,6 +295,14 @@ internal fun shouldToggleControlsForVideoTap(
 
 internal fun shouldHandleRootVideoTap(showControls: Boolean): Boolean {
     return showControls
+}
+
+internal fun shouldRestoreControlsFromNativeVideoSurfaceTap(
+    showControls: Boolean,
+    actionMasked: Int,
+    actionUp: Int = MotionEvent.ACTION_UP
+): Boolean {
+    return !showControls && actionMasked == actionUp
 }
 
 internal fun resolveVerticalGestureMode(
