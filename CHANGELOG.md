@@ -1,5 +1,26 @@
 # Changelog
 
+## v8.1.5 (2026-05-13)
+
+### 版本信息
+- 版本号从 `8.1.4` 升级到 `8.1.5`，`versionCode` 升级到 `188`。
+- 本次为“播放进度/字幕/CDN 增强 + 动态关注状态同步 + 搜索与外观收敛”的维护更新。
+
+### 更新内容
+- **动态取消关注同步**：关注/取关成功后会广播关注状态变化；动态页在取消关注后立即移除该 UP 的动态、关注侧栏条目和相关缓存，避免取关后仍在动态流里反复出现。
+- **视频简介默认展开开关**：播放设置新增“默认展开视频简介”开关，并接入设置搜索和设置分享；关闭后视频详情简介默认收起，默认行为仍保持展开。
+- **播放进度与控制条**：接入高能进度（PBP）数据解析与归一化，播放器底部进度条可展示强度脊线；横屏/竖屏底部控制条、拖动预览、平板影院布局和进度显示策略继续收敛。
+- **字幕能力补强**：播放器信息中的字幕轨道会映射为受信任字幕源，支持更稳定的一/双语字幕选择、AI 字幕识别、字幕位置偏移和大字号显示，并补充字幕解析/排序/去重策略。
+- **CDN 与地区线路**：内置 CDN 区域插件会结合 IP 归属地、省份别名和运营商信息选择更合适的线路，未知地区不再随机落到错误区域；播放侧补充 CDN 回退策略测试。
+- **搜索与外观收敛**：搜索视频卡片改为更扁平的列表视觉，减少重复卡片包裹；移除未完成的 Android Native / MD3E 外观变体，降低设置、主题和组件分支的维护成本。
+- **横屏与布局细节**：非紧凑布局会释放手机方向锁，降低平板/大屏从详情页进入播放器后的方向残留；相关布局策略补充回归测试。
+- **策略与回归覆盖**：补充动态取消关注、视频简介默认展开、设置搜索、PBP 进度、字幕轨道、播放器控制条、CDN 区域选择、CDN 回退和视频详情布局等测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.dynamic.DynamicScreenStatePolicyTest' --tests 'com.android.purebilibili.feature.video.ui.section.VideoInfoDisplayPolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsSearchPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.plugin.CdnRegionPolicyTest' --tests 'com.android.purebilibili.feature.video.viewmodel.PlaybackCdnFallbackPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.VideoDetailLayoutModePolicyTest'`
+- `git diff --check`
+
 ## v8.1.4 (2026-05-13)
 
 ### 版本信息

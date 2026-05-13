@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-13 · Synced to v8.1.4 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-13 · Synced to v8.1.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.4-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.1.5-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.4 · 2026-05-13)
+### Latest (v8.1.5 · 2026-05-13)
 
-- Removed duplicate History entry from Profile and added favorite-folder shortcuts under My Favorites.
-- Centered small Home top-tab sets, expanded video descriptions by default, and improved searchability for the entry autoplay setting.
-- Added comment-send detection, a comment decoration toggle, and a configurable reply preview limit.
-- Remembered image-preview text visibility and added system image sharing for comment images while preserving common formats.
-- Refined bangumi comments, live viewer/panel parsing, stream diagnostics, and the related policy tests.
-- Bumped the app to `8.1.4` with `versionCode` `187`.
+- Dynamic feed now reacts to unfollow events and removes the author from feed items, sidebar entries, and cached dynamic data.
+- Added a playback setting for default-expanded video descriptions, with Settings Search and Settings Share support.
+- Refined player progress, PBP ridge rendering, subtitle tracks, fullscreen controls, drag preview, and tablet layout behavior.
+- Improved the built-in CDN region plugin with IP/province/carrier-aware route selection and fallback coverage.
+- Flattened search video result cards and removed the unfinished Android Native / MD3E appearance variant.
+- Bumped the app to `8.1.5` with `versionCode` `188`.
 
 ---
 

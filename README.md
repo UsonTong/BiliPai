@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.4-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.4" />
+  <img src="https://img.shields.io/badge/Version-8.1.5-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.5" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -37,7 +37,7 @@
   </a>
 </p>
 
-<sub>README 更新：2026-05-10 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
+<sub>README 更新：2026-05-13 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
 
 </div>
 
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.4 / versionCode 187`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.4`：
+当前仓库版本号已更新到 `8.1.5 / versionCode 188`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.5`：
 
-- 个人页去重历史入口，“我的收藏”下新增收藏夹快捷入口。
-- 首页少量顶部标签自动居中，视频介绍默认展开，进入视频自动播放设置更易搜索。
-- 新增评论发送检测、评论区装扮开关和评论回复预览数量设置。
-- 图片预览支持记忆文字显示状态，并新增系统分享按钮，评论区图片可直接分享。
-- 补充番剧评论入口、直播真实人数/面板布局、播放流诊断和相关策略测试。
+- 动态页会同步取消关注状态，取关后立即移除该 UP 的动态、侧栏条目和相关缓存。
+- 播放设置新增“默认展开视频简介”开关，并接入设置搜索与设置分享。
+- 播放器补强高能进度、字幕轨道、横竖屏控制条和拖动预览策略。
+- 内置 CDN 区域插件根据 IP 归属地、省份别名和运营商选择更合适线路。
+- 搜索视频卡片改为更扁平的列表视觉，并移除未完成的 Android Native / MD3E 外观变体。
 
 ## 路线图
 
