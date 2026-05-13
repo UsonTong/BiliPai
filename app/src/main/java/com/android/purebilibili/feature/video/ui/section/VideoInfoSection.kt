@@ -11,6 +11,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -55,11 +57,19 @@ import com.android.purebilibili.core.ui.components.UserUpBadge
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.core.util.CardPositionManager
+import com.android.purebilibili.data.model.response.BgmCommentInfo
+import com.android.purebilibili.data.model.response.BgmDetailData
 import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.AiSummaryData
+import com.android.purebilibili.data.model.response.BgmRecommendVideo
+import com.android.purebilibili.data.model.response.RelatedVideo
+import com.android.purebilibili.data.model.response.VideoItem
+import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.video.ui.FollowButtonTone
 import com.android.purebilibili.feature.video.ui.FollowTextTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
+import com.android.purebilibili.data.repository.AudioRepository
+import com.android.purebilibili.data.repository.ViewGrpcRepository
 
 internal const val VIDEO_DESCRIPTION_URL_TAG = "VIDEO_DESCRIPTION_URL"
 private val VIDEO_DESCRIPTION_URL_PATTERN =
@@ -249,12 +259,14 @@ fun VideoTitleWithDesc(
     videoTags: List<VideoTag> = emptyList(),  //  视频标签
     bgmInfo: BgmInfo? = null, // [新增] BGM 信息
     bgmInfoList: List<BgmInfo> = emptyList(),
+    relatedVideos: List<RelatedVideo> = emptyList(),
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     animateLayout: Boolean = true,
     onDescriptionUrlClick: ((String) -> Unit)? = null,
-    onBgmClick: (BgmInfo) -> Unit = {}
+    onBgmClick: (BgmInfo) -> Unit = {},
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val defaultExpanded by com.android.purebilibili.core.store.SettingsManager
@@ -491,7 +503,8 @@ fun VideoTitleWithDesc(
             Spacer(Modifier.height(8.dp))
             InlineBgmSection(
                 bgmList = displayBgmList,
-                onBgmClick = onBgmClick
+                onBgmClick = onBgmClick,
+                onRelatedVideoClick = onRelatedVideoClick
             )
         }
         
@@ -999,7 +1012,8 @@ fun DescriptionSection(desc: String) {
 @Composable
 private fun InlineBgmSection(
     bgmList: List<BgmInfo>,
-    onBgmClick: (BgmInfo) -> Unit = {}
+    onBgmClick: (BgmInfo) -> Unit = {},
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> }
 ) {
     if (bgmList.isEmpty()) return
 
@@ -1022,8 +1036,8 @@ private fun InlineBgmSection(
 
     BgmInfoRow(
         title = headerText,
-        subtitle = leadSong.actor.takeIf { it.isNotBlank() },
-        showIndicator = bgmList.size > 1,
+        subtitle = leadSong.actor.takeIf { it.isNotBlank() && bgmList.size == 1 },
+        showIndicator = false,
         onClick = {
             if (bgmList.size > 1) {
                 showSheet = true
@@ -1035,13 +1049,14 @@ private fun InlineBgmSection(
 
     if (showSheet) {
         BgmSelectionSheet(
-            title = headerText,
+            title = "发现音乐",
             bgmList = bgmList,
             onDismiss = { showSheet = false },
             onBgmClick = { bgm ->
                 showSheet = false
                 onBgmClick(bgm)
-            }
+            },
+            onRelatedVideoClick = onRelatedVideoClick
         )
     }
 }
@@ -1122,139 +1137,445 @@ private fun BgmSelectionSheet(
     title: String,
     bgmList: List<BgmInfo>,
     onDismiss: () -> Unit,
-    onBgmClick: (BgmInfo) -> Unit
+    onBgmClick: (BgmInfo) -> Unit,
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit
 ) {
-    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val aid = remember(bgmList) {
+        bgmList.firstOrNull()?.jumpUrl?.let { resolveQueryLongParam(it, "aid") } ?: 0L
+    }
+    val cid = remember(bgmList) {
+        bgmList.firstOrNull()?.jumpUrl?.let { resolveQueryLongParam(it, "cid") } ?: 0L
+    }
+    val preloadedData by produceState(
+        initialValue = bgmList.associate { it.musicId to BgmSheetItemState() },
+        key1 = bgmList,
+        key2 = aid,
+        key3 = cid
+    ) {
+        value = bgmList.associate { it.musicId to BgmSheetItemState() }
+        if (aid <= 0L || cid <= 0L) return@produceState
+        value = bgmList.associate { bgm ->
+            val detail = if (bgm.musicId.isNotBlank()) {
+                ViewGrpcRepository.getBgmDetail(
+                    musicId = bgm.musicId,
+                    aid = aid,
+                    cid = cid
+                ).getOrNull()
+            } else {
+                null
+            }
+            val recommendedVideos = if (bgm.musicId.isNotBlank()) {
+                ViewGrpcRepository.getBgmRecommendVideos(
+                    musicId = bgm.musicId,
+                    aid = aid,
+                    cid = cid
+                ).getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
+            bgm.musicId to BgmSheetItemState(
+                detail = detail,
+                recommendedVideos = recommendedVideos
+            )
+        }
+    }
+    var selectedMusicId by remember(bgmList.map(BgmInfo::musicId)) {
+        mutableStateOf(bgmList.firstOrNull()?.musicId.orEmpty())
+    }
+    val selectedBgm = remember(selectedMusicId, bgmList) {
+        bgmList.firstOrNull { it.musicId == selectedMusicId } ?: bgmList.first()
+    }
+    val selectedData = remember(preloadedData, selectedBgm.musicId) {
+        preloadedData[selectedBgm.musicId] ?: BgmSheetItemState()
+    }
+    val selectedVideoItems = remember(selectedData.recommendedVideos) {
+        selectedData.recommendedVideos.map(::bgmRecommendVideoToVideoItem)
+    }
 
     com.android.purebilibili.core.ui.IOSModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         dragHandle = null
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.58f)
+                .fillMaxHeight(0.68f),
+            contentPadding = PaddingValues(bottom = 20.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = CupertinoIcons.Default.Xmark,
-                        contentDescription = "关闭",
-                        modifier = Modifier.size(20.dp)
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.Xmark,
+                            contentDescription = "关闭",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            item {
+                BgmSelectionStrip(
+                    bgmList = bgmList,
+                    selectedMusicId = selectedBgm.musicId,
+                    onSelect = { selectedMusicId = it.musicId }
+                )
+            }
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                itemsIndexed(bgmList) { index, bgm ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable { onBgmClick(bgm) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f))
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (bgm.coverUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(FormatUtils.fixImageUrl(bgm.coverUrl))
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = bgm.musicTitle,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                BgmDetailCard(
+                    bgm = selectedBgm,
+                    detail = selectedData.detail,
+                    onOpenMusic = { onBgmClick(selectedBgm) }
+                )
+            }
+
+            if (selectedVideoItems.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "使用该音乐的视频",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                item {
+                    BgmRelatedVideoGrid(
+                        videos = selectedVideoItems,
+                        onVideoClick = { video ->
+                            onDismiss()
+                            val navOptions = if (video.cid > 0L) {
+                                android.os.Bundle().apply {
+                                    putLong("target_cid", video.cid)
+                                }
                             } else {
-                                Icon(
-                                    imageVector = CupertinoIcons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                null
                             }
+                            onRelatedVideoClick(video.bvid, navOptions)
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = bgm.musicTitle.ifEmpty { "未知音乐" },
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = buildString {
-                                    append("#")
-                                    append(index + 1)
-                                    if (bgm.actor.isNotBlank()) {
-                                        append(" · ")
-                                        append(bgm.actor)
-                                    }
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = CupertinoIcons.Default.ChevronForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    if (index != bgmList.lastIndex) {
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                        )
-                    }
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun BgmSelectionStrip(
+    bgmList: List<BgmInfo>,
+    selectedMusicId: String,
+    onSelect: (BgmInfo) -> Unit
+) {
+    val context = LocalContext.current
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(bgmList, key = { it.musicId }) { bgm ->
+            val selected = bgm.musicId == selectedMusicId
+            Column(
+                modifier = Modifier
+                    .width(76.dp)
+                    .clickable { onSelect(bgm) },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (selected) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                            }
+                        )
+                        .border(
+                            width = if (selected) 1.5.dp else 1.dp,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+                            },
+                            shape = RoundedCornerShape(20.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (bgm.coverUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(FormatUtils.fixImageUrl(bgm.coverUrl))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = bgm.musicTitle,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = CupertinoIcons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.78f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = bgm.musicTitle.ifBlank { "未知音乐" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BgmDetailCard(
+    bgm: BgmInfo,
+    detail: BgmDetailData?,
+    onOpenMusic: () -> Unit
+) {
+    val scoreText = remember(detail) { resolveBgmScoreText(detail) }
+    val description = remember(detail, bgm) {
+        bgm.actor.takeIf { it.isNotBlank() }
+            ?: detail?.originArtist?.takeIf { it.isNotBlank() }
+            ?: "点击查看这首音乐的完整详情"
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BgmDetailCover(
+                coverUrl = detail?.mvCover.orEmpty().ifBlank { bgm.coverUrl },
+                title = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle }
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle.ifBlank { "未知音乐" } },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = CupertinoIcons.Outlined.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = scoreText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                detail?.musicComment?.takeIf { it.nums > 0 }?.let {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "${FormatUtils.formatStat(it.nums.toLong())}评论",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BgmDetailCover(
+    coverUrl: String,
+    title: String
+) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(width = 112.dp, height = 112.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        if (coverUrl.isNotBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(FormatUtils.fixImageUrl(coverUrl))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = CupertinoIcons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                modifier = Modifier.size(34.dp)
+            )
+        }
+    }
+}
+
+private fun resolveBgmScoreText(detail: BgmDetailData?): String {
+    detail ?: return "音乐信息"
+    return when {
+        detail.musicHot > 0L -> FormatUtils.formatStat(detail.musicHot)
+        detail.listenPv > 0L -> FormatUtils.formatStat(detail.listenPv)
+        else -> "音乐信息"
+    }
+}
+
+private fun resolveBgmStatLine(detail: BgmDetailData?): String? {
+    detail ?: return null
+    val parts = buildList {
+        if (detail.listenPv > 0L) add("${FormatUtils.formatStat(detail.listenPv)}播放")
+        if (detail.wishCount > 0) add("${FormatUtils.formatStat(detail.wishCount.toLong())}想听")
+        if (detail.musicShares > 0) add("${FormatUtils.formatStat(detail.musicShares.toLong())}分享")
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
+private fun resolveQueryLongParam(url: String, key: String): Long {
+    return android.net.Uri.parse(url).getQueryParameter(key)?.toLongOrNull() ?: 0L
+}
+
+private data class BgmSheetItemState(
+    val detail: BgmDetailData? = null,
+    val recommendedVideos: List<BgmRecommendVideo> = emptyList()
+)
+
+@Composable
+private fun BgmRelatedVideoGrid(
+    videos: List<VideoItem>,
+    onVideoClick: (VideoItem) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp)
+    ) {
+        videos.chunked(2).forEachIndexed { rowIndex, rowVideos ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                rowVideos.forEachIndexed { columnIndex, video ->
+                    ElegantVideoCard(
+                        video = video,
+                        index = rowIndex * 2 + columnIndex,
+                        animationEnabled = false,
+                        transitionEnabled = false,
+                        scrollLiteModeEnabled = true,
+                        isDataSaverActive = false,
+                        preferLowQualityCover = false,
+                        glassEnabled = false,
+                        blurEnabled = false,
+                        compactStatsOnCover = true,
+                        showCoverGlassBadges = false,
+                        showInfoGlassBadges = false,
+                        showUpBadge = true,
+                        showDurationBadge = true,
+                        showPublishTime = false,
+                        modifier = Modifier.weight(1f),
+                        onClick = { _, _ -> onVideoClick(video) }
+                    )
+                }
+                if (rowVideos.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+private fun relatedVideoToVideoItem(video: RelatedVideo): VideoItem {
+    return VideoItem(
+        id = if (video.aid > 0L) video.aid else video.cid,
+        bvid = video.bvid,
+        aid = video.aid,
+        cid = video.cid,
+        title = video.title,
+        pic = video.pic,
+        owner = video.owner,
+        stat = video.stat,
+        duration = video.duration
+    )
+}
+private fun bgmRecommendVideoToVideoItem(video: BgmRecommendVideo): VideoItem {
+    return VideoItem(
+        id = if (video.aid > 0L) video.aid else video.cid,
+        bvid = video.bvid,
+        aid = video.aid,
+        cid = video.cid,
+        title = video.title,
+        pic = video.cover,
+        owner = com.android.purebilibili.data.model.response.Owner(
+            mid = video.mid,
+            name = video.upNickName
+        ),
+        stat = com.android.purebilibili.data.model.response.Stat(
+            view = video.play,
+            danmaku = video.danmu
+        ),
+        duration = video.duration
+    )
+}
+
 
 @Composable
 fun BgmInfoListRow(

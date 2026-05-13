@@ -298,6 +298,7 @@ fun TabletCinemaLayout(
                         onPageSelect = { pageIndex -> viewModel.switchPage(pageIndex) },
                         onOpenBilibiliLink = onOpenBilibiliLink,
                         onBgmClick = onBgmClick,
+                        onRelatedVideoClick = onRelatedVideoClick,
                         onRetryAiSummary = viewModel::retryAiSummary
                     )
                 } else {
@@ -504,7 +505,7 @@ private fun CinemaMetaPanel(
     onPageSelect: (Int) -> Unit,
     onOpenBilibiliLink: ((String) -> Unit)?,
     onBgmClick: (BgmInfo) -> Unit = {},
-    onOpenBilibiliLink: ((String) -> Unit)?,
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> },
     onRetryAiSummary: () -> Unit
 ) {
     val context = LocalContext.current
@@ -645,6 +646,7 @@ private fun CinemaMetaPanel(
                             success = success,
                             onOpenBilibiliLink = onOpenBilibiliLink,
                             onBgmClick = onBgmClick,
+                            onRelatedVideoClick = onRelatedVideoClick,
                             onRetryAiSummary = onRetryAiSummary
                         )
                     }
@@ -736,6 +738,7 @@ private fun CinemaVideoIntroSection(
     success: PlayerUiState.Success,
     onBgmClick: (BgmInfo) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)? = null,
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> },
     onRetryAiSummary: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -766,7 +769,9 @@ private fun CinemaVideoIntroSection(
                 bgmInfo = success.bgmInfo,
                 bgmInfoList = success.bgmInfoList,
                 onDescriptionUrlClick = onOpenBilibiliLink,
-                onBgmClick = onBgmClick
+                relatedVideos = success.related,
+                onBgmClick = onBgmClick,
+                onRelatedVideoClick = onRelatedVideoClick
             )
         }
         if (shouldShowAiSummaryEntry(

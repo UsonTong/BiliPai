@@ -516,6 +516,22 @@ interface BilibiliApi {
         @Query("cid") cid: Long
     ): com.android.purebilibili.data.model.response.BgmMultipleMusicResponse
 
+    @GET("x/copyright-music-publicity/bgm/detail")
+    suspend fun getBgmDetail(
+        @Query("music_id") musicId: String,
+        @Query("aid") aid: Long,
+        @Query("cid") cid: Long
+    ): com.android.purebilibili.data.model.response.BgmDetailResponse
+
+    @GET("x/copyright-music-publicity/bgm/recommend_list")
+    suspend fun getBgmRecommendList(
+        @Query("music_id") musicId: String,
+        @Query("aid") aid: Long,
+        @Query("cid") cid: Long,
+        @Query("pn") pn: Int = 1,
+        @Query("ps") ps: Int = 6
+    ): com.android.purebilibili.data.model.response.BgmRecommendListResponse
+
     @GET("x/stein/edgeinfo_v2")
     suspend fun getInteractEdgeInfo(
         @Query("bvid") bvid: String,

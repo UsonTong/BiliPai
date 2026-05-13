@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
 import com.android.purebilibili.core.util.ShareUtils
+import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
@@ -96,6 +97,7 @@ fun TabletVideoLayout(
     onAudioQualityChange: (Int) -> Unit = {},
     transitionEnabled: Boolean = false, //  卡片过渡动画开关
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
+    onBgmClick: (BgmInfo) -> Unit = {},
     showUpBadge: Boolean = true,
     onSearchKeywordClick: (String) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)? = null,
@@ -249,9 +251,12 @@ fun TabletVideoLayout(
                         downloadProgress = downloadProgress,
                         isInWatchLater = success.isInWatchLater,
                         videoTags = success.videoTags,
-                        relatedVideos = success.related,
                         ownerFollowerCount = success.ownerFollowerCount,
                         ownerVideoCount = success.ownerVideoCount,
+                        bgmInfo = success.bgmInfo,
+                        bgmInfoList = success.bgmInfoList,
+                        onBgmClick = onBgmClick,
+                        relatedVideos = success.related,
                         onFollowClick = { viewModel.toggleFollow() },
                         onFavoriteClick = { viewModel.toggleFavorite() },
                         onLikeClick = { viewModel.toggleLike() },
@@ -763,6 +768,9 @@ private fun ScrollableVideoInfoSection(
     videoTags: List<com.android.purebilibili.data.model.response.VideoTag>,
     ownerFollowerCount: Int?,
     ownerVideoCount: Int?,
+    bgmInfo: BgmInfo? = null,
+    bgmInfoList: List<BgmInfo> = emptyList(),
+    onBgmClick: (BgmInfo) -> Unit = {},
     onFollowClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onLikeClick: () -> Unit,
@@ -814,6 +822,11 @@ private fun ScrollableVideoInfoSection(
             VideoTitleWithDesc(
                 info = info,
                 videoTags = videoTags,
+                bgmInfo = bgmInfo,
+                bgmInfoList = bgmInfoList,
+                relatedVideos = relatedVideos,
+                onBgmClick = onBgmClick,
+                onRelatedVideoClick = onRelatedVideoClick
                 onDescriptionUrlClick = onOpenBilibiliLink
             )
             Spacer(modifier = Modifier.height(12.dp))

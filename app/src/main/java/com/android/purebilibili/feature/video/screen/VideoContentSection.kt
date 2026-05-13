@@ -633,11 +633,13 @@ private fun VideoIntroTab(
                 onRetryAiSummary = onRetryAiSummary,
                 bgmInfo = bgmInfo,
                 bgmInfoList = bgmInfoList,
+                relatedVideos = relatedVideos,
                 onlineCount = onlineCount,
                 showOnlineCount = showOnlineCount,
                 onTimestampClick = onTimestampClick,
                 onBgmClick = onBgmClick,
                 onDescriptionUrlClick = onDescriptionUrlClick,
+                onRelatedVideoClick = onRelatedVideoClick,
                 showInteractionActions = showInteractionActions,
                 animateVideoDetailLayout = animateVideoDetailLayout
             )
@@ -946,9 +948,11 @@ private fun VideoHeaderContent(
     onRetryAiSummary: () -> Unit = {},
     bgmInfo: BgmInfo? = null,
     bgmInfoList: List<BgmInfo> = emptyList(),
+    relatedVideos: List<RelatedVideo> = emptyList(),
     onTimestampClick: ((Long) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {},
     onDescriptionUrlClick: ((String) -> Unit)? = null,
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> },
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     showInteractionActions: Boolean = true,
@@ -986,10 +990,12 @@ private fun VideoHeaderContent(
             transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
             bgmInfo = bgmInfo,
             bgmInfoList = bgmInfoList,
+            relatedVideos = relatedVideos,
             onlineCount = onlineCount,
             showOnlineCount = showOnlineCount,
             onBgmClick = onBgmClick,
             onDescriptionUrlClick = onDescriptionUrlClick,
+            onRelatedVideoClick = onRelatedVideoClick,
             animateLayout = animateVideoDetailLayout
         )
 
