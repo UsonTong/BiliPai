@@ -5,6 +5,8 @@ import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.policy.shouldHoldPlaybackTransitionPosition
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.section.resolveHorizontalSeekDeltaMs
+import com.android.purebilibili.feature.video.ui.section.installNativeVideoSurfaceTapRestoreFallbackOnViewTree
+import com.android.purebilibili.feature.video.ui.section.installPlayerSurfaceTapRestoreFallback
 import com.android.purebilibili.feature.video.ui.section.normalizeAppPlaybackVolume
 import com.android.purebilibili.feature.video.ui.section.rebindPlayerSurfaceIfNeeded
 import com.android.purebilibili.feature.video.ui.section.shouldCommitGestureSeek
@@ -822,6 +824,13 @@ fun FullscreenPlayerOverlay(
                             keepScreenOn = keepFullscreenPlaybackAwake
                             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                             resizeMode = aspectRatio.playerResizeMode
+                            installPlayerSurfaceTapRestoreFallback(
+                                showControlsProvider = { showControls },
+                                onShowControls = {
+                                    showControls = true
+                                    lastInteractionTime = System.currentTimeMillis()
+                                }
+                            )
                             playerViewRef = this
                         }
                     },
@@ -829,6 +838,13 @@ fun FullscreenPlayerOverlay(
                         playerView.player = exoPlayer
                         playerView.keepScreenOn = keepFullscreenPlaybackAwake
                         playerView.resizeMode = aspectRatio.playerResizeMode
+                        playerView.installPlayerSurfaceTapRestoreFallback(
+                            showControlsProvider = { showControls },
+                            onShowControls = {
+                                showControls = true
+                                lastInteractionTime = System.currentTimeMillis()
+                            }
+                        )
                         playerViewRef = playerView
                     },
                     modifier = viewportModifier
@@ -840,10 +856,24 @@ fun FullscreenPlayerOverlay(
                             DanmakuView(ctx).apply {
                                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                                 danmakuManager.attachView(this)
+                                installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+                                    showControlsProvider = { showControls },
+                                    onShowControls = {
+                                        showControls = true
+                                        lastInteractionTime = System.currentTimeMillis()
+                                    }
+                                )
                                 com.android.purebilibili.core.util.Logger.d("FullscreenDanmaku", " DanmakuView (RenderEngine) created for fullscreen")
                             }
                         },
                         update = { view ->
+                            view.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+                                showControlsProvider = { showControls },
+                                onShowControls = {
+                                    showControls = true
+                                    lastInteractionTime = System.currentTimeMillis()
+                                }
+                            )
                             if (view.width > 0 && view.height > 0) {
                                 val sizeTag = "${view.width}x${view.height}"
                                 if (view.tag != sizeTag) {

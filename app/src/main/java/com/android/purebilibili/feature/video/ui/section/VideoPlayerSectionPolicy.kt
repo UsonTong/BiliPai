@@ -3,6 +3,8 @@ package com.android.purebilibili.feature.video.ui.section
 import android.view.SurfaceView
 import android.view.TextureView
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackParameters
@@ -303,6 +305,46 @@ internal fun shouldRestoreControlsFromNativeVideoSurfaceTap(
     actionUp: Int = MotionEvent.ACTION_UP
 ): Boolean {
     return !showControls && actionMasked == actionUp
+}
+
+internal fun View.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+    showControlsProvider: () -> Boolean,
+    onShowControls: () -> Unit
+) {
+    setOnTouchListener { _, event ->
+        if (
+            shouldRestoreControlsFromNativeVideoSurfaceTap(
+                showControls = showControlsProvider(),
+                actionMasked = event.actionMasked
+            )
+        ) {
+            onShowControls()
+        }
+        false
+    }
+
+    if (this is ViewGroup) {
+        for (index in 0 until childCount) {
+            getChildAt(index).installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+                showControlsProvider = showControlsProvider,
+                onShowControls = onShowControls
+            )
+        }
+    }
+}
+
+internal fun PlayerView.installPlayerSurfaceTapRestoreFallback(
+    showControlsProvider: () -> Boolean,
+    onShowControls: () -> Unit
+) {
+    installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+        showControlsProvider = showControlsProvider,
+        onShowControls = onShowControls
+    )
+    videoSurfaceView?.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
+        showControlsProvider = showControlsProvider,
+        onShowControls = onShowControls
+    )
 }
 
 internal fun resolveVerticalGestureMode(

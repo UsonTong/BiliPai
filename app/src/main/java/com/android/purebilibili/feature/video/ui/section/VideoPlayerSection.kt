@@ -298,23 +298,6 @@ private fun HiddenControlsTapRestoreLayer(
     )
 }
 
-private fun View.installNativeVideoSurfaceTapRestoreFallback(
-    showControlsProvider: () -> Boolean,
-    onShowControls: () -> Unit
-) {
-    setOnTouchListener { _, event ->
-        if (
-            shouldRestoreControlsFromNativeVideoSurfaceTap(
-                showControls = showControlsProvider(),
-                actionMasked = event.actionMasked
-            )
-        ) {
-            onShowControls()
-        }
-        false
-    }
-}
-
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun VideoPlayerSection(
@@ -2174,7 +2157,7 @@ fun VideoPlayerSection(
                             setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                             useController = false
-                            installNativeVideoSurfaceTapRestoreFallback(
+                            installPlayerSurfaceTapRestoreFallback(
                                 showControlsProvider = { showControls },
                                 onShowControls = { showControls = true }
                             )
@@ -2194,7 +2177,7 @@ fun VideoPlayerSection(
                     update = { playerView ->
                         playerViewRef = playerView
                         playerView.player = if (shouldBindInlinePlayerView) playerState.player else null
-                        playerView.installNativeVideoSurfaceTapRestoreFallback(
+                        playerView.installPlayerSurfaceTapRestoreFallback(
                             showControlsProvider = { showControls },
                             onShowControls = { showControls = true }
                         )
@@ -2630,7 +2613,7 @@ fun VideoPlayerSection(
                         DanmakuView(ctx).apply {
                             setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             danmakuManager.attachView(this)
-                            installNativeVideoSurfaceTapRestoreFallback(
+                            installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
                                 showControlsProvider = { showControls },
                                 onShowControls = { showControls = true }
                             )
@@ -2640,7 +2623,7 @@ fun VideoPlayerSection(
                     update = { view ->
                         //  [关键] 横竖屏切换后视图尺寸变化时，重新 attachView 确保弹幕正确显示
                         android.util.Log.d("VideoPlayerSection", " DanmakuView update: size=${view.width}x${view.height}, isFullscreen=$isFullscreen")
-                        view.installNativeVideoSurfaceTapRestoreFallback(
+                        view.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
                             showControlsProvider = { showControls },
                             onShowControls = { showControls = true }
                         )

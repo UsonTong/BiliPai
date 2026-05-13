@@ -1205,9 +1205,12 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun inlinePlayer_installsNativeTapFallbackOnPlayerAndDanmakuSurfaces() {
+    fun inlinePlayer_installsNativeTapFallbackOnPlayerSurfaceAndDanmakuViewTree() {
         val source = File(
             "src/main/java/com/android/purebilibili/feature/video/ui/section/VideoPlayerSection.kt"
+        ).readText()
+        val policySource = File(
+            "src/main/java/com/android/purebilibili/feature/video/ui/section/VideoPlayerSectionPolicy.kt"
         ).readText()
 
         val playerViewIndex = source.indexOf("basePlayerView.apply")
@@ -1217,13 +1220,17 @@ class VideoPlayerSectionPolicyTest {
         assertTrue(danmakuViewIndex > playerViewIndex)
         assertTrue(
             source.substring(playerViewIndex, (playerViewIndex + 900).coerceAtMost(source.length))
-                .contains("installNativeVideoSurfaceTapRestoreFallback("),
-            "PlayerView must restore hidden controls because release AndroidView surfaces can receive taps before Compose."
+                .contains("installPlayerSurfaceTapRestoreFallback("),
+            "PlayerView must install the fallback on its videoSurfaceView because release surface taps can bypass Compose."
         )
         assertTrue(
             source.substring(danmakuViewIndex, (danmakuViewIndex + 700).coerceAtMost(source.length))
-                .contains("installNativeVideoSurfaceTapRestoreFallback("),
+                .contains("installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
             "DanmakuView must restore hidden controls because it covers the player surface and can receive taps before Compose."
+        )
+        assertTrue(
+            policySource.contains("videoSurfaceView?.installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
+            "The PlayerView fallback must reach the actual videoSurfaceView child, not only the PlayerView wrapper."
         )
     }
 

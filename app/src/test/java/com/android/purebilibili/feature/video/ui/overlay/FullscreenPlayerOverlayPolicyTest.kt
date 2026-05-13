@@ -165,6 +165,28 @@ class FullscreenPlayerOverlayPolicyTest {
     }
 
     @Test
+    fun fullscreenPlayer_installsNativeTapFallbackOnPlayerSurfaceAndDanmakuViewTree() {
+        val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
+            .readText()
+
+        val playerViewIndex = source.indexOf("PlayerView(ctx).apply")
+        val danmakuViewIndex = source.indexOf("DanmakuView(ctx).apply")
+
+        assertTrue(playerViewIndex >= 0)
+        assertTrue(danmakuViewIndex > playerViewIndex)
+        assertTrue(
+            source.substring(playerViewIndex, (playerViewIndex + 900).coerceAtMost(source.length))
+                .contains("installPlayerSurfaceTapRestoreFallback("),
+            "Fullscreen PlayerView must restore hidden controls from the actual native video surface."
+        )
+        assertTrue(
+            source.substring(danmakuViewIndex, (danmakuViewIndex + 900).coerceAtMost(source.length))
+                .contains("installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
+            "Fullscreen DanmakuView must restore hidden controls because it overlays the video surface."
+        )
+    }
+
+    @Test
     fun fullscreenDragGestures_protectVisibleBottomControls() {
         assertFalse(
             shouldStartFullscreenDragGesture(
