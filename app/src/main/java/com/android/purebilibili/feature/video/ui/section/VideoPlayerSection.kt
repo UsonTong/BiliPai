@@ -54,7 +54,6 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -274,28 +273,6 @@ private fun GesturePercentValue(
             modifier = Modifier.padding(start = 2.dp)
         )
     }
-}
-
-@Composable
-private fun HiddenControlsTapRestoreLayer(
-    visible: Boolean,
-    onShowControls: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (!visible) return
-
-    Box(
-        modifier = modifier.pointerInput(onShowControls) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                val up = waitForUpOrCancellation()
-                if (up != null) {
-                    up.consume()
-                    onShowControls()
-                }
-            }
-        }
-    )
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -1559,7 +1536,7 @@ fun VideoPlayerSection(
                         ) {
                             return@detectTapGestures
                         }
-                        showControls = false
+                        showControls = !showControls
                     },
                     onDoubleTap = { offset ->
                         // 🔒 锁定时禁用双击
@@ -2157,10 +2134,6 @@ fun VideoPlayerSection(
                             setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                             useController = false
-                            installPlayerSurfaceTapRestoreFallback(
-                                showControlsProvider = { showControls },
-                                onShowControls = { showControls = true }
-                            )
                             keepScreenOn = keepVideoPlaybackAwake
                             resizeMode = viewportAspectRatio.playerResizeMode
                             visibility = if (shouldShowInlinePlayerView(
@@ -2177,10 +2150,6 @@ fun VideoPlayerSection(
                     update = { playerView ->
                         playerViewRef = playerView
                         playerView.player = if (shouldBindInlinePlayerView) playerState.player else null
-                        playerView.installPlayerSurfaceTapRestoreFallback(
-                            showControlsProvider = { showControls },
-                            onShowControls = { showControls = true }
-                        )
                         playerView.setKeepContentOnPlayerReset(
                             shouldKeepInlinePlayerContentOnReset(
                                 isPortraitFullscreen = isPortraitFullscreen,
@@ -2613,20 +2582,12 @@ fun VideoPlayerSection(
                         DanmakuView(ctx).apply {
                             setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             danmakuManager.attachView(this)
-                            installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
-                                showControlsProvider = { showControls },
-                                onShowControls = { showControls = true }
-                            )
                             android.util.Log.d("VideoPlayerSection", " DanmakuView (RenderEngine) created, isFullscreen=$isFullscreen")
                         }
                     },
                     update = { view ->
                         //  [关键] 横竖屏切换后视图尺寸变化时，重新 attachView 确保弹幕正确显示
                         android.util.Log.d("VideoPlayerSection", " DanmakuView update: size=${view.width}x${view.height}, isFullscreen=$isFullscreen")
-                        view.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
-                            showControlsProvider = { showControls },
-                            onShowControls = { showControls = true }
-                        )
                         // 只有当视图有有效尺寸时才 re-attach
                         if (view.width > 0 && view.height > 0) {
                             val sizeTag = "${view.width}x${view.height}"
@@ -2646,14 +2607,6 @@ fun VideoPlayerSection(
             }
         }
 
-        HiddenControlsTapRestoreLayer(
-            visible = !showControls && !isInPipMode,
-            onShowControls = { showControls = true },
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(60f)
-        )
-        
         // 3. 高级弹幕层 (Mode 7) - 覆盖在标准弹幕上方
         val advancedDanmakuList by danmakuManager.advancedDanmakuFlow.collectAsStateWithLifecycle()
         

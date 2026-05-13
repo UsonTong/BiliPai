@@ -5,8 +5,6 @@ import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.policy.shouldHoldPlaybackTransitionPosition
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.section.resolveHorizontalSeekDeltaMs
-import com.android.purebilibili.feature.video.ui.section.installNativeVideoSurfaceTapRestoreFallbackOnViewTree
-import com.android.purebilibili.feature.video.ui.section.installPlayerSurfaceTapRestoreFallback
 import com.android.purebilibili.feature.video.ui.section.normalizeAppPlaybackVolume
 import com.android.purebilibili.feature.video.ui.section.rebindPlayerSurfaceIfNeeded
 import com.android.purebilibili.feature.video.ui.section.shouldCommitGestureSeek
@@ -28,11 +26,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -152,28 +147,6 @@ internal fun shouldStartFullscreenDragGesture(
     val topControlsBottom = visibleTopControlsHeightPx.coerceAtLeast(statusBarExclusionZonePx)
     val bottomControlsTop = (screenHeight - visibleBottomControlsHeightPx).coerceAtLeast(0f)
     return startY >= topControlsBottom && startY <= bottomControlsTop
-}
-
-@Composable
-private fun FullscreenHiddenControlsTapRestoreLayer(
-    visible: Boolean,
-    onShowControls: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (!visible) return
-
-    Box(
-        modifier = modifier.pointerInput(onShowControls) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                val up = waitForUpOrCancellation()
-                if (up != null) {
-                    up.consume()
-                    onShowControls()
-                }
-            }
-        }
-    )
 }
 
 /**
@@ -537,7 +510,8 @@ fun FullscreenPlayerOverlay(
                         if (!shouldHandleRootFullscreenTap(showControls, gesturesEnabled)) {
                             return@detectTapGestures
                         }
-                        showControls = false
+                        showControls = !showControls
+                        lastInteractionTime = System.currentTimeMillis()
                     },
                     onDoubleTap = { offset ->
                         // 分区双击策略可由设置和当前播放意图控制。
@@ -824,13 +798,6 @@ fun FullscreenPlayerOverlay(
                             keepScreenOn = keepFullscreenPlaybackAwake
                             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                             resizeMode = aspectRatio.playerResizeMode
-                            installPlayerSurfaceTapRestoreFallback(
-                                showControlsProvider = { showControls },
-                                onShowControls = {
-                                    showControls = true
-                                    lastInteractionTime = System.currentTimeMillis()
-                                }
-                            )
                             playerViewRef = this
                         }
                     },
@@ -838,13 +805,6 @@ fun FullscreenPlayerOverlay(
                         playerView.player = exoPlayer
                         playerView.keepScreenOn = keepFullscreenPlaybackAwake
                         playerView.resizeMode = aspectRatio.playerResizeMode
-                        playerView.installPlayerSurfaceTapRestoreFallback(
-                            showControlsProvider = { showControls },
-                            onShowControls = {
-                                showControls = true
-                                lastInteractionTime = System.currentTimeMillis()
-                            }
-                        )
                         playerViewRef = playerView
                     },
                     modifier = viewportModifier
@@ -856,24 +816,10 @@ fun FullscreenPlayerOverlay(
                             DanmakuView(ctx).apply {
                                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                                 danmakuManager.attachView(this)
-                                installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
-                                    showControlsProvider = { showControls },
-                                    onShowControls = {
-                                        showControls = true
-                                        lastInteractionTime = System.currentTimeMillis()
-                                    }
-                                )
                                 com.android.purebilibili.core.util.Logger.d("FullscreenDanmaku", " DanmakuView (RenderEngine) created for fullscreen")
                             }
                         },
                         update = { view ->
-                            view.installNativeVideoSurfaceTapRestoreFallbackOnViewTree(
-                                showControlsProvider = { showControls },
-                                onShowControls = {
-                                    showControls = true
-                                    lastInteractionTime = System.currentTimeMillis()
-                                }
-                            )
                             if (view.width > 0 && view.height > 0) {
                                 val sizeTag = "${view.width}x${view.height}"
                                 if (view.tag != sizeTag) {
@@ -889,17 +835,6 @@ fun FullscreenPlayerOverlay(
             }
         }
 
-        FullscreenHiddenControlsTapRestoreLayer(
-            visible = !showControls && gestureMode == FullscreenGestureMode.None,
-            onShowControls = {
-                showControls = true
-                lastInteractionTime = System.currentTimeMillis()
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(60f)
-        )
-        
         // 手势指示器
         if (gestureMode != FullscreenGestureMode.None) {
             GestureIndicator(

@@ -135,54 +135,33 @@ class FullscreenPlayerOverlayPolicyTest {
     }
 
     @Test
-    fun fullscreenHiddenControls_keepTapRestoreLayerAbovePlayerView() {
+    fun fullscreenRootTap_ownsVisibleAndHiddenControlsToggle() {
         val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
             .readText()
 
         val playerViewIndex = source.indexOf("AndroidView(")
-        val restoreLayerIndex = source.indexOf("FullscreenHiddenControlsTapRestoreLayer(", startIndex = playerViewIndex)
         val controlsIndex = source.indexOf("AnimatedVisibility(", startIndex = playerViewIndex)
 
         assertTrue(playerViewIndex >= 0)
+        assertTrue(controlsIndex > playerViewIndex)
+        val rootTapIndex = source.indexOf("detectTapGestures(")
         assertTrue(
-            restoreLayerIndex > playerViewIndex,
-            "Fullscreen overlay also needs a Compose tap restore layer above PlayerView/DanmakuView."
+            rootTapIndex >= 0,
+            "Fullscreen root must own tap handling because long-press/drag proves the root gesture chain receives touches."
         )
         assertTrue(
-            restoreLayerIndex < controlsIndex,
-            "The fullscreen tap restore layer must stay below the visible controls."
+            source.substring(rootTapIndex, (rootTapIndex + 520).coerceAtMost(source.length))
+                .contains("showControls = !showControls"),
+            "Fullscreen root tap must toggle controls both ways."
         )
-        val restoreLayerSource = source.substring(restoreLayerIndex, (restoreLayerIndex + 480).coerceAtMost(source.length))
-        assertTrue(
-            restoreLayerSource.contains(".zIndex("),
-            "The fullscreen tap restore layer needs explicit zIndex because release/native AndroidView ordering can differ from debug."
+        assertFalse(
+            source.contains("FullscreenHiddenControlsTapRestoreLayer("),
+            "Fullscreen hidden controls should not depend on a second restore layer that can race with root tap handling."
         )
         val controlsSource = source.substring(controlsIndex, (controlsIndex + 360).coerceAtMost(source.length))
         assertTrue(
             controlsSource.contains(".zIndex("),
             "Fullscreen controls also need explicit zIndex; otherwise release can toggle state without drawing UI above AndroidView."
-        )
-    }
-
-    @Test
-    fun fullscreenPlayer_installsNativeTapFallbackOnPlayerSurfaceAndDanmakuViewTree() {
-        val source = File("src/main/java/com/android/purebilibili/feature/video/ui/overlay/FullscreenPlayerOverlay.kt")
-            .readText()
-
-        val playerViewIndex = source.indexOf("PlayerView(ctx).apply")
-        val danmakuViewIndex = source.indexOf("DanmakuView(ctx).apply")
-
-        assertTrue(playerViewIndex >= 0)
-        assertTrue(danmakuViewIndex > playerViewIndex)
-        assertTrue(
-            source.substring(playerViewIndex, (playerViewIndex + 900).coerceAtMost(source.length))
-                .contains("installPlayerSurfaceTapRestoreFallback("),
-            "Fullscreen PlayerView must restore hidden controls from the actual native video surface."
-        )
-        assertTrue(
-            source.substring(danmakuViewIndex, (danmakuViewIndex + 900).coerceAtMost(source.length))
-                .contains("installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
-            "Fullscreen DanmakuView must restore hidden controls because it overlays the video surface."
         )
     }
 

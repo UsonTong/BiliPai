@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.video.ui.section
 
-import android.view.MotionEvent
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
 import java.io.File
@@ -1014,27 +1013,21 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun hiddenControls_keepDedicatedTapRestoreLayerAbovePlayerView() {
+    fun rootVideoTap_ownsVisibleAndHiddenControlsToggle() {
         val source = loadVideoPlayerSectionSource()
 
-        val playerViewIndex = source.indexOf("AndroidView(")
-        val restoreLayerIndex = source.indexOf("HiddenControlsTapRestoreLayer(", startIndex = playerViewIndex)
+        val rootTapIndex = source.indexOf("detectTapGestures(")
+        assertTrue(rootTapIndex >= 0)
+        val rootTapSource = source.substring(rootTapIndex, (rootTapIndex + 700).coerceAtMost(source.length))
+        assertTrue(
+            rootTapSource.contains("showControls = !showControls"),
+            "Root video tap must toggle controls both ways; hidden-state tap restore layers were not reliable in release."
+        )
+        assertFalse(
+            source.contains("HiddenControlsTapRestoreLayer("),
+            "Hidden controls should not depend on a second tap layer that can race with the root tap detector."
+        )
         val overlayIndex = source.lastIndexOf("RenderVideoPlayerOverlay()")
-
-        assertTrue(playerViewIndex >= 0)
-        assertTrue(
-            restoreLayerIndex > playerViewIndex,
-            "Hidden controls need a Compose tap restore layer above PlayerView because AndroidView can consume surface taps."
-        )
-        assertTrue(
-            restoreLayerIndex < overlayIndex,
-            "The tap restore layer must stay below the real controls so it cannot block danmaku/settings buttons."
-        )
-        val restoreLayerSource = source.substring(restoreLayerIndex, (restoreLayerIndex + 420).coerceAtMost(source.length))
-        assertTrue(
-            restoreLayerSource.contains(".zIndex("),
-            "The tap restore layer needs explicit zIndex because release/native AndroidView ordering can differ from debug."
-        )
         val overlayCallSource = source.substring((overlayIndex - 160).coerceAtLeast(0), overlayIndex)
         assertTrue(
             overlayCallSource.contains(".zIndex("),
@@ -1177,61 +1170,9 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun hiddenControls_ignoreRootVideoTapBecauseRestoreLayerOwnsIt() {
-        assertFalse(shouldHandleRootVideoTap(showControls = false))
+    fun rootVideoTap_handlesHiddenAndVisibleControls() {
+        assertTrue(shouldHandleRootVideoTap(showControls = false))
         assertTrue(shouldHandleRootVideoTap(showControls = true))
-    }
-
-    @Test
-    fun hiddenControls_nativeVideoSurfaceActionUpRestoresControls() {
-        assertTrue(
-            shouldRestoreControlsFromNativeVideoSurfaceTap(
-                showControls = false,
-                actionMasked = MotionEvent.ACTION_UP
-            )
-        )
-        assertFalse(
-            shouldRestoreControlsFromNativeVideoSurfaceTap(
-                showControls = true,
-                actionMasked = MotionEvent.ACTION_UP
-            )
-        )
-        assertFalse(
-            shouldRestoreControlsFromNativeVideoSurfaceTap(
-                showControls = false,
-                actionMasked = MotionEvent.ACTION_DOWN
-            )
-        )
-    }
-
-    @Test
-    fun inlinePlayer_installsNativeTapFallbackOnPlayerSurfaceAndDanmakuViewTree() {
-        val source = File(
-            "src/main/java/com/android/purebilibili/feature/video/ui/section/VideoPlayerSection.kt"
-        ).readText()
-        val policySource = File(
-            "src/main/java/com/android/purebilibili/feature/video/ui/section/VideoPlayerSectionPolicy.kt"
-        ).readText()
-
-        val playerViewIndex = source.indexOf("basePlayerView.apply")
-        val danmakuViewIndex = source.indexOf("DanmakuView(ctx).apply")
-
-        assertTrue(playerViewIndex >= 0)
-        assertTrue(danmakuViewIndex > playerViewIndex)
-        assertTrue(
-            source.substring(playerViewIndex, (playerViewIndex + 900).coerceAtMost(source.length))
-                .contains("installPlayerSurfaceTapRestoreFallback("),
-            "PlayerView must install the fallback on its videoSurfaceView because release surface taps can bypass Compose."
-        )
-        assertTrue(
-            source.substring(danmakuViewIndex, (danmakuViewIndex + 700).coerceAtMost(source.length))
-                .contains("installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
-            "DanmakuView must restore hidden controls because it covers the player surface and can receive taps before Compose."
-        )
-        assertTrue(
-            policySource.contains("videoSurfaceView?.installNativeVideoSurfaceTapRestoreFallbackOnViewTree("),
-            "The PlayerView fallback must reach the actual videoSurfaceView child, not only the PlayerView wrapper."
-        )
     }
 
     @Test

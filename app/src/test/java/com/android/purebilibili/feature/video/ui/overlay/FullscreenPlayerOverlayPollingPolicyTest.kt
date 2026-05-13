@@ -122,8 +122,8 @@ class FullscreenPlayerOverlayPollingPolicyTest {
     }
 
     @Test
-    fun hiddenControls_ignoreRootFullscreenTapBecauseRestoreLayerOwnsIt() {
-        assertFalse(
+    fun rootFullscreenTap_handlesHiddenAndVisibleControlsWhenGesturesEnabled() {
+        assertTrue(
             shouldHandleRootFullscreenTap(
                 showControls = false,
                 gesturesEnabled = true

@@ -26,9 +26,10 @@ internal fun shouldAutoHideFullscreenControls(
         isPlaying
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun shouldHandleRootFullscreenTap(
     showControls: Boolean,
     gesturesEnabled: Boolean
 ): Boolean {
-    return showControls && gesturesEnabled
+    return gesturesEnabled
 }
