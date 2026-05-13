@@ -120,4 +120,26 @@ class FullscreenPlayerOverlayPollingPolicyTest {
             )
         )
     }
+
+    @Test
+    fun hiddenControls_ignoreRootFullscreenTapBecauseRestoreLayerOwnsIt() {
+        assertFalse(
+            shouldHandleRootFullscreenTap(
+                showControls = false,
+                gesturesEnabled = true
+            )
+        )
+        assertTrue(
+            shouldHandleRootFullscreenTap(
+                showControls = true,
+                gesturesEnabled = true
+            )
+        )
+        assertFalse(
+            shouldHandleRootFullscreenTap(
+                showControls = true,
+                gesturesEnabled = false
+            )
+        )
+    }
 }

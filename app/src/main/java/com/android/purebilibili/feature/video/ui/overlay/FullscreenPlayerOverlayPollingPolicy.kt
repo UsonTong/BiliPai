@@ -25,3 +25,10 @@ internal fun shouldAutoHideFullscreenControls(
         gestureMode == FullscreenGestureMode.None &&
         isPlaying
 }
+
+internal fun shouldHandleRootFullscreenTap(
+    showControls: Boolean,
+    gesturesEnabled: Boolean
+): Boolean {
+    return showControls && gesturesEnabled
+}

@@ -523,7 +523,8 @@ fun FullscreenPlayerOverlay(
                 gesturesEnabled,
                 doubleTapSeekEnabled,
                 seekForwardSeconds,
-                seekBackwardSeconds
+                seekBackwardSeconds,
+                showControls
             ) {
                 if (!gesturesEnabled) return@pointerInput
                 
@@ -531,8 +532,10 @@ fun FullscreenPlayerOverlay(
                 
                 detectTapGestures(
                     onTap = {
-                        showControls = !showControls
-                        if (showControls) lastInteractionTime = System.currentTimeMillis()
+                        if (!shouldHandleRootFullscreenTap(showControls, gesturesEnabled)) {
+                            return@detectTapGestures
+                        }
+                        showControls = false
                     },
                     onDoubleTap = { offset ->
                         // 分区双击策略可由设置和当前播放意图控制。

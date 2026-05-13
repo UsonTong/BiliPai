@@ -1176,6 +1176,12 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
+    fun hiddenControls_ignoreRootVideoTapBecauseRestoreLayerOwnsIt() {
+        assertFalse(shouldHandleRootVideoTap(showControls = false))
+        assertTrue(shouldHandleRootVideoTap(showControls = true))
+    }
+
+    @Test
     fun longPressSpeedGesture_disabledWhenScreenLockedOrVideoScaled() {
         assertFalse(
             shouldEnableLongPressSpeedGesture(

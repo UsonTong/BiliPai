@@ -292,6 +292,10 @@ internal fun shouldToggleControlsForVideoTap(
     return elapsedSinceLongPressEndMs > suppressionWindowMs
 }
 
+internal fun shouldHandleRootVideoTap(showControls: Boolean): Boolean {
+    return showControls
+}
+
 internal fun resolveVerticalGestureMode(
     isFullscreen: Boolean,
     isSwipeUp: Boolean,

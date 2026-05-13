@@ -1544,12 +1544,14 @@ fun VideoPlayerSection(
                 seekForwardSeconds,
                 seekBackwardSeconds,
                 doubleTapSeekEnabled,
-                isScreenLocked
+                isScreenLocked,
+                showControls
             ) {
                 detectTapGestures(
                     onTap = { 
                         // 🔒 锁定时点击只显示解锁按钮
                         if (
+                            !shouldHandleRootVideoTap(showControls) ||
                             !shouldToggleControlsForVideoTap(
                                 longPressSpeedEndedAtMs = longPressSpeedEndedAtMs,
                                 nowMs = android.os.SystemClock.elapsedRealtime()
@@ -1557,11 +1559,7 @@ fun VideoPlayerSection(
                         ) {
                             return@detectTapGestures
                         }
-                        if (isScreenLocked) {
-                            showControls = !showControls  // 显示/隐藏解锁按钮
-                        } else {
-                            showControls = !showControls
-                        }
+                        showControls = false
                     },
                     onDoubleTap = { offset ->
                         // 🔒 锁定时禁用双击
