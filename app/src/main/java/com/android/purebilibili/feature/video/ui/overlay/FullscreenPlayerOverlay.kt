@@ -5,6 +5,7 @@ import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.playback.policy.shouldHoldPlaybackTransitionPosition
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.ui.section.resolveHorizontalSeekDeltaMs
+import com.android.purebilibili.feature.video.ui.section.normalizeAppPlaybackVolume
 import com.android.purebilibili.feature.video.ui.section.rebindPlayerSurfaceIfNeeded
 import com.android.purebilibili.feature.video.ui.section.shouldCommitGestureSeek
 import com.android.purebilibili.feature.video.ui.section.shouldKeepVideoPlaybackAwake
@@ -16,7 +17,6 @@ import com.bytedance.danmaku.render.engine.DanmakuView
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.media.AudioManager
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -168,8 +168,12 @@ fun FullscreenPlayerOverlay(
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
     
-    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+    val appPlaybackVolume by SettingsManager
+        .getAppPlaybackVolume(context)
+        .collectAsState(initial = 1.0f)
+    LaunchedEffect(player, appPlaybackVolume) {
+        player?.volume = normalizeAppPlaybackVolume(appPlaybackVolume)
+    }
     
     var showControls by remember { mutableStateOf(true) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -581,7 +585,7 @@ fun FullscreenPlayerOverlay(
                                 FullscreenGestureMode.Brightness
                             }
                             offset.x > screenWidth * 0.7f -> {
-                                gestureValue = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxVolume
+                                gestureValue = player?.volume ?: appPlaybackVolume
                                 FullscreenGestureMode.Volume
                             }
                             else -> {
@@ -606,6 +610,11 @@ fun FullscreenPlayerOverlay(
                                 danmakuManager.seekTo(seekPreviewPosition)
                             }
                         }
+                        if (dragGestureActive && gestureMode == FullscreenGestureMode.Volume) {
+                            scope.launch {
+                                SettingsManager.setAppPlaybackVolume(context, gestureValue)
+                            }
+                        }
                         dragGestureActive = false
                         gestureMode = FullscreenGestureMode.None
                     },
@@ -627,12 +636,8 @@ fun FullscreenPlayerOverlay(
                                 }
                             }
                             FullscreenGestureMode.Volume -> {
-                                gestureValue = (gestureValue - dragAmount.y / screenHeight).coerceIn(0f, 1f)
-                                audioManager.setStreamVolume(
-                                    AudioManager.STREAM_MUSIC,
-                                    (gestureValue * maxVolume).toInt(),
-                                    0
-                                )
+                                gestureValue = normalizeAppPlaybackVolume(gestureValue - dragAmount.y / screenHeight)
+                                player?.volume = gestureValue
                             }
                             FullscreenGestureMode.Seek -> {
                                 dragDelta += dragAmount.x

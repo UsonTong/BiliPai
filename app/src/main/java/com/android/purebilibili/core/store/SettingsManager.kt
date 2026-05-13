@@ -38,6 +38,7 @@ import com.android.purebilibili.feature.video.danmaku.DANMAKU_DEFAULT_OPACITY
 import com.android.purebilibili.feature.video.danmaku.normalizeDanmakuOpacity
 import com.android.purebilibili.feature.video.danmaku.parseDanmakuBlockRules
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
+import com.android.purebilibili.feature.video.subtitle.normalizeSubtitleVerticalOffsetFraction
 import com.android.purebilibili.feature.video.ui.gesture.TwoFingerSpeedToggleState
 import com.android.purebilibili.feature.video.ui.gesture.applyHorizontalTwoFingerSpeedToggle
 import com.android.purebilibili.feature.video.ui.gesture.applyVerticalTwoFingerSpeedToggle
@@ -546,6 +547,8 @@ data class PlayerInteractionSettings(
     val fixedFullscreenAspectRatio: FullscreenAspectRatio = FullscreenAspectRatio.FIT,
     val subtitleAutoPreference: SubtitleAutoPreference = SubtitleAutoPreference.OFF,
     val longPressSpeed: Float = 2.0f,
+    val appPlaybackVolume: Float = 1.0f,
+    val subtitleVerticalOffsetFraction: Float = 0.0f,
     val twoFingerVerticalSpeedEnabled: Boolean = false,
     val twoFingerHorizontalSpeedEnabled: Boolean = false,
     val hiResLongPressCompatHintShown: Boolean = false
@@ -663,6 +666,10 @@ internal fun mapPlayerInteractionSettingsFromPreferences(
     return SettingsManager.mapPlayerInteractionSettingsFromPreferences(preferences)
 }
 
+internal fun normalizeAppPlaybackVolumePreference(volume: Float): Float {
+    return volume.coerceIn(0f, 1f)
+}
+
 internal fun decodeCollectionSubscriptionIds(rawValue: String?): Set<String> {
     return rawValue
         ?.split(",")
@@ -767,6 +774,9 @@ object SettingsManager {
         booleanPreferencesKey("two_finger_horizontal_speed_enabled")
     private val KEY_HI_RES_LONG_PRESS_COMPAT_HINT_SHOWN =
         booleanPreferencesKey("hi_res_long_press_compat_hint_shown")
+    private val KEY_APP_PLAYBACK_VOLUME = floatPreferencesKey("app_playback_volume")
+    private val KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION =
+        floatPreferencesKey("subtitle_vertical_offset_fraction")
     //  [新增] 默认播放速度/记忆上次播放速度
     private val KEY_DEFAULT_PLAYBACK_SPEED = floatPreferencesKey("default_playback_speed")
     private val KEY_REMEMBER_LAST_PLAYBACK_SPEED = booleanPreferencesKey("remember_last_playback_speed")
@@ -1039,6 +1049,12 @@ object SettingsManager {
             ) { SubtitleAutoPreference.OFF },
             longPressSpeed = normalizeLongPressSpeed(
                 preferences[KEY_LONG_PRESS_SPEED] ?: DEFAULT_LONG_PRESS_SPEED
+            ),
+            appPlaybackVolume = normalizeAppPlaybackVolumePreference(
+                preferences[KEY_APP_PLAYBACK_VOLUME] ?: 1.0f
+            ),
+            subtitleVerticalOffsetFraction = normalizeSubtitleVerticalOffsetFraction(
+                preferences[KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION] ?: 0.0f
             ),
             twoFingerVerticalSpeedEnabled = preferences[KEY_TWO_FINGER_VERTICAL_SPEED_ENABLED] ?: false,
             twoFingerHorizontalSpeedEnabled = preferences[KEY_TWO_FINGER_HORIZONTAL_SPEED_ENABLED] ?: false,
@@ -1456,6 +1472,31 @@ object SettingsManager {
     suspend fun setLongPressSpeed(context: Context, speed: Float) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_LONG_PRESS_SPEED] = normalizeLongPressSpeed(speed)
+        }
+    }
+
+    fun getAppPlaybackVolume(context: Context): Flow<Float> = context.settingsDataStore.data
+        .map { preferences ->
+            normalizeAppPlaybackVolumePreference(preferences[KEY_APP_PLAYBACK_VOLUME] ?: 1.0f)
+        }
+
+    suspend fun setAppPlaybackVolume(context: Context, volume: Float) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_PLAYBACK_VOLUME] = normalizeAppPlaybackVolumePreference(volume)
+        }
+    }
+
+    fun getSubtitleVerticalOffsetFraction(context: Context): Flow<Float> = context.settingsDataStore.data
+        .map { preferences ->
+            normalizeSubtitleVerticalOffsetFraction(
+                preferences[KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION] ?: 0.0f
+            )
+        }
+
+    suspend fun setSubtitleVerticalOffsetFraction(context: Context, value: Float) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION] =
+                normalizeSubtitleVerticalOffsetFraction(value)
         }
     }
 
@@ -4825,6 +4866,11 @@ object SettingsManager {
             IntShareablePreferenceDefinition(KEY_SEEK_FORWARD_SECONDS, SettingsShareSection.GESTURE),
             IntShareablePreferenceDefinition(KEY_SEEK_BACKWARD_SECONDS, SettingsShareSection.GESTURE),
             FloatShareablePreferenceDefinition(KEY_LONG_PRESS_SPEED, SettingsShareSection.GESTURE),
+            FloatShareablePreferenceDefinition(KEY_APP_PLAYBACK_VOLUME, SettingsShareSection.GESTURE),
+            FloatShareablePreferenceDefinition(
+                KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION,
+                SettingsShareSection.GESTURE
+            ),
             BooleanShareablePreferenceDefinition(KEY_PIP_NO_DANMAKU, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_DOUBLE_TAP_LIKE, SettingsShareSection.GESTURE),
             BooleanShareablePreferenceDefinition(KEY_SWIPE_HIDE_PLAYER, SettingsShareSection.GESTURE),

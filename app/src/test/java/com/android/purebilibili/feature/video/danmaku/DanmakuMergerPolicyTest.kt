@@ -24,4 +24,20 @@ class DanmakuMergerPolicyTest {
         assertTrue(advanced.isEmpty())
         assertEquals("重复弹幕 x5", (standard.first() as TextData).text)
     }
+
+    @Test
+    fun merge_preservesNonAdjacentDuplicatesAsSeparateBatches() {
+        val items = listOf(
+            TextData().apply { text = "前方高能"; showAtTime = 100L },
+            TextData().apply { text = "前方高能"; showAtTime = 300L },
+            TextData().apply { text = "前方高能"; showAtTime = 1_800L },
+            TextData().apply { text = "前方高能"; showAtTime = 1_950L }
+        )
+
+        val (standard, advanced) = DanmakuMerger.merge(items, intervalMs = 500L)
+
+        assertTrue(advanced.isEmpty())
+        assertEquals(listOf("前方高能 x2", "前方高能 x2"), standard.map { (it as TextData).text })
+        assertEquals(listOf(100L, 1_800L), standard.map { it.showAtTime })
+    }
 }

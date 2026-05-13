@@ -31,6 +31,8 @@ import com.android.purebilibili.feature.video.ui.gesture.resolveTwoFingerGesture
 import com.android.purebilibili.feature.video.ui.gesture.resolveTwoFingerSpeedGestureMode
 import com.android.purebilibili.feature.video.playback.policy.resolveDisplayedQualityId
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.video.progress.PbpProgressData
+import com.android.purebilibili.feature.video.progress.buildPbpRidgeSamples
 import com.bytedance.danmaku.render.engine.DanmakuView
 
 import android.app.Activity
@@ -129,6 +131,7 @@ import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
 import com.android.purebilibili.feature.video.subtitle.normalizeSubtitleDisplayMode
+import com.android.purebilibili.feature.video.subtitle.normalizeSubtitleVerticalOffsetFraction
 import com.android.purebilibili.feature.video.subtitle.resolveDefaultSubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitleControlAvailability
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitleDisplayModeByAutoPreference
@@ -317,6 +320,7 @@ fun VideoPlayerSection(
     // 📖 [新增] 视频章节数据
     viewPoints: List<ViewPoint> = emptyList(),
     sponsorMarkers: List<com.android.purebilibili.data.model.response.SponsorProgressMarker> = emptyList(),
+    pbpProgressData: PbpProgressData? = null,
     onUserSeek: (Long) -> Unit = {},
     
     // 📱 [新增] 竖屏全屏模式
@@ -398,6 +402,16 @@ fun VideoPlayerSection(
     val gestureSeekFallbackDurationMs = remember(uiState) {
         (uiState as? PlayerUiState.Success)?.videoDurationMs ?: 0L
     }
+    val pbpRidgeSamples = remember(pbpProgressData, gestureSeekFallbackDurationMs) {
+        pbpProgressData
+            ?.let { data ->
+                buildPbpRidgeSamples(
+                    data = data,
+                    durationMs = gestureSeekFallbackDurationMs
+                )
+            }
+            .orEmpty()
+    }
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
     val settingsScope = rememberCoroutineScope()
@@ -442,6 +456,7 @@ fun VideoPlayerSection(
     }
     val fixedFullscreenAspectRatio = playerInteractionSettings.fixedFullscreenAspectRatio
     val subtitleAutoPreference = playerInteractionSettings.subtitleAutoPreference
+    val appPlaybackVolume = playerInteractionSettings.appPlaybackVolume
     
     //  [新增] 双击跳转视觉反馈状态
     var seekFeedbackText by remember { mutableStateOf<String?>(null) }
@@ -754,7 +769,7 @@ fun VideoPlayerSection(
     var isFlippedVertical by remember { mutableStateOf(false) }
 
     // 记录手势开始时的初始值
-    var startVolume by remember { mutableIntStateOf(0) }
+    var startVolume by remember { mutableFloatStateOf(1f) }
     var startBrightness by remember { mutableFloatStateOf(0f) }
 
     // 记录累计拖动距离
@@ -762,6 +777,21 @@ fun VideoPlayerSection(
     var totalDragDistanceX by remember { mutableFloatStateOf(0f) }
     // 记录手势起点 X（用于锁定分区，避免拖动过程横向漂移导致误判）
     var dragStartX by remember { mutableFloatStateOf(-1f) }
+
+    var subtitleVerticalOffsetFraction by rememberSaveable(bvid) {
+        mutableFloatStateOf(playerInteractionSettings.subtitleVerticalOffsetFraction)
+    }
+    var isDraggingSubtitleOffset by remember { mutableStateOf(false) }
+
+    LaunchedEffect(playerInteractionSettings.subtitleVerticalOffsetFraction, bvid) {
+        if (!isDraggingSubtitleOffset) {
+            subtitleVerticalOffsetFraction = playerInteractionSettings.subtitleVerticalOffsetFraction
+        }
+    }
+
+    LaunchedEffect(playerState.player, appPlaybackVolume, bvid, currentSeekSessionCid) {
+        playerState.player.volume = normalizeAppPlaybackVolume(appPlaybackVolume)
+    }
 
     LaunchedEffect(playerState.player, bvid, currentSeekSessionCid) {
         while (isActive) {
@@ -1144,7 +1174,7 @@ fun VideoPlayerSection(
                                 totalDragDistanceY = 0f
                                 totalDragDistanceX = 0f
 
-                                startVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                startVolume = playerState.player.volume
                                 startPosition = sharedSeekSession.sliderPositionMs.coerceAtLeast(0L)
                                 seekTargetTime = startPosition
 
@@ -1218,6 +1248,10 @@ fun VideoPlayerSection(
                                             "👆 Swipe to fullscreen triggered"
                                         }
                                     }
+                                }
+                            } else if (gestureMode == VideoGestureMode.Volume) {
+                                settingsScope.launch {
+                                    SettingsManager.setAppPlaybackVolume(context, gesturePercent)
                                 }
                             }
                             isGestureVisible = false
@@ -1407,9 +1441,8 @@ fun VideoPlayerSection(
                                     val screenHeight = context.resources.displayMetrics.heightPixels
                                     //  应用灵敏度
                                     val deltaPercent = -totalDragDistanceY / screenHeight * gestureSensitivity
-                                    val newVolPercent = ((startVolume.toFloat() / maxVolume) + deltaPercent).coerceIn(0f, 1f)
-                                    val targetVol = (newVolPercent * maxVolume).toInt()
-                                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
+                                    val newVolPercent = normalizeAppPlaybackVolume(startVolume + deltaPercent)
+                                    playerState.player.volume = newVolPercent
                                     gesturePercent = newVolPercent
                                     //  动态音量图标：3 级
                                     gestureIcon = when {
@@ -2679,12 +2712,9 @@ fun VideoPlayerSection(
                 )
             }
         }
-        val subtitleAutoModeMuted = remember(playerState.player, audioManager, bvid) {
-            val systemMuted = runCatching {
-                audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0
-            }.getOrDefault(false)
-            systemMuted || playerState.player.volume <= 0f
-        }
+        val subtitleAutoModeMuted = runCatching {
+            audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0
+        }.getOrDefault(false) || appPlaybackVolume <= 0f
         val subtitleToggleKey = remember(uiState, bvid, subtitleAutoPreference) {
             val success = uiState as? PlayerUiState.Success
             if (success == null) {
@@ -2799,10 +2829,53 @@ fun VideoPlayerSection(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .offset {
+                        IntOffset(
+                            x = 0,
+                            y = (configuration.screenHeightDp * subtitleVerticalOffsetFraction)
+                                .dp
+                                .roundToPx()
+                        )
+                    }
                     .fillMaxWidth(0.9f)
                     .padding(horizontal = 10.dp)
                     .padding(bottom = subtitleBottomPadding)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .then(
+                        if (isFullscreen) {
+                            Modifier.pointerInput(configuration.screenHeightDp) {
+                                detectDragGestures(
+                                    onDragStart = {
+                                        isDraggingSubtitleOffset = true
+                                    },
+                                    onDragEnd = {
+                                        isDraggingSubtitleOffset = false
+                                        settingsScope.launch {
+                                            SettingsManager.setSubtitleVerticalOffsetFraction(
+                                                context,
+                                                subtitleVerticalOffsetFraction
+                                            )
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        isDraggingSubtitleOffset = false
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        val screenHeightPx = with(localDensity) {
+                                            configuration.screenHeightDp.dp.toPx()
+                                        }.coerceAtLeast(1f)
+                                        subtitleVerticalOffsetFraction =
+                                            normalizeSubtitleVerticalOffsetFraction(
+                                                subtitleVerticalOffsetFraction + dragAmount.y / screenHeightPx
+                                            )
+                                        change.consume()
+                                    }
+                                )
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val subtitleShadow = Shadow(
@@ -3727,6 +3800,7 @@ fun VideoPlayerSection(
                 // 📖 [新增] 视频章节数据
                 viewPoints = viewPoints,
                 sponsorMarkers = sponsorMarkers,
+                pbpRidgeSamples = pbpRidgeSamples,
                 
                 // 📱 [新增] 竖屏全屏模式
                 isVerticalVideo = isVerticalVideo,

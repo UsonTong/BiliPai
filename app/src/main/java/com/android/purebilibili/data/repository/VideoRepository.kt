@@ -11,6 +11,8 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.core.util.NetworkUtils
 import com.android.purebilibili.data.model.response.*
+import com.android.purebilibili.feature.video.progress.PbpProgressData
+import com.android.purebilibili.feature.video.progress.parsePbpProgressData
 import com.android.purebilibili.feature.video.subtitle.SubtitleCue
 import com.android.purebilibili.feature.video.subtitle.normalizeBilibiliSubtitleUrl
 import com.android.purebilibili.feature.video.subtitle.parseBiliSubtitleBody
@@ -1649,6 +1651,28 @@ object VideoRepository {
             } else {
                 Result.failure(Exception("PlayerInfo error: ${response.code}"))
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPbpProgressData(
+        bvid: String,
+        cid: Long,
+        aid: Long = 0L
+    ): Result<PbpProgressData> = withContext(Dispatchers.IO) {
+        try {
+            if (cid <= 0L) {
+                return@withContext Result.failure(
+                    IllegalArgumentException("PBP cid invalid: $cid")
+                )
+            }
+            val body = api.getPbpData(
+                cid = cid,
+                bvid = bvid.takeIf { it.isNotBlank() },
+                aid = aid.takeIf { it > 0L }
+            )
+            Result.success(parsePbpProgressData(body.string()))
         } catch (e: Exception) {
             Result.failure(e)
         }

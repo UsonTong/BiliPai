@@ -50,6 +50,7 @@ import com.android.purebilibili.feature.video.ui.components.PagesSelector
 import com.android.purebilibili.data.model.response.SponsorProgressMarker
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.feature.video.progress.PbpRidgeSample
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -398,6 +399,7 @@ fun VideoPlayerOverlay(
     // 📖 [新增] 视频章节数据
     viewPoints: List<ViewPoint> = emptyList(),
     sponsorMarkers: List<SponsorProgressMarker> = emptyList(),
+    pbpRidgeSamples: List<PbpRidgeSample> = emptyList(),
     // 📱 [新增] 竖屏全屏模式
     isVerticalVideo: Boolean = false,
     onPortraitFullscreen: () -> Unit = {},
@@ -1143,6 +1145,7 @@ fun VideoPlayerOverlay(
                     // 📖 [新增] 视频章节数据
                     viewPoints = viewPoints,
                     sponsorMarkers = sponsorMarkers,
+                    pbpRidgeSamples = pbpRidgeSamples,
                     currentChapter = currentChapter,
                     onChapterClick = { showChapterList = true },
                     // 📱 [新增] 竖屏全屏模式

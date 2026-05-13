@@ -137,6 +137,7 @@ import com.android.purebilibili.feature.video.subtitle.SubtitleAutoPreference
 import kotlin.math.roundToInt
 import com.android.purebilibili.feature.video.subtitle.SubtitleDisplayMode
 import com.android.purebilibili.feature.video.subtitle.resolveSubtitleDisplayModePreference
+import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.usecase.playPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.video.policy.reduceVideoDetailPostScroll
@@ -567,6 +568,7 @@ private fun PortraitInlineVideoPlayerHost(
     showSponsorSkipButton: Boolean,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
+    pbpProgressData: PbpProgressData?,
     sponsorProgressMarkers: List<com.android.purebilibili.data.model.response.SponsorProgressMarker>,
     isVerticalVideo: Boolean,
     onPortraitFullscreen: () -> Unit,
@@ -619,6 +621,7 @@ private fun PortraitInlineVideoPlayerHost(
             onSleepTimerChange = { viewModel.setSleepTimer(it) },
             videoshotData = successState?.videoshotData,
             viewPoints = viewPoints,
+            pbpProgressData = pbpProgressData,
             sponsorMarkers = sponsorProgressMarkers,
             onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
             isVerticalVideo = isVerticalVideo,
@@ -995,6 +998,7 @@ fun VideoDetailScreen(
     // 📖 [新增] 监听视频章节数据
     // 📖 [新增] 监听视频章节数据
     val viewPoints by viewModel.viewPoints.collectAsStateWithLifecycle()
+    val pbpProgressData by viewModel.pbpProgressData.collectAsStateWithLifecycle()
     val sponsorProgressMarkers by viewModel.sponsorProgressMarkers.collectAsStateWithLifecycle()
     
     // [New] Codec & Audio Preferences
@@ -2265,6 +2269,7 @@ fun VideoDetailScreen(
                     
                 // 📖 [新增] 视频章节数据
                     viewPoints = viewPoints,
+                    pbpProgressData = pbpProgressData,
                     sponsorMarkers = sponsorProgressMarkers,
                     onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
                 // 📱 [新增] 竖屏全屏模式
@@ -2331,6 +2336,7 @@ fun VideoDetailScreen(
                         sleepTimerMinutes = sleepTimerMinutes,
 
                         viewPoints = viewPoints,
+                        pbpProgressData = pbpProgressData,
                         bvid = bvid,
                         coverUrl = coverUrl,
                         onBack = {
@@ -2639,6 +2645,7 @@ fun VideoDetailScreen(
                             showSponsorSkipButton = showSponsorSkipButton,
                             sleepTimerMinutes = sleepTimerMinutes,
                             viewPoints = viewPoints,
+                            pbpProgressData = pbpProgressData,
                             sponsorProgressMarkers = sponsorProgressMarkers,
                             isVerticalVideo = isVerticalVideo && (allowStandalonePortraitExperience || useOfficialInlinePortraitDetailExperience),
                             onPortraitFullscreen = {
