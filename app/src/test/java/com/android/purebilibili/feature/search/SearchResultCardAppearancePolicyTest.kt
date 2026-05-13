@@ -31,11 +31,11 @@ class SearchResultCardAppearancePolicyTest {
     }
 
     @Test
-    fun videoSearchAppearance_reusesHomeGlassAndBadgeInputs() {
+    fun videoSearchAppearance_usesFlatCoverStatsForDenseGrid() {
         val appearance = resolveSearchVideoCardAppearance(
             liquidGlassEnabled = false,
             blurEnabled = true,
-            showHomeCoverGlassBadges = false,
+            showHomeCoverGlassBadges = true,
             showHomeInfoGlassBadges = true
         )
 
@@ -43,6 +43,7 @@ class SearchResultCardAppearancePolicyTest {
         assertTrue(appearance.blurEnabled)
         assertFalse(appearance.showCoverGlassBadges)
         assertTrue(appearance.showInfoGlassBadges)
+        assertFalse(appearance.coverShadowEnabled)
     }
 
     @Test

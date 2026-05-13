@@ -171,6 +171,7 @@ fun ElegantVideoCard(
     compactStatsOnCover: Boolean = true, // 播放量/评论数是否贴在封面底部
     showCoverGlassBadges: Boolean = true,
     showInfoGlassBadges: Boolean = true,
+    coverShadowEnabled: Boolean = true,
     wallpaperTintEnabled: Boolean = false,
     wallpaperEffectMode: HomeWallpaperEffectMode = HomeWallpaperEffectMode.SOFT_BLUR,
     showUpBadge: Boolean = true,
@@ -248,6 +249,7 @@ fun ElegantVideoCard(
             compactStatsOnCover = compactStatsOnCover
         )
     }
+    val coverShadowElevation = if (coverShadowEnabled) scrollLitePolicy.coverShadowElevationDp.dp else 0.dp
     val badgeStylePolicy = remember(showCoverGlassBadges, showInfoGlassBadges) {
         resolveHomeVideoGlassBadgeStylePolicy(
             showCoverGlassBadges = showCoverGlassBadges,
@@ -390,7 +392,7 @@ fun ElegantVideoCard(
             Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = scrollLitePolicy.coverShadowElevationDp.dp,
+                    elevation = coverShadowElevation,
                     shape = connectedCardShape,
                     ambientColor = Color.Black.copy(alpha = 0.08f),
                     spotColor = Color.Black.copy(alpha = 0.10f),
@@ -455,7 +457,7 @@ fun ElegantVideoCard(
                 .aspectRatio(VIDEO_SHARED_COVER_ASPECT_RATIO)
                 // [性能优化] 使用 shadow(clip = true) 合并裁剪和阴影层，避免创建额外的 GraphicsLayer
                 .shadow(
-                    elevation = if (infoSurfaceAppearance.useTintedSurface) 0.dp else scrollLitePolicy.coverShadowElevationDp.dp,
+                    elevation = if (infoSurfaceAppearance.useTintedSurface) 0.dp else coverShadowElevation,
                     shape = coverShape,
                     ambientColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.08f),
                     spotColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.10f),
