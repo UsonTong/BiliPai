@@ -25,11 +25,24 @@ class CdnRegionPolicyTest {
     )
 
     @Test
+    fun `ip snapshot preserves public address and isp for internal cdn decisions`() {
+        val snapshot = IpLocationSnapshot(
+            addr = "36.40.120.145",
+            country = "中国",
+            province = "陕西",
+            city = "渭南",
+            isp = "电信"
+        )
+
+        assertEquals("36.40.120.145", snapshot.addr)
+        assertEquals("电信", snapshot.isp)
+    }
+
+    @Test
     fun `selects direct city match before province`() {
         val selection = selectCdnRegionForLocation(
             location = IpLocationSnapshot(country = "中国", province = "广东", city = "深圳"),
-            catalog = catalog,
-            fallbackRegion = { "上海" }
+            catalog = catalog
         )
 
         assertEquals("深圳", selection.region)
@@ -42,32 +55,28 @@ class CdnRegionPolicyTest {
             "西安",
             selectCdnRegionForLocation(
                 location = IpLocationSnapshot(country = "中国", province = "陕西", city = "渭南"),
-                catalog = catalog,
-                fallbackRegion = { "上海" }
+                catalog = catalog
             ).region
         )
         assertEquals(
             "武汉",
             selectCdnRegionForLocation(
                 location = IpLocationSnapshot(country = "中国", province = "湖北省", city = ""),
-                catalog = catalog,
-                fallbackRegion = { "上海" }
+                catalog = catalog
             ).region
         )
         assertEquals(
             "南京",
             selectCdnRegionForLocation(
                 location = IpLocationSnapshot(country = "中国", province = "江苏", city = "苏州"),
-                catalog = catalog,
-                fallbackRegion = { "上海" }
+                catalog = catalog
             ).region
         )
         assertEquals(
             "哈市",
             selectCdnRegionForLocation(
                 location = IpLocationSnapshot(country = "中国", province = "黑龙江", city = "哈尔滨"),
-                catalog = catalog,
-                fallbackRegion = { "上海" }
+                catalog = catalog
             ).region
         )
     }
@@ -76,8 +85,7 @@ class CdnRegionPolicyTest {
     fun `maps non mainland locations to overseas when available`() {
         val selection = selectCdnRegionForLocation(
             location = IpLocationSnapshot(country = "荷兰", province = "北荷兰省", city = "阿姆斯特丹"),
-            catalog = catalog,
-            fallbackRegion = { "上海" }
+            catalog = catalog
         )
 
         assertEquals("海外", selection.region)
@@ -85,15 +93,32 @@ class CdnRegionPolicyTest {
     }
 
     @Test
-    fun `uses fallback region when location has no catalog match`() {
+    fun `does not choose random fallback region when location has no catalog match`() {
         val selection = selectCdnRegionForLocation(
             location = IpLocationSnapshot(country = "中国", province = "青海", city = "西宁"),
-            catalog = catalog,
-            fallbackRegion = { "北京" }
+            catalog = catalog
         )
 
-        assertEquals("北京", selection.region)
+        assertEquals("", selection.region)
+        assertEquals(emptyList<String>(), selection.hosts)
         assertTrue(selection.fallbackUsed)
+    }
+
+    @Test
+    fun `sorts selected region hosts by isp carrier before rewriting`() {
+        val selection = selectCdnRegionForLocation(
+            location = IpLocationSnapshot(country = "中国", province = "上海", city = "上海", isp = "中国移动"),
+            catalog = mapOf(
+                "上海" to listOf(
+                    "cn-sh-ct-01-01.bilivideo.com",
+                    "cn-sh-cu-01-01.bilivideo.com",
+                    "cn-sh-cm-01-01.bilivideo.com",
+                    "cn-sh-fx-01-01.bilivideo.com"
+                )
+            )
+        )
+
+        assertEquals("cn-sh-cm-01-01.bilivideo.com", selection.hosts.first())
     }
 
     @Test

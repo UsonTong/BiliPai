@@ -695,6 +695,9 @@ fun PlaybackSettingsContent(
                     val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getVideoAiSummaryEntryEnabled(context)
                         .collectAsState(initial = true)
+                    val videoInfoDefaultExpanded by com.android.purebilibili.core.store.SettingsManager
+                        .getVideoInfoDefaultExpanded(context)
+                        .collectAsState(initial = true)
                     val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
                         .getDanmakuHideInteractiveCommands(context)
                         .collectAsState(initial = false)
@@ -834,6 +837,24 @@ fun PlaybackSettingsContent(
                             )
                             IOSDivider()
                         }
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.InfoCircle,
+                            title = "默认展开视频简介",
+                            subtitle = if (videoInfoDefaultExpanded) {
+                                "进入视频页时默认展开标题、简介和标签"
+                            } else {
+                                "进入视频页时默认收起简介，点击标题区域后展开"
+                            },
+                            checked = videoInfoDefaultExpanded,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setVideoInfoDefaultExpanded(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        IOSDivider()
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.Sparkles,
                             title = "显示 AI 总结入口",

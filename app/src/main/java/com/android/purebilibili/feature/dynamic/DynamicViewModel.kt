@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -131,7 +132,20 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         loadUserPreferences()
         loadCachedDynamics()
         rebuildFollowedUsers()
+        observeFollowStateChanges()
         refreshInBackground(startupPlan)
+    }
+
+    private fun observeFollowStateChanges() {
+        viewModelScope.launch {
+            ActionRepository.followStateChanges.collect { change ->
+                if (change.isFollowing) {
+                    requestFollowingsRefreshIfStale()
+                } else {
+                    applyAuthorUnfollow(change.mid)
+                }
+            }
+        }
     }
     
     private fun loadUserPreferences() {
@@ -184,7 +198,14 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun saveDynamicCache(items: List<DynamicItem>) {
-        if (items.isEmpty()) return
+        if (items.isEmpty()) {
+            cacheSaveJob?.cancel()
+            cachePrefs.edit()
+                .remove(KEY_DYNAMIC_CACHE)
+                .remove(KEY_DYNAMIC_CACHE_TIME)
+                .apply()
+            return
+        }
         val snapshot = items.take(MAX_CACHE_ITEMS)
         cacheSaveJob?.cancel()
         cacheSaveJob = viewModelScope.launch(Dispatchers.Default) {
@@ -344,6 +365,25 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             extractUsersFromFollowings(cachedFollowings)  //  [新增]
         )
         _followedUsers.value = applyUserPreferences(mergedUsers)
+    }
+
+    private fun applyAuthorUnfollow(authorMid: Long) {
+        if (authorMid <= 0L) return
+        cachedFollowings = cachedFollowings.filterNot { it.mid == authorMid }
+        cachedLiveRooms = cachedLiveRooms.filterNot { it.uid == authorMid }
+        _uiState.value = resolveDynamicStateAfterAuthorUnfollow(
+            currentState = _uiState.value,
+            authorMid = authorMid
+        )
+        if (_selectedUserId.value == authorMid) {
+            selectUser(null)
+        }
+        _followedUsers.value = resolveFollowedUsersAfterAuthorUnfollow(
+            users = _followedUsers.value,
+            authorMid = authorMid
+        )
+        rebuildFollowedUsers()
+        saveDynamicCache(_uiState.value.items)
     }
     
     /**

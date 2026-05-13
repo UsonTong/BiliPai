@@ -120,6 +120,25 @@ internal fun resolveDynamicCommentSheetTotalCount(
     return if (liveCount > 0) liveCount else fallbackCount.coerceAtLeast(0)
 }
 
+internal fun resolveDynamicStateAfterAuthorUnfollow(
+    currentState: DynamicUiState,
+    authorMid: Long
+): DynamicUiState {
+    if (authorMid <= 0L) return currentState
+    return currentState.copy(
+        items = currentState.items.filterNot { it.modules.module_author?.mid == authorMid },
+        userItems = currentState.userItems.filterNot { it.modules.module_author?.mid == authorMid }
+    )
+}
+
+internal fun resolveFollowedUsersAfterAuthorUnfollow(
+    users: List<SidebarUser>,
+    authorMid: Long
+): List<SidebarUser> {
+    if (authorMid <= 0L) return users
+    return users.filterNot { it.uid == authorMid }
+}
+
 internal fun shouldResetFollowedUserListToTopOnRefresh(
     boundaryKey: String?,
     prependedCount: Int,

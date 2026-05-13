@@ -4,6 +4,8 @@ import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 private const val FAVORITE_SEASON_PATH = "x/v3/fav/season/fav"
@@ -30,6 +32,11 @@ internal fun buildCollectionSubscriptionRequest(
     )
 }
 
+data class FollowStateChange(
+    val mid: Long,
+    val isFollowing: Boolean
+)
+
 /**
  * 用户操作相关 Repository
  * - 关注/取关 UP 主
@@ -37,6 +44,8 @@ internal fun buildCollectionSubscriptionRequest(
  */
 object ActionRepository {
     private val api = NetworkModule.api
+    private val _followStateChanges = MutableSharedFlow<FollowStateChange>(extraBufferCapacity = 32)
+    val followStateChanges = _followStateChanges.asSharedFlow()
     private const val SPECIAL_FOLLOW_TAG_ID = -10L
     private const val FOLLOW_GROUP_BATCH_SIZE = 20
     private const val FOLLOW_GROUP_MAX_RETRIES = 3
@@ -148,6 +157,7 @@ object ActionRepository {
                 com.android.purebilibili.core.util.Logger.d("ActionRepository", " Response: code=${response.code}, message=${response.message}")
                 
                 if (response.code == 0) {
+                    _followStateChanges.tryEmit(FollowStateChange(mid = mid, isFollowing = follow))
                     Result.success(follow)
                 } else {
                     Result.failure(Exception(response.message.ifEmpty { "操作失败: ${response.code}" }))

@@ -82,10 +82,18 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
         audioUrls: List<String>
     ): PlaybackCdnRewriteResult {
         val snapshot = cache
+        if (snapshot.fallbackUsed) {
+            return PlaybackCdnRewriteResult(
+                videoUrls = videoUrls.distinct(),
+                audioUrls = audioUrls.distinct(),
+                regionLabel = null
+            )
+        }
         val hosts = resolveCdnRegionHosts(
             region = snapshot.selectedRegion,
             cachedHosts = snapshot.selectedHosts,
-            catalog = catalog
+            catalog = catalog,
+            isp = snapshot.location.isp
         )
 
         if (hosts.isEmpty()) {
@@ -121,12 +129,18 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
                 enabled = enabled,
                 nowMs = System.currentTimeMillis(),
                 lastRefreshMs = current.refreshedAtMs,
-                hasSelection = hasSelection
+                hasSelection = hasSelection && !current.fallbackUsed
             )
         ) {
-            if (current.selectedHosts != resolveCdnRegionHosts(current.selectedRegion, current.selectedHosts, loadedCatalog)) {
+            val resolvedHosts = resolveCdnRegionHosts(
+                region = current.selectedRegion,
+                cachedHosts = current.selectedHosts,
+                catalog = loadedCatalog,
+                isp = current.location.isp
+            )
+            if (current.selectedHosts != resolvedHosts) {
                 val corrected = current.copy(
-                    selectedHosts = resolveCdnRegionHosts(current.selectedRegion, current.selectedHosts, loadedCatalog)
+                    selectedHosts = resolvedHosts
                 )
                 cache = corrected
                 CdnRegionPluginStore.write(context, corrected)
@@ -142,30 +156,33 @@ class CdnRegionPlugin : PlaybackCdnPlugin {
             }
 
             val location = IpLocationSnapshot(
+                addr = data.addr,
                 country = data.country,
                 province = data.province,
-                city = data.city
+                city = data.city,
+                isp = data.isp
             )
             val selection = selectCdnRegionForLocation(
                 location = location,
-                catalog = loadedCatalog,
-                fallbackRegion = {
-                    current.fallbackRegion.takeIf { it in loadedCatalog }
-                        ?: loadedCatalog.keys.shuffled().first()
-                }
+                catalog = loadedCatalog
             )
             val next = CdnRegionPluginCache(
                 location = location,
                 selectedRegion = selection.region,
                 selectedHosts = selection.hosts,
-                fallbackRegion = if (selection.fallbackUsed) selection.region else current.fallbackRegion,
+                fallbackRegion = "",
                 fallbackUsed = selection.fallbackUsed,
                 refreshedAtMs = System.currentTimeMillis(),
                 lastError = null
             )
             cache = next
             CdnRegionPluginStore.write(context, next)
-            Logger.d(TAG, "CDN 属地刷新成功: ${location.country}/${location.province}/${location.city} -> ${selection.region}")
+            Logger.d(
+                TAG,
+                "CDN 属地刷新成功: ip=${maskIpAddressForLog(location.addr)}, " +
+                    "${location.country}/${location.province}/${location.city}, isp=${location.isp.ifBlank { "未知" }} -> " +
+                    (selection.region.ifBlank { "未命中" })
+            )
         } catch (e: Exception) {
             val preserved = current.copy(lastError = e.message ?: e.javaClass.simpleName)
             cache = preserved

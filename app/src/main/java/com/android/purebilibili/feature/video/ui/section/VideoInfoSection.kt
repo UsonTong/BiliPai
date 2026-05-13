@@ -64,8 +64,9 @@ import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
 
 internal fun resolveVideoInfoInitialExpandedState(
     hasDescription: Boolean,
-    hasTags: Boolean
-): Boolean = hasDescription || hasTags
+    hasTags: Boolean,
+    defaultExpanded: Boolean = true
+): Boolean = defaultExpanded && (hasDescription || hasTags)
 
 /**
  * Video Title Section (Bilibili official style: compact layout)
@@ -183,11 +184,16 @@ fun VideoTitleWithDesc(
     animateLayout: Boolean = true,
     onBgmClick: (BgmInfo) -> Unit = {}
 ) {
-    var expanded by remember(info.bvid, info.desc, videoTags.size) {
+    val context = LocalContext.current
+    val defaultExpanded by com.android.purebilibili.core.store.SettingsManager
+        .getVideoInfoDefaultExpanded(context)
+        .collectAsState(initial = true)
+    var expanded by remember(info.bvid, info.desc, videoTags.size, defaultExpanded) {
         mutableStateOf(
             resolveVideoInfoInitialExpandedState(
                 hasDescription = info.desc.isNotBlank(),
-                hasTags = videoTags.isNotEmpty()
+                hasTags = videoTags.isNotEmpty(),
+                defaultExpanded = defaultExpanded
             )
         )
     }

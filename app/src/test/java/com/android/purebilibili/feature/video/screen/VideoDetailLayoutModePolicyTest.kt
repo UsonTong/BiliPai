@@ -241,9 +241,9 @@ class VideoDetailLayoutModePolicyTest {
     }
 
     @Test
-    fun phoneOrientationPolicy_returnsNullOnTabletLayout() {
+    fun phoneOrientationPolicy_releasesOrientationLockOnNonCompactLayout() {
         assertEquals(
-            null,
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
             resolvePhoneVideoRequestedOrientation(
                 autoRotateEnabled = true,
                 fullscreenMode = FullscreenMode.AUTO,

@@ -143,6 +143,18 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByVideoInfoDefaultExpanded_hitsPlaybackInteractionEntry() {
+        val results = resolveSettingsSearchResults("默认展开视频简介")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_INTERACTION
+            }
+        )
+    }
+
+    @Test
     fun queryByAutoRotate_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("自动横竖屏")
 

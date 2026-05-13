@@ -8,6 +8,7 @@ import com.android.purebilibili.feature.video.usecase.*
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -105,6 +106,8 @@ import com.android.purebilibili.feature.video.subtitle.mapPlayerInfoSubtitleTrac
 import com.android.purebilibili.feature.video.subtitle.normalizeBilibiliSubtitleUrl
 import com.android.purebilibili.feature.video.subtitle.resolveDefaultSubtitleLanguages
 
+private const val PLAYBACK_CDN_FIRST_FRAME_FALLBACK_TIMEOUT_MS = 2_500L
+
 data class SponsorSkipUiState(
     val visible: Boolean = false,
     val segmentId: String? = null,
@@ -131,6 +134,54 @@ internal fun reduceSponsorSkipUiState(
             label = null
         )
     }
+}
+
+internal data class PlaybackCdnFallbackState(
+    val selectedVideoUrl: String = "",
+    val selectedAudioUrl: String? = null,
+    val fallbackVideoUrl: String? = null,
+    val fallbackAudioUrl: String? = null,
+    val regionLabel: String? = null,
+    val fallbackConsumed: Boolean = false
+) {
+    val usesCdnRewrite: Boolean
+        get() = !fallbackConsumed &&
+            !fallbackVideoUrl.isNullOrBlank() &&
+            (selectedVideoUrl != fallbackVideoUrl || selectedAudioUrl != fallbackAudioUrl)
+
+    fun markFallbackConsumed(): PlaybackCdnFallbackState = copy(fallbackConsumed = true)
+
+    companion object {
+        val Inactive = PlaybackCdnFallbackState()
+    }
+}
+
+internal fun buildPlaybackCdnFallbackState(
+    selectedVideoUrl: String,
+    selectedAudioUrl: String?,
+    originalVideoUrl: String,
+    originalAudioUrl: String?,
+    regionLabel: String?
+): PlaybackCdnFallbackState {
+    return PlaybackCdnFallbackState(
+        selectedVideoUrl = selectedVideoUrl,
+        selectedAudioUrl = selectedAudioUrl,
+        fallbackVideoUrl = originalVideoUrl.takeIf { it.isNotBlank() },
+        fallbackAudioUrl = originalAudioUrl,
+        regionLabel = regionLabel
+    )
+}
+
+internal fun shouldFallbackFromCdnRewrite(
+    state: PlaybackCdnFallbackState,
+    playbackReady: Boolean
+): Boolean {
+    return state.usesCdnRewrite && !playbackReady
+}
+
+internal fun hostForPlaybackLog(url: String?): String {
+    val value = url?.takeIf { it.isNotBlank() } ?: return ""
+    return runCatching { java.net.URI(value).host.orEmpty() }.getOrDefault("")
 }
 
 // ========== UI State ==========
@@ -710,6 +761,8 @@ class PlayerViewModel : ViewModel() {
     
     //  插件系统（替代旧的SponsorBlockUseCase）
     private var pluginCheckJob: Job? = null
+    private var playbackCdnFallbackJob: Job? = null
+    private var playbackCdnFallbackState: PlaybackCdnFallbackState = PlaybackCdnFallbackState.Inactive
     
     // State
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading.Initial)
@@ -891,8 +944,11 @@ class PlayerViewModel : ViewModel() {
                 audioUrl = cdnSelection.audioUrl,
                 adaptiveDashSource = cdnSelection.adaptiveDashSource,
                 startPositionMs = currentPos,
-                playWhenReady = playWhenReady
+                playWhenReady = playWhenReady,
+                cdnFallbackState = cdnSelection.fallbackState
             )
+        } else {
+            armPlaybackCdnFallback(cdnSelection.fallbackState, playWhenReady)
         }
         _uiState.value = current.copy(
             playUrl = cdnSelection.playUrl,
@@ -1512,6 +1568,9 @@ class PlayerViewModel : ViewModel() {
     //  [新增] 播放完成监听器
     private val playbackEndListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) {
+                markPlaybackCdnReady()
+            }
             if (playbackState == Player.STATE_ENDED) {
                 // �️ [修复] 仅当用户主动开始播放后才触发自动连播
                 // 防止从历史记录加载已看完视频时立即跳转
@@ -1578,6 +1637,11 @@ class PlayerViewModel : ViewModel() {
                 // 🛡️ [修复] 用户开始播放时设置标志
                 hasUserStartedPlayback = true
             }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            Logger.w("PlayerVM", "Playback error: ${error.errorCodeName}, message=${error.message}")
+            fallbackFromCdnRewrite(reason = "player_error")
         }
     }
     
@@ -2328,7 +2392,8 @@ class PlayerViewModel : ViewModel() {
                                 audioUrl = cdnSelection.audioUrl,
                                 adaptiveDashSource = cdnSelection.adaptiveDashSource,
                                 startPositionMs = startPos,
-                                playWhenReady = shouldAutoPlay
+                                playWhenReady = shouldAutoPlay,
+                                cdnFallbackState = cdnSelection.fallbackState
                             )
                         } else {
                              // 🎯 Skip preparing player, but ensure it's playing if needed
@@ -5234,8 +5299,11 @@ class PlayerViewModel : ViewModel() {
                             audioUrl = cdnSelection.audioUrl,
                             adaptiveDashSource = cdnSelection.adaptiveDashSource,
                             startPositionMs = currentPos,
-                            playWhenReady = playWhenReadyAfterSwitch
+                            playWhenReady = playWhenReadyAfterSwitch,
+                            cdnFallbackState = cdnSelection.fallbackState
                         )
+                    } else {
+                        armPlaybackCdnFallback(cdnSelection.fallbackState, playWhenReadyAfterSwitch)
                     }
                     _qualitySwitchFailureDialog.value = null
                     _uiState.value = current.copy(
@@ -5370,7 +5438,8 @@ class PlayerViewModel : ViewModel() {
                             videoUrl = cdnSelection.playUrl,
                             audioUrl = cdnSelection.audioUrl,
                             adaptiveDashSource = cdnSelection.adaptiveDashSource,
-                            startPositionMs = restoredPosition
+                            startPositionMs = restoredPosition,
+                            cdnFallbackState = cdnSelection.fallbackState
                         )
                         
                         _uiState.value = subtitleClearedState.copy(
@@ -5551,7 +5620,8 @@ class PlayerViewModel : ViewModel() {
                 videoUrl = cdnSelection.playUrl,
                 audioUrl = cdnSelection.audioUrl,
                 adaptiveDashSource = cdnSelection.adaptiveDashSource,
-                startPositionMs = 0L
+                startPositionMs = 0L,
+                cdnFallbackState = cdnSelection.fallbackState
             )
 
             currentCid = targetCid
@@ -5909,7 +5979,8 @@ class PlayerViewModel : ViewModel() {
         val adaptiveDashSource: AdaptiveDashPlaybackSource?,
         val allVideoUrls: List<String>,
         val allAudioUrls: List<String>,
-        val regionLabel: String?
+        val regionLabel: String?,
+        val fallbackState: PlaybackCdnFallbackState
     )
 
     private fun resolvePlaybackCdnCandidateSelection(
@@ -5961,7 +6032,14 @@ class PlayerViewModel : ViewModel() {
             adaptiveDashSource = selectedAdaptiveDashSource,
             allVideoUrls = allVideoUrls,
             allAudioUrls = allAudioUrls,
-            regionLabel = cdnRewrite?.regionLabel
+            regionLabel = cdnRewrite?.regionLabel,
+            fallbackState = buildPlaybackCdnFallbackState(
+                selectedVideoUrl = selectedVideoUrl,
+                selectedAudioUrl = selectedAudioUrl,
+                originalVideoUrl = videoUrl,
+                originalAudioUrl = audioUrl,
+                regionLabel = cdnRewrite?.regionLabel
+            )
         )
     }
 
@@ -5970,8 +6048,10 @@ class PlayerViewModel : ViewModel() {
         audioUrl: String?,
         adaptiveDashSource: AdaptiveDashPlaybackSource?,
         startPositionMs: Long,
-        playWhenReady: Boolean = true
+        playWhenReady: Boolean = true,
+        cdnFallbackState: PlaybackCdnFallbackState = PlaybackCdnFallbackState.Inactive
     ) {
+        armPlaybackCdnFallback(cdnFallbackState, playWhenReady)
         if (adaptiveDashSource != null || audioUrl != null) {
             playbackUseCase.playDashVideo(
                 videoUrl = videoUrl,
@@ -5982,6 +6062,74 @@ class PlayerViewModel : ViewModel() {
             )
         } else {
             playbackUseCase.playVideo(videoUrl, startPositionMs, playWhenReady = playWhenReady)
+        }
+    }
+
+    private fun armPlaybackCdnFallback(
+        state: PlaybackCdnFallbackState,
+        playWhenReady: Boolean
+    ) {
+        playbackCdnFallbackJob?.cancel()
+        playbackCdnFallbackState = state
+        if (!playWhenReady || !state.usesCdnRewrite) return
+
+        playbackCdnFallbackJob = viewModelScope.launch {
+            delay(PLAYBACK_CDN_FIRST_FRAME_FALLBACK_TIMEOUT_MS)
+            val playbackReady = exoPlayer?.playbackState == Player.STATE_READY
+            if (shouldFallbackFromCdnRewrite(playbackCdnFallbackState, playbackReady)) {
+                fallbackFromCdnRewrite(reason = "first_frame_timeout")
+            }
+        }
+    }
+
+    private fun markPlaybackCdnReady() {
+        playbackCdnFallbackJob?.cancel()
+        playbackCdnFallbackJob = null
+    }
+
+    private fun fallbackFromCdnRewrite(reason: String) {
+        val state = playbackCdnFallbackState
+        if (!shouldFallbackFromCdnRewrite(state, playbackReady = false)) return
+        val fallbackVideoUrl = state.fallbackVideoUrl ?: return
+        val currentPos = exoPlayer?.currentPosition?.coerceAtLeast(0L) ?: 0L
+        val playWhenReadyAfterFallback = exoPlayer?.let { player ->
+            resolvePlaybackIntentForSourceReplacement(
+                playWhenReady = player.playWhenReady,
+                isPlaying = player.isPlaying
+            )
+        } ?: true
+        val consumedState = state.markFallbackConsumed()
+        playbackCdnFallbackState = consumedState
+        playbackCdnFallbackJob?.cancel()
+        playbackCdnFallbackJob = null
+
+        Logger.w(
+            "PlayerVM",
+            "CDN fallback: reason=$reason, region=${state.regionLabel ?: "unknown"}, " +
+                "selected=${hostForPlaybackLog(state.selectedVideoUrl)}, fallback=${hostForPlaybackLog(fallbackVideoUrl)}"
+        )
+        playResolvedPlayback(
+            videoUrl = fallbackVideoUrl,
+            audioUrl = state.fallbackAudioUrl,
+            adaptiveDashSource = null,
+            startPositionMs = currentPos,
+            playWhenReady = playWhenReadyAfterFallback,
+            cdnFallbackState = consumedState
+        )
+        _uiState.update { current ->
+            if (current is PlayerUiState.Success) {
+                val fallbackIndex = current.allVideoUrls.indexOf(fallbackVideoUrl)
+                    .takeIf { it >= 0 }
+                    ?: current.currentCdnIndex
+                current.copy(
+                    playUrl = fallbackVideoUrl,
+                    audioUrl = state.fallbackAudioUrl,
+                    adaptiveDashSource = null,
+                    currentCdnIndex = fallbackIndex
+                )
+            } else {
+                current
+            }
         }
     }
 
@@ -6116,6 +6264,7 @@ class PlayerViewModel : ViewModel() {
         heartbeatJob?.cancel()
         clearHeartbeatSession()
         pluginCheckJob?.cancel()
+        playbackCdnFallbackJob?.cancel()
         onlineCountJob?.cancel()  // 👀 取消在线人数轮询
         playbackTransitionMonitorJob?.cancel()
         aiSummaryJob?.cancel()

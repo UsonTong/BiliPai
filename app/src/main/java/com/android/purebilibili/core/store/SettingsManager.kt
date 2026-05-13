@@ -919,6 +919,7 @@ object SettingsManager {
     private val KEY_AUDIO_FOCUS_ENABLED = booleanPreferencesKey("audio_focus_enabled")
     private val KEY_AUDIO_MODE_AUTO_PIP_ENABLED = booleanPreferencesKey("audio_mode_auto_pip_enabled")
     private val KEY_VIDEO_AI_SUMMARY_ENTRY_ENABLED = booleanPreferencesKey("video_ai_summary_entry_enabled")
+    private val KEY_VIDEO_INFO_DEFAULT_EXPANDED = booleanPreferencesKey("video_info_default_expanded")
     private const val PLAYBACK_SPEED_CACHE_PREFS = "playback_speed_cache"
     private const val CACHE_KEY_DEFAULT_PLAYBACK_SPEED = "default_speed"
     private const val CACHE_KEY_REMEMBER_LAST_SPEED = "remember_last_speed"
@@ -3910,6 +3911,15 @@ object SettingsManager {
             preferences[KEY_VIDEO_AI_SUMMARY_ENTRY_ENABLED] = enabled
         }
     }
+
+    fun getVideoInfoDefaultExpanded(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_VIDEO_INFO_DEFAULT_EXPANDED] ?: true }
+
+    suspend fun setVideoInfoDefaultExpanded(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_VIDEO_INFO_DEFAULT_EXPANDED] = enabled
+        }
+    }
     
     // ==========  底栏显示模式 ==========
     
@@ -4833,6 +4843,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_BACKGROUND_PLAYBACK_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_AUDIO_FOCUS_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_VIDEO_AI_SUMMARY_ENTRY_ENABLED, SettingsShareSection.PLAYBACK),
+            BooleanShareablePreferenceDefinition(KEY_VIDEO_INFO_DEFAULT_EXPANDED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_CLICK_TO_PLAY, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_RESUME_PLAYBACK_PROMPT_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_AUTO_ROTATE_ENABLED, SettingsShareSection.PLAYBACK),

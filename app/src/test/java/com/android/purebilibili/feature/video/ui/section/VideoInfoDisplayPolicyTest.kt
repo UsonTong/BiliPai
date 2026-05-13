@@ -23,6 +23,24 @@ class VideoInfoDisplayPolicyTest {
     }
 
     @Test
+    fun videoInfoInitialExpanded_respectsDefaultExpandedSwitch() {
+        assertFalse(
+            resolveVideoInfoInitialExpandedState(
+                hasDescription = true,
+                hasTags = true,
+                defaultExpanded = false
+            )
+        )
+        assertTrue(
+            resolveVideoInfoInitialExpandedState(
+                hasDescription = true,
+                hasTags = false,
+                defaultExpanded = true
+            )
+        )
+    }
+
+    @Test
     fun aiSummaryEntryShownOnlyWhenEnabledAndContentExists() {
         val aiSummary = AiSummaryData(
             code = 0,

@@ -112,6 +112,37 @@ class DynamicScreenStatePolicyTest {
     }
 
     @Test
+    fun `unfollowed author is removed from cached dynamic lists`() {
+        val state = DynamicUiState(
+            items = listOf(
+                buildDynamicItem(id = "100", authorMid = 11L),
+                buildDynamicItem(id = "101", authorMid = 12L)
+            ),
+            userItems = listOf(
+                buildDynamicItem(id = "200", authorMid = 11L),
+                buildDynamicItem(id = "201", authorMid = 13L)
+            )
+        )
+
+        val updated = resolveDynamicStateAfterAuthorUnfollow(state, authorMid = 11L)
+
+        assertEquals(listOf("101"), updated.items.map { it.id_str })
+        assertEquals(listOf("201"), updated.userItems.map { it.id_str })
+    }
+
+    @Test
+    fun `unfollowed author is removed from followed user sidebar`() {
+        val users = listOf(
+            SidebarUser(uid = 11L, name = "removed", face = ""),
+            SidebarUser(uid = 12L, name = "kept", face = "")
+        )
+
+        val updated = resolveFollowedUsersAfterAuthorUnfollow(users, authorMid = 11L)
+
+        assertEquals(listOf(12L), updated.map { it.uid })
+    }
+
+    @Test
     fun `followed user list reset should trigger only for fresh prepended refresh while viewing all`() {
         assertTrue(
             shouldResetFollowedUserListToTopOnRefresh(
@@ -451,10 +482,11 @@ class DynamicScreenStatePolicyTest {
 
 private fun buildDynamicItem(
     id: String,
+    authorMid: Long = 0L,
     pubTs: Long = 0L
 ) = DynamicItem(
     id_str = id,
     modules = DynamicModules(
-        module_author = DynamicAuthorModule(pub_ts = pubTs)
+        module_author = DynamicAuthorModule(mid = authorMid, pub_ts = pubTs)
     )
 )
