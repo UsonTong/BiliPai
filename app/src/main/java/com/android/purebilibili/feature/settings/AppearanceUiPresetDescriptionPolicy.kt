@@ -15,8 +15,6 @@ internal fun resolveAppearanceUiPresetDescription(
     iosSummary: String,
     materialTitle: String,
     materialSummary: String,
-    materialExpressiveTitle: String,
-    materialExpressiveSummary: String,
     miuixTitle: String,
     miuixSummary: String
 ): AppearanceUiPresetDescription {
@@ -30,11 +28,6 @@ internal fun resolveAppearanceUiPresetDescription(
             AndroidNativeVariant.MATERIAL3 -> AppearanceUiPresetDescription(
                 title = materialTitle,
                 summary = materialSummary
-            )
-
-            AndroidNativeVariant.MATERIAL3_EXPRESSIVE -> AppearanceUiPresetDescription(
-                title = materialExpressiveTitle,
-                summary = materialExpressiveSummary
             )
 
             AndroidNativeVariant.MIUIX -> AppearanceUiPresetDescription(

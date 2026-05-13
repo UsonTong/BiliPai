@@ -16,8 +16,6 @@ class AppearanceUiPresetDescriptionPolicyTest {
             iosSummary = "Keep stronger glass, roundness, and Cupertino-style details.",
             materialTitle = "Android Native · Material 3",
             materialSummary = "Use Material 3 structure while keeping blur and liquid glass.",
-            materialExpressiveTitle = "Android Native · Material 3 Expressive",
-            materialExpressiveSummary = "Use expressive Material motion and component defaults.",
             miuixTitle = "Android Native · Miuix",
             miuixSummary = "Use Miuix chrome while keeping the Android navigation structure."
         )
@@ -38,8 +36,6 @@ class AppearanceUiPresetDescriptionPolicyTest {
             iosSummary = "Keep stronger glass, roundness, and Cupertino-style details.",
             materialTitle = "Android Native · Material 3",
             materialSummary = "Use Material 3 structure while keeping blur and liquid glass.",
-            materialExpressiveTitle = "Android Native · Material 3 Expressive",
-            materialExpressiveSummary = "Use expressive Material motion and component defaults.",
             miuixTitle = "Android Native · Miuix",
             miuixSummary = "Use Miuix chrome while keeping the Android navigation structure."
         )
@@ -51,29 +47,6 @@ class AppearanceUiPresetDescriptionPolicyTest {
         )
     }
 
-    @Test
-    fun `resolveAppearanceUiPresetDescription should return expressive copy for android native md3e variant`() {
-        val description = resolveAppearanceUiPresetDescription(
-            preset = UiPreset.MD3,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE,
-            iosTitle = "iOS Preset",
-            iosSummary = "Keep stronger glass, roundness, and Cupertino-style details.",
-            materialTitle = "Android Native · Material 3",
-            materialSummary = "Use Material 3 structure while keeping blur and liquid glass.",
-            materialExpressiveTitle = "Android Native · Material 3 Expressive",
-            materialExpressiveSummary = "Use expressive Material motion and component defaults.",
-            miuixTitle = "Android Native · Miuix",
-            miuixSummary = "Use Miuix chrome while keeping the Android navigation structure."
-        )
-
-        assertEquals("Android Native · Material 3 Expressive", description.title)
-        assertEquals(
-            "Use expressive Material motion and component defaults.",
-            description.summary
-        )
-    }
-
-    @Test
     fun `resolveAppearanceUiPresetDescription should return miuix copy for android native miuix variant`() {
         val description = resolveAppearanceUiPresetDescription(
             preset = UiPreset.MD3,
@@ -82,8 +55,6 @@ class AppearanceUiPresetDescriptionPolicyTest {
             iosSummary = "Keep stronger glass, roundness, and Cupertino-style details.",
             materialTitle = "Android Native · Material 3",
             materialSummary = "Use Material 3 structure while keeping blur and liquid glass.",
-            materialExpressiveTitle = "Android Native · Material 3 Expressive",
-            materialExpressiveSummary = "Use expressive Material motion and component defaults.",
             miuixTitle = "Android Native · Miuix",
             miuixSummary = "Use Miuix chrome while keeping the Android navigation structure."
         )

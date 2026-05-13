@@ -54,8 +54,6 @@ import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.iOSSystemGray
 import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.theme.iOSYellow
-import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
-import com.android.purebilibili.core.theme.resolveAndroidNativeChromeTokens
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import io.github.alexzhirkevich.cupertino.CupertinoSwitch
@@ -106,23 +104,7 @@ internal fun resolveAdaptiveListComponentVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AdaptiveListComponentVisualSpec {
-    return if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
-        val chromeTokens = resolveAndroidNativeChromeTokens(uiPreset, androidNativeVariant)
-        AdaptiveListComponentVisualSpec(
-            sectionStartPaddingDp = 22,
-            groupCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
-            groupTonalElevationDp = chromeTokens.tonalSurfaceElevationDp,
-            iconCornerRadiusDp = 14,
-            iconContainerSizeDp = 42,
-            iconGlyphSizeDp = 22,
-            iconBackgroundAlpha = 0.18f,
-            gridCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
-            searchBarCornerRadiusDp = chromeTokens.pillCornerRadiusDp,
-            searchBarHeightDp = 58,
-            dividerThicknessDp = 0f,
-            dividerStartIndentDp = 22
-        )
-    } else if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         AdaptiveListComponentVisualSpec(
             sectionStartPaddingDp = 18,
             groupCornerRadiusDp = 20,
@@ -174,14 +156,7 @@ internal fun resolveAdaptiveListRowVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AdaptiveListRowVisualSpec {
-    return if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
-        AdaptiveListRowVisualSpec(
-            insideHorizontalPaddingDp = 20,
-            insideVerticalPaddingDp = 18,
-            trailingIconSizeDp = 18,
-            trailingSpacingDp = 8
-        )
-    } else if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         AdaptiveListRowVisualSpec(
             insideHorizontalPaddingDp = 16,
             insideVerticalPaddingDp = 14,
@@ -214,7 +189,6 @@ internal fun resolveAdaptiveGroupContainerColor(
 ): Color {
     val resolvedColor = if (uiPreset == UiPreset.MD3) {
         when {
-            isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.surfaceContainerHigh
             androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.surfaceContainer
             else -> colorScheme.surfaceContainerLow
         }
@@ -238,7 +212,6 @@ internal fun resolveAdaptiveSearchBarContainerColor(
 ): Color {
     val resolvedColor = if (uiPreset == UiPreset.MD3) {
         when {
-            isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.surfaceContainerHigh
             androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.surfaceContainer
             else -> colorScheme.surfaceContainerHigh
         }
@@ -622,9 +595,7 @@ fun IOSGroup(
         shape = appliedShape,
         color = resolvedContainerColor,
         shadowElevation = if (uiPreset == UiPreset.MD3) 0.dp else 0.dp,
-        tonalElevation = if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
-            visualSpec.groupTonalElevationDp.dp
-        } else if (uiPreset == UiPreset.MD3) {
+        tonalElevation = if (uiPreset == UiPreset.MD3) {
             0.dp
         } else {
             visualSpec.groupTonalElevationDp.dp
@@ -633,7 +604,6 @@ fun IOSGroup(
             androidx.compose.foundation.BorderStroke(
                 0.8.dp,
                 when {
-                    isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> colorScheme.outlineVariant.copy(alpha = 0.36f)
                     androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.outline.copy(alpha = 0.22f)
                     else -> colorScheme.outlineVariant.copy(alpha = 0.6f)
                 }

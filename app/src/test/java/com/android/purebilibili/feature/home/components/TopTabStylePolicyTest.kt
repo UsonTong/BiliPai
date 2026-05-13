@@ -229,21 +229,6 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `android native md3e top tabs should use expressive selected container styling`() {
-        val spec = resolveMd3TopTabVisualSpec(
-            isFloatingStyle = false,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-        )
-
-        assertEquals(52.dp, spec.rowHeight)
-        assertEquals(34.dp, spec.selectedCapsuleHeight)
-        assertEquals(17.dp, spec.selectedCapsuleCornerRadius)
-        assertEquals(2.dp, spec.selectedCapsuleTonalElevation)
-        assertEquals(12.dp, spec.itemHorizontalPadding)
-        assertEquals(15.sp, spec.labelTextSize)
-    }
-
-    @Test
     fun `android native miuix text tabs should use native miuix row while icon modes stay shared`() {
         assertTrue(
             shouldUseNativeMiuixTopTabRow(
@@ -314,31 +299,6 @@ class TopTabStylePolicyTest {
             resolveMd3TopTabSelectedLabelColor(
                 colorScheme = colorScheme,
                 androidNativeVariant = AndroidNativeVariant.MIUIX
-            )
-        )
-    }
-
-    @Test
-    fun `android native md3e top tabs should use primary container emphasis`() {
-        val colorScheme = lightColorScheme(
-            primary = Color(0xFF2D6A4F),
-            primaryContainer = Color(0xFFD7F4E3),
-            onPrimaryContainer = Color(0xFF062015),
-            onSurfaceVariant = Color(0xFF6A5E61)
-        )
-
-        assertEquals(
-            colorScheme.primaryContainer,
-            resolveMd3TopTabSelectedContainerColor(
-                colorScheme = colorScheme,
-                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-            )
-        )
-        assertEquals(
-            colorScheme.onPrimaryContainer,
-            resolveMd3TopTabSelectedIconColor(
-                colorScheme = colorScheme,
-                androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
             )
         )
     }

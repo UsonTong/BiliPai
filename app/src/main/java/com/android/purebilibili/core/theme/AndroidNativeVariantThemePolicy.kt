@@ -4,7 +4,6 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 
 internal const val MD3_CORNER_RADIUS_SCALE = 0.9f
-internal const val MD3_EXPRESSIVE_CORNER_RADIUS_SCALE = 1.05f
 internal const val MIUIX_CORNER_RADIUS_SCALE = 1.15f
 
 data class AndroidNativeChromeTokens(
@@ -18,27 +17,11 @@ data class AndroidNativeChromeTokens(
     val motionScale: Float
 )
 
-fun isMaterial3ExpressiveVariant(
-    uiPreset: UiPreset,
-    androidNativeVariant: AndroidNativeVariant
-): Boolean = uiPreset == UiPreset.MD3 &&
-    androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-
 fun resolveAndroidNativeChromeTokens(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AndroidNativeChromeTokens {
     return when {
-        isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> AndroidNativeChromeTokens(
-            containerCornerRadiusDp = 30,
-            pillCornerRadiusDp = 30,
-            selectedContainerAlpha = 0.24f,
-            tonalSurfaceElevationDp = 4,
-            denseHorizontalSpacingDp = 20,
-            rowMinTouchTargetDp = 48,
-            expressiveMotionDurationMillis = 260,
-            motionScale = 1.12f
-        )
         uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> AndroidNativeChromeTokens(
             containerCornerRadiusDp = 20,
             pillCornerRadiusDp = 22,
@@ -89,7 +72,6 @@ fun resolveMaterialShapes(
 ): Shapes {
     return when {
         uiPreset == UiPreset.IOS -> iOSShapes
-        androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE -> Md3ExpressiveShapes
         androidNativeVariant == AndroidNativeVariant.MIUIX -> MiuixAlignedShapes
         else -> Md3Shapes
     }
@@ -101,7 +83,6 @@ fun resolveCornerRadiusScale(
 ): Float {
     return when {
         uiPreset == UiPreset.IOS -> 1f
-        androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE -> MD3_EXPRESSIVE_CORNER_RADIUS_SCALE
         androidNativeVariant == AndroidNativeVariant.MIUIX -> MIUIX_CORNER_RADIUS_SCALE
         else -> MD3_CORNER_RADIUS_SCALE
     }
@@ -111,8 +92,3 @@ fun shouldUseMiuixSmoothRounding(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant
 ): Boolean = uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX
-
-fun shouldUseMaterialExpressiveMotionScheme(
-    uiPreset: UiPreset,
-    androidNativeVariant: AndroidNativeVariant
-): Boolean = isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)

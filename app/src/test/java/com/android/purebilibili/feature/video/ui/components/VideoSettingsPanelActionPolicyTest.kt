@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.video.ui.components
 
-import com.android.purebilibili.core.theme.AndroidNativeVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -39,17 +38,4 @@ class VideoSettingsPanelActionPolicyTest {
         assertEquals(16, policy.pillHorizontalPaddingDp)
     }
 
-    @Test
-    fun md3eCompactPhone_usesExpressivePillTargets() {
-        val policy = resolveVideoSettingsPanelActionPolicy(
-            widthDp = 393,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-        )
-
-        assertEquals(12, policy.rowItemSpacingDp)
-        assertEquals(50, policy.pillHeightDp)
-        assertEquals(124, policy.pillMinWidthDp)
-        assertEquals(19, policy.pillIconSizeDp)
-        assertEquals(16, policy.pillHorizontalPaddingDp)
-    }
 }

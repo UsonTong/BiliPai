@@ -27,7 +27,6 @@ import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
 import com.android.purebilibili.core.theme.resolveAndroidNativeChromeTokens
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar as MiuixSmallTopAppBar
@@ -67,12 +66,6 @@ fun resolveAdaptiveTopAppBarChromeSpec(
 ): AdaptiveTopAppBarChromeSpec {
     val chromeTokens = resolveAndroidNativeChromeTokens(uiPreset, androidNativeVariant)
     return when {
-        isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) -> AdaptiveTopAppBarChromeSpec(
-            containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
-            scrolledContainerAlpha = 0.94f,
-            scrolledTonalElevationDp = 2,
-            motionScale = chromeTokens.motionScale
-        )
         uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> AdaptiveTopAppBarChromeSpec(
             containerCornerRadiusDp = chromeTokens.containerCornerRadiusDp,
             scrolledContainerAlpha = 1f,
@@ -221,15 +214,7 @@ fun AdaptiveTopAppBar(
     } else {
         colors
     }
-    val topAppBarColors = if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant) && !globalWallpaperVisible) {
-        effectiveColors.copy(
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
-                alpha = chromeSpec.scrolledContainerAlpha
-            )
-        )
-    } else {
-        effectiveColors
-    }
+    val topAppBarColors = effectiveColors
 
     if (rememberIsNativeMiuixEnabled()) {
         val navigationContent =

@@ -75,13 +75,6 @@ val iOSShapes = Shapes(
 
 val Md3Shapes = Shapes()
 
-val Md3ExpressiveShapes = Shapes(
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp)
-)
-
 val MiuixAlignedShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),

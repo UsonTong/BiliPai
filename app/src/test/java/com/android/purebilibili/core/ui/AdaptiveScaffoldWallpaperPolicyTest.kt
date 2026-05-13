@@ -67,20 +67,4 @@ class AdaptiveScaffoldWallpaperPolicyTest {
         assertEquals(brandColor, resolved)
     }
 
-    @Test
-    fun md3eTopAppBarChromeUsesExpressiveScrollFeedback() {
-        val material3 = resolveAdaptiveTopAppBarChromeSpec(
-            uiPreset = UiPreset.MD3,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3
-        )
-        val expressive = resolveAdaptiveTopAppBarChromeSpec(
-            uiPreset = UiPreset.MD3,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-        )
-
-        assertEquals(30, expressive.containerCornerRadiusDp)
-        assertEquals(2, expressive.scrolledTonalElevationDp)
-        assertTrue(expressive.scrolledContainerAlpha < material3.scrolledContainerAlpha)
-        assertTrue(expressive.motionScale > material3.motionScale)
-    }
 }

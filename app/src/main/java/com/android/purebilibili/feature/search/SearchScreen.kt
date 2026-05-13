@@ -103,7 +103,6 @@ import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.data.model.response.HotItem
 import com.android.purebilibili.data.model.response.SearchArticleItem
@@ -166,15 +165,7 @@ internal fun resolveSearchChromeVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): SearchChromeVisualSpec {
-    return if (isMaterial3ExpressiveVariant(uiPreset, androidNativeVariant)) {
-        SearchChromeVisualSpec(
-            inputHeightDp = 56,
-            inputCornerRadiusDp = 30,
-            actionContainerCornerRadiusDp = 24,
-            useFilledSearchAction = true,
-            suggestionContainerCornerRadiusDp = 28
-        )
-    } else if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         SearchChromeVisualSpec(
             inputHeightDp = 46,
             inputCornerRadiusDp = 23,

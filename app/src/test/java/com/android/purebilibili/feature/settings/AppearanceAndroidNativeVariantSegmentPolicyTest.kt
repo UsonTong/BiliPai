@@ -10,20 +10,18 @@ class AppearanceAndroidNativeVariantSegmentPolicyTest {
     fun androidNativeVariantSegmentOptions_exposeStableOrder_andUseProvidedLabels() {
         val options = resolveAndroidNativeVariantSegmentOptions(
             material3Label = "Material 3",
-            material3ExpressiveLabel = "MD3E",
             miuixLabel = "Miuix"
         )
 
         assertEquals(
             listOf(
                 AndroidNativeVariant.MATERIAL3,
-                AndroidNativeVariant.MATERIAL3_EXPRESSIVE,
                 AndroidNativeVariant.MIUIX
             ),
             options.map { it.value }
         )
         assertEquals(
-            listOf("Material 3", "MD3E", "Miuix"),
+            listOf("Material 3", "Miuix"),
             options.map { it.label }
         )
     }

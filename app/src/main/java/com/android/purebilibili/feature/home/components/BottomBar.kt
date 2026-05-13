@@ -555,18 +555,6 @@ internal fun resolveAndroidNativeBottomBarTuning(
     darkTheme: Boolean,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): AndroidNativeBottomBarTuning {
-    if (androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE) {
-        return AndroidNativeBottomBarTuning(
-            cornerRadiusDp = 38f,
-            shellShadowElevationDp = if (darkTheme) 0.8f else 1.1f,
-            shellBlurRadiusDp = if (blurEnabled) 14f else 0f,
-            shellSurfaceAlpha = if (blurEnabled) 0.46f else 1f,
-            outerHorizontalPaddingDp = 22f,
-            innerHorizontalPaddingDp = 6f,
-            indicatorHeightDp = 60f,
-            indicatorLensRadiusDp = 28f
-        )
-    }
     return AndroidNativeBottomBarTuning(
         cornerRadiusDp = 32f,
         shellShadowElevationDp = if (darkTheme) 0.6f else 0.8f,

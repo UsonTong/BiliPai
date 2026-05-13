@@ -37,15 +37,5 @@ fun resolveVideoSettingsPanelActionPolicy(
             pillIconSizeDp = 18
         )
     }
-    return if (androidNativeVariant == AndroidNativeVariant.MATERIAL3_EXPRESSIVE) {
-        basePolicy.copy(
-            rowItemSpacingDp = basePolicy.rowItemSpacingDp.coerceAtLeast(12),
-            pillHeightDp = basePolicy.pillHeightDp.coerceAtLeast(50),
-            pillMinWidthDp = basePolicy.pillMinWidthDp.coerceAtLeast(124),
-            pillHorizontalPaddingDp = basePolicy.pillHorizontalPaddingDp.coerceAtLeast(16),
-            pillIconSizeDp = basePolicy.pillIconSizeDp.coerceAtLeast(19)
-        )
-    } else {
-        basePolicy
-    }
+    return basePolicy
 }

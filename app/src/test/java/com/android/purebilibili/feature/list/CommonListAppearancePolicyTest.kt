@@ -110,18 +110,4 @@ class CommonListAppearancePolicyTest {
         assertTrue(layout.headerBackgroundAlphaMultiplier < 1f)
     }
 
-    @Test
-    fun md3eFavoriteHeaderLayout_usesExpressiveSearchAndChipTargets() {
-        val layout = resolveCommonListFavoriteHeaderLayout(
-            uiPreset = UiPreset.MD3,
-            androidNativeVariant = AndroidNativeVariant.MATERIAL3_EXPRESSIVE
-        )
-
-        assertEquals(56, layout.searchBarHeightDp)
-        assertEquals(44, layout.browseToggleHeightDp)
-        assertEquals(40, layout.browseToggleIndicatorHeightDp)
-        assertEquals(15, layout.browseToggleLabelFontSizeSp)
-        assertEquals(40, layout.folderChipMinHeightDp)
-        assertTrue(layout.headerBackgroundAlphaMultiplier > 0.88f)
-    }
 }

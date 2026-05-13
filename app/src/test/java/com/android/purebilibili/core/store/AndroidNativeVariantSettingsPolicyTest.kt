@@ -23,14 +23,18 @@ class AndroidNativeVariantSettingsPolicyTest {
     }
 
     @Test
+    fun legacyMaterial3ExpressiveValue_fallsBackToMaterial3Variant() {
+        assertEquals(
+            AndroidNativeVariant.MATERIAL3,
+            resolveAndroidNativeVariantPreferenceValue(2)
+        )
+    }
+
+    @Test
     fun persistedValue_restoresMatchingVariant() {
         assertEquals(
             AndroidNativeVariant.MATERIAL3,
             resolveAndroidNativeVariantPreferenceValue(AndroidNativeVariant.MATERIAL3.value)
-        )
-        assertEquals(
-            AndroidNativeVariant.MATERIAL3_EXPRESSIVE,
-            resolveAndroidNativeVariantPreferenceValue(AndroidNativeVariant.MATERIAL3_EXPRESSIVE.value)
         )
         assertEquals(
             AndroidNativeVariant.MIUIX,

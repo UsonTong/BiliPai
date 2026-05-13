@@ -13,11 +13,13 @@ enum class UiPreset(val value: Int, val label: String) {
 
 enum class AndroidNativeVariant(val value: Int, val label: String) {
     MATERIAL3(0, "Material 3"),
-    MIUIX(1, "Miuix"),
-    MATERIAL3_EXPRESSIVE(2, "Material 3 Expressive");
+    MIUIX(1, "Miuix");
 
     companion object {
+        private const val LEGACY_REMOVED_VARIANT_VALUE = 2
+
         fun fromValue(value: Int): AndroidNativeVariant {
+            if (value == LEGACY_REMOVED_VARIANT_VALUE) return MATERIAL3
             return entries.find { it.value == value } ?: MATERIAL3
         }
     }

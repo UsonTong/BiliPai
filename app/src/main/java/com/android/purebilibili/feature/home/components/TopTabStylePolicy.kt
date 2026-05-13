@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.theme.isMaterial3ExpressiveVariant
 
 enum class TopTabMaterialMode {
     PLAIN,
@@ -120,35 +119,6 @@ internal fun resolveMd3TopTabVisualSpec(
 ): Md3TopTabVisualSpec {
     val normalizedLabelMode = normalizeTopTabLabelMode(labelMode)
     val showIconAndText = normalizedLabelMode == 0
-    if (isMaterial3ExpressiveVariant(UiPreset.MD3, androidNativeVariant)) {
-        return if (isFloatingStyle) {
-            Md3TopTabVisualSpec(
-                rowHeight = if (showIconAndText) 62.dp else 56.dp,
-                selectedCapsuleHeight = 36.dp,
-                selectedCapsuleCornerRadius = 18.dp,
-                selectedCapsuleTonalElevation = 2.dp,
-                selectedCapsuleShadowElevation = 0.dp,
-                itemHorizontalPadding = if (showIconAndText) 10.dp else 14.dp,
-                iconSize = 22.dp,
-                labelTextSize = if (showIconAndText) 14.sp else 15.sp,
-                labelLineHeight = if (showIconAndText) 18.sp else 20.sp,
-                iconLabelSpacing = if (showIconAndText) 3.dp else 0.dp
-            )
-        } else {
-            Md3TopTabVisualSpec(
-                rowHeight = if (showIconAndText) 60.dp else 52.dp,
-                selectedCapsuleHeight = 34.dp,
-                selectedCapsuleCornerRadius = 17.dp,
-                selectedCapsuleTonalElevation = 2.dp,
-                selectedCapsuleShadowElevation = 0.dp,
-                itemHorizontalPadding = if (showIconAndText) 10.dp else 12.dp,
-                iconSize = 21.dp,
-                labelTextSize = if (showIconAndText) 14.sp else 15.sp,
-                labelLineHeight = if (showIconAndText) 18.sp else 20.sp,
-                iconLabelSpacing = if (showIconAndText) 3.dp else 0.dp
-            )
-        }
-    }
     if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
         return if (isFloatingStyle) {
             Md3TopTabVisualSpec(
@@ -212,7 +182,6 @@ internal fun resolveMd3TopTabSelectedContainerColor(
     colorScheme: ColorScheme,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): androidx.compose.ui.graphics.Color = when {
-    isMaterial3ExpressiveVariant(UiPreset.MD3, androidNativeVariant) -> colorScheme.primaryContainer
     androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.secondaryContainer
     else -> colorScheme.primary
 }
@@ -221,7 +190,6 @@ internal fun resolveMd3TopTabSelectedIconColor(
     colorScheme: ColorScheme,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): androidx.compose.ui.graphics.Color = when {
-    isMaterial3ExpressiveVariant(UiPreset.MD3, androidNativeVariant) -> colorScheme.onPrimaryContainer
     androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.onSecondaryContainer
     else -> colorScheme.primary
 }
@@ -230,7 +198,6 @@ internal fun resolveMd3TopTabSelectedLabelColor(
     colorScheme: ColorScheme,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): androidx.compose.ui.graphics.Color = when {
-    isMaterial3ExpressiveVariant(UiPreset.MD3, androidNativeVariant) -> colorScheme.onPrimaryContainer
     androidNativeVariant == AndroidNativeVariant.MIUIX -> colorScheme.onSecondaryContainer
     else -> colorScheme.primary
 }
