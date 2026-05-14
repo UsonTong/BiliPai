@@ -18,6 +18,7 @@ Use this file as the project-specific overlay on top of the global Codex/OMX gui
 - Avoid adding business logic to [`MainActivity.kt`](/Users/yiyang/Desktop/BiliPai/app/src/main/java/com/android/purebilibili/MainActivity.kt) unless the behavior truly belongs to app shell, deep link routing, or top-level playback orchestration.
 - Do not add new dependencies unless the user explicitly asks for one.
 - Do not run full package, APK packaging, bundle, install, or release-smoke verification paths unless the user explicitly asks for them.
+- After each meaningful completed slice, commit and push the changes so progress is easy to roll back and resume.
 
 ## Android and Compose conventions
 
