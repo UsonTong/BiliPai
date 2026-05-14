@@ -17,6 +17,7 @@ class HomeTokenAdoptionTest {
     private val migratedHomeFiles = listOf(
         "src/main/java/com/android/purebilibili/feature/home/HomeComponents.kt",
         "src/main/java/com/android/purebilibili/feature/home/HomeGlassVisualPolicy.kt",
+        "src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/BottomBarLiquidSegmentedControl.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/CrashTrackingConsentDialog.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/HomeTopTabChrome.kt",

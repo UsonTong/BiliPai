@@ -169,7 +169,6 @@ internal object StyleLintAllowlist {
         "src/main/java/com/android/purebilibili/feature/dynamic/components/RepostDialog.kt",
         "src/main/java/com/android/purebilibili/feature/dynamic/DynamicScreen.kt",
         "src/main/java/com/android/purebilibili/feature/following/FollowingListScreen.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/cards/GlassVideoCard.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/home/HomeScreen.kt",

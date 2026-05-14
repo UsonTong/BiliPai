@@ -122,6 +122,7 @@ import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import dev.chrisbanes.haze.hazeEffect // [New]
@@ -1655,7 +1656,7 @@ fun FrostedBottomBar(
         return
     }
 
-    val isDarkTheme = MaterialTheme.colorScheme.background.red < 0.5f // Simple darkness check
+    val isDarkTheme = AppSurfaceTokens.chromeBackground().red < 0.5f // Simple darkness check
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
     val showIcon = shouldShowBottomBarIcon(normalizedLabelMode)
@@ -1773,7 +1774,7 @@ private fun MaterialBottomBar(
     val baseSurfaceColor = if (isFloating) {
         MaterialTheme.colorScheme.surfaceContainer
     } else {
-        MaterialTheme.colorScheme.surface
+        AppSurfaceTokens.cardContainer()
     }
     val containerColor = if (isFloating) {
         resolveAndroidNativeFloatingBottomBarContainerColor(
@@ -3538,7 +3539,7 @@ private fun BottomBarReminderBadgeAnchor(
                     .background(iOSRed, CircleShape)
                     .border(
                         width = 1.dp,
-                        color = MaterialTheme.colorScheme.surface,
+                        color = AppSurfaceTokens.cardContainer(),
                         shape = CircleShape
                     )
                     .padding(horizontal = 5.dp, vertical = 1.dp),
