@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1112,7 +1113,7 @@ fun MobileProfileContent(
                 val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                 
                 // 玻璃颜色：深色模式用黑透，浅色模式用白透
-                val glassContainerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.5f)
+                val glassContainerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.28f)
                 
                 // 文字颜色：深色背景用白字，浅色背景用黑字
                 val glassContentColor = if (isDarkTheme) Color.White else Color.Black
@@ -1728,8 +1729,8 @@ fun ServicesSection(
     val watchLaterIcon = rememberAppWatchLaterIcon()
     val inboxIcon = rememberAppInboxIcon()
     val accountIcon = rememberAppProfileAddIcon()
+
     if (isTablet) {
-        // [New] Grid Layout for Tablet
         val items = buildList {
             add(Triple("离线缓存", downloadIcon, onDownloadClick))
             if (showHistoryService) add(Triple("历史记录", historyIcon, onHistoryClick))
@@ -1738,13 +1739,7 @@ fun ServicesSection(
             add(Triple("消息中心", inboxIcon, onInboxClick))
             add(Triple("账号切换", accountIcon, onAccountManageClick))
         }
-        
-        // Simple Grid implementation since LazyVerticalGrid might be overkill inside a Column if not scrolling?
-        // But tablet right pane has plenty space.
-        // Let's use FlowRow for auto-wrapping or a simple Row/Column combo.
-        // Actually, since it's a fixed list, a hardcoded Row/Column grid is safer than LazyGrid inside Scrollable.
-        
-        // 2 columns x N rows
+
         Column(modifier = modifier) {
             Column(
                 modifier = Modifier
@@ -1761,13 +1756,12 @@ fun ServicesSection(
                                 icon = icon,
                                 title = title,
                                 onClick = onClick,
-                                iconTint = contentColor, // Use content color for icon in this mode?
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), // Slightly distinct background
+                                iconTint = contentColor,
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
                                 contentColor = contentColor,
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        // Fill empty space if odd number
                         if (rowItems.size < 2) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -1785,92 +1779,281 @@ fun ServicesSection(
         }
 
     } else {
-        // [Original] List Layout for Mobile
-    // [Modified] 移除标题，纯净悬浮岛风格 (Option 3)
-    // IOSSectionTitle("我的服务")
-    
-    // [Modified] Custom Surface implementation to avoid tonalElevation overlay causing "outer background" issue
-    Surface(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .then(
-                if (borderColor != null) {
-                    Modifier.border(
-                        width = 0.5.dp, 
-                        color = borderColor, 
-                        shape = RoundedCornerShape(24.dp)
+        val useImmersiveServiceLayout = borderColor != null
+        if (useImmersiveServiceLayout) {
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ProfileServicesListIsland(
+                    containerColor = containerColor,
+                    borderColor = borderColor
+                ) {
+                    ProfileServiceRow(
+                        icon = downloadIcon,
+                        title = "离线缓存",
+                        onClick = onDownloadClick,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        textColor = contentColor,
                     )
-                } else Modifier
-            )
-            .clip(RoundedCornerShape(24.dp)),
+                    ProfileServiceDivider(contentColor)
+                    if (showHistoryService) {
+                        ProfileServiceRow(
+                            icon = historyIcon,
+                            title = "历史记录",
+                            onClick = onHistoryClick,
+                            iconTint = iOSBlue,
+                            textColor = contentColor,
+                        )
+                        ProfileServiceDivider(contentColor)
+                    }
+                    ProfileServiceRow(
+                        icon = bookmarkIcon,
+                        title = "我的收藏",
+                        onClick = onFavoriteClick,
+                        iconTint = iOSYellow,
+                        textColor = contentColor,
+                    )
+                    if (favoriteFolderShortcuts.isNotEmpty()) {
+                        ProfileFavoriteFolderShortcutGrid(
+                            shortcuts = favoriteFolderShortcuts,
+                            onFavoriteFolderClick = onFavoriteFolderClick,
+                            contentColor = contentColor,
+                            compactHorizontal = true,
+                            onMoreClick = onFavoriteClick,
+                            modifier = Modifier.padding(start = 58.dp, end = 14.dp, bottom = 10.dp)
+                        )
+                    }
+                    ProfileServiceDivider(contentColor)
+                    ProfileServiceRow(
+                        icon = watchLaterIcon,
+                        title = "稍后再看",
+                        onClick = onWatchLaterClick,
+                        iconTint = iOSGreen,
+                        textColor = contentColor,
+                    )
+                    ProfileServiceDivider(contentColor)
+                    ProfileServiceRow(
+                        icon = inboxIcon,
+                        title = "消息中心",
+                        onClick = onInboxClick,
+                        iconTint = com.android.purebilibili.core.theme.iOSPink,
+                        textColor = contentColor,
+                    )
+                }
+                ProfileAccountActionArea(
+                    accountIcon = accountIcon,
+                    onAccountManageClick = onAccountManageClick,
+                    onLogout = onLogout,
+                    isLogin = isLogin,
+                    textColor = contentColor,
+                    containerColor = containerColor,
+                    borderColor = borderColor
+                )
+            }
+        } else {
+            Surface(
+                modifier = modifier
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                color = containerColor,
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp // Ensure no extra overlay
+            ) {
+                Column {
+                    IOSClickableItem(
+                        icon = downloadIcon,
+                        title = "离线缓存",
+                        onClick = onDownloadClick,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        textColor = contentColor
+                    )
+                    if (showHistoryService) {
+                        IOSClickableItem(
+                            icon = historyIcon,
+                            title = "历史记录",
+                            onClick = onHistoryClick,
+                            iconTint = iOSBlue,
+                            textColor = contentColor
+                        )
+                    }
+                    IOSClickableItem(
+                        icon = bookmarkIcon,
+                        title = "我的收藏",
+                        onClick = onFavoriteClick,
+                        iconTint = iOSYellow,
+                        textColor = contentColor
+                    )
+                    if (favoriteFolderShortcuts.isNotEmpty()) {
+                        ProfileFavoriteFolderShortcutGrid(
+                            shortcuts = favoriteFolderShortcuts,
+                            onFavoriteFolderClick = onFavoriteFolderClick,
+                            contentColor = contentColor,
+                            modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp)
+                        )
+                    }
+                    IOSClickableItem(
+                        icon = watchLaterIcon,
+                        title = "稍后再看",
+                        onClick = onWatchLaterClick,
+                        iconTint = iOSGreen,
+                        textColor = contentColor
+                    )
+                    IOSClickableItem(
+                        icon = inboxIcon,
+                        title = "消息中心",
+                        onClick = onInboxClick,
+                        iconTint = com.android.purebilibili.core.theme.iOSPink,
+                        textColor = contentColor
+                    )
+                    IOSClickableItem(
+                        icon = accountIcon,
+                        title = "账号切换",
+                        onClick = onAccountManageClick,
+                        iconTint = iOSOrange,
+                        textColor = contentColor
+                    )
+                    IOSClickableItem(
+                        title = if (isLogin) "退出登录" else "立即登录",
+                        onClick = onLogout,
+                        textColor = if (isLogin) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        centered = true,
+                        showChevron = false
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileServicesListIsland(
+    containerColor: Color,
+    borderColor: Color?,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         color = containerColor,
+        border = borderColor?.let { BorderStroke(0.5.dp, it) },
         shadowElevation = 0.dp,
-        tonalElevation = 0.dp // Ensure no extra overlay
+        tonalElevation = 0.dp
     ) {
-        Column {
-            IOSClickableItem(
-                icon = downloadIcon,
-                title = "离线缓存",
-                onClick = onDownloadClick,
-                iconTint = MaterialTheme.colorScheme.primary,
-                textColor = contentColor
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun ProfileServiceRow(
+    title: String,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    iconTint: Color,
+    textColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 58.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(iconTint.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(21.dp)
             )
-            if (showHistoryService) {
-                IOSClickableItem(
-                    icon = historyIcon,
-                    title = "历史记录",
-                    onClick = onHistoryClick,
-                    iconTint = iOSBlue,
-                    textColor = contentColor
-                )
-            }
-            IOSClickableItem(
-                icon = bookmarkIcon,
-                title = "我的收藏",
-                onClick = onFavoriteClick,
-                iconTint = iOSYellow,
-                textColor = contentColor
-            )
-            if (favoriteFolderShortcuts.isNotEmpty()) {
-                ProfileFavoriteFolderShortcutGrid(
-                    shortcuts = favoriteFolderShortcuts,
-                    onFavoriteFolderClick = onFavoriteFolderClick,
-                    contentColor = contentColor,
-                    modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 12.dp)
-                )
-            }
-            IOSClickableItem(
-                icon = watchLaterIcon,
-                title = "稍后再看",
-                onClick = onWatchLaterClick,
-                iconTint = iOSGreen,
-                textColor = contentColor
-            )
-            IOSClickableItem(
-                icon = inboxIcon,
-                title = "消息中心",
-                onClick = onInboxClick,
-                iconTint = com.android.purebilibili.core.theme.iOSPink,  //  粉色图标
-                textColor = contentColor
-            )
-            IOSClickableItem(
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Icon(
+            imageVector = CupertinoIcons.Default.ChevronForward,
+            contentDescription = null,
+            tint = textColor.copy(alpha = 0.46f),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun ProfileServiceDivider(contentColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 68.dp, end = 16.dp)
+            .height(0.5.dp)
+            .background(contentColor.copy(alpha = 0.12f))
+    )
+}
+
+@Composable
+private fun ProfileAccountActionArea(
+    accountIcon: ImageVector,
+    onAccountManageClick: () -> Unit,
+    onLogout: () -> Unit,
+    isLogin: Boolean,
+    textColor: Color,
+    containerColor: Color,
+    borderColor: Color?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ProfileServicesListIsland(
+            containerColor = containerColor,
+            borderColor = borderColor
+        ) {
+            ProfileServiceRow(
                 icon = accountIcon,
                 title = "账号切换",
                 onClick = onAccountManageClick,
                 iconTint = iOSOrange,
-                textColor = contentColor
-            )
-            
-            // [Merged] 退出登录 / 立即登录
-            IOSClickableItem(
-                title = if (isLogin) "退出登录" else "立即登录", // [New] Dynamic text
-                onClick = onLogout,
-                textColor = if (isLogin) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, // Red for logout, Blue for login
-                centered = true,
-                showChevron = false
+                textColor = textColor
             )
         }
-    }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = containerColor.copy(alpha = 0.72f),
+            border = borderColor?.let { BorderStroke(0.5.dp, it.copy(alpha = 0.72f)) },
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .clickable(onClick = onLogout)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isLogin) "退出登录" else "立即登录",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isLogin) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
@@ -1879,9 +2062,40 @@ private fun ProfileFavoriteFolderShortcutGrid(
     shortcuts: List<ProfileFavoriteFolderShortcut>,
     onFavoriteFolderClick: (Long, Long, String) -> Unit,
     contentColor: Color,
+    compactHorizontal: Boolean = false,
+    onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val folderIcon = rememberAppFolderIcon()
+    if (compactHorizontal) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            shortcuts.take(3).forEach { shortcut ->
+                ProfileFavoriteFolderShortcutChip(
+                    shortcut = shortcut,
+                    icon = folderIcon,
+                    contentColor = contentColor,
+                    compact = true,
+                    onClick = {
+                        onFavoriteFolderClick(shortcut.mediaId, shortcut.ownerMid, shortcut.title)
+                    },
+                    modifier = Modifier.width(148.dp)
+                )
+            }
+            if (shortcuts.size > 3 && onMoreClick != null) {
+                ProfileFavoriteFolderMoreChip(
+                    contentColor = contentColor,
+                    onClick = onMoreClick,
+                    modifier = Modifier.width(112.dp)
+                )
+            }
+        }
+        return
+    }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1916,41 +2130,68 @@ private fun ProfileFavoriteFolderShortcutChip(
     icon: ImageVector,
     contentColor: Color,
     onClick: () -> Unit,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = if (compact) 42.dp else 48.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.28f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = if (compact) 0.22f else 0.28f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = if (compact) 9.dp else 10.dp, vertical = if (compact) 7.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = iOSYellow,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(if (compact) 18.dp else 20.dp)
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(if (compact) 7.dp else 8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = shortcut.title,
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelLarge,
+                style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "${shortcut.mediaCount} 个内容",
-                color = contentColor.copy(alpha = 0.68f),
+                color = contentColor.copy(alpha = 0.62f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall
             )
         }
+    }
+}
+
+@Composable
+private fun ProfileFavoriteFolderMoreChip(
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .heightIn(min = 42.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "更多收藏夹",
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-14 · Synced to v8.1.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-14 · Synced to v8.1.6 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.5-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.1.6-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,15 +432,16 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.5 · 2026-05-14)
+### Latest (v8.1.6 · 2026-05-14)
 
-- Fixed release builds where player controls could fail to appear while double-tap pause and long-press speed gestures still worked.
-- Restored the player progress, PBP ridge, subtitle-track, fullscreen-control, drag-preview, and progress-display refinements.
-- Kept the built-in CDN plugin fix, limiting playback URL rewriting to `bilivideo.com` while preserving original URLs as fallbacks.
-- Synchronized dynamic-feed unfollow state so unfollowed authors are removed from cached feeds and followed-user sidebars.
-- Flattened search video result cards and continued consolidating appearance-setting and theme-component branches.
-- Refined bottom-bar indicator dragging: drag keeps enlargement and finger-follow deformation, tap switching does not enlarge, and release eases back to the original size.
-- Bumped the app to `8.1.5` with `versionCode` `188`.
+- Fixed player controls that could fail to reappear after being hidden, while preserving the release Overlay R8 keep rules.
+- Respected manual pause across video navigation and restored the video orientation policy baseline.
+- Expanded watch-later / playback queue sources across more video-list scenarios and tightened queue layout and empty-state behavior.
+- Added a compressed/fade launch transition for the bottom-bar search entry and synchronized search-page entry motion.
+- Smoothed the profile wallpaper transition from clear header image to blurred background, and aligned wallpaper action labels in two lines on compact three-column phones.
+- Reworked immersive profile services into a lightweight list island, separated account actions, and compressed favorite-folder shortcuts into horizontal chips.
+- Added focused regression coverage for player lifecycle, orientation, queue, bottom-bar search, search entry motion, and profile wallpaper/services layout.
+- Bumped the app to `8.1.6` with `versionCode` `189`.
 
 ---
 

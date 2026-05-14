@@ -1,5 +1,24 @@
 # Changelog
 
+## v8.1.6 (2026-05-14)
+
+### 版本信息
+- 版本号从 `8.1.5` 升级到 `8.1.6`，`versionCode` 升级到 `189`。
+- 本次为“播放器控件回归修复 + 搜索入口动效 + 我的页壁纸优化”的维护更新。
+
+### 更新内容
+- **播放器控件显示修复**：收敛原生视频 Surface、播放器根容器和全屏覆盖层的点按路径，修复控件隐藏后单击不稳定显示的问题，并保留正式版 Overlay R8 规则。
+- **播放状态与方向策略**：跨视频切换时尊重用户手动暂停状态，避免暂停后切换视频被自动恢复播放；恢复视频方向策略基线，降低分栏/返回后的方向异常。
+- **播放队列补强**：稍后看/播放队列来源扩展到更多视频列表场景，队列入口、布局和空状态策略继续收敛。
+- **底栏搜索体验**：底栏搜索入口新增点击后的压缩/淡出过渡，再进入搜索页；搜索页入场动效、底栏捕获宽度和设置页外观入口联动同步优化。
+- **我的页壁纸与服务区优化**：个人页沉浸背景从清晰头图渐隐到模糊背景，减少横向断层；“官方壁纸 / 本地相册 / 恢复默认”按钮在手机三列下统一两行排版；沉浸式服务区改为轻量列表岛，账号操作独立到底部，收藏夹快捷入口压缩为横向小卡。
+- **回归覆盖**：补充播放器生命周期、视频详情方向、稍后看队列、底栏搜索、搜索页入场、我的页壁纸、服务区结构和正式版控件保留规则等策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.ReleasePlayerOverlayR8KeepRulesTest' --tests 'com.android.purebilibili.feature.video.playback.session.PlaybackLifecycleCoordinatorTest' --tests 'com.android.purebilibili.feature.video.screen.VideoDetailScreenPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.WatchLaterQueueUiPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest' --tests 'com.android.purebilibili.feature.search.SearchScreenPolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileWallpaperActionLayoutPolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileWallpaperTransformPolicyTest' --tests 'com.android.purebilibili.feature.profile.ProfileServicesVisibilityPolicyTest' --tests 'com.android.purebilibili.core.ui.wallpaper.WallpaperPresentationPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.1.5 (2026-05-14)
 
 ### 版本信息

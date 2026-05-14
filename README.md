@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.5-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.5" />
+  <img src="https://img.shields.io/badge/Version-8.1.6-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.6" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,14 +179,15 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.5 / versionCode 188`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.5`：
+当前仓库版本号已更新到 `8.1.6 / versionCode 189`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.6`：
 
-- 修复正式版播放器控件不显示的问题，保留双击暂停、长按倍速等手势行为。
-- 播放器补强高能进度（PBP）、字幕轨道、横竖屏控制条、拖动预览和进度显示策略。
-- 保留 CDN 插件修复，播放地址改写继续限定在 `bilivideo.com`，并保留原始线路回退。
-- 动态页同步取消关注状态，减少已取消关注 UP 继续出现在动态列表或侧栏的问题。
-- 搜索视频卡片改为更扁平的列表视觉，并继续收敛外观设置与主题组件分支。
-- 优化底栏指示器拖拽：拖拽时保持放大与跟手形变，点按切换不放大，松手后平滑回到原始大小。
+- 修复播放器控件隐藏后单击显示不稳定的问题，并保留正式版 Overlay R8 规则。
+- 跨视频切换时尊重手动暂停状态，恢复视频方向策略基线。
+- 稍后看/播放队列来源扩展到更多视频列表场景，队列布局和空状态继续收敛。
+- 底栏搜索入口新增点击后的压缩/淡出过渡，并联动搜索页入场动效。
+- 优化“我的”页沉浸壁纸渐隐过渡，减少横向断层；壁纸操作按钮在手机三列下统一两行排版。
+- 沉浸式“我的服务”改为轻量列表岛，账号操作独立到底部，收藏夹快捷入口压缩为横向小卡。
+- 补充播放器生命周期、方向策略、队列、底栏搜索、搜索页入场和个人页壁纸/服务区相关回归测试。
 
 ## 路线图
 
