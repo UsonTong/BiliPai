@@ -23,7 +23,13 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockWidth\""))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarSearchWidth\""))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockContentAlpha\""))
+        assertTrue(kernelSuRendererSource.contains("val searchLaunchProgressState = remember { Animatable(0f) }"))
         assertTrue(kernelSuRendererSource.contains("easing = AppMotionEasing.Continuity"))
+        assertTrue(kernelSuRendererSource.contains("val launchAdjustedSearchGap = searchGap * (1f - searchLaunchProgress)"))
+        assertTrue(kernelSuRendererSource.contains("scaleX = lerp(1f, searchLaunchSpec.targetScaleX, searchLaunchProgress)"))
+        assertTrue(kernelSuRendererSource.contains("scaleY = lerp(1f, searchLaunchSpec.targetScaleY, searchLaunchProgress)"))
+        assertTrue(kernelSuRendererSource.contains("alpha = lerp(1f, searchLaunchSpec.targetAlpha, searchLaunchProgress)"))
+        assertTrue(kernelSuRendererSource.contains("onSearchLaunchTransitionFinished(searchLaunchKey)"))
         assertTrue(kernelSuRendererSource.contains(".width(dockWidth)"))
         assertTrue(kernelSuRendererSource.contains("resolveSharedBottomBarCapsuleShape("))
         assertTrue(kernelSuRendererSource.contains(".kernelSuFloatingDockSurface("))
@@ -158,6 +164,25 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
+    fun `search launch transition compresses bottom bar before navigation callback`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+
+        val spec = resolveBottomBarSearchLaunchTransitionSpec()
+        assertTrue(spec.durationMillis in 160..240)
+        assertTrue(spec.targetScaleX < 1f)
+        assertTrue(spec.targetScaleY < 1f)
+        assertTrue(spec.targetAlpha < 1f)
+
+        assertTrue(source.contains("searchLaunchKey: Int = 0"))
+        assertTrue(source.contains("onSearchLaunchTransitionFinished: (Int) -> Unit = {}"))
+        assertTrue(source.contains("if (searchLaunchKey <= 0) return@LaunchedEffect"))
+        assertTrue(source.contains("searchLaunchProgressState.animateTo("))
+        assertTrue(source.contains("val launchAdjustedSearchGap = searchGap * (1f - searchLaunchProgress)"))
+        assertFalse(source.contains("Spacer(modifier = Modifier.width(searchGap))"))
+        assertTrue(source.contains("Spacer(modifier = Modifier.width(launchAdjustedSearchGap))"))
+    }
+
+    @Test
     fun `sukisu renderer draws visible content below indicator with transparent input overlay`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val kernelSuRendererSource = source
@@ -190,7 +215,7 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("val shouldComposeDockContent = shouldComposeBottomBarDockContent("))
         assertTrue(kernelSuRendererSource.contains("if (shouldComposeDockContent) {"))
         assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null) {"))
-        assertTrue(kernelSuRendererSource.contains("val captureWidth = dockWidth + searchGap + searchWidth"))
+        assertTrue(kernelSuRendererSource.contains("val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
         assertTrue(kernelSuRendererSource.contains(".width(captureWidth)"))
     }
 
@@ -206,10 +231,10 @@ class BottomBarMiuixStructureTest {
 
         assertFalse(source.contains("private fun KernelSuBottomBarSearchRefractionCapture("))
         assertFalse(kernelSuRendererSource.contains("KernelSuBottomBarSearchRefractionCapture("))
-        assertTrue(refractionCaptureSource.contains("val captureWidth = dockWidth + searchGap + searchWidth"))
+        assertTrue(refractionCaptureSource.contains("val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
         assertTrue(refractionCaptureSource.contains(".width(captureWidth)"))
         assertTrue(refractionCaptureSource.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(refractionCaptureSource.contains(".offset(x = dockWidth + searchGap)"))
+        assertTrue(refractionCaptureSource.contains(".offset(x = dockWidth + launchAdjustedSearchGap)"))
         assertTrue(refractionCaptureSource.contains("KernelSuBottomBarSearchVisualContent("))
         assertTrue(refractionCaptureSource.contains("interactive = false"))
     }

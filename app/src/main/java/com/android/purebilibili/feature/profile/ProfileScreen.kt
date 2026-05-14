@@ -28,8 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
@@ -120,6 +123,36 @@ internal fun shouldEnableProfileHeaderLoginClick(isLogin: Boolean): Boolean = !i
 
 internal fun resolveProfileWallpaperActionColumnCount(screenWidthDp: Int): Int {
     return if (screenWidthDp < 360) 2 else 3
+}
+
+internal enum class ProfileWallpaperActionLabelMode {
+    SINGLE_LINE,
+    TWO_LINE
+}
+
+internal fun resolveProfileWallpaperActionLabelMode(
+    screenWidthDp: Int,
+    columnCount: Int
+): ProfileWallpaperActionLabelMode {
+    return if (columnCount == 3 && screenWidthDp in 360 until 430) {
+        ProfileWallpaperActionLabelMode.TWO_LINE
+    } else {
+        ProfileWallpaperActionLabelMode.SINGLE_LINE
+    }
+}
+
+internal fun resolveProfileWallpaperActionTitleLines(
+    title: String,
+    labelMode: ProfileWallpaperActionLabelMode
+): List<String> {
+    if (labelMode == ProfileWallpaperActionLabelMode.SINGLE_LINE || title.length <= 2) {
+        return listOf(title)
+    }
+    return listOf(title.take(2), title.drop(2))
+}
+
+internal fun resolveProfileWallpaperBlendBandDp(topBannerHeightDp: Float): Float {
+    return 196f
 }
 
 internal fun resolveProfileWallpaperActionBlurEnabled(
@@ -537,7 +570,12 @@ private fun BoxScope.ProfileBackground(
     if (isImmersive) {
         when (profileWallpaperLayout) {
             ProfileWallpaperLayout.TOP_BANNER_BLUR_BG -> {
-                val bannerHeight = resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass).dp
+                val bannerHeightDp = resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass)
+                val bannerHeight = bannerHeightDp.dp
+                val blendBandHeight = resolveProfileWallpaperBlendBandDp(
+                    topBannerHeightDp = bannerHeightDp
+                ).dp
+                val clearImageHeight = bannerHeight + 144.dp
                 // 1. 底层：高斯模糊填充 (填补图片不够长的区域)
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -594,35 +632,54 @@ private fun BoxScope.ProfileBackground(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(bannerHeight)
+                        .height(clearImageHeight)
                         .graphicsLayer(
                             scaleX = bgTransform.scale,
-                            scaleY = bgTransform.scale
+                            scaleY = bgTransform.scale,
+                            compositingStrategy = CompositingStrategy.Offscreen
                         )
+                        .drawWithContent {
+                            drawContent()
+                            val fadeStart = (size.height - blendBandHeight.toPx()).coerceAtLeast(0f)
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White,
+                                        Color.White,
+                                        Color.Transparent
+                                    ),
+                                    startY = fadeStart,
+                                    endY = size.height
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                         .align(Alignment.TopCenter)
                 )
 
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = bannerHeight - 92.dp)
+                        .padding(top = bannerHeight - blendBandHeight * 0.62f)
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(blendBandHeight + 124.dp)
                         .background(
                             Brush.verticalGradient(
                                 colors = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) {
                                     listOf(
                                         Color.Transparent,
-                                        Color.Black.copy(alpha = 0.06f),
-                                        Color.Black.copy(alpha = 0.20f),
-                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.36f)
+                                        Color.Black.copy(alpha = 0.04f),
+                                        Color.Black.copy(alpha = 0.12f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.30f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
                                     )
                                 } else {
                                     listOf(
                                         Color.Transparent,
-                                        Color.White.copy(alpha = 0.04f),
-                                        Color.Black.copy(alpha = 0.08f),
-                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.24f)
+                                        Color.White.copy(alpha = 0.03f),
+                                        Color.Black.copy(alpha = 0.05f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.20f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.38f)
                                     )
                                 }
                             )
@@ -1286,6 +1343,12 @@ private fun ProfileWallpaperActionCard(
     val columnCount = remember(configuration.screenWidthDp) {
         resolveProfileWallpaperActionColumnCount(configuration.screenWidthDp)
     }
+    val labelMode = remember(configuration.screenWidthDp, columnCount) {
+        resolveProfileWallpaperActionLabelMode(
+            screenWidthDp = configuration.screenWidthDp,
+            columnCount = columnCount
+        )
+    }
     val headerBlurEnabled by com.android.purebilibili.core.store.SettingsManager
         .getHeaderBlurEnabled(context)
         .collectAsState(
@@ -1372,6 +1435,10 @@ private fun ProfileWallpaperActionCard(
                         ProfileWallpaperActionButton(
                             modifier = Modifier.weight(1f),
                             title = action.title,
+                            titleLines = resolveProfileWallpaperActionTitleLines(
+                                title = action.title,
+                                labelMode = labelMode
+                            ),
                             subtitle = "",
                             icon = action.icon,
                             containerColor = buttonColor,
@@ -1396,6 +1463,7 @@ private fun ProfileWallpaperActionCard(
 @Composable
 private fun ProfileWallpaperActionButton(
     title: String,
+    titleLines: List<String>,
     subtitle: String,
     icon: ImageVector,
     containerColor: Color,
@@ -1411,6 +1479,8 @@ private fun ProfileWallpaperActionButton(
     val shape = RoundedCornerShape(20.dp)
     val effectiveContentColor = if (enabled) contentColor else contentColor.copy(alpha = 0.38f)
     val effectiveSecondaryColor = if (enabled) secondaryColor else secondaryColor.copy(alpha = 0.5f)
+    val displayTitle = titleLines.joinToString("\n")
+    val titleMaxLines = titleLines.size.coerceAtLeast(1)
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1435,7 +1505,7 @@ private fun ProfileWallpaperActionButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 46.dp)
+                .heightIn(min = if (titleMaxLines > 1) 58.dp else 46.dp)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1461,10 +1531,12 @@ private fun ProfileWallpaperActionButton(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = title,
+                    text = displayTitle,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = effectiveContentColor
+                    color = effectiveContentColor,
+                    maxLines = titleMaxLines,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (subtitle.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))

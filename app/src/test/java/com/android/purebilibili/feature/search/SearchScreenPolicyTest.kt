@@ -162,6 +162,11 @@ class SearchScreenPolicyTest {
         val searchSource = loadSource("app/src/main/java/com/android/purebilibili/feature/search/SearchScreen.kt")
 
         assertTrue(navigationSource.contains("fun navigateToSearchFromBottomBar()"))
+        assertTrue(navigationSource.contains("fun requestSearchFromBottomBar()"))
+        assertTrue(navigationSource.contains("bottomBarSearchLaunchKey += 1"))
+        assertTrue(navigationSource.contains("onSearchClick = { requestSearchFromBottomBar() }"))
+        assertTrue(navigationSource.contains("searchLaunchKey = bottomBarSearchLaunchKey"))
+        assertTrue(navigationSource.contains("onSearchLaunchTransitionFinished = { completedKey ->"))
         assertTrue(navigationSource.contains("searchEntryMotionSource = SearchEntryMotionSource.BOTTOM_BAR"))
         assertTrue(navigationSource.contains("searchEntryMotionKey += 1"))
         assertTrue(navigationSource.contains("entryMotionSource = searchEntryMotionSource"))

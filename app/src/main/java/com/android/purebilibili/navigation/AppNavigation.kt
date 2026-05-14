@@ -268,6 +268,8 @@ fun AppNavigation(
     var inAppSearchKeyword by remember { mutableStateOf<String?>(null) }
     var searchEntryMotionSource by remember { mutableStateOf(SearchEntryMotionSource.NONE) }
     var searchEntryMotionKey by remember { mutableStateOf(0) }
+    var bottomBarSearchLaunchKey by remember { mutableStateOf(0) }
+    var pendingBottomBarSearchLaunchKey by remember { mutableStateOf<Int?>(null) }
     val effectiveInitialSearchKeyword = inAppSearchKeyword ?: initialSearchKeyword
     val consumeInitialSearchKeyword: (String) -> Unit = { consumedKeyword ->
         if (inAppSearchKeyword == consumedKeyword) {
@@ -461,6 +463,12 @@ fun AppNavigation(
             searchEntryMotionSource = SearchEntryMotionSource.BOTTOM_BAR
             searchEntryMotionKey += 1
         }
+    }
+
+    fun requestSearchFromBottomBar() {
+        if (pendingBottomBarSearchLaunchKey != null) return
+        bottomBarSearchLaunchKey += 1
+        pendingBottomBarSearchLaunchKey = bottomBarSearchLaunchKey
     }
 
     fun navigateToSpace(mid: Long) {
@@ -3080,8 +3088,15 @@ fun AppNavigation(
                                     onItemClick = handleNavItemClick,
                                     onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                     onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
-                                    onSearchClick = { navigateToSearchFromBottomBar() },
+                                    onSearchClick = { requestSearchFromBottomBar() },
                                     onSearchKeywordSubmit = navigateToSearchKeyword,
+                                    searchLaunchKey = bottomBarSearchLaunchKey,
+                                    onSearchLaunchTransitionFinished = { completedKey ->
+                                        if (pendingBottomBarSearchLaunchKey == completedKey) {
+                                            pendingBottomBarSearchLaunchKey = null
+                                            navigateToSearchFromBottomBar()
+                                        }
+                                    },
                                     hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                     isFloating = true,
                                     labelMode = bottomBarLabelMode,
@@ -3108,8 +3123,15 @@ fun AppNavigation(
                                 onItemClick = handleNavItemClick,
                                 onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                 onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
-                                onSearchClick = { navigateToSearchFromBottomBar() },
+                                onSearchClick = { requestSearchFromBottomBar() },
                                 onSearchKeywordSubmit = navigateToSearchKeyword,
+                                searchLaunchKey = bottomBarSearchLaunchKey,
+                                onSearchLaunchTransitionFinished = { completedKey ->
+                                    if (pendingBottomBarSearchLaunchKey == completedKey) {
+                                        pendingBottomBarSearchLaunchKey = null
+                                        navigateToSearchFromBottomBar()
+                                    }
+                                },
                                 hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                 isFloating = false,
                                 labelMode = bottomBarLabelMode,

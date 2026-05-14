@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer  //  晃动动画
 import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -954,6 +955,24 @@ internal data class BottomBarBackdropPresetProgress(
     val indicatorProgress: Float
 )
 
+internal data class BottomBarSearchLaunchTransitionSpec(
+    val durationMillis: Int,
+    val resetDelayMillis: Long,
+    val targetScaleX: Float,
+    val targetScaleY: Float,
+    val targetAlpha: Float
+)
+
+internal fun resolveBottomBarSearchLaunchTransitionSpec(): BottomBarSearchLaunchTransitionSpec {
+    return BottomBarSearchLaunchTransitionSpec(
+        durationMillis = 190,
+        resetDelayMillis = 220L,
+        targetScaleX = 0.92f,
+        targetScaleY = 0.94f,
+        targetAlpha = 0.82f
+    )
+}
+
 internal data class BottomBarBackdropNativeSurfaceSpec(
     val blurRadiusDp: Float,
     val refractionHeightDp: Float,
@@ -1570,6 +1589,8 @@ fun FrostedBottomBar(
     onDynamicDoubleTap: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSearchKeywordSubmit: (String) -> Unit = {},
+    searchLaunchKey: Int = 0,
+    onSearchLaunchTransitionFinished: (Int) -> Unit = {},
     visibleItems: List<BottomNavItem> = listOf(BottomNavItem.HOME, BottomNavItem.DYNAMIC, BottomNavItem.HISTORY, BottomNavItem.PROFILE),
     itemColorIndices: Map<String, Int> = emptyMap(),
     dynamicUnreadCount: Int = 0,
@@ -1601,6 +1622,8 @@ fun FrostedBottomBar(
                 homeSettings = homeSettings,
                 onSearchClick = onSearchClick,
                 onSearchKeywordSubmit = onSearchKeywordSubmit,
+                searchLaunchKey = searchLaunchKey,
+                onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
                 scrollOffset = scrollOffset,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
@@ -1679,6 +1702,8 @@ fun FrostedBottomBar(
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit,
+            searchLaunchKey = searchLaunchKey,
+            onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset
         )
         return
@@ -1724,6 +1749,8 @@ private fun MaterialBottomBar(
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
     onSearchClick: () -> Unit,
     onSearchKeywordSubmit: (String) -> Unit,
+    searchLaunchKey: Int = 0,
+    onSearchLaunchTransitionFinished: (Int) -> Unit = {},
     scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
@@ -1791,6 +1818,8 @@ private fun MaterialBottomBar(
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit,
+            searchLaunchKey = searchLaunchKey,
+            onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset
         )
         return
@@ -1920,6 +1949,8 @@ private fun MiuixBottomBar(
     homeSettings: com.android.purebilibili.core.store.HomeSettings,
     onSearchClick: () -> Unit,
     onSearchKeywordSubmit: (String) -> Unit,
+    searchLaunchKey: Int = 0,
+    onSearchLaunchTransitionFinished: (Int) -> Unit = {},
     scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
@@ -1987,6 +2018,8 @@ private fun MiuixBottomBar(
             bottomBarSearchAutoExpandMode = homeSettings.bottomBarSearchAutoExpandMode,
             onSearchClick = onSearchClick,
             onSearchKeywordSubmit = onSearchKeywordSubmit,
+            searchLaunchKey = searchLaunchKey,
+            onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset
         )
         return
@@ -2178,6 +2211,8 @@ private fun KernelSuAlignedBottomBar(
         BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     onSearchClick: () -> Unit = {},
     onSearchKeywordSubmit: (String) -> Unit = {},
+    searchLaunchKey: Int = 0,
+    onSearchLaunchTransitionFinished: (Int) -> Unit = {},
     scrollOffset: Float = 0f
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
@@ -2271,6 +2306,9 @@ private fun KernelSuAlignedBottomBar(
     var searchQuery by remember { mutableStateOf("") }
     var homeClickPulseKey by remember { mutableIntStateOf(0) }
     val homeClickPulseTransform = rememberBottomBarClickPulseTransform(homeClickPulseKey)
+    val searchLaunchSpec = remember { resolveBottomBarSearchLaunchTransitionSpec() }
+    val searchLaunchProgressState = remember { Animatable(0f) }
+    val searchLaunchProgress = searchLaunchProgressState.value
     val indicatorSettleReboundTransform = rememberBottomBarSettleReboundTransform(
         dampedDragState.settledReleaseCount
     )
@@ -2321,6 +2359,20 @@ private fun KernelSuAlignedBottomBar(
             searchExpansionOverride = BottomBarSearchExpansionOverride.FOLLOW_AUTO
         }
     }
+    LaunchedEffect(searchLaunchKey) {
+        if (searchLaunchKey <= 0) return@LaunchedEffect
+        searchLaunchProgressState.snapTo(0f)
+        searchLaunchProgressState.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = searchLaunchSpec.durationMillis,
+                easing = AppMotionEasing.Continuity
+            )
+        )
+        onSearchLaunchTransitionFinished(searchLaunchKey)
+        delay(searchLaunchSpec.resetDelayMillis)
+        searchLaunchProgressState.snapTo(0f)
+    }
 
     Box(
         modifier = modifier.fillMaxWidth(),
@@ -2364,6 +2416,7 @@ private fun KernelSuAlignedBottomBar(
                 ),
                 label = "bottomBarSearchGap"
             )
+            val launchAdjustedSearchGap = searchGap * (1f - searchLaunchProgress)
             val dockHeight by animateDpAsState(
                 targetValue = resolveKernelSuBottomBarDockHeight(
                     searchExpanded = effectiveSearchExpanded
@@ -2500,7 +2553,13 @@ private fun KernelSuAlignedBottomBar(
             Row(
                 modifier = Modifier
                     .height(shellHeight)
-                    .align(Alignment.Center),
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        scaleX = lerp(1f, searchLaunchSpec.targetScaleX, searchLaunchProgress)
+                        scaleY = lerp(1f, searchLaunchSpec.targetScaleY, searchLaunchProgress)
+                        alpha = lerp(1f, searchLaunchSpec.targetAlpha, searchLaunchProgress)
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -2593,7 +2652,7 @@ private fun KernelSuAlignedBottomBar(
                 }
 
                 if (shouldRenderRefractionCapture && backdrop != null) {
-                    val captureWidth = dockWidth + searchGap + searchWidth
+                    val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth
                     Box(
                         modifier = Modifier
                             .width(captureWidth)
@@ -2717,7 +2776,7 @@ private fun KernelSuAlignedBottomBar(
                         if (searchEnabled) {
                             Box(
                                 modifier = Modifier
-                                    .offset(x = dockWidth + searchGap)
+                                    .offset(x = dockWidth + launchAdjustedSearchGap)
                                     .width(searchWidth)
                                     .height(searchHeight)
                                     .align(Alignment.CenterStart)
@@ -2943,7 +3002,7 @@ private fun KernelSuAlignedBottomBar(
             }
 
                 if (searchEnabled) {
-                    Spacer(modifier = Modifier.width(searchGap))
+                    Spacer(modifier = Modifier.width(launchAdjustedSearchGap))
                     Box(
                         modifier = Modifier
                             .width(searchWidth)
