@@ -319,6 +319,64 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `indicator glow follows press progress only when glass is enabled`() {
+        assertEquals(
+            0.72f,
+            resolveBottomBarIndicatorGlowAlpha(
+                glassEnabled = true,
+                pressProgress = 0.72f
+            ),
+            0.001f
+        )
+        assertEquals(
+            1f,
+            resolveBottomBarIndicatorGlowAlpha(
+                glassEnabled = true,
+                pressProgress = 1.4f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveBottomBarIndicatorGlowAlpha(
+                glassEnabled = false,
+                pressProgress = 1f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `interactive highlight center follows indicator and panel offset`() {
+        assertEquals(
+            124f,
+            resolveBottomBarInteractiveHighlightCenterX(
+                indicatorTranslationXPx = 80f,
+                itemWidthPx = 72f,
+                panelOffsetPx = 8f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `interactive highlight modifier draws over existing surface`() {
+        val source = listOf(
+            java.io.File("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt"),
+            java.io.File("src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        ).first { it.exists() }.readText()
+        val highlightModifierSource = source
+            .substringAfter("private fun Modifier.bottomBarInteractiveHighlight(")
+            .substringBefore("internal fun resolveBottomBarVerticalGlassMotionProfile(")
+
+        assertTrue(highlightModifierSource.indexOf("drawContent()") >= 0)
+        assertTrue(
+            highlightModifierSource.indexOf("drawContent()") <
+                highlightModifierSource.indexOf("Brush.radialGradient(")
+        )
+    }
+
+    @Test
     fun `tap press can reuse indicator drag scale without horizontal motion`() {
         val transform = resolveBottomBarIndicatorLayerTransform(
             motionProgress = 1f,
@@ -434,7 +492,7 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `indicator drag enlargement can ease back through intermediate scale`() {
+    fun `indicator drag enlargement can ease back with velocity deformation`() {
         val settling = resolveBottomBarIndicatorLayerTransform(
             motionProgress = 1f,
             velocityItemsPerSecond = 2f,
@@ -452,7 +510,8 @@ class BottomBarIndicatorPolicyTest {
 
         assertTrue(settling.scaleX > 1f)
         assertTrue(settling.scaleX < full.scaleX)
-        assertEquals(settling.scaleX, settling.scaleY, 0.001f)
+        assertTrue(settling.scaleX > settling.scaleY)
+        assertTrue(settling.scaleY > 1f)
     }
 
     @Test

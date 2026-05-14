@@ -54,10 +54,14 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -1052,6 +1056,52 @@ internal fun resolveBottomBarLiquidGlassHighlightAlpha(
     )
 }
 
+internal fun resolveBottomBarIndicatorGlowAlpha(
+    glassEnabled: Boolean,
+    pressProgress: Float
+): Float {
+    if (!glassEnabled) return 0f
+    return pressProgress.coerceIn(0f, 1f)
+}
+
+internal fun resolveBottomBarInteractiveHighlightCenterX(
+    indicatorTranslationXPx: Float,
+    itemWidthPx: Float,
+    panelOffsetPx: Float
+): Float {
+    return indicatorTranslationXPx + itemWidthPx * 0.5f + panelOffsetPx
+}
+
+private fun Modifier.bottomBarInteractiveHighlight(
+    enabled: Boolean,
+    alpha: Float,
+    centerXPx: Float
+): Modifier = drawWithContent {
+    val clampedAlpha = alpha.coerceIn(0f, 1f)
+    drawContent()
+    if (enabled && clampedAlpha > 0f) {
+        val center = Offset(
+            x = centerXPx.coerceIn(0f, size.width),
+            y = size.height * 0.5f
+        )
+        drawRect(
+            color = Color.White.copy(alpha = 0.055f * clampedAlpha),
+            blendMode = BlendMode.Plus
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.14f * clampedAlpha),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = size.minDimension * 1.2f
+            ),
+            blendMode = BlendMode.Plus
+        )
+    }
+}
+
 internal fun resolveBottomBarVerticalGlassMotionProfile(
     scrollOffsetPx: Float,
     glassEnabled: Boolean,
@@ -1118,7 +1168,11 @@ internal fun resolveBottomBarIndicatorLayerTransform(
         stop = BOTTOM_BAR_INDICATOR_DRAG_SCALE_TARGET,
         fraction = clampedDragScaleProgress
     )
-    val velocity = if (isDragging) velocityItemsPerSecond / 10f else 0f
+    val velocity = if (isDragging || clampedDragScaleProgress > 0f) {
+        velocityItemsPerSecond / 10f
+    } else {
+        0f
+    }
     val velocityScaleX = (velocity * 0.75f).coerceIn(-0.2f, 0.2f)
     val velocityScaleY = (velocity * 0.25f).coerceIn(-0.2f, 0.2f)
     return BottomBarIndicatorLayerTransform(
@@ -1698,6 +1752,7 @@ fun FrostedBottomBar(
             containerColor = containerColor,
             tuning = tuning,
             glassEnabled = glassEnabled,
+            interactiveHighlightEnabled = homeSettings.bottomBarInteractiveHighlightEnabled,
             liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             iconStyle = SharedFloatingBottomBarIconStyle.CUPERTINO,
             haptic = haptic,
@@ -1821,6 +1876,7 @@ private fun MaterialBottomBar(
             containerColor = containerColor,
             tuning = androidNativeTuning,
             glassEnabled = glassEnabled,
+            interactiveHighlightEnabled = homeSettings.bottomBarInteractiveHighlightEnabled,
             liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             haptic = haptic,
             bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
@@ -2018,6 +2074,7 @@ private fun MiuixBottomBar(
             containerColor = containerColor,
             tuning = tuning,
             glassEnabled = glassEnabled,
+            interactiveHighlightEnabled = homeSettings.bottomBarInteractiveHighlightEnabled,
             liquidGlassPreset = homeSettings.bottomBarLiquidGlassPreset,
             iconStyle = SharedFloatingBottomBarIconStyle.CUPERTINO,
             haptic = haptic,
@@ -2211,6 +2268,7 @@ private fun KernelSuAlignedBottomBar(
     containerColor: Color,
     tuning: AndroidNativeBottomBarTuning,
     glassEnabled: Boolean,
+    interactiveHighlightEnabled: Boolean,
     liquidGlassPreset: BottomBarLiquidGlassPreset,
     iconStyle: SharedFloatingBottomBarIconStyle = SharedFloatingBottomBarIconStyle.MATERIAL,
     haptic: (HapticType) -> Unit,
@@ -2491,6 +2549,15 @@ private fun KernelSuAlignedBottomBar(
                     }
                 }
             }
+            val interactiveHighlightCenterXPx by remember(indicatorTranslationXPx, itemWidthPx, panelOffsetPx) {
+                derivedStateOf {
+                    resolveBottomBarInteractiveHighlightCenterX(
+                        indicatorTranslationXPx = indicatorTranslationXPx,
+                        itemWidthPx = itemWidthPx,
+                        panelOffsetPx = panelOffsetPx
+                    )
+                }
+            }
             val backdropPresetProgress = resolveBottomBarBackdropPresetProgress(
                 motionProgress = motionProgress,
                 verticalProgress = verticalGlassProfile.progress,
@@ -2507,6 +2574,10 @@ private fun KernelSuAlignedBottomBar(
             )
             val indicatorHighlightAlpha = resolveBottomBarLiquidGlassHighlightAlpha(
                 backdropPresetProgress.indicatorProgress
+            )
+            val indicatorGlowAlpha = resolveBottomBarIndicatorGlowAlpha(
+                glassEnabled = glassEnabled,
+                pressProgress = dampedDragState.pressProgress
             )
             val shouldRenderRefractionCapture = shouldRenderBottomBarRefractionCapture(
                 glassEnabled = glassEnabled,
@@ -2612,6 +2683,11 @@ private fun KernelSuAlignedBottomBar(
                             motionTier = motionTier,
                             isTransitionRunning = isTransitionRunning,
                             forceLowBlurBudget = forceLowBlurBudget
+                        )
+                        .bottomBarInteractiveHighlight(
+                            enabled = glassEnabled && interactiveHighlightEnabled,
+                            alpha = indicatorGlowAlpha,
+                            centerXPx = interactiveHighlightCenterXPx
                         )
                 )
 
@@ -2835,7 +2911,7 @@ private fun KernelSuAlignedBottomBar(
                         modifier = Modifier
                             .alpha(dockContentAlpha)
                             .graphicsLayer {
-                                translationX = indicatorTranslationXPx
+                                translationX = indicatorTranslationXPx + panelOffsetPx
                                 val homeScaleX = if (selectedIndex == homeIndex) {
                                     homeClickPulseTransform.scaleX
                                 } else {
@@ -2870,22 +2946,22 @@ private fun KernelSuAlignedBottomBar(
                                             )
                                         },
                                         highlight = {
-                                            Highlight.Default.copy(alpha = indicatorHighlightAlpha)
+                                            Highlight.Default.copy(alpha = maxOf(indicatorHighlightAlpha, indicatorGlowAlpha))
                                         },
                                         shadow = {
-                                            Shadow(alpha = if (glassEnabled) indicatorHighlightAlpha else 0f)
+                                            Shadow(alpha = indicatorGlowAlpha)
                                         },
                                         innerShadow = {
                                             InnerShadow(
-                                                radius = 8.dp * backdropPresetProgress.indicatorProgress,
-                                                alpha = if (glassEnabled) indicatorHighlightAlpha else 0f
+                                                radius = 8.dp * indicatorGlowAlpha,
+                                                alpha = indicatorGlowAlpha
                                             )
                                         },
                                         layerBlock = {
                                             if (glassEnabled) {
                                                 val indicatorLayerTransform = resolveBottomBarIndicatorLayerTransform(
                                                     motionProgress = motionProgress,
-                                                    velocityItemsPerSecond = dampedDragState.velocity,
+                                                    velocityItemsPerSecond = dampedDragState.deformationVelocityItemsPerSecond,
                                                     isDragging = dampedDragState.isDragging,
                                                     dragScaleProgress = indicatorLayerScaleProgress,
                                                     motionSpec = bottomBarMotionSpec

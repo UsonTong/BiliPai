@@ -65,7 +65,7 @@ class DampedDragAnimationPolicyTest {
             File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
         ).first { it.exists() }.readText()
         val dragSource = source
-            .substringAfter("fun onDrag(dragAmountPx: Float, itemWidthPx: Float)")
+            .substringAfter("fun onDrag(")
             .substringBefore("fun setPressed(pressed: Boolean)")
         val releaseSource = source
             .substringAfter("fun onDragEnd(")
@@ -75,9 +75,22 @@ class DampedDragAnimationPolicyTest {
         assertTrue(dragSource.contains("animatable.snapTo(newValue)"))
         assertTrue(dragSource.contains("offsetAnimation.stop()"))
         assertTrue(dragSource.contains("offsetAnimation.snapTo(desiredDragOffsetPx)"))
+        assertTrue(dragSource.contains("dragVelocityItemsPerSecond = resolveDampedDragVelocityItemsPerSecond("))
         assertFalse(dragSource.contains("animatable.animateTo(\n                targetValue = newValue"))
         assertTrue(releaseSource.contains("animatable.animateTo("))
         assertTrue(releaseSource.contains("offsetAnimation.animateTo(0f"))
+    }
+
+    @Test
+    fun `drag gesture forwards live velocity for indicator deformation`() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt"),
+            File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
+        ).first { it.exists() }.readText()
+
+        assertTrue(source.contains("val deformationVelocityItemsPerSecond: Float"))
+        assertTrue(source.contains("val velocity = velocityTracker.calculateVelocity()"))
+        assertTrue(source.contains("dragState.onDrag(dragAmount, itemWidthPx, velocity.x)"))
     }
 
     @Test
@@ -96,5 +109,24 @@ class DampedDragAnimationPolicyTest {
         assertTrue(source.contains("var settledReleaseCount by mutableIntStateOf(0)"))
         assertTrue(releaseSource.contains("settledReleaseCount += 1"))
         assertFalse(updateIndexSource.contains("settledReleaseCount += 1"))
+    }
+
+    @Test
+    fun `click index update keeps press progress until target settles`() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt"),
+            File("src/main/java/com/android/purebilibili/core/ui/animation/DampedDragAnimation.kt")
+        ).first { it.exists() }.readText()
+        val updateIndexSource = source
+            .substringAfter("fun updateIndex(index: Int)")
+            .substringBefore("}\n}\n\n/**\n * 创建并记住阻尼拖拽动画状态")
+
+        assertTrue(updateIndexSource.contains("pressProgressAnimation.animateTo(1f"))
+        assertTrue(updateIndexSource.contains("animatable.animateTo("))
+        assertTrue(updateIndexSource.contains("pressProgressAnimation.animateTo(0f"))
+        assertTrue(updateIndexSource.indexOf("pressProgressAnimation.animateTo(1f") <
+            updateIndexSource.indexOf("animatable.animateTo("))
+        assertTrue(updateIndexSource.indexOf("animatable.animateTo(") <
+            updateIndexSource.indexOf("pressProgressAnimation.animateTo(0f"))
     }
 }

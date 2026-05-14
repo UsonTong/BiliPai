@@ -11,6 +11,7 @@ import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 enum class VideoGestureMode { None, Brightness, Volume, Seek, SwipeToFullscreen }
 
@@ -213,8 +214,17 @@ internal fun shouldEnableViewportTransformGesture(
     return false
 }
 
-fun normalizeAppPlaybackVolume(volume: Float): Float {
-    return volume.coerceIn(0f, 1f)
+fun resolveSystemStreamVolumeFromGesture(
+    startVolumeStep: Int,
+    maxVolumeStep: Int,
+    totalDragDistanceY: Float,
+    screenHeightPx: Float,
+    gestureSensitivity: Float
+): Int {
+    if (maxVolumeStep <= 0 || screenHeightPx <= 0f) return 0
+    val deltaStep = (-totalDragDistanceY / screenHeightPx * maxVolumeStep * gestureSensitivity)
+        .roundToInt()
+    return (startVolumeStep + deltaStep).coerceIn(0, maxVolumeStep)
 }
 
 internal fun shouldTriggerPinchExitFullscreen(

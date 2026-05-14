@@ -139,10 +139,69 @@ class VideoPlayerSectionPolicyTest {
     }
 
     @Test
-    fun appPlaybackVolume_normalizesGestureVolumeWithoutTouchingSystemRange() {
-        assertEquals(0.0f, normalizeAppPlaybackVolume(-0.4f))
-        assertEquals(0.64f, normalizeAppPlaybackVolume(0.64f))
-        assertEquals(1.0f, normalizeAppPlaybackVolume(1.7f))
+    fun systemStreamVolumeFromGesture_increasesOnUpwardDrag() {
+        assertEquals(
+            9,
+            resolveSystemStreamVolumeFromGesture(
+                startVolumeStep = 5,
+                maxVolumeStep = 15,
+                totalDragDistanceY = -300f,
+                screenHeightPx = 1_200f,
+                gestureSensitivity = 1.0f
+            )
+        )
+    }
+
+    @Test
+    fun systemStreamVolumeFromGesture_decreasesOnDownwardDrag() {
+        assertEquals(
+            2,
+            resolveSystemStreamVolumeFromGesture(
+                startVolumeStep = 5,
+                maxVolumeStep = 15,
+                totalDragDistanceY = 240f,
+                screenHeightPx = 1_200f,
+                gestureSensitivity = 1.0f
+            )
+        )
+    }
+
+    @Test
+    fun systemStreamVolumeFromGesture_clampsToSystemRange() {
+        assertEquals(
+            15,
+            resolveSystemStreamVolumeFromGesture(
+                startVolumeStep = 14,
+                maxVolumeStep = 15,
+                totalDragDistanceY = -1_200f,
+                screenHeightPx = 1_200f,
+                gestureSensitivity = 2.0f
+            )
+        )
+        assertEquals(
+            0,
+            resolveSystemStreamVolumeFromGesture(
+                startVolumeStep = 1,
+                maxVolumeStep = 15,
+                totalDragDistanceY = 1_200f,
+                screenHeightPx = 1_200f,
+                gestureSensitivity = 2.0f
+            )
+        )
+    }
+
+    @Test
+    fun systemStreamVolumeFromGesture_returnsZeroForInvalidSystemRange() {
+        assertEquals(
+            0,
+            resolveSystemStreamVolumeFromGesture(
+                startVolumeStep = 5,
+                maxVolumeStep = 0,
+                totalDragDistanceY = -300f,
+                screenHeightPx = 1_200f,
+                gestureSensitivity = 1.0f
+            )
+        )
     }
 
     @Test

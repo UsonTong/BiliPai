@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.bangumi.ui.player
 
 import android.app.Activity
 import android.content.Context
+import android.media.AudioManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,12 +40,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.android.purebilibili.data.model.response.Page
-import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.video.danmaku.DanmakuManager
 import com.android.purebilibili.feature.video.ui.components.SponsorSkipButton
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
-import com.android.purebilibili.feature.video.ui.section.normalizeAppPlaybackVolume
+import com.android.purebilibili.feature.video.ui.section.resolveSystemStreamVolumeFromGesture
 import com.android.purebilibili.feature.video.util.captureAndSaveVideoScreenshot
 import com.android.purebilibili.data.model.response.SponsorSegment
 import com.android.purebilibili.feature.bangumi.resolveBangumiDanmakuTopInsetDp
@@ -129,12 +129,8 @@ fun BangumiPlayerView(
         statusBarsInsetDp = statusBarsInsetTopDp
     ).dp
     
-    val appPlaybackVolume by SettingsManager
-        .getAppPlaybackVolume(context)
-        .collectAsState(initial = 1.0f)
-    LaunchedEffect(exoPlayer, appPlaybackVolume) {
-        exoPlayer.volume = normalizeAppPlaybackVolume(appPlaybackVolume)
-    }
+    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
     
     // 控制层状态
     var showControls by remember { mutableStateOf(true) }
@@ -147,6 +143,8 @@ fun BangumiPlayerView(
     var gestureMode by remember { mutableStateOf(BangumiGestureMode.None) }
     var gestureValue by remember { mutableFloatStateOf(0f) }
     var dragDelta by remember { mutableFloatStateOf(0f) }
+    var startVolumeStep by remember { mutableIntStateOf(0) }
+    var totalVolumeDragDistanceY by remember { mutableFloatStateOf(0f) }
     var seekPreviewPosition by remember { mutableLongStateOf(0L) }
     
     // 亮度状态
@@ -200,17 +198,13 @@ fun BangumiPlayerView(
                         onDragStart = {
                             showControls = true
                             dragDelta = 0f
+                            totalVolumeDragDistanceY = 0f
                             seekPreviewPosition = currentPosition
                             gestureMode = BangumiGestureMode.None
                         },
                         onDragEnd = {
                             if (gestureMode == BangumiGestureMode.Seek && kotlin.math.abs(dragDelta) > 20f) {
                                 exoPlayer.seekTo(seekPreviewPosition)
-                            }
-                            if (gestureMode == BangumiGestureMode.Volume) {
-                                scope.launch {
-                                    SettingsManager.setAppPlaybackVolume(context, gestureValue)
-                                }
                             }
                             gestureMode = BangumiGestureMode.None
                         },
@@ -227,7 +221,12 @@ fun BangumiPlayerView(
                                         gestureValue = currentBrightness
                                         BangumiGestureMode.Brightness
                                     } else {
-                                        gestureValue = exoPlayer.volume
+                                        startVolumeStep = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                        gestureValue = if (maxVolume > 0) {
+                                            startVolumeStep.toFloat() / maxVolume.toFloat()
+                                        } else {
+                                            0f
+                                        }
                                         BangumiGestureMode.Volume
                                     }
                                 } else {
@@ -246,8 +245,24 @@ fun BangumiPlayerView(
                                     }
                                 }
                                 BangumiGestureMode.Volume -> {
-                                    gestureValue = normalizeAppPlaybackVolume(gestureValue - dragAmount.y / screenHeight)
-                                    exoPlayer.volume = gestureValue
+                                    totalVolumeDragDistanceY += dragAmount.y
+                                    val newVolumeStep = resolveSystemStreamVolumeFromGesture(
+                                        startVolumeStep = startVolumeStep,
+                                        maxVolumeStep = maxVolume,
+                                        totalDragDistanceY = totalVolumeDragDistanceY,
+                                        screenHeightPx = screenHeight,
+                                        gestureSensitivity = 1.0f
+                                    )
+                                    audioManager.setStreamVolume(
+                                        AudioManager.STREAM_MUSIC,
+                                        newVolumeStep,
+                                        0
+                                    )
+                                    gestureValue = if (maxVolume > 0) {
+                                        newVolumeStep.toFloat() / maxVolume.toFloat()
+                                    } else {
+                                        0f
+                                    }
                                 }
                                 BangumiGestureMode.Seek -> {
                                     dragDelta += dragAmount.x

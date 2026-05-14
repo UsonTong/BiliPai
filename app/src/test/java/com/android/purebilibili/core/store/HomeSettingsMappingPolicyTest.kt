@@ -27,6 +27,7 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.isBottomBarBlurEnabled)
         assertTrue(result.isTopBarLiquidGlassEnabled)
         assertTrue(result.isBottomBarLiquidGlassEnabled)
+        assertFalse(result.bottomBarInteractiveHighlightEnabled)
         assertFalse(result.isBottomBarSearchEnabled)
         assertEquals(BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP, result.bottomBarSearchAutoExpandMode)
         assertFalse(result.androidNativeLiquidGlassEnabled)
@@ -64,6 +65,7 @@ class HomeSettingsMappingPolicyTest {
             booleanPreferencesKey("bottom_bar_blur_enabled") to false,
             booleanPreferencesKey("top_bar_liquid_glass_enabled") to false,
             booleanPreferencesKey("bottom_bar_liquid_glass_enabled") to false,
+            booleanPreferencesKey("bottom_bar_interactive_highlight_enabled") to false,
             booleanPreferencesKey("bottom_bar_search_enabled") to true,
             intPreferencesKey("bottom_bar_search_auto_expand_mode") to BottomBarSearchAutoExpandMode.DISABLED.value,
             intPreferencesKey("bottom_bar_liquid_glass_preset") to BottomBarLiquidGlassPreset.BACKDROP_NATIVE.value,
@@ -98,6 +100,7 @@ class HomeSettingsMappingPolicyTest {
         assertFalse(result.isBottomBarBlurEnabled)
         assertFalse(result.isTopBarLiquidGlassEnabled)
         assertFalse(result.isBottomBarLiquidGlassEnabled)
+        assertFalse(result.bottomBarInteractiveHighlightEnabled)
         assertTrue(result.isBottomBarSearchEnabled)
         assertEquals(BottomBarSearchAutoExpandMode.DISABLED, result.bottomBarSearchAutoExpandMode)
         assertTrue(result.androidNativeLiquidGlassEnabled)

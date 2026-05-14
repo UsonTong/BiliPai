@@ -1,5 +1,7 @@
 package com.android.purebilibili.navigation
 
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -9,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.android.purebilibili.core.ui.motion.continuityTween
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
@@ -61,7 +62,7 @@ internal class MainBottomPagerState(
             try {
                 pagerState.animateScrollBy(
                     value = scrollPixels,
-                    animationSpec = continuityTween(duration)
+                    animationSpec = tween(easing = EaseInOut, durationMillis = duration)
                 )
             } finally {
                 if (navJob == myJob) {

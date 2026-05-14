@@ -456,7 +456,6 @@ fun VideoPlayerSection(
     }
     val fixedFullscreenAspectRatio = playerInteractionSettings.fixedFullscreenAspectRatio
     val subtitleAutoPreference = playerInteractionSettings.subtitleAutoPreference
-    val appPlaybackVolume = playerInteractionSettings.appPlaybackVolume
     
     //  [新增] 双击跳转视觉反馈状态
     var seekFeedbackText by remember { mutableStateOf<String?>(null) }
@@ -769,7 +768,7 @@ fun VideoPlayerSection(
     var isFlippedVertical by remember { mutableStateOf(false) }
 
     // 记录手势开始时的初始值
-    var startVolume by remember { mutableFloatStateOf(1f) }
+    var startVolumeStep by remember { mutableIntStateOf(0) }
     var startBrightness by remember { mutableFloatStateOf(0f) }
 
     // 记录累计拖动距离
@@ -787,10 +786,6 @@ fun VideoPlayerSection(
         if (!isDraggingSubtitleOffset) {
             subtitleVerticalOffsetFraction = playerInteractionSettings.subtitleVerticalOffsetFraction
         }
-    }
-
-    LaunchedEffect(playerState.player, appPlaybackVolume, bvid, currentSeekSessionCid) {
-        playerState.player.volume = normalizeAppPlaybackVolume(appPlaybackVolume)
     }
 
     LaunchedEffect(playerState.player, bvid, currentSeekSessionCid) {
@@ -1174,7 +1169,7 @@ fun VideoPlayerSection(
                                 totalDragDistanceY = 0f
                                 totalDragDistanceX = 0f
 
-                                startVolume = playerState.player.volume
+                                startVolumeStep = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                                 startPosition = sharedSeekSession.sliderPositionMs.coerceAtLeast(0L)
                                 seekTargetTime = startPosition
 
@@ -1248,10 +1243,6 @@ fun VideoPlayerSection(
                                             "👆 Swipe to fullscreen triggered"
                                         }
                                     }
-                                }
-                            } else if (gestureMode == VideoGestureMode.Volume) {
-                                settingsScope.launch {
-                                    SettingsManager.setAppPlaybackVolume(context, gesturePercent)
                                 }
                             }
                             isGestureVisible = false
@@ -1439,11 +1430,23 @@ fun VideoPlayerSection(
                                 VideoGestureMode.Volume -> {
                                     // 距离已在上方累积，使用负值因为上滑是负 Y
                                     val screenHeight = context.resources.displayMetrics.heightPixels
-                                    //  应用灵敏度
-                                    val deltaPercent = -totalDragDistanceY / screenHeight * gestureSensitivity
-                                    val newVolPercent = normalizeAppPlaybackVolume(startVolume + deltaPercent)
-                                    playerState.player.volume = newVolPercent
-                                    gesturePercent = newVolPercent
+                                    val newVolumeStep = resolveSystemStreamVolumeFromGesture(
+                                        startVolumeStep = startVolumeStep,
+                                        maxVolumeStep = maxVolume,
+                                        totalDragDistanceY = totalDragDistanceY,
+                                        screenHeightPx = screenHeight.toFloat(),
+                                        gestureSensitivity = gestureSensitivity
+                                    )
+                                    audioManager.setStreamVolume(
+                                        AudioManager.STREAM_MUSIC,
+                                        newVolumeStep,
+                                        0
+                                    )
+                                    gesturePercent = if (maxVolume > 0) {
+                                        newVolumeStep.toFloat() / maxVolume.toFloat()
+                                    } else {
+                                        0f
+                                    }
                                     //  动态音量图标：3 级
                                     gestureIcon = when {
                                         gesturePercent < 0.01f -> CupertinoIcons.Default.SpeakerSlash
@@ -2714,7 +2717,7 @@ fun VideoPlayerSection(
         }
         val subtitleAutoModeMuted = runCatching {
             audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0
-        }.getOrDefault(false) || appPlaybackVolume <= 0f
+        }.getOrDefault(false) || playerState.player.volume <= 0f
         val subtitleToggleKey = remember(uiState, bvid, subtitleAutoPreference) {
             val success = uiState as? PlayerUiState.Success
             if (success == null) {

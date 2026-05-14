@@ -83,6 +83,10 @@ internal class DampedDragAnimationState(
     /** 当前索引速度（items/s，用于 capsule 形变等索引空间动画） */
     val velocity: Float get() = animatable.velocity
 
+    /** 指示器形变速度：拖拽时来自实时手势速度，释放后回到动画速度。 */
+    val deformationVelocityItemsPerSecond: Float
+        get() = if (isDragging) dragVelocityItemsPerSecond else velocity
+
     /** 最近一次释放手势的像素速度（px/s，用于折射/透镜强度） */
     var velocityPxPerSecond by mutableFloatStateOf(0f)
         private set
@@ -112,6 +116,7 @@ internal class DampedDragAnimationState(
 
     private var desiredValue = initialIndex.toFloat()
     private var desiredDragOffsetPx = 0f
+    private var dragVelocityItemsPerSecond by mutableFloatStateOf(0f)
     private var motionGeneration = 0
     private var positionJob: Job? = null
     private var pressJob: Job? = null
@@ -128,7 +133,11 @@ internal class DampedDragAnimationState(
      * @param dragAmountPx 拖拽像素距离
      * @param itemWidthPx 单个项目宽度（像素）
      */
-    fun onDrag(dragAmountPx: Float, itemWidthPx: Float) {
+    fun onDrag(
+        dragAmountPx: Float,
+        itemWidthPx: Float,
+        gestureVelocityPxPerSecond: Float = 0f
+    ) {
         if (itemWidthPx <= 0f || itemCount <= 0) return
         if (!isDragging) {
             isDragging = true
@@ -139,12 +148,17 @@ internal class DampedDragAnimationState(
             desiredValue = animatable.value
             desiredDragOffsetPx = offsetAnimation.value
             velocityPxPerSecond = 0f
+            dragVelocityItemsPerSecond = 0f
             // 按压缩放 — 参考 LiquidBottomTabs press()
             pressJob?.cancel()
             pressJob = scope.launch {
                 pressProgressAnimation.animateTo(1f, motionSpec.drag.pressSpring.toSpringSpec())
             }
         }
+        dragVelocityItemsPerSecond = resolveDampedDragVelocityItemsPerSecond(
+            velocityPxPerSecond = gestureVelocityPxPerSecond,
+            itemWidthPx = itemWidthPx
+        )
         
         // [优化] 橡皮筋阻尼物理：
         val currentValue = desiredValue
@@ -200,6 +214,7 @@ internal class DampedDragAnimationState(
         selectionJob?.cancel()
         positionJob?.cancel()
         desiredValue = targetValue
+        dragVelocityItemsPerSecond = 0f
         targetIndex = targetValue.roundToInt().coerceIn(0, itemCount - 1)
         positionJob = scope.launch {
             if (generation != motionGeneration) return@launch
@@ -256,6 +271,7 @@ internal class DampedDragAnimationState(
             )
             if (generation == motionGeneration) {
                 velocityPxPerSecond = 0f
+                dragVelocityItemsPerSecond = 0f
                 settledReleaseCount += 1
                 if (notifyIndexChanged && !notifyIndexChangedOnReleaseStart) {
                     onIndexChanged(releaseTargetIndex)
@@ -305,12 +321,21 @@ internal class DampedDragAnimationState(
         velocityPxPerSecond = 0f
         targetIndex = index
         desiredValue = index.toFloat()
+        dragVelocityItemsPerSecond = 0f
         selectionJob = scope.launch {
             if (generation != motionGeneration) return@launch
+            pressJob?.cancel()
+            pressJob = launch {
+                pressProgressAnimation.animateTo(1f, motionSpec.drag.pressSpring.toSpringSpec())
+            }
             animatable.animateTo(
                 targetValue = index.toFloat(),
                 animationSpec = motionSpec.drag.selectionSpring.toSpringSpec()
             )
+            pressJob?.cancel()
+            pressJob = launch {
+                pressProgressAnimation.animateTo(0f, motionSpec.drag.pressSpring.toSpringSpec())
+            }
         }
     }
 }
@@ -396,7 +421,8 @@ internal fun Modifier.horizontalDragGesture(
                         velocityTracker.addPosition(change.uptimeMillis, change.position)
                         
                         val dragAmount = change.position.x - change.previousPosition.x
-                        dragState.onDrag(dragAmount, itemWidthPx)
+                        val velocity = velocityTracker.calculateVelocity()
+                        dragState.onDrag(dragAmount, itemWidthPx, velocity.x)
                     }
                 } catch (e: Exception) {
                     isCancelled = true

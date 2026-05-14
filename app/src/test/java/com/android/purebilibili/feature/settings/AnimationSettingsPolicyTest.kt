@@ -74,8 +74,12 @@ class AnimationSettingsPolicyTest {
 
         assertTrue(animationSource.contains("底栏液态玻璃预设"))
         assertTrue(animationSource.contains("BottomBarLiquidGlassPreset.entries"))
+        assertFalse(animationSource.contains("底栏跟随高光"))
+        assertFalse(animationSource.contains("getBottomBarInteractiveHighlightEnabled"))
+        assertFalse(animationSource.contains("setBottomBarInteractiveHighlightEnabled"))
         assertFalse(bottomBarSource.contains("底栏液态玻璃预设"))
         assertFalse(bottomBarSource.contains("BottomBarLiquidGlassPreset.entries"))
+        assertFalse(bottomBarSource.contains("底栏跟随高光"))
     }
 
     private fun loadSource(path: String): String {

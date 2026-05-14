@@ -359,6 +359,7 @@ data class HomeSettings(
     val isBottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassPreset: BottomBarLiquidGlassPreset =
         BottomBarLiquidGlassPreset.BILIPAI_TUNED,
+    val bottomBarInteractiveHighlightEnabled: Boolean = false,
     val isBottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
         BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
@@ -547,7 +548,6 @@ data class PlayerInteractionSettings(
     val fixedFullscreenAspectRatio: FullscreenAspectRatio = FullscreenAspectRatio.FIT,
     val subtitleAutoPreference: SubtitleAutoPreference = SubtitleAutoPreference.OFF,
     val longPressSpeed: Float = 2.0f,
-    val appPlaybackVolume: Float = 1.0f,
     val subtitleVerticalOffsetFraction: Float = 0.0f,
     val twoFingerVerticalSpeedEnabled: Boolean = false,
     val twoFingerHorizontalSpeedEnabled: Boolean = false,
@@ -666,10 +666,6 @@ internal fun mapPlayerInteractionSettingsFromPreferences(
     return SettingsManager.mapPlayerInteractionSettingsFromPreferences(preferences)
 }
 
-internal fun normalizeAppPlaybackVolumePreference(volume: Float): Float {
-    return volume.coerceIn(0f, 1f)
-}
-
 internal fun decodeCollectionSubscriptionIds(rawValue: String?): Set<String> {
     return rawValue
         ?.split(",")
@@ -774,7 +770,6 @@ object SettingsManager {
         booleanPreferencesKey("two_finger_horizontal_speed_enabled")
     private val KEY_HI_RES_LONG_PRESS_COMPAT_HINT_SHOWN =
         booleanPreferencesKey("hi_res_long_press_compat_hint_shown")
-    private val KEY_APP_PLAYBACK_VOLUME = floatPreferencesKey("app_playback_volume")
     private val KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION =
         floatPreferencesKey("subtitle_vertical_offset_fraction")
     //  [新增] 默认播放速度/记忆上次播放速度
@@ -848,6 +843,8 @@ object SettingsManager {
     private val KEY_TOP_BAR_LIQUID_GLASS_ENABLED = booleanPreferencesKey("top_bar_liquid_glass_enabled")
     private val KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED = booleanPreferencesKey("bottom_bar_liquid_glass_enabled")
     private val KEY_BOTTOM_BAR_LIQUID_GLASS_PRESET = intPreferencesKey("bottom_bar_liquid_glass_preset")
+    private val KEY_BOTTOM_BAR_INTERACTIVE_HIGHLIGHT_ENABLED =
+        booleanPreferencesKey("bottom_bar_interactive_highlight_enabled")
     private val KEY_BOTTOM_BAR_SEARCH_ENABLED = booleanPreferencesKey("bottom_bar_search_enabled")
     private val KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE =
         intPreferencesKey("bottom_bar_search_auto_expand_mode")
@@ -949,6 +946,8 @@ object SettingsManager {
                 preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_PRESET]
                     ?: BottomBarLiquidGlassPreset.BILIPAI_TUNED.value
             ),
+            bottomBarInteractiveHighlightEnabled =
+                preferences[KEY_BOTTOM_BAR_INTERACTIVE_HIGHLIGHT_ENABLED] ?: false,
             isBottomBarSearchEnabled = preferences[KEY_BOTTOM_BAR_SEARCH_ENABLED] ?: false,
             bottomBarSearchAutoExpandMode = BottomBarSearchAutoExpandMode.fromValue(
                 preferences[KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE]
@@ -1050,9 +1049,6 @@ object SettingsManager {
             ) { SubtitleAutoPreference.OFF },
             longPressSpeed = normalizeLongPressSpeed(
                 preferences[KEY_LONG_PRESS_SPEED] ?: DEFAULT_LONG_PRESS_SPEED
-            ),
-            appPlaybackVolume = normalizeAppPlaybackVolumePreference(
-                preferences[KEY_APP_PLAYBACK_VOLUME] ?: 1.0f
             ),
             subtitleVerticalOffsetFraction = normalizeSubtitleVerticalOffsetFraction(
                 preferences[KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION] ?: 0.0f
@@ -1473,17 +1469,6 @@ object SettingsManager {
     suspend fun setLongPressSpeed(context: Context, speed: Float) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_LONG_PRESS_SPEED] = normalizeLongPressSpeed(speed)
-        }
-    }
-
-    fun getAppPlaybackVolume(context: Context): Flow<Float> = context.settingsDataStore.data
-        .map { preferences ->
-            normalizeAppPlaybackVolumePreference(preferences[KEY_APP_PLAYBACK_VOLUME] ?: 1.0f)
-        }
-
-    suspend fun setAppPlaybackVolume(context: Context, volume: Float) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[KEY_APP_PLAYBACK_VOLUME] = normalizeAppPlaybackVolumePreference(volume)
         }
     }
 
@@ -2154,6 +2139,17 @@ object SettingsManager {
     ) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_PRESET] = preset.value
+        }
+    }
+
+    fun getBottomBarInteractiveHighlightEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_BOTTOM_BAR_INTERACTIVE_HIGHLIGHT_ENABLED] ?: false
+        }
+
+    suspend fun setBottomBarInteractiveHighlightEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_BOTTOM_BAR_INTERACTIVE_HIGHLIGHT_ENABLED] = value
         }
     }
 
@@ -4877,7 +4873,6 @@ object SettingsManager {
             IntShareablePreferenceDefinition(KEY_SEEK_FORWARD_SECONDS, SettingsShareSection.GESTURE),
             IntShareablePreferenceDefinition(KEY_SEEK_BACKWARD_SECONDS, SettingsShareSection.GESTURE),
             FloatShareablePreferenceDefinition(KEY_LONG_PRESS_SPEED, SettingsShareSection.GESTURE),
-            FloatShareablePreferenceDefinition(KEY_APP_PLAYBACK_VOLUME, SettingsShareSection.GESTURE),
             FloatShareablePreferenceDefinition(
                 KEY_SUBTITLE_VERTICAL_OFFSET_FRACTION,
                 SettingsShareSection.GESTURE
