@@ -789,8 +789,12 @@ fun AppNavigation(
         }
         // [New] Global Scroll Offset State
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+        val homeFeedScrollInProgressState = remember { androidx.compose.runtime.mutableStateOf(false) }
         LaunchedEffect(currentRoute, currentBottomNavItem) {
             scrollOffsetState.floatValue = 0f
+            if (currentBottomNavItem != BottomNavItem.HOME) {
+                homeFeedScrollInProgressState.value = false
+            }
         }
 
         // [LayerBackdrop] Create backdrop for bottom bar refraction effect.
@@ -804,7 +808,9 @@ fun AppNavigation(
             LocalGlobalWallpaperBackdropVisible provides globalHomeWallpaperAppearance.visible,
             com.android.purebilibili.feature.home.LocalHomeScrollChannel provides homeScrollChannel,
             LocalDynamicScrollChannel provides dynamicScrollChannel,
-            com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState  // [新增] 提供回顶通道
+            com.android.purebilibili.feature.home.LocalHomeScrollOffset provides scrollOffsetState,
+            com.android.purebilibili.feature.home.LocalHomeFeedScrollInProgress provides
+                homeFeedScrollInProgressState
         ) {
             BackHandler(enabled = shouldInterceptSystemBack) {
                 when (systemBackAction) {
@@ -3112,6 +3118,8 @@ fun AppNavigation(
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                     forceLowBlurBudget = false,
+                                    isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
+                                        homeFeedScrollInProgressState.value,
                                     onToggleSidebar = {
                                         // [Tablet] Toggle sidebar mode
                                         coroutineScope.launch {
@@ -3147,6 +3155,8 @@ fun AppNavigation(
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
                                 forceLowBlurBudget = false,
+                                isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
+                                    homeFeedScrollInProgressState.value,
                                 onToggleSidebar = {
                                     // [Tablet] Toggle sidebar mode
                                     coroutineScope.launch {

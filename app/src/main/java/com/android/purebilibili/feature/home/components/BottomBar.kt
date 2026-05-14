@@ -541,9 +541,12 @@ internal fun shouldResetBottomBarSearchExpansionOverride(
 internal fun shouldRenderBottomBarRefractionCapture(
     glassEnabled: Boolean,
     hasBackdrop: Boolean,
-    captureProgress: Float
+    captureProgress: Float,
+    isFeedScrollInProgress: Boolean = false,
+    isBottomBarInteractionActive: Boolean = false
 ): Boolean {
-    return glassEnabled && hasBackdrop && captureProgress > BottomBarTransientAlphaThreshold
+    if (!glassEnabled || !hasBackdrop || captureProgress <= BottomBarTransientAlphaThreshold) return false
+    return !isFeedScrollInProgress || isBottomBarInteractionActive
 }
 
 internal fun shouldComposeBottomBarDockContent(
@@ -1602,7 +1605,8 @@ fun FrostedBottomBar(
     backdrop: LayerBackdrop? = null,
     motionTier: MotionTier = MotionTier.Normal,
     isTransitionRunning: Boolean = false,
-    forceLowBlurBudget: Boolean = false
+    forceLowBlurBudget: Boolean = false,
+    isFeedScrollInProgress: Boolean = false
 ) {
     if (LocalUiPreset.current == UiPreset.MD3) {
         val androidNativeVariant = LocalAndroidNativeVariant.current
@@ -1628,7 +1632,8 @@ fun FrostedBottomBar(
                 scrollOffset = scrollOffset,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
-                forceLowBlurBudget = forceLowBlurBudget
+                forceLowBlurBudget = forceLowBlurBudget,
+                isFeedScrollInProgress = isFeedScrollInProgress
             )
         } else {
             MaterialBottomBar(
@@ -1650,7 +1655,8 @@ fun FrostedBottomBar(
                 scrollOffset = scrollOffset,
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
-                forceLowBlurBudget = forceLowBlurBudget
+                forceLowBlurBudget = forceLowBlurBudget,
+                isFeedScrollInProgress = isFeedScrollInProgress
             )
         }
         return
@@ -1705,7 +1711,8 @@ fun FrostedBottomBar(
             onSearchKeywordSubmit = onSearchKeywordSubmit,
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
-            scrollOffset = scrollOffset
+            scrollOffset = scrollOffset,
+            isFeedScrollInProgress = isFeedScrollInProgress
         )
         return
     }
@@ -1755,7 +1762,8 @@ private fun MaterialBottomBar(
     scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean
+    forceLowBlurBudget: Boolean,
+    isFeedScrollInProgress: Boolean = false
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -1821,7 +1829,8 @@ private fun MaterialBottomBar(
             onSearchKeywordSubmit = onSearchKeywordSubmit,
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
-            scrollOffset = scrollOffset
+            scrollOffset = scrollOffset,
+            isFeedScrollInProgress = isFeedScrollInProgress
         )
         return
     }
@@ -1955,7 +1964,8 @@ private fun MiuixBottomBar(
     scrollOffset: Float,
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean
+    forceLowBlurBudget: Boolean,
+    isFeedScrollInProgress: Boolean = false
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -2021,7 +2031,8 @@ private fun MiuixBottomBar(
             onSearchKeywordSubmit = onSearchKeywordSubmit,
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
-            scrollOffset = scrollOffset
+            scrollOffset = scrollOffset,
+            isFeedScrollInProgress = isFeedScrollInProgress
         )
         return
     }
@@ -2214,7 +2225,8 @@ private fun KernelSuAlignedBottomBar(
     onSearchKeywordSubmit: (String) -> Unit = {},
     searchLaunchKey: Int = 0,
     onSearchLaunchTransitionFinished: (Int) -> Unit = {},
-    scrollOffset: Float = 0f
+    scrollOffset: Float = 0f,
+    isFeedScrollInProgress: Boolean = false
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
     val tabsBackdrop = rememberLayerBackdrop()
@@ -2499,7 +2511,12 @@ private fun KernelSuAlignedBottomBar(
             val shouldRenderRefractionCapture = shouldRenderBottomBarRefractionCapture(
                 glassEnabled = glassEnabled,
                 hasBackdrop = backdrop != null,
-                captureProgress = backdropPresetProgress.captureProgress
+                captureProgress = backdropPresetProgress.captureProgress,
+                isFeedScrollInProgress = isFeedScrollInProgress,
+                isBottomBarInteractionActive = dampedDragState.isDragging ||
+                    dampedDragState.isRunning ||
+                    dampedDragState.pressProgress > BottomBarTransientAlphaThreshold ||
+                    searchLaunchProgress > BottomBarTransientAlphaThreshold
             )
             fun itemCoverage(index: Int): Float = resolveBottomBarItemCoverage(
                 itemIndex = index,

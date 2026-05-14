@@ -342,7 +342,8 @@ class BottomBarLayoutPolicyTest {
             shouldRenderBottomBarRefractionCapture(
                 glassEnabled = true,
                 hasBackdrop = true,
-                captureProgress = 0.01f
+                captureProgress = 0.01f,
+                isFeedScrollInProgress = false
             )
         )
         assertEquals(
@@ -350,7 +351,8 @@ class BottomBarLayoutPolicyTest {
             shouldRenderBottomBarRefractionCapture(
                 glassEnabled = true,
                 hasBackdrop = true,
-                captureProgress = 0.001f
+                captureProgress = 0.001f,
+                isFeedScrollInProgress = false
             )
         )
         assertEquals(
@@ -358,7 +360,8 @@ class BottomBarLayoutPolicyTest {
             shouldRenderBottomBarRefractionCapture(
                 glassEnabled = false,
                 hasBackdrop = true,
-                captureProgress = 0.3f
+                captureProgress = 0.3f,
+                isFeedScrollInProgress = false
             )
         )
         assertEquals(
@@ -380,6 +383,34 @@ class BottomBarLayoutPolicyTest {
             shouldComposeBottomBarDockContent(
                 dockContentAlpha = 0f,
                 effectiveSearchExpanded = false
+            )
+        )
+    }
+
+    @Test
+    fun `feed scrolling skips idle bottom bar refraction capture`() {
+        assertEquals(
+            false,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 0.01f,
+                isFeedScrollInProgress = true,
+                isBottomBarInteractionActive = false
+            )
+        )
+    }
+
+    @Test
+    fun `feed scrolling keeps bottom bar refraction capture during direct interaction`() {
+        assertEquals(
+            true,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 0.01f,
+                isFeedScrollInProgress = true,
+                isBottomBarInteractionActive = true
             )
         )
     }

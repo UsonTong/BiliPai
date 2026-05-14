@@ -135,6 +135,7 @@ val LocalHomeScrollChannel = compositionLocalOf<Channel<Unit>?> { null }
 // [New] Global Scroll Offset for Liquid Glass Effect
 // Used to pass scroll position from HomeScreen to BottomBar without causing recomposition
 val LocalHomeScrollOffset = compositionLocalOf { androidx.compose.runtime.mutableFloatStateOf(0f) }
+val LocalHomeFeedScrollInProgress = compositionLocalOf { mutableStateOf(false) }
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
@@ -192,6 +193,7 @@ fun HomeScreen(
 
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
     val globalScrollOffset = LocalHomeScrollOffset.current
+    val globalFeedScrollInProgress = LocalHomeFeedScrollInProgress.current
     // [Header] 首页重选/双击回顶时需要强制恢复顶部，避免自动收缩后残留空白区域
     var headerOffsetHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var headerSettleAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -1391,6 +1393,14 @@ fun HomeScreen(
         //  这保证了 Tab 指示器状态的连续性，防止消失或重置
         val isFeedScrollInProgress by remember(activeGridState) {
             derivedStateOf { activeGridState?.isScrollInProgress == true }
+        }
+        SideEffect {
+            globalFeedScrollInProgress.value = isFeedScrollInProgress
+        }
+        DisposableEffect(Unit) {
+            onDispose {
+                globalFeedScrollInProgress.value = false
+            }
         }
         val homeInteractionMotionBudget = resolveHomeInteractionMotionBudget(
             isPagerScrolling = pagerState.isScrollInProgress,
