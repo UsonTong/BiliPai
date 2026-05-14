@@ -3,7 +3,6 @@ package com.android.purebilibili.feature.home.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,6 +27,9 @@ import com.android.purebilibili.core.ui.rememberAppPhotoIcon
 import com.android.purebilibili.core.ui.rememberAppPlayIcon
 import com.android.purebilibili.core.ui.rememberAppShareIcon
 import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.VideoItem
 import androidx.compose.material.icons.Icons
@@ -135,13 +137,13 @@ fun VideoPreviewDialog(
                 modifier = Modifier
                     .width(300.dp) // Slightly wider than standard alert
                     // Remove padding between items by putting them in one Surface
-                    .clip(RoundedCornerShape(16.dp)) // Clip the whole card
+                    .clip(AppShapes.container(ContainerLevel.Card)) // Clip the whole card
                     .clickable(enabled = false) {}, // Prevent clicks from passing through to background
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
                 Surface(
-                    color = MaterialTheme.colorScheme.surface,
+                    color = AppSurfaceTokens.cardContainer(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column {

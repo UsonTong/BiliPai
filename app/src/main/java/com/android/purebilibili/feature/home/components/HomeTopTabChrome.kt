@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,6 +31,8 @@ import com.android.purebilibili.feature.home.HomeTopTabGestureAction
 import com.android.purebilibili.feature.home.resolveHomeTopTabGestureAction
 import com.android.purebilibili.core.store.LiquidGlassStyle
 import com.android.purebilibili.core.ui.adaptive.MotionTier
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import dev.chrisbanes.haze.HazeState
 
@@ -194,7 +195,7 @@ private fun BoxScope.CollapsedTopTabHandle() {
         modifier = Modifier
             .align(Alignment.Center)
             .size(width = 34.dp, height = 4.dp)
-            .clip(RoundedCornerShape(999.dp))
+            .clip(AppShapes.container(ContainerLevel.Pill))
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f))
     )
 }

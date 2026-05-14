@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 
 // ==========================================
 // 对话框组件
@@ -39,7 +40,7 @@ fun WelcomeDialog(githubUrl: String, onConfirm: () -> Unit) {
                 Text("进入")
             }
         },
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = AppSurfaceTokens.cardContainer()
     )
 }
 
