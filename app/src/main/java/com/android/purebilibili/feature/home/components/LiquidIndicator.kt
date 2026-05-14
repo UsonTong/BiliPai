@@ -33,6 +33,7 @@ import com.kyant.backdrop.effects.blur
 import com.android.purebilibili.core.store.LiquidGlassMode
 import com.android.purebilibili.core.store.LiquidGlassStyle
 import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
+import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.core.ui.motion.BottomBarMotionSpec
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 
@@ -284,12 +285,12 @@ fun SimpleLiquidIndicator(
     
     val scale by animateFloatAsState(
         targetValue = 1f + lensProfile.motionFraction * (0.12f * styleTuning.deformationMultiplier),
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        animationSpec = AppMotionTokens.expressiveSpec(),
         label = "scale"
     )
     val indicatorAlphaScale by animateFloatAsState(
         targetValue = if (isLiquidGlassEnabled) 0.92f else 1f,
-        animationSpec = tween(180),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "indicatorAlphaScale"
     )
     val resolvedIndicatorColor = indicatorColor.copy(

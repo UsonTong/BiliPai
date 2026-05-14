@@ -30,6 +30,10 @@ class HomeTokenAdoptionTest {
         "src/main/java/com/android/purebilibili/feature/home/components/cards/VideoCard.kt"
     )
 
+    private val migratedHomeMotionFiles = listOf(
+        "src/main/java/com/android/purebilibili/feature/home/components/LiquidIndicator.kt"
+    )
+
     @Test
     fun migratedHomeFiles_areNotInShapeAllowlist() {
         val leaked = migratedHomeFiles.filter { it in StyleLintAllowlist.SHAPE_HITS }
@@ -68,6 +72,37 @@ class HomeTokenAdoptionTest {
         assertTrue(
             residual.isEmpty(),
             "已迁移的 home 文件不能残留硬编码 shape/surface：\n" + residual.joinToString("\n")
+        )
+    }
+
+    @Test
+    fun migratedHomeMotionFiles_areNotInMotionAllowlist() {
+        val leaked = migratedHomeMotionFiles.filter { it in StyleLintAllowlist.MOTION_HITS }
+        assertTrue(
+            leaked.isEmpty(),
+            "已迁移的 home motion 文件不能继续留在 MOTION_HITS：\n" + leaked.joinToString("\n")
+        )
+    }
+
+    @Test
+    fun migratedHomeMotionFiles_haveNoResidualHardcodedMotion() {
+        val motionPattern = Regex("""\b(tween|spring)\s*\(\s*\d+""")
+        val residual = mutableListOf<String>()
+
+        migratedHomeMotionFiles.forEach { path ->
+            val file = locate(path) ?: error("Cannot locate $path from cwd")
+            file.useLines { lines ->
+                lines.forEachIndexed { index, line ->
+                    if (motionPattern.containsMatchIn(line)) {
+                        residual.add("$path:${index + 1}: ${line.trim()}")
+                    }
+                }
+            }
+        }
+
+        assertTrue(
+            residual.isEmpty(),
+            "已迁移的 home motion 文件不能残留硬编码 tween/spring：\n" + residual.joinToString("\n")
         )
     }
 

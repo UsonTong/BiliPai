@@ -131,7 +131,6 @@ internal object StyleLintAllowlist {
         "src/main/java/com/android/purebilibili/feature/dynamic/components/DynamicSidebar.kt",
         "src/main/java/com/android/purebilibili/feature/dynamic/DynamicScreen.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/LiquidIndicator.kt",
         "src/main/java/com/android/purebilibili/feature/list/CommonListScreen.kt",
         "src/main/java/com/android/purebilibili/feature/login/LoginComponents.kt",
         "src/main/java/com/android/purebilibili/feature/login/LoginScreen.kt",
