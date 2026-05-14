@@ -193,10 +193,9 @@ internal fun shouldShowCenterPlayButton(
 internal fun shouldShowBufferingIndicator(
     isBuffering: Boolean,
     isQualitySwitching: Boolean,
-    isVisible: Boolean,
-    isScrubbing: Boolean
+    playWhenReady: Boolean
 ): Boolean {
-    return isBuffering && !isQualitySwitching && (!isVisible || isScrubbing)
+    return isBuffering && playWhenReady && !isQualitySwitching
 }
 
 internal enum class FullscreenLockButtonIcon {
@@ -1397,8 +1396,7 @@ fun VideoPlayerOverlay(
             visible = shouldShowBufferingIndicator(
                 isBuffering = isBuffering,
                 isQualitySwitching = isQualitySwitching,
-                isVisible = isVisible,
-                isScrubbing = isSeekScrubbing
+                playWhenReady = player.playWhenReady
             ) && centerLoadingUiState == null,
             modifier = Modifier.align(Alignment.Center),
             enter = fadeIn(tween(200)),

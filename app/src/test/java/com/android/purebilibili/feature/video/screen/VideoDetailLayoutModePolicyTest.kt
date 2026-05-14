@@ -426,14 +426,14 @@ class VideoDetailLayoutModePolicyTest {
             )
         )
         assertEquals(
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
             resolvePhoneAutoRotateRequestedOrientation(
                 orientationDegrees = 90,
                 isCurrentlyLandscape = false
             )
         )
         assertEquals(
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
             resolvePhoneAutoRotateRequestedOrientation(
                 orientationDegrees = 48,
                 isCurrentlyLandscape = true
@@ -444,6 +444,40 @@ class VideoDetailLayoutModePolicyTest {
             resolvePhoneAutoRotateRequestedOrientation(
                 orientationDegrees = 8,
                 isCurrentlyLandscape = true
+            )
+        )
+    }
+
+    @Test
+    fun autoRotateSensorPolicy_usesExactLandscapeSideForRightTilt() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            resolvePhoneAutoRotateRequestedOrientation(
+                orientationDegrees = 270,
+                isCurrentlyLandscape = false
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            resolvePhoneAutoRotateRequestedOrientation(
+                orientationDegrees = 312,
+                isCurrentlyLandscape = true
+            )
+        )
+    }
+
+    @Test
+    fun phoneOrientationPolicy_autoRotateFullscreen_preservesExactLandscapeSide() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            resolvePhoneVideoRequestedOrientation(
+                autoRotateEnabled = true,
+                systemAutoRotateEnabled = true,
+                fullscreenMode = FullscreenMode.AUTO,
+                isCompactDevice = true,
+                isOrientationDrivenFullscreen = true,
+                isFullscreenMode = true,
+                currentRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             )
         )
     }

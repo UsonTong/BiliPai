@@ -1757,7 +1757,8 @@ fun VideoDetailScreen(
             isFullscreenMode = isFullscreenMode,
             manualFullscreenRequested = userRequestedFullscreen,
             manualPortraitHoldActive = manualPortraitHoldActive,
-            isVerticalVideo = isVerticalVideo
+            isVerticalVideo = isVerticalVideo,
+            currentRequestedOrientation = activity?.requestedOrientation
         ) ?: return@LaunchedEffect
 
         if (activity?.requestedOrientation != requestedOrientation) {
@@ -4552,7 +4553,8 @@ internal fun resolvePhoneVideoRequestedOrientation(
     isFullscreenMode: Boolean,
     manualFullscreenRequested: Boolean = false,
     manualPortraitHoldActive: Boolean = false,
-    isVerticalVideo: Boolean = false
+    isVerticalVideo: Boolean = false,
+    currentRequestedOrientation: Int? = null
 ): Int? {
     if (!shouldApplyPhoneAutoRotatePolicy(isCompactDevice)) {
         return ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -4582,7 +4584,8 @@ internal fun resolvePhoneVideoRequestedOrientation(
                     isVerticalVideo = isVerticalVideo
                 ) ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             }
-            isFullscreenMode -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            isFullscreenMode -> resolveCurrentExactLandscapeOrientation(currentRequestedOrientation)
+                ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
@@ -4615,15 +4618,55 @@ internal fun resolvePhoneAutoRotateRequestedOrientation(
         orientationDegrees = normalized,
         portraitSnapDegrees = portraitSnapDegrees
     )
-    val landscapeEntry = withinWrappedRange(normalized, landscapeEnterMinDegrees, landscapeEnterMaxDegrees) ||
-        withinWrappedRange(normalized, 240, 300)
-    val landscapeKeep = withinWrappedRange(normalized, landscapeKeepMinDegrees, landscapeKeepMaxDegrees) ||
-        withinWrappedRange(normalized, 220, 320)
+    val exactLandscapeEntry = resolveExactLandscapeOrientation(
+        orientationDegrees = normalized,
+        minLeftSideTopDegrees = landscapeEnterMinDegrees,
+        maxLeftSideTopDegrees = landscapeEnterMaxDegrees,
+        minRightSideTopDegrees = 240,
+        maxRightSideTopDegrees = 300
+    )
+    val exactLandscapeKeep = resolveExactLandscapeOrientation(
+        orientationDegrees = normalized,
+        minLeftSideTopDegrees = landscapeKeepMinDegrees,
+        maxLeftSideTopDegrees = landscapeKeepMaxDegrees,
+        minRightSideTopDegrees = 220,
+        maxRightSideTopDegrees = 320
+    )
 
     return when {
-        isCurrentlyLandscape && landscapeKeep -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        isCurrentlyLandscape && exactLandscapeKeep != null -> exactLandscapeKeep
         portraitStable -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        !isCurrentlyLandscape && landscapeEntry -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        !isCurrentlyLandscape && exactLandscapeEntry != null -> exactLandscapeEntry
+        else -> null
+    }
+}
+
+private fun resolveCurrentExactLandscapeOrientation(currentRequestedOrientation: Int?): Int? {
+    return when (currentRequestedOrientation) {
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE -> currentRequestedOrientation
+        else -> null
+    }
+}
+
+private fun resolveExactLandscapeOrientation(
+    orientationDegrees: Int,
+    minLeftSideTopDegrees: Int,
+    maxLeftSideTopDegrees: Int,
+    minRightSideTopDegrees: Int,
+    maxRightSideTopDegrees: Int
+): Int? {
+    return when {
+        withinWrappedRange(
+            orientationDegrees,
+            minLeftSideTopDegrees,
+            maxLeftSideTopDegrees
+        ) -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+        withinWrappedRange(
+            orientationDegrees,
+            minRightSideTopDegrees,
+            maxRightSideTopDegrees
+        ) -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         else -> null
     }
 }
