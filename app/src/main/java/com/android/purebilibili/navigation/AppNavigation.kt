@@ -1334,9 +1334,11 @@ fun AppNavigation(
                         BottomNavItem.WATCHLATER -> {
                             com.android.purebilibili.feature.watchlater.WatchLaterScreen(
                                 onBack = { navigateToBottomPagerItem(BottomNavItem.HOME) },
-                                onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
-                                onPlayAllAudioClick = { bvid, cid ->
-                                    navigateToVideo(bvid, cid, "", startAudio = true)
+                                onVideoClick = { bvid, cid, resumePositionMs ->
+                                    navigateToVideo(bvid, cid, "", resumePositionMs = resumePositionMs)
+                                },
+                                onPlayAllAudioClick = { bvid, cid, resumePositionMs ->
+                                    navigateToVideo(bvid, cid, "", startAudio = true, resumePositionMs = resumePositionMs)
                                 },
                                 globalHazeState = mainHazeState
                             )
@@ -1983,9 +1985,11 @@ fun AppNavigation(
             ProvideAnimatedVisibilityScope(animatedVisibilityScope = this) {
                 com.android.purebilibili.feature.watchlater.WatchLaterScreen(
                     onBack = { navController.popBackStack() },
-                    onVideoClick = { bvid, cid -> navigateToVideo(bvid, cid, "") },
-                    onPlayAllAudioClick = { bvid, cid ->
-                        navigateToVideo(bvid, cid, "", startAudio = true)
+                    onVideoClick = { bvid, cid, resumePositionMs ->
+                        navigateToVideo(bvid, cid, "", resumePositionMs = resumePositionMs)
+                    },
+                    onPlayAllAudioClick = { bvid, cid, resumePositionMs ->
+                        navigateToVideo(bvid, cid, "", startAudio = true, resumePositionMs = resumePositionMs)
                     },
                     globalHazeState = mainHazeState // [新增] 传入全局 HazeState (WatchLaterScreen 需支持)
                 )

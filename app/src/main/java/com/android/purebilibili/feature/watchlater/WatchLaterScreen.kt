@@ -118,6 +118,19 @@ internal fun resolveWatchLaterPlayAllStartTarget(
     return first.bvid to first.cid
 }
 
+private fun resolveWatchLaterPlaybackTargetOrDefault(
+    items: List<VideoItem>,
+    bvid: String,
+    fallbackCid: Long = 0L
+): WatchLaterPlaybackTarget {
+    return resolveWatchLaterPlaybackTarget(items, bvid)
+        ?: WatchLaterPlaybackTarget(
+            bvid = bvid,
+            cid = fallbackCid.coerceAtLeast(0L),
+            resumePositionMs = 0L
+        )
+}
+
 internal fun resolveWatchLaterTitle(itemCount: Int): String {
     return "稍后再看 ($itemCount)"
 }
@@ -154,10 +167,13 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
                     val items = response.data.list?.map { item ->
                         VideoItem(
                             id = item.aid,  // 存储 aid 用于删除
+                            aid = item.aid,
                             bvid = item.bvid ?: "",
+                            cid = item.cid ?: 0L,
                             title = item.title ?: "",
                             pic = item.pic ?: "",
                             duration = item.duration ?: 0,
+                            progress = item.progress ?: -1,
                             owner = Owner(
                                 mid = item.owner?.mid ?: 0L,
                                 name = item.owner?.name ?: "",
@@ -373,8 +389,8 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
 @Composable
 fun WatchLaterScreen(
     onBack: () -> Unit,
-    onVideoClick: (String, Long) -> Unit,
-    onPlayAllAudioClick: ((String, Long) -> Unit)? = null,
+    onVideoClick: (String, Long, Long) -> Unit,
+    onPlayAllAudioClick: ((String, Long, Long) -> Unit)? = null,
     viewModel: WatchLaterViewModel = viewModel(),
     globalHazeState: HazeState? = null // [新增]
 ) {
@@ -475,10 +491,13 @@ fun WatchLaterScreen(
                                         com.android.purebilibili.feature.video.player.PlaylistManager
                                             .setPlayMode(com.android.purebilibili.feature.video.player.PlayMode.SEQUENTIAL)
 
-                                        onVideoClick(
-                                            state.items[externalPlaylist.startIndex].bvid,
-                                            0L
+                                        val item = state.items[externalPlaylist.startIndex]
+                                        val target = resolveWatchLaterPlaybackTargetOrDefault(
+                                            items = state.items,
+                                            bvid = item.bvid,
+                                            fallbackCid = item.cid
                                         )
+                                        onVideoClick(target.bvid, target.cid, target.resumePositionMs)
                                     }
                                 ) {
                                     Icon(
@@ -505,8 +524,20 @@ fun WatchLaterScreen(
 
                                         val target = resolveWatchLaterPlayAllStartTarget(state.items)
                                             ?: return@IconButton
-                                        onPlayAllAudioClick?.invoke(target.first, target.second)
-                                            ?: onVideoClick(target.first, target.second)
+                                        val playbackTarget = resolveWatchLaterPlaybackTargetOrDefault(
+                                            items = state.items,
+                                            bvid = target.first,
+                                            fallbackCid = target.second
+                                        )
+                                        onPlayAllAudioClick?.invoke(
+                                            playbackTarget.bvid,
+                                            playbackTarget.cid,
+                                            playbackTarget.resumePositionMs
+                                        ) ?: onVideoClick(
+                                            playbackTarget.bvid,
+                                            playbackTarget.cid,
+                                            playbackTarget.resumePositionMs
+                                        )
                                     }
                                 ) {
                                     Icon(
@@ -651,7 +682,12 @@ fun WatchLaterScreen(
                                                         .setPlayMode(com.android.purebilibili.feature.video.player.PlayMode.SEQUENTIAL)
                                                 }
 
-                                                onVideoClick(bvid, 0L)
+                                                val target = resolveWatchLaterPlaybackTargetOrDefault(
+                                                    items = state.items,
+                                                    bvid = bvid,
+                                                    fallbackCid = item.cid
+                                                )
+                                                onVideoClick(target.bvid, target.cid, target.resumePositionMs)
                                             }
                                         }
                                     )

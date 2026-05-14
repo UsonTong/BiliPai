@@ -8,6 +8,12 @@ data class WatchLaterExternalPlaylist(
     val startIndex: Int
 )
 
+internal data class WatchLaterPlaybackTarget(
+    val bvid: String,
+    val cid: Long,
+    val resumePositionMs: Long
+)
+
 fun buildExternalPlaylistFromWatchLater(
     items: List<VideoItem>,
     clickedBvid: String? = null
@@ -32,5 +38,22 @@ fun buildExternalPlaylistFromWatchLater(
     return WatchLaterExternalPlaylist(
         playlistItems = playlistItems,
         startIndex = startIndex
+    )
+}
+
+internal fun resolveWatchLaterPlaybackTarget(
+    items: List<VideoItem>,
+    clickedBvid: String
+): WatchLaterPlaybackTarget? {
+    if (clickedBvid.isBlank()) return null
+    val item = items.firstOrNull { it.bvid == clickedBvid } ?: return null
+    return WatchLaterPlaybackTarget(
+        bvid = item.bvid,
+        cid = item.cid.coerceAtLeast(0L),
+        resumePositionMs = item.progress
+            .takeIf { it > 0 }
+            ?.toLong()
+            ?.times(1000L)
+            ?: 0L
     )
 }
