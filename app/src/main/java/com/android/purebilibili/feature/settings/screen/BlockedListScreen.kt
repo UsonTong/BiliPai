@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +22,9 @@ import com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepositor
 import com.android.purebilibili.data.repository.BlockedUpRepository
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.components.IOSSectionTitle
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
@@ -51,13 +53,13 @@ fun BlockedListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = AppSurfaceTokens.cardContainer(),
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = AppSurfaceTokens.groupedListContainer()
     ) { padding ->
         BlockedListContent(
             blockedUps = blockedUps,
@@ -155,8 +157,8 @@ private fun BlockedListSyncAction(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(AppShapes.container(ContainerLevel.Card))
+            .background(AppSurfaceTokens.cardContainer())
             .padding(12.dp)
     ) {
         Button(
@@ -196,8 +198,8 @@ private fun BlockedUpItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(AppShapes.container(ContainerLevel.Card))
+            .background(AppSurfaceTokens.cardContainer())
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

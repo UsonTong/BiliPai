@@ -32,6 +32,9 @@ import com.android.purebilibili.core.ui.rememberAppSparklesIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.core.ui.rememberAppWarningIcon
 import com.android.purebilibili.core.ui.rememberAppAnalyticsIcon
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.util.EasterEggs
@@ -75,12 +78,13 @@ import com.android.purebilibili.core.ui.components.IOSDivider as SettingsDivider
 private fun SettingsCardGroup(
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.45f
+    val isDark = AppSurfaceTokens.groupedListContainer().luminance() < 0.45f
     val darkTintBase = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    val baseCardContainer = AppSurfaceTokens.cardContainer()
     val containerColor = if (isDark) {
-        darkTintBase.compositeOver(MaterialTheme.colorScheme.surface).copy(alpha = 0.96f)
+        darkTintBase.compositeOver(baseCardContainer).copy(alpha = 0.96f)
     } else {
-        MaterialTheme.colorScheme.surface
+        baseCardContainer
     }
     val borderColor = if (isDark) {
         Color.White.copy(alpha = 0.06f)
@@ -90,7 +94,7 @@ private fun SettingsCardGroup(
 
     SettingsGroup(
         containerColor = containerColor,
-        shape = RoundedCornerShape(14.dp),
+        shape = AppShapes.container(ContainerLevel.Dialog),
         border = BorderStroke(0.6.dp, borderColor)
     ) {
         content()
@@ -224,7 +228,7 @@ fun ReleaseChannelPinnedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = AppShapes.container(ContainerLevel.Dialog),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         )
@@ -464,7 +468,7 @@ private fun FeedDynamicTabVisibilityItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(AppShapes.container(ContainerLevel.Card))
                     .clickable(enabled = enabled) { onTabVisibilityChange(tab.id) }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically

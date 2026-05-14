@@ -56,6 +56,9 @@ import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.LogCollector
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
@@ -552,7 +555,7 @@ fun SettingsScreen(
                 "未提供"
             }
         }
-        val isDialogDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val isDialogDarkTheme = AppSurfaceTokens.cardContainer().luminance() < 0.5f
         val dialogTextColors = remember(isDialogDarkTheme) {
             resolveAppUpdateDialogTextColors(
                 isDarkTheme = isDialogDarkTheme
@@ -714,7 +717,7 @@ fun SettingsScreen(
                 "未提供"
             }
         }
-        val isDialogDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val isDialogDarkTheme = AppSurfaceTokens.cardContainer().luminance() < 0.5f
         val dialogTextColors = remember(isDialogDarkTheme) {
             resolveAppUpdateDialogTextColors(
                 isDarkTheme = isDialogDarkTheme
@@ -1221,14 +1224,14 @@ private fun MobileSettingsLayout(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = AppSurfaceTokens.groupedListContainer(),
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = AppSurfaceTokens.groupedListContainer(),
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
         LazyColumn(
@@ -1395,7 +1398,8 @@ fun DonateDialog(onDismiss: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(16.dp))
+                            // QR code preview: ~16dp → Dialog level (14dp scaled per preset).
+                            .clip(AppShapes.container(ContainerLevel.Dialog))
                             .clickable { onDismiss() }, // [New] Click to dismiss
                         contentScale = ContentScale.Fit
                     )

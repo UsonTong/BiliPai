@@ -87,4 +87,40 @@ class AppShapesTest {
         )
         assertEquals(10.dp, ios)
     }
+
+    @Test
+    fun tagRadius_iosBaseIs4dp() {
+        val ios = AppShapes.resolveContainerCornerDp(
+            level = ContainerLevel.Tag,
+            uiPreset = UiPreset.IOS,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3
+        )
+        assertEquals(4.dp, ios)
+    }
+
+    @Test
+    fun chipRadius_iosBaseIs6dp() {
+        val ios = AppShapes.resolveContainerCornerDp(
+            level = ContainerLevel.Chip,
+            uiPreset = UiPreset.IOS,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3
+        )
+        assertEquals(6.dp, ios)
+    }
+
+    @Test
+    fun floatingRadius_iosBaseIs28dp() {
+        val ios = AppShapes.resolveContainerCornerDp(
+            level = ContainerLevel.Floating,
+            uiPreset = UiPreset.IOS,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3
+        )
+        assertEquals(28.dp, ios)
+        val md3 = AppShapes.resolveContainerCornerDp(
+            level = ContainerLevel.Floating,
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3
+        )
+        assertTrue(ios.value > md3.value, "MD3 floating radius is scaled smaller")
+    }
 }

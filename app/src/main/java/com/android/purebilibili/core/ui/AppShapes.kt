@@ -14,14 +14,20 @@ import com.android.purebilibili.core.theme.resolveCornerRadiusScale
 
 /** Semantic container categories shared across the three UI presets. */
 enum class ContainerLevel {
-    /** Standard surface cards. iOS base = 12dp. */
-    Card,
-    /** Bottom sheet / modal sheet (top-rounded). iOS base = 20dp. */
-    Sheet,
-    /** Alert / confirm dialog containers. iOS base = 14dp. */
-    Dialog,
+    /** Tiny tags / badges. iOS base = 4dp. */
+    Tag,
+    /** Small chips / micro-buttons. iOS base = 6dp. */
+    Chip,
     /** Input fields, search bars, small chip-like containers. iOS base = 10dp. */
     Field,
+    /** Standard surface cards. iOS base = 12dp. */
+    Card,
+    /** Alert / confirm dialog containers. iOS base = 14dp. */
+    Dialog,
+    /** Bottom sheet / modal sheet (top-rounded). iOS base = 20dp. */
+    Sheet,
+    /** Floating elements — FABs, floating bars. iOS base = 28dp. */
+    Floating,
     /** Pill / segmented selectors — radius comes from chrome tokens directly. */
     Pill
 }
@@ -35,10 +41,13 @@ enum class ContainerLevel {
 object AppShapes {
 
     private fun baseDp(level: ContainerLevel): Float = when (level) {
-        ContainerLevel.Card -> 12f
-        ContainerLevel.Sheet -> 20f
-        ContainerLevel.Dialog -> 14f
+        ContainerLevel.Tag -> 4f
+        ContainerLevel.Chip -> 6f
         ContainerLevel.Field -> 10f
+        ContainerLevel.Card -> 12f
+        ContainerLevel.Dialog -> 14f
+        ContainerLevel.Sheet -> 20f
+        ContainerLevel.Floating -> 28f
         ContainerLevel.Pill -> 0f
     }
 

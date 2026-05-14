@@ -4,7 +4,6 @@ package com.android.purebilibili.feature.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
@@ -22,6 +21,9 @@ import com.android.purebilibili.core.plugin.json.Rule
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -61,11 +63,11 @@ fun JsonPluginEditorScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = AppSurfaceTokens.cardContainer()
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = AppSurfaceTokens.groupedListContainer()
     ) { padding ->
         JsonPluginEditorContent(
             modifier = Modifier.padding(padding),
@@ -207,8 +209,8 @@ private fun RuleEditor(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp)),
-        color = MaterialTheme.colorScheme.surface,
+            .clip(AppShapes.container(ContainerLevel.Card)),
+        color = AppSurfaceTokens.cardContainer(),
         tonalElevation = 2.dp
     ) {
         Column(

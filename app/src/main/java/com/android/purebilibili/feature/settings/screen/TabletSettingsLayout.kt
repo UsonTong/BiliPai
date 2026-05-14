@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.android.purebilibili.R
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppCollectionIcon
@@ -172,7 +173,7 @@ fun TabletSettingsLayout(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(AppSurfaceTokens.cardContainer())
                     .padding(horizontal = layoutPolicy.masterPanePaddingDp.dp)
                     .statusBarsPadding()
             ) {
