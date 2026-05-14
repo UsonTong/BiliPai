@@ -20,7 +20,7 @@ class PlayerInteractionSettingsMappingPolicyTest {
 
         assertEquals(1.0f, result.gestureSensitivity)
         assertTrue(result.doubleTapLikeEnabled)
-        assertTrue(result.doubleTapSeekEnabled)
+        assertFalse(result.doubleTapSeekEnabled)
         assertEquals(30, result.inlineSwipeSeekSeconds)
         assertEquals(15, result.fullscreenSwipeSeekSeconds)
         assertEquals(FullscreenAspectRatio.FIT, result.fixedFullscreenAspectRatio)
@@ -68,6 +68,17 @@ class PlayerInteractionSettingsMappingPolicyTest {
         assertEquals(-0.30f, result.subtitleVerticalOffsetFraction)
         assertTrue(result.twoFingerVerticalSpeedEnabled)
         assertTrue(result.hiResLongPressCompatHintShown)
+    }
+
+    @Test
+    fun savedDoubleTapSeekPreference_keepsUserChoice() {
+        val prefs = mutablePreferencesOf(
+            booleanPreferencesKey("double_tap_seek_enabled") to true
+        )
+
+        val result = mapPlayerInteractionSettingsFromPreferences(prefs)
+
+        assertTrue(result.doubleTapSeekEnabled)
     }
 
     @Test

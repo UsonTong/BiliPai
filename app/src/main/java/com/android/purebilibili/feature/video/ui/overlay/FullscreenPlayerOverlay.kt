@@ -256,7 +256,7 @@ fun FullscreenPlayerOverlay(
     val doubleTapSeekEnabled by SettingsManager
         .getDoubleTapSeekEnabled(context)
         .collectAsState(
-            initial = true,
+            initial = false,
             context = kotlin.coroutines.EmptyCoroutineContext
         )
     val seekForwardSeconds by SettingsManager

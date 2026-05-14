@@ -527,7 +527,7 @@ data class HomeTopTabSettings(
 data class PlayerInteractionSettings(
     val gestureSensitivity: Float = 1.0f,
     val doubleTapLikeEnabled: Boolean = true,
-    val doubleTapSeekEnabled: Boolean = true,
+    val doubleTapSeekEnabled: Boolean = false,
     val portraitSwipeToFullscreenEnabled: Boolean = true,
     val centerSwipeToFullscreenEnabled: Boolean = true,
     val slideVolumeBrightnessEnabled: Boolean = true,
@@ -1019,7 +1019,7 @@ object SettingsManager {
         return PlayerInteractionSettings(
             gestureSensitivity = (preferences[KEY_GESTURE_SENSITIVITY] ?: 1.0f).coerceIn(0.5f, 2.0f),
             doubleTapLikeEnabled = preferences[KEY_DOUBLE_TAP_LIKE] ?: true,
-            doubleTapSeekEnabled = preferences[KEY_DOUBLE_TAP_SEEK_ENABLED] ?: true,
+            doubleTapSeekEnabled = preferences[KEY_DOUBLE_TAP_SEEK_ENABLED] ?: false,
             portraitSwipeToFullscreenEnabled = preferences[KEY_PORTRAIT_SWIPE_TO_FULLSCREEN] ?: true,
             centerSwipeToFullscreenEnabled = preferences[KEY_CENTER_SWIPE_TO_FULLSCREEN] ?: true,
             slideVolumeBrightnessEnabled = preferences[KEY_SLIDE_VOLUME_BRIGHTNESS_ENABLED] ?: true,
@@ -1442,7 +1442,7 @@ object SettingsManager {
 
     //  [新增] --- 双击跳转秒数 ---
     fun getDoubleTapSeekEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_DOUBLE_TAP_SEEK_ENABLED] ?: true } // 默认开启
+        .map { preferences -> preferences[KEY_DOUBLE_TAP_SEEK_ENABLED] ?: false } // 新用户默认关闭，已保存用户不受影响
 
     suspend fun setDoubleTapSeekEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences -> preferences[KEY_DOUBLE_TAP_SEEK_ENABLED] = value }

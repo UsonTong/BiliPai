@@ -971,7 +971,7 @@ fun VideoSettingsPanel(
                     val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getDoubleTapSeekEnabled(context)
                         .collectAsState(
-                            initial = true,
+                            initial = false,
                             context = kotlin.coroutines.EmptyCoroutineContext
                         )
 

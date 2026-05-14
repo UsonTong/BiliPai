@@ -678,7 +678,7 @@ fun PlaybackSettingsContent(
                     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
                         .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
                     val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getDoubleTapSeekEnabled(context).collectAsState(initial = true)
+                        .getDoubleTapSeekEnabled(context).collectAsState(initial = false)
                     val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
                         .getSeekForwardSeconds(context).collectAsState(initial = 10)
                     val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
