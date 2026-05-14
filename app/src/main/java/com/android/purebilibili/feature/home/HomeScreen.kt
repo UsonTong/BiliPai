@@ -96,6 +96,9 @@ import com.android.purebilibili.feature.home.components.cards.StoryVideoCard   /
 import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.VideoCardSkeleton
 import com.android.purebilibili.core.ui.ErrorState as ModernErrorState
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.shimmer
@@ -529,7 +532,7 @@ fun HomeScreen(
                     onClick = { showEasterEggDialog = false }
                 ) { Text("保留彩蛋", color = MaterialTheme.colorScheme.primary) }
             },
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = AppSurfaceTokens.cardContainer()
         )
     }
     
@@ -762,7 +765,7 @@ fun HomeScreen(
 
     //  [修复] 恢复状态栏样式：确保从视频详情页返回后状态栏正确
     // 当使用滑动动画时，Theme.kt 的 SideEffect 可能不会重新执行
-    val backgroundColor = MaterialTheme.colorScheme.background
+    val backgroundColor = AppSurfaceTokens.chromeBackground()
     val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
     val homeWallpaperBackdropAppearance = remember(
         homeWallpaperUri,
@@ -1144,7 +1147,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(nestedScrollConnection),
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = AppSurfaceTokens.chromeBackground(),
                 bottomBar = {
                    // BottomBar logic handled by parent
                 },
@@ -1163,7 +1166,7 @@ fun HomeScreen(
                     HomeWallpaperBackdrop(
                         wallpaperUri = homeWallpaperUri,
                         appearance = homeWallpaperBackdropAppearance,
-                        baseColor = MaterialTheme.colorScheme.background
+                        baseColor = AppSurfaceTokens.chromeBackground()
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(
@@ -1422,7 +1425,7 @@ fun HomeScreen(
             glassEnabled = isLiquidGlassEnabled,
             blurEnabled = isHeaderBlurEnabled || isBottomBarBlurEnabled,
             emphasized = true,
-            baseColor = MaterialTheme.colorScheme.surface
+            baseColor = AppSurfaceTokens.cardContainer()
         )
         
         // Calculate parameters based on scroll
@@ -1525,7 +1528,7 @@ fun HomeScreen(
                 contentAlignment = Alignment.TopCenter
             ) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = AppShapes.container(ContainerLevel.Pill),
                     color = if (refreshTipAppearance.surfaceStyle == HomeRefreshTipSurfaceStyle.PLAIN) {
                         MaterialTheme.colorScheme.surfaceContainerHigh
                     } else {
@@ -1579,7 +1582,7 @@ fun HomeScreen(
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 border = BorderStroke(0.8.dp, overlayPillColors.borderColor),
-                shape = RoundedCornerShape(999.dp),
+                shape = AppShapes.container(ContainerLevel.Pill),
                 elevation = androidx.compose.material3.ButtonDefaults.buttonElevation(
                     defaultElevation = 4.dp,
                     pressedElevation = 2.dp
