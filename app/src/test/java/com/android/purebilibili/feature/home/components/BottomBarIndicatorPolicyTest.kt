@@ -306,6 +306,33 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `stationary tap press activates indicator refraction preset`() {
+        val progress = resolveBottomBarBackdropPresetProgress(
+            motionProgress = 0f,
+            verticalProgress = 0f,
+            pressProgress = 1f
+        )
+
+        assertEquals(1f, progress.shellProgress, 0.001f)
+        assertTrue(progress.captureProgress > 0f)
+        assertEquals(1f, progress.indicatorProgress, 0.001f)
+    }
+
+    @Test
+    fun `tap press can reuse indicator drag scale without horizontal motion`() {
+        val transform = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 0f,
+            isDragging = false,
+            dragScaleProgress = 1f
+        )
+
+        assertTrue(transform.scaleX > 1f)
+        assertTrue(transform.scaleY > 1f)
+        assertEquals(transform.scaleX, transform.scaleY, 0.001f)
+    }
+
+    @Test
     fun `backdrop native surface stays frosted without jelly distortion`() {
         val idle = resolveBottomBarBackdropNativeSurfaceSpec(
             blurRadiusDp = 18f,
@@ -756,7 +783,7 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
-    fun `idle item coverage only fills current selected tab`() {
+    fun `idle item coverage follows visual indicator instead of selected page`() {
         val home = resolveBottomBarItemCoverage(
             itemIndex = 0,
             indicatorPosition = 0.5f,
@@ -770,8 +797,8 @@ class BottomBarIndicatorPolicyTest {
             motionProgress = 0f
         )
 
-        assertEquals(1f, home, 0.001f)
-        assertEquals(0f, dynamic, 0.001f)
+        assertEquals(0.5f, home, 0.001f)
+        assertEquals(0.5f, dynamic, 0.001f)
         assertEquals(1f, resolveBottomBarItemMotionScale(home, motionProgress = 0f), 0.001f)
     }
 

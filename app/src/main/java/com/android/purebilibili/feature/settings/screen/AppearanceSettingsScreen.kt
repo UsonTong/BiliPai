@@ -1103,7 +1103,7 @@ fun AppearanceSettingsContent(
                     IOSSwitchItem(
                         icon = CupertinoIcons.Default.MagnifyingGlass,
                         title = "底栏搜索入口",
-                        subtitle = "在悬浮底栏右侧显示可展开搜索框",
+                        subtitle = "在悬浮底栏右侧显示搜索入口",
                         checked = state.bottomBarSearchEnabled,
                         onCheckedChange = { viewModel.toggleBottomBarSearch(it) },
                         iconTint = iOSTeal

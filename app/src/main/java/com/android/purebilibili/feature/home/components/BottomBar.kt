@@ -1073,10 +1073,11 @@ internal fun resolveBottomBarBackdropPresetProgress(
     pressProgress: Float
 ): BottomBarBackdropPresetProgress {
     val clampedMotion = motionProgress.coerceIn(0f, 1f)
+    val clampedPress = pressProgress.coerceIn(0f, 1f)
     return BottomBarBackdropPresetProgress(
-        shellProgress = pressProgress.coerceIn(0f, 1f),
-        captureProgress = clampedMotion,
-        indicatorProgress = clampedMotion
+        shellProgress = clampedPress,
+        captureProgress = maxOf(clampedMotion, clampedPress * 0.72f),
+        indicatorProgress = maxOf(clampedMotion, clampedPress)
     )
 }
 
@@ -1208,16 +1209,13 @@ private fun rememberBottomBarSettleReboundTransform(
     return resolveBottomBarSettleReboundTransform(progress.value)
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun resolveBottomBarItemCoverage(
     itemIndex: Int,
     indicatorPosition: Float,
     currentSelectedIndex: Int,
     motionProgress: Float
 ): Float {
-    val isIdle = motionProgress.coerceIn(0f, 1f) <= 0f
-    if (isIdle) {
-        return if (itemIndex == currentSelectedIndex) 1f else 0f
-    }
     return (1f - abs(itemIndex.toFloat() - indicatorPosition)).coerceIn(0f, 1f)
 }
 
@@ -2257,6 +2255,7 @@ private fun KernelSuAlignedBottomBar(
     val indicatorDragScaleProgress = rememberBottomBarIndicatorDragScaleProgress(
         isDragging = dampedDragState.isDragging
     )
+    val indicatorLayerScaleProgress = maxOf(indicatorDragScaleProgress, pressMotionProgress)
     val verticalGlassProfile = resolveBottomBarVerticalGlassMotionProfile(
         scrollOffsetPx = scrollOffset,
         glassEnabled = glassEnabled
@@ -2811,7 +2810,7 @@ private fun KernelSuAlignedBottomBar(
                                                     motionProgress = motionProgress,
                                                     velocityItemsPerSecond = dampedDragState.velocity,
                                                     isDragging = dampedDragState.isDragging,
-                                                    dragScaleProgress = indicatorDragScaleProgress,
+                                                    dragScaleProgress = indicatorLayerScaleProgress,
                                                     motionSpec = bottomBarMotionSpec
                                                 )
                                                 scaleX = indicatorLayerTransform.scaleX
@@ -2956,14 +2955,6 @@ private fun KernelSuAlignedBottomBar(
                             expanded = effectiveSearchExpanded,
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
-                            onExpandChange = { expanded ->
-                                haptic(HapticType.LIGHT)
-                                searchExpansionOverride = if (expanded) {
-                                    BottomBarSearchExpansionOverride.EXPANDED
-                                } else {
-                                    BottomBarSearchExpansionOverride.COLLAPSED
-                                }
-                            },
                             onSubmit = {
                                 val keyword = searchQuery.trim()
                                 if (keyword.isEmpty()) {
@@ -3002,7 +2993,6 @@ private fun KernelSuBottomBarSearchCapsule(
     expanded: Boolean,
     query: String,
     onQueryChange: (String) -> Unit,
-    onExpandChange: (Boolean) -> Unit,
     onSubmit: () -> Unit,
     shape: androidx.compose.ui.graphics.Shape,
     backdrop: Backdrop?,
@@ -3022,7 +3012,6 @@ private fun KernelSuBottomBarSearchCapsule(
 ) {
     var searchClickPulseKey by remember { mutableIntStateOf(0) }
     var searchLongPressHeld by remember { mutableStateOf(false) }
-    val currentOnExpandChange by rememberUpdatedState(onExpandChange)
     val currentOnSubmit by rememberUpdatedState(onSubmit)
     val currentHaptic by rememberUpdatedState(haptic)
     val searchClickPulseTransform = rememberBottomBarClickPulseTransform(searchClickPulseKey)
@@ -3097,7 +3086,8 @@ private fun KernelSuBottomBarSearchCapsule(
                             },
                             onTap = {
                                 searchClickPulseKey += 1
-                                currentOnExpandChange(true)
+                                currentHaptic(HapticType.LIGHT)
+                                currentOnSubmit()
                             },
                             onLongPress = {
                                 searchLongPressHeld = true

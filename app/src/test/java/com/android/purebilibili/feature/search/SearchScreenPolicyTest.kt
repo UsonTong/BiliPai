@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.search
 
 import com.android.purebilibili.data.model.response.SearchType
 import com.android.purebilibili.data.repository.SearchUpOrder
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -153,5 +154,70 @@ class SearchScreenPolicyTest {
         assertEquals(16, regular.horizontalPaddingDp)
         assertEquals(14, regular.fontSizeSp)
         assertEquals(40, regular.minHeightDp)
+    }
+
+    @Test
+    fun bottomBarSearchEntry_usesDedicatedTopBarContinuityMotion() {
+        val navigationSource = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
+        val searchSource = loadSource("app/src/main/java/com/android/purebilibili/feature/search/SearchScreen.kt")
+
+        assertTrue(navigationSource.contains("fun navigateToSearchFromBottomBar()"))
+        assertTrue(navigationSource.contains("searchEntryMotionSource = SearchEntryMotionSource.BOTTOM_BAR"))
+        assertTrue(navigationSource.contains("searchEntryMotionKey += 1"))
+        assertTrue(navigationSource.contains("entryMotionSource = searchEntryMotionSource"))
+        assertTrue(navigationSource.contains("entryMotionKey = searchEntryMotionKey"))
+
+        assertTrue(searchSource.contains("entryMotionSource: SearchEntryMotionSource = SearchEntryMotionSource.NONE"))
+        assertTrue(searchSource.contains("entryMotionSpec = resolveSearchEntryMotionSpec("))
+        assertTrue(searchSource.contains("entryMotionKey = entryMotionKey"))
+        assertTrue(searchSource.contains("graphicsLayer"))
+        assertTrue(searchSource.contains("TransformOrigin("))
+        assertTrue(searchSource.contains("spec.transformOriginPivotX"))
+        assertTrue(searchSource.contains("spec.transformOriginPivotY"))
+    }
+
+    @Test
+    fun searchEntryMotion_onlyRunsForBottomBarSourceAndRespectsReducedBudget() {
+        assertEquals(
+            null,
+            resolveSearchEntryMotionSpec(
+                source = SearchEntryMotionSource.NONE,
+                reducedMotionBudget = false
+            )
+        )
+
+        val bottomBarSpec = requireNotNull(
+            resolveSearchEntryMotionSpec(
+                source = SearchEntryMotionSource.BOTTOM_BAR,
+                reducedMotionBudget = false
+            )
+        )
+        assertEquals(260, bottomBarSpec.durationMillis)
+        assertEquals(0.72f, bottomBarSpec.initialAlpha)
+        assertEquals(0.92f, bottomBarSpec.initialScale)
+        assertEquals(26f, bottomBarSpec.initialTranslationYDp)
+        assertEquals(0.88f, bottomBarSpec.transformOriginPivotX)
+        assertEquals(1f, bottomBarSpec.transformOriginPivotY)
+
+        val reducedSpec = requireNotNull(
+            resolveSearchEntryMotionSpec(
+                source = SearchEntryMotionSource.BOTTOM_BAR,
+                reducedMotionBudget = true
+            )
+        )
+        assertEquals(0, reducedSpec.durationMillis)
+        assertEquals(1f, reducedSpec.initialAlpha)
+        assertEquals(1f, reducedSpec.initialScale)
+        assertEquals(0f, reducedSpec.initialTranslationYDp)
+    }
+
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

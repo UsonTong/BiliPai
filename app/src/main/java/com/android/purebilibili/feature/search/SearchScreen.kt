@@ -6,6 +6,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import androidx.compose.animation.core.animateDpAsState
@@ -54,6 +55,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -62,6 +65,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
 import com.android.purebilibili.core.ui.AdaptiveScaffold
@@ -99,6 +103,7 @@ import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 import dev.chrisbanes.haze.hazeSource
 import com.android.purebilibili.core.ui.blur.unifiedBlur
+import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
@@ -357,7 +362,10 @@ fun SearchScreen(
     onLiveClick: (Long, String, String) -> Unit, // [新增] 直播点击
     onTopicClick: (Long) -> Unit,
     onArticleClick: (Long, String) -> Unit,
-    onAvatarClick: () -> Unit
+    onAvatarClick: () -> Unit,
+    entryMotionSource: SearchEntryMotionSource = SearchEntryMotionSource.NONE,
+    entryMotionKey: Int = 0,
+    onEntryMotionConsumed: (Int) -> Unit = {}
 ) {
     val uiPreset = LocalUiPreset.current
     val androidNativeVariant = LocalAndroidNativeVariant.current
@@ -506,6 +514,10 @@ fun SearchScreen(
             baseBudget = searchMotionBudget
         )
     }
+    val entryMotionSpec = resolveSearchEntryMotionSpec(
+        source = entryMotionSource,
+        reducedMotionBudget = searchMotionBudget == SearchMotionBudget.REDUCED
+    )
     val searchHazeEnabled = shouldEnableSearchHazeSource(
         isSearching = state.isSearching,
         startupSettled = startupSettled
@@ -1307,6 +1319,9 @@ fun SearchScreen(
                     query = state.query
                 ),
                 reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                entryMotionSpec = entryMotionSpec,
+                entryMotionKey = entryMotionKey,
+                onEntryMotionFinished = onEntryMotionConsumed,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .then(
@@ -1388,6 +1403,9 @@ fun SearchTopBar(
     focusRequester: androidx.compose.ui.focus.FocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
     autoFocusEnabled: Boolean = true,
     reducedMotionBudget: Boolean = false,
+    entryMotionSpec: SearchEntryMotionSpec? = null,
+    entryMotionKey: Int = 0,
+    onEntryMotionFinished: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiPreset = LocalUiPreset.current
@@ -1399,6 +1417,8 @@ fun SearchTopBar(
     val backIcon = rememberAppBackIcon()
     val searchIcon = rememberAppSearchIcon()
     val clearIcon = rememberAppClearIcon()
+    val density = LocalDensity.current
+    val entryMotionProgress = remember { Animatable(1f) }
     //  Focus 状态追踪
     var isFocused by remember { mutableStateOf(false) }
     
@@ -1436,9 +1456,49 @@ fun SearchTopBar(
         )
     }
     val canSubmit = resolvedSubmitKeyword.isNotBlank()
+    LaunchedEffect(entryMotionKey, entryMotionSpec) {
+        val spec = entryMotionSpec
+        if (spec == null) {
+            entryMotionProgress.snapTo(1f)
+            return@LaunchedEffect
+        }
+        entryMotionProgress.snapTo(0f)
+        if (spec.durationMillis <= 0) {
+            entryMotionProgress.snapTo(1f)
+        } else {
+            entryMotionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = spec.durationMillis,
+                    easing = AppMotionEasing.Continuity
+                )
+            )
+        }
+        onEntryMotionFinished(entryMotionKey)
+    }
+    val entryMotionModifier = if (entryMotionSpec != null) {
+        Modifier.graphicsLayer {
+            val progress = entryMotionProgress.value
+            val spec = entryMotionSpec
+            alpha = lerp(spec.initialAlpha, 1f, progress)
+            scaleX = lerp(spec.initialScale, 1f, progress)
+            scaleY = lerp(spec.initialScale, 1f, progress)
+            translationY = with(density) {
+                spec.initialTranslationYDp.dp.toPx()
+            } * (1f - progress)
+            transformOrigin = TransformOrigin(
+                spec.transformOriginPivotX,
+                spec.transformOriginPivotY
+            )
+        }
+    } else {
+        Modifier
+    }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(entryMotionModifier),
         color = Color.Transparent,
         shadowElevation = 0.dp
     ) {

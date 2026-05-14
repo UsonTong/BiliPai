@@ -51,6 +51,7 @@ import com.android.purebilibili.feature.login.LoginScreen
 import com.android.purebilibili.feature.profile.ProfileScreen
 import com.android.purebilibili.feature.search.ArticleNavigationTarget
 import com.android.purebilibili.feature.search.resolveArticleNavigationTarget
+import com.android.purebilibili.feature.search.SearchEntryMotionSource
 import com.android.purebilibili.feature.search.SearchScreen
 import com.android.purebilibili.feature.settings.SettingsScreen
 import com.android.purebilibili.feature.settings.AppearanceSettingsScreen
@@ -265,6 +266,8 @@ fun AppNavigation(
         canNav
     }
     var inAppSearchKeyword by remember { mutableStateOf<String?>(null) }
+    var searchEntryMotionSource by remember { mutableStateOf(SearchEntryMotionSource.NONE) }
+    var searchEntryMotionKey by remember { mutableStateOf(0) }
     val effectiveInitialSearchKeyword = inAppSearchKeyword ?: initialSearchKeyword
     val consumeInitialSearchKeyword: (String) -> Unit = { consumedKeyword ->
         if (inAppSearchKeyword == consumedKeyword) {
@@ -420,23 +423,25 @@ fun AppNavigation(
     }
 
     //  [修复] 通用单例跳转（防止重复打开相同页面）
-    fun navigateTo(route: String) {
-        if (!canNavigate(shouldBypassNavigationDebounceForRoute(route))) return
+    fun navigateTo(route: String, beforeNavigation: (() -> Unit)? = null): Boolean {
+        if (!canNavigate(shouldBypassNavigationDebounceForRoute(route))) return false
 
         val currentRouteSnapshot = navController.currentBackStackEntry?.destination?.route
         val hasTargetInPreviousBackStack =
             navController.previousBackStackEntry?.destination?.route == route
 
         when (resolveTopLevelNavigationAction(currentRouteSnapshot, route, hasTargetInPreviousBackStack)) {
-            TopLevelNavigationAction.SKIP -> return
+            TopLevelNavigationAction.SKIP -> return false
             TopLevelNavigationAction.POP_EXISTING -> {
+                beforeNavigation?.invoke()
                 if (navController.popBackStack(route, inclusive = false)) {
-                    return
+                    return true
                 }
             }
             TopLevelNavigationAction.NAVIGATE_WITH_RESTORE -> Unit
         }
 
+        beforeNavigation?.invoke()
         navController.navigate(route) {
             // [修复] 弹出到图表的起始目标，以避免在用户选择项目时
             // 在返回堆栈上堆积大量的目标
@@ -447,6 +452,14 @@ fun AppNavigation(
             launchSingleTop = true
             // 重新选择以前选择的项目时恢复状态
             restoreState = true
+        }
+        return true
+    }
+
+    fun navigateToSearchFromBottomBar() {
+        navigateTo(ScreenRoutes.Search.route) {
+            searchEntryMotionSource = SearchEntryMotionSource.BOTTOM_BAR
+            searchEntryMotionKey += 1
         }
     }
 
@@ -2220,6 +2233,13 @@ fun AppNavigation(
                     userFace = homeState.user.face, // 传入头像 URL
                     initialKeyword = effectiveInitialSearchKeyword.orEmpty(),
                     onInitialKeywordConsumed = consumeInitialSearchKeyword,
+                    entryMotionSource = searchEntryMotionSource,
+                    entryMotionKey = searchEntryMotionKey,
+                    onEntryMotionConsumed = { consumedKey ->
+                        if (consumedKey == searchEntryMotionKey) {
+                            searchEntryMotionSource = SearchEntryMotionSource.NONE
+                        }
+                    },
                     onBack = { navController.popBackStack() },
                     onOpenTrending = {
                         if (canNavigate(false)) {
@@ -3060,7 +3080,7 @@ fun AppNavigation(
                                     onItemClick = handleNavItemClick,
                                     onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                     onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
-                                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                    onSearchClick = { navigateToSearchFromBottomBar() },
                                     onSearchKeywordSubmit = navigateToSearchKeyword,
                                     hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                     isFloating = true,
@@ -3088,7 +3108,7 @@ fun AppNavigation(
                                 onItemClick = handleNavItemClick,
                                 onHomeDoubleTap = { homeScrollChannel.trySend(Unit) },
                                 onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
-                                onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                onSearchClick = { navigateToSearchFromBottomBar() },
                                 onSearchKeywordSubmit = navigateToSearchKeyword,
                                 hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                 isFloating = false,

@@ -125,6 +125,45 @@ class BottomBarColorBindingPolicyTest {
     }
 
     @Test
+    fun `tap target does not jump to selected color before indicator arrives`() {
+        val homeCoverage = resolveBottomBarItemCoverage(
+            itemIndex = 0,
+            indicatorPosition = 0f,
+            currentSelectedIndex = 1,
+            motionProgress = 0f
+        )
+        val tappedTargetCoverage = resolveBottomBarItemCoverage(
+            itemIndex = 1,
+            indicatorPosition = 0f,
+            currentSelectedIndex = 1,
+            motionProgress = 0f
+        )
+        val targetMidCoverage = resolveBottomBarItemCoverage(
+            itemIndex = 1,
+            indicatorPosition = 0.42f,
+            currentSelectedIndex = 1,
+            motionProgress = 0f
+        )
+
+        assertEquals(
+            1f,
+            homeCoverage,
+            "The visual state should stay on the indicator origin when navigation state has already switched."
+        )
+        assertEquals(
+            0f,
+            tappedTargetCoverage,
+            "The tapped page must not become fully selected until the indicator reaches it."
+        )
+        assertEquals(
+            0.42f,
+            targetMidCoverage,
+            0.001f,
+            "The tapped page should gain color only according to indicator coverage."
+        )
+    }
+
+    @Test
     fun `selected foreground uses custom item color when configured`() {
         val color = resolveBottomBarSelectedContentColor(
             item = BottomNavItem.HOME,
