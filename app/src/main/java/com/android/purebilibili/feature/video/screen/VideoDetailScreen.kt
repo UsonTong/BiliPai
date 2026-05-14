@@ -316,14 +316,33 @@ internal fun shouldRestoreSystemBarsDuringVideoDetailExitTransition(
     return true
 }
 
-internal fun shouldShowWatchLaterQueueBarByPolicy(
+internal fun shouldShowExternalPlaylistQueueBarByPolicy(
     isExternalPlaylist: Boolean,
     externalPlaylistSource: ExternalPlaylistSource,
     playlistSize: Int
 ): Boolean {
+    val sourceCanShowQueue = when (externalPlaylistSource) {
+        ExternalPlaylistSource.WATCH_LATER,
+        ExternalPlaylistSource.FAVORITE,
+        ExternalPlaylistSource.SPACE -> true
+        ExternalPlaylistSource.NONE,
+        ExternalPlaylistSource.UNKNOWN -> false
+    }
     return isExternalPlaylist &&
-        externalPlaylistSource == ExternalPlaylistSource.WATCH_LATER &&
+        sourceCanShowQueue &&
         playlistSize > 0
+}
+
+internal fun resolveExternalPlaylistQueueTitle(
+    externalPlaylistSource: ExternalPlaylistSource
+): String {
+    return when (externalPlaylistSource) {
+        ExternalPlaylistSource.WATCH_LATER -> "稍后再看"
+        ExternalPlaylistSource.FAVORITE -> "收藏夹"
+        ExternalPlaylistSource.SPACE -> "UP主视频"
+        ExternalPlaylistSource.NONE,
+        ExternalPlaylistSource.UNKNOWN -> "播放队列"
+    }
 }
 
 internal fun normalizePlaylistCoverUrlForUi(rawUrl: String?): String {
@@ -336,27 +355,27 @@ internal fun normalizePlaylistCoverUrlForUi(rawUrl: String?): String {
     }
 }
 
-internal fun resolveWatchLaterQueueListMaxHeightDp(screenHeightDp: Int): Int {
+internal fun resolveExternalPlaylistQueueListMaxHeightDp(screenHeightDp: Int): Int {
     val dynamicHeight = (screenHeightDp * 0.72f).roundToInt()
     return dynamicHeight.coerceIn(420, 680)
 }
 
-internal fun resolveWatchLaterQueueBottomSpacerDp(navigationBarBottomDp: Int): Int {
+internal fun resolveExternalPlaylistQueueBottomSpacerDp(navigationBarBottomDp: Int): Int {
     return (navigationBarBottomDp + 8).coerceAtLeast(8)
 }
 
-internal enum class WatchLaterQueueSheetPresentation {
+internal enum class ExternalPlaylistQueueSheetPresentation {
     INLINE_HAZE,
     MODAL
 }
 
-internal fun resolveWatchLaterQueueSheetPresentation(
+internal fun resolveExternalPlaylistQueueSheetPresentation(
     requireRealtimeHaze: Boolean
-): WatchLaterQueueSheetPresentation {
+): ExternalPlaylistQueueSheetPresentation {
     return if (requireRealtimeHaze) {
-        WatchLaterQueueSheetPresentation.INLINE_HAZE
+        ExternalPlaylistQueueSheetPresentation.INLINE_HAZE
     } else {
-        WatchLaterQueueSheetPresentation.MODAL
+        ExternalPlaylistQueueSheetPresentation.MODAL
     }
 }
 
@@ -1041,19 +1060,20 @@ fun VideoDetailScreen(
     val playlistCurrentIndex = playlistUiState.currentIndex
     val isExternalPlaylist = playlistUiState.isExternalPlaylist
     val externalPlaylistSource = playlistUiState.externalPlaylistSource
-    val shouldShowWatchLaterQueueBar = shouldShowWatchLaterQueueBarByPolicy(
+    val shouldShowExternalPlaylistQueueBar = shouldShowExternalPlaylistQueueBarByPolicy(
         isExternalPlaylist = isExternalPlaylist,
         externalPlaylistSource = externalPlaylistSource,
         playlistSize = playlistItems.size
     )
-    var showWatchLaterQueueSheet by rememberSaveable { mutableStateOf(false) }
-    val watchLaterSheetPresentation = remember {
-        resolveWatchLaterQueueSheetPresentation(requireRealtimeHaze = true)
+    val externalPlaylistQueueTitle = resolveExternalPlaylistQueueTitle(externalPlaylistSource)
+    var showExternalPlaylistQueueSheet by rememberSaveable { mutableStateOf(false) }
+    val externalPlaylistQueueSheetPresentation = remember {
+        resolveExternalPlaylistQueueSheetPresentation(requireRealtimeHaze = true)
     }
 
-    LaunchedEffect(shouldShowWatchLaterQueueBar) {
-        if (!shouldShowWatchLaterQueueBar) {
-            showWatchLaterQueueSheet = false
+    LaunchedEffect(shouldShowExternalPlaylistQueueBar) {
+        if (!shouldShowExternalPlaylistQueueBar) {
+            showExternalPlaylistQueueSheet = false
         }
     }
 
@@ -2918,7 +2938,7 @@ fun VideoDetailScreen(
                                                     )
 
                                                     // 底部输入栏 (覆盖在内容之上)
-                                                    if (shouldShowVideoDetailBottomInteractionBar() && !shouldShowWatchLaterQueueBar) {
+                                                    if (shouldShowVideoDetailBottomInteractionBar() && !shouldShowExternalPlaylistQueueBar) {
                                                         BottomInputBar(
                                                             modifier = Modifier.align(Alignment.BottomCenter),
                                                             isLiked = success.isLiked,
@@ -2947,10 +2967,11 @@ fun VideoDetailScreen(
                                                         )
                                                     }
 
-                                                    if (shouldShowWatchLaterQueueBar) {
-                                                        WatchLaterQueueCollapsedBar(
+                                                    if (shouldShowExternalPlaylistQueueBar) {
+                                                        ExternalPlaylistQueueCollapsedBar(
+                                                            title = externalPlaylistQueueTitle,
                                                             videoCount = playlistItems.size,
-                                                            onClick = { showWatchLaterQueueSheet = true },
+                                                            onClick = { showExternalPlaylistQueueSheet = true },
                                                             hazeState = hazeState,
                                                             modifier = Modifier
                                                                 .align(Alignment.BottomCenter)
@@ -3334,16 +3355,17 @@ fun VideoDetailScreen(
             )
         }
 
-        WatchLaterQueueSheet(
-            visible = shouldShowWatchLaterQueueBar && showWatchLaterQueueSheet,
+        ExternalPlaylistQueueSheet(
+            visible = shouldShowExternalPlaylistQueueBar && showExternalPlaylistQueueSheet,
+            title = externalPlaylistQueueTitle,
             playlist = playlistItems,
             currentIndex = playlistCurrentIndex,
             hazeState = hazeState,
-            presentation = watchLaterSheetPresentation,
-            onDismiss = { showWatchLaterQueueSheet = false },
+            presentation = externalPlaylistQueueSheetPresentation,
+            onDismiss = { showExternalPlaylistQueueSheet = false },
             onVideoSelected = { index, item ->
                 PlaylistManager.playAt(index)
-                showWatchLaterQueueSheet = false
+                showExternalPlaylistQueueSheet = false
                 val currentSuccess = uiState as? PlayerUiState.Success
                 if (currentSuccess?.info?.bvid != item.bvid) {
                     viewModel.loadVideo(item.bvid, autoPlay = true)
@@ -4010,7 +4032,8 @@ fun VideoDetailScreen(
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun WatchLaterQueueCollapsedBar(
+private fun ExternalPlaylistQueueCollapsedBar(
+    title: String,
     videoCount: Int,
     onClick: () -> Unit,
     hazeState: HazeState,
@@ -4041,7 +4064,7 @@ private fun WatchLaterQueueCollapsedBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "稍后再看",
+                text = title,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -4056,7 +4079,7 @@ private fun WatchLaterQueueCollapsedBar(
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 imageVector = rememberAppChevronUpIcon(),
-                contentDescription = "展开稍后再看队列",
+                contentDescription = "展开${title}队列",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -4065,29 +4088,30 @@ private fun WatchLaterQueueCollapsedBar(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun WatchLaterQueueSheet(
+private fun ExternalPlaylistQueueSheet(
     visible: Boolean,
+    title: String,
     playlist: List<PlaylistItem>,
     currentIndex: Int,
     hazeState: HazeState,
-    presentation: WatchLaterQueueSheetPresentation,
+    presentation: ExternalPlaylistQueueSheetPresentation,
     onDismiss: () -> Unit,
     onVideoSelected: (Int, PlaylistItem) -> Unit
 ) {
     if (!visible) return
 
     val configuration = LocalConfiguration.current
-    val listMaxHeight = resolveWatchLaterQueueListMaxHeightDp(configuration.screenHeightDp).dp
+    val listMaxHeight = resolveExternalPlaylistQueueListMaxHeightDp(configuration.screenHeightDp).dp
     val navigationBarBottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
-    val bottomSpacerHeight = resolveWatchLaterQueueBottomSpacerDp(
+    val bottomSpacerHeight = resolveExternalPlaylistQueueBottomSpacerDp(
         navigationBarBottomPadding.value.roundToInt()
     ).dp
     val sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
 
     when (presentation) {
-        WatchLaterQueueSheetPresentation.INLINE_HAZE -> {
+        ExternalPlaylistQueueSheetPresentation.INLINE_HAZE -> {
             val interactionSource = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier.fillMaxSize()
@@ -4119,7 +4143,8 @@ private fun WatchLaterQueueSheet(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                     )
                 ) {
-                    WatchLaterQueueSheetContent(
+                    ExternalPlaylistQueueSheetContent(
+                        title = title,
                         playlist = playlist,
                         currentIndex = currentIndex,
                         listMaxHeight = listMaxHeight,
@@ -4129,7 +4154,7 @@ private fun WatchLaterQueueSheet(
                 }
             }
         }
-        WatchLaterQueueSheetPresentation.MODAL -> {
+        ExternalPlaylistQueueSheetPresentation.MODAL -> {
             IOSModalBottomSheet(
                 onDismissRequest = onDismiss,
                 containerColor = Color.Transparent,
@@ -4148,7 +4173,8 @@ private fun WatchLaterQueueSheet(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                     )
                 ) {
-                    WatchLaterQueueSheetContent(
+                    ExternalPlaylistQueueSheetContent(
+                        title = title,
                         playlist = playlist,
                         currentIndex = currentIndex,
                         listMaxHeight = listMaxHeight,
@@ -4162,7 +4188,8 @@ private fun WatchLaterQueueSheet(
 }
 
 @Composable
-private fun WatchLaterQueueSheetContent(
+private fun ExternalPlaylistQueueSheetContent(
+    title: String,
     playlist: List<PlaylistItem>,
     currentIndex: Int,
     listMaxHeight: androidx.compose.ui.unit.Dp,
@@ -4181,7 +4208,7 @@ private fun WatchLaterQueueSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "稍后再看",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
