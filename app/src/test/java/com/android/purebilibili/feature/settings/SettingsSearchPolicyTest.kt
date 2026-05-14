@@ -155,6 +155,18 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByDoubleTapSeek_hitsPlaybackInteractionEntry() {
+        val results = resolveSettingsSearchResults("取消双击跳转")
+
+        assertTrue(
+            results.any {
+                it.target == SettingsSearchTarget.PLAYBACK &&
+                    it.focusId == SettingsSearchFocusIds.PLAYBACK_INTERACTION
+            }
+        )
+    }
+
+    @Test
     fun queryByAutoRotate_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("自动横竖屏")
 

@@ -677,6 +677,12 @@ fun PlaybackSettingsContent(
                         .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
                     val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
                         .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
+                    val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getDoubleTapSeekEnabled(context).collectAsState(initial = true)
+                    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getSeekForwardSeconds(context).collectAsState(initial = 10)
+                    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getSeekBackwardSeconds(context).collectAsState(initial = 10)
                     
                     //  [新增] 自动播放下一个
                     val autoPlayEnabled by com.android.purebilibili.core.store.SettingsManager
@@ -885,6 +891,78 @@ fun PlaybackSettingsContent(
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPink
                         )
+                        IOSDivider()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "双击跳转",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (doubleTapSeekEnabled) {
+                                            "双击右侧快进 ${seekForwardSeconds} 秒，双击左侧后退 ${seekBackwardSeconds} 秒"
+                                        } else {
+                                            "已关闭：双击画面只切换播放/暂停，不再快进或后退"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                AppAdaptiveSwitch(
+                                    checked = doubleTapSeekEnabled,
+                                    onCheckedChange = {
+                                        scope.launch {
+                                            com.android.purebilibili.core.store.SettingsManager
+                                                .setDoubleTapSeekEnabled(context, it)
+                                        }
+                                    }
+                                )
+                            }
+                            if (doubleTapSeekEnabled) {
+                                val doubleTapSeekOptions = listOf(
+                                    PlaybackSegmentOption(5, "5秒"),
+                                    PlaybackSegmentOption(10, "10秒"),
+                                    PlaybackSegmentOption(15, "15秒"),
+                                    PlaybackSegmentOption(30, "30秒"),
+                                    PlaybackSegmentOption(60, "60秒")
+                                )
+                                IOSSlidingSegmentedSetting(
+                                    title = "快进秒数（双击右侧）：${seekForwardSeconds} 秒",
+                                    subtitle = "调整右侧双击快进幅度",
+                                    options = doubleTapSeekOptions,
+                                    selectedValue = seekForwardSeconds,
+                                    onSelectionChange = { seconds ->
+                                        scope.launch {
+                                            com.android.purebilibili.core.store.SettingsManager
+                                                .setSeekForwardSeconds(context, seconds)
+                                        }
+                                    }
+                                )
+                                IOSSlidingSegmentedSetting(
+                                    title = "后退秒数（双击左侧）：${seekBackwardSeconds} 秒",
+                                    subtitle = "调整左侧双击后退幅度",
+                                    options = doubleTapSeekOptions,
+                                    selectedValue = seekBackwardSeconds,
+                                    onSelectionChange = { seconds ->
+                                        scope.launch {
+                                            com.android.purebilibili.core.store.SettingsManager
+                                                .setSeekBackwardSeconds(context, seconds)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                         IOSDivider()
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.EyeSlash,

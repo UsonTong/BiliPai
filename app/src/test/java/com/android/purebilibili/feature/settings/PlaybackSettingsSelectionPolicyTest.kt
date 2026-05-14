@@ -248,6 +248,20 @@ class PlaybackSettingsSelectionPolicyTest {
         assertTrue(source.contains("setDanmakuHideInteractiveCommands"))
     }
 
+    @Test
+    fun `playback settings exposes double tap seek switch and seconds`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
+            .readText()
+
+        assertTrue(source.contains("双击跳转"))
+        assertTrue(source.contains("getDoubleTapSeekEnabled"))
+        assertTrue(source.contains("setDoubleTapSeekEnabled"))
+        assertTrue(source.contains("getSeekForwardSeconds"))
+        assertTrue(source.contains("setSeekForwardSeconds"))
+        assertTrue(source.contains("getSeekBackwardSeconds"))
+        assertTrue(source.contains("setSeekBackwardSeconds"))
+    }
+
     private fun loadSource(path: String): String {
         val candidates = listOf(
             File(path),
