@@ -1,10 +1,10 @@
 package com.android.purebilibili.feature.home
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.store.HomeWallpaperEffectMode
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 
 data class HomeGlassChromeStyle(
     val containerAlpha: Float,
@@ -252,7 +252,7 @@ internal fun resolveHomeGlassCoverPillBaseColor(): Color {
 internal fun rememberHomeGlassChromeColors(
     glassEnabled: Boolean,
     blurEnabled: Boolean,
-    baseColor: Color = MaterialTheme.colorScheme.surface
+    baseColor: Color = AppSurfaceTokens.cardContainer()
 ): HomeGlassResolvedColors {
     val style = remember(glassEnabled, blurEnabled) {
         resolveHomeGlassChromeStyle(
