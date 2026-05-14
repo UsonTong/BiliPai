@@ -31,7 +31,8 @@ internal fun resolvePlaybackPauseDecision(
     isPip: Boolean,
     isBackgroundAudio: Boolean,
     wasPlaybackActive: Boolean,
-    hasRecentUserLeaveHint: Boolean
+    hasRecentUserLeaveHint: Boolean,
+    isLeavingByNavigation: Boolean = false
 ): PlaybackPauseDecision {
     val shouldContinuePlayback = resolveShouldContinuePlaybackDuringPause(
         isMiniMode = isMiniMode,
@@ -43,7 +44,9 @@ internal fun resolvePlaybackPauseDecision(
         shouldContinuePlayback = shouldContinuePlayback,
         shouldPausePlayback = !shouldContinuePlayback,
         shouldMarkBackgroundAudioSession = isBackgroundAudio && hasRecentUserLeaveHint,
-        shouldPersistTransientResumeIntent = wasPlaybackActive && !shouldContinuePlayback
+        shouldPersistTransientResumeIntent = wasPlaybackActive &&
+            !shouldContinuePlayback &&
+            !isLeavingByNavigation
     )
 }
 

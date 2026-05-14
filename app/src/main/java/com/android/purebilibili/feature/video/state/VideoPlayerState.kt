@@ -982,7 +982,8 @@ fun rememberVideoPlayerState(
                         playWhenReady = player.playWhenReady,
                         playbackState = player.playbackState
                     )
-                    hasForegroundResumeIntent = wasPlaying
+                    val isLeavingByNavigation = miniPlayerManager.isLeavingByNavigation
+                    hasForegroundResumeIntent = wasPlaying && !isLeavingByNavigation
                     
                     //  [新增] 判断是否应该继续播放
                     // 1. 应用内小窗模式 - 继续播放
@@ -997,7 +998,8 @@ fun rememberVideoPlayerState(
                         isPip = isPip,
                         isBackgroundAudio = isBackgroundAudio,
                         wasPlaybackActive = wasPlaying,
-                        hasRecentUserLeaveHint = hasRecentUserLeaveHint
+                        hasRecentUserLeaveHint = hasRecentUserLeaveHint,
+                        isLeavingByNavigation = isLeavingByNavigation
                     )
                     
                     //  [修复] 记录后台音频状态，恢复时不要 seek 回旧位置
@@ -1022,6 +1024,7 @@ fun rememberVideoPlayerState(
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
                     val shouldEnsureAudibleOnForeground =
                         !miniPlayerManager.isMiniMode && !miniPlayerManager.isSystemPipActive
+                    val isLeavingByNavigation = miniPlayerManager.isLeavingByNavigation
                     val resumeDecision = resolvePlaybackResumeDecision(
                         wasPlaybackActive = wasPlaying,
                         hasTransientResumeIntent = hasTransientResumeIntent,
@@ -1031,7 +1034,7 @@ fun rememberVideoPlayerState(
                         playbackState = player.playbackState,
                         currentVolume = player.volume,
                         shouldEnsureAudibleOnForeground = shouldEnsureAudibleOnForeground,
-                        isLeavingByNavigation = miniPlayerManager.isLeavingByNavigation
+                        isLeavingByNavigation = isLeavingByNavigation
                     )
 
                     if (resumeDecision.shouldRestoreVolume) {
@@ -1068,6 +1071,9 @@ fun rememberVideoPlayerState(
                     wasBackgroundAudio = false
                     hasTransientResumeIntent = false
                     hasForegroundResumeIntent = false
+                    if (isLeavingByNavigation) {
+                        miniPlayerManager.resetNavigationFlag()
+                    }
                 }
                 else -> {}
             }

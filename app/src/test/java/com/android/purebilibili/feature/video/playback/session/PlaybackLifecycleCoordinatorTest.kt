@@ -79,6 +79,21 @@ class PlaybackLifecycleCoordinatorTest {
     }
 
     @Test
+    fun pauseDecision_doesNotMarkTransientResumeIntent_whenLeavingByNavigation() {
+        val decision = resolvePlaybackPauseDecision(
+            isMiniMode = false,
+            isPip = false,
+            isBackgroundAudio = false,
+            wasPlaybackActive = true,
+            hasRecentUserLeaveHint = false,
+            isLeavingByNavigation = true
+        )
+
+        assertTrue(decision.shouldPausePlayback)
+        assertFalse(decision.shouldPersistTransientResumeIntent)
+    }
+
+    @Test
     fun resumeDecision_doesNotResumeWhenNavigationLeaveWasMarked() {
         val decision = resolvePlaybackResumeDecision(
             wasPlaybackActive = true,

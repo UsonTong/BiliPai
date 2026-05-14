@@ -701,11 +701,34 @@ fun VideoDetailScreen(
     var hasAutoEnteredAudioMode by rememberSaveable { mutableStateOf(false) }
     var hasAutoEnteredPortraitFromRoute by rememberSaveable(bvid) { mutableStateOf(false) }
     var hasHandledCommentRootFromRoute by rememberSaveable(bvid, openCommentRootRpidFromRoute) { mutableStateOf(false) }
-    val navigateToRelatedVideo = remember(onVideoClick, miniPlayerManager, uiState) {
+    // 🔄 [Seamless Playback] Internal BVID state to support seamless switching in portrait mode
+    var currentBvid by rememberSaveable(bvid) { mutableStateOf(bvid) }
+
+    fun markSecondaryNavigationLeave(expectedBvid: String = currentBvid) {
+        miniPlayerManager?.markLeavingByNavigation(expectedBvid = expectedBvid)
+    }
+
+    val navigateToUserSpaceFromVideo: (Long) -> Unit = { mid ->
+        markSecondaryNavigationLeave()
+        onUpClick(mid)
+    }
+
+    val navigateToSearchFromVideo: () -> Unit = {
+        markSecondaryNavigationLeave()
+        onNavigateToSearch()
+    }
+
+    val navigateToSearchKeywordFromVideo: (String) -> Unit = { keyword ->
+        markSecondaryNavigationLeave()
+        onSearchKeywordClick(keyword)
+    }
+
+    val navigateToRelatedVideo = remember(onVideoClick, miniPlayerManager, uiState, currentBvid) {
         { targetBvid: String, options: android.os.Bundle? ->
             isNavigatingToVideo = true
             miniPlayerManager?.isNavigatingToVideo = true
             val success = uiState as? PlayerUiState.Success
+            markSecondaryNavigationLeave(expectedBvid = success?.info?.bvid ?: currentBvid)
             val explicitCid = options?.getLong(VIDEO_NAV_TARGET_CID_KEY) ?: 0L
             val resolvedCid = resolveNavigationTargetCid(
                 targetBvid = targetBvid,
@@ -743,12 +766,12 @@ fun VideoDetailScreen(
             }
 
             is CommentUrlNavigationTarget.Search -> {
-                onSearchKeywordClick(target.keyword)
+                navigateToSearchKeywordFromVideo(target.keyword)
                 return@openCommentUrl
             }
 
             is CommentUrlNavigationTarget.Space -> {
-                onUpClick(target.mid)
+                navigateToUserSpaceFromVideo(target.mid)
                 return@openCommentUrl
             }
 
@@ -794,9 +817,6 @@ fun VideoDetailScreen(
             maxBlurRadiusPx = transitionMaxBlurRadiusPx
         )
     }
-    
-    // 🔄 [Seamless Playback] Internal BVID state to support seamless switching in portrait mode
-    var currentBvid by rememberSaveable(bvid) { mutableStateOf(bvid) }
     
     //  监听评论状态
     val commentState by commentViewModel.commentState.collectAsStateWithLifecycle()
@@ -2346,7 +2366,7 @@ fun VideoDetailScreen(
                             )
                             handleBack()
                         },
-                        onUpClick = onUpClick,
+                        onUpClick = navigateToUserSpaceFromVideo,
                         onNavigateToAudioMode = {
                             isNavigatingToAudioMode = true // [Fix] Set flag to prevent notification cancellation
                             onNavigateToAudioMode()
@@ -2366,7 +2386,7 @@ fun VideoDetailScreen(
                         onAudioQualityChange = { viewModel.setAudioQuality(it) },
                         onRelatedVideoClick = navigateToRelatedVideo,
                         showUpBadge = homeUpBadgesVisible,
-                        onSearchKeywordClick = onSearchKeywordClick,
+                        onSearchKeywordClick = navigateToSearchKeywordFromVideo,
                         // 🔁 [新增] 播放模式
                         currentPlayMode = currentPlayMode,
                         onPlayModeClick = { com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode() },
@@ -2810,7 +2830,7 @@ fun VideoDetailScreen(
                                                         onCoinClick = { viewModel.openCoinDialog() },
                                                         onTripleClick = { viewModel.doTripleAction() },
                                                         onPageSelect = { viewModel.switchPage(it) },
-                                                        onUpClick = onUpClick,
+                                                        onUpClick = navigateToUserSpaceFromVideo,
                                                         onRelatedVideoClick = navigateToRelatedVideo,
                                                         onSubReplyClick = { commentViewModel.openSubReply(it) },
                                                         onRootCommentClick = {
@@ -3155,7 +3175,7 @@ fun VideoDetailScreen(
                         ) {
                             isPortraitFullscreen = false
                         }
-                        onNavigateToSearch()
+                        navigateToSearchFromVideo()
                     },
                     onUserClick = { mid ->
                         val anchorBvid = portraitPendingSelectionBvid
@@ -3182,7 +3202,7 @@ fun VideoDetailScreen(
                         ) {
                             isPortraitFullscreen = false
                         }
-                        onUpClick(mid)
+                        navigateToUserSpaceFromVideo(mid)
                     },
                     onRotateToLandscape = {
                         isPortraitFullscreen = false
@@ -3759,11 +3779,11 @@ fun VideoDetailScreen(
             commentState = commentState,
             commentViewModel = commentViewModel,
             viewModel = viewModel,
-            onUpClick = onUpClick,
+            onUpClick = navigateToUserSpaceFromVideo,
             onNavigateToRelatedVideo = { targetVideoId ->
                 navigateToRelatedVideo(targetVideoId, null)
             },
-            onSearchKeywordClick = onSearchKeywordClick,
+            onSearchKeywordClick = navigateToSearchKeywordFromVideo,
             screenHeightPx = screenHeightPx,
             topReservedPx = danmakuDialogTopReservePx,
             onTimestampClick = { positionMs ->
