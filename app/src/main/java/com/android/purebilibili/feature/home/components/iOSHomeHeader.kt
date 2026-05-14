@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -65,6 +64,10 @@ import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.blur.BlurSurfaceType
 import com.android.purebilibili.core.ui.adaptive.MotionTier
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
 import com.android.purebilibili.core.store.HomeHeaderBlurMode
 import com.android.purebilibili.core.store.HomeSettings
@@ -445,25 +448,25 @@ internal fun resolveHomeTopSearchContainerShape(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Shape {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        RoundedCornerShape(22.dp)
-    } else if (uiPreset == UiPreset.MD3) {
-        RoundedCornerShape(24.dp)
-    } else {
-        RoundedCornerShape(18.dp)
-    }
+    return AppShapes.resolveContainerShape(
+        level = ContainerLevel.Pill,
+        uiPreset = uiPreset,
+        androidNativeVariant = androidNativeVariant
+    )
 }
 
 internal fun resolveHomeTopEdgeButtonShape(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Shape {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        RoundedCornerShape(18.dp)
-    } else if (uiPreset == UiPreset.MD3) {
-        RoundedCornerShape(16.dp)
-    } else {
+    return if (uiPreset == UiPreset.IOS) {
         CircleShape
+    } else {
+        AppShapes.resolveContainerShape(
+            level = ContainerLevel.Dialog,
+            uiPreset = uiPreset,
+            androidNativeVariant = androidNativeVariant
+        )
     }
 }
 
@@ -1130,8 +1133,8 @@ internal fun resolveHomeTopTabContentUnderlayAlpha(
 internal fun resolveHomeTopChromeLensShape(shape: Shape): Shape? {
     return when {
         shape is CornerBasedShape -> shape
-        shape === CircleShape -> RoundedCornerShape(50)
-        shape === androidx.compose.ui.graphics.RectangleShape -> RoundedCornerShape(0.dp)
+        shape === CircleShape -> RoundedCornerShape(percent = 50)
+        shape === androidx.compose.ui.graphics.RectangleShape -> RoundedCornerShape(size = 0.dp)
         else -> null
     }
 }
@@ -1336,7 +1339,7 @@ fun iOSHomeHeader(
         hasHazeState = hazeState != null,
         allowHazeLiquidGlassFallback = allowHazeLiquidGlassFallback
     )
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val surfaceColor = AppSurfaceTokens.cardContainer()
     val surfaceContainerColor = MaterialTheme.colorScheme.surfaceContainer
     val surfaceContainerHighColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
@@ -1388,7 +1391,7 @@ fun iOSHomeHeader(
             glassEnabled = isGlassEnabled,
             blurEnabled = isTopChromeBlurEnabled,
             emphasized = true,
-            baseColor = MaterialTheme.colorScheme.surface
+            baseColor = AppSurfaceTokens.cardContainer()
         ),
         isLightMode = isLightMode,
         emphasized = true
@@ -1560,7 +1563,7 @@ fun iOSHomeHeader(
             isCollapsed = topTabsVisible && topTabsCollapsed,
             collapsedHandleHeight = if (isHeaderCollapseEnabled) 0.dp else resolveHomeTopCollapsedHandleHeight()
         ),
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "currentTabHeight"
     )
     val tabAlpha = scrollLayout.tabAlpha
@@ -1634,22 +1637,22 @@ fun iOSHomeHeader(
             uiPreset = uiPreset,
             androidNativeVariant = androidNativeVariant
         ),
-        animationSpec = tween(240),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "tabHorizontalPadding"
     )
     val tabVerticalPadding by animateDpAsState(
         targetValue = resolveHomeTopTabVerticalPaddingDp(isTabFloating).dp,
-        animationSpec = tween(240),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "tabVerticalPadding"
     )
     val tabVerticalOffset by animateDpAsState(
         targetValue = resolveHomeTopTabYOffsetDp(isTabFloating).dp,
-        animationSpec = tween(240),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "tabVerticalOffset"
     )
     val tabShadowElevation by animateDpAsState(
         targetValue = if (uiPreset == UiPreset.MD3) 0.dp else if (isTabFloating) 8.dp else 0.dp,
-        animationSpec = tween(240),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "tabShadowElevation"
     )
     val effectiveTabShadowElevation = if (interactionBudget == HomeInteractionMotionBudget.REDUCED) 0.dp else tabShadowElevation
@@ -1660,7 +1663,7 @@ fun iOSHomeHeader(
     )
     val tabContentAlpha by animateFloatAsState(
         targetValue = if (topTabsVisible && !topTabsCollapsed) 1f else 0f,
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = AppMotionTokens.standardSpec(),
         label = "tabContentAlpha"
     )
     val effectiveContinuousSlabRenderMode = if (integratedCollapsedTopBar) {
@@ -2279,7 +2282,7 @@ fun iOSHomeHeader(
                         isTabFloating = if (useUnifiedTopPanel) false else isTabFloating,
                         effectiveTabShadowElevation = if (useUnifiedTopPanel) 0.dp else effectiveTabShadowElevation,
                         tabShape = if (useUnifiedTopPanel) {
-                            RoundedCornerShape(18.dp)
+                            AppShapes.container(ContainerLevel.Pill)
                         } else {
                             tabShape
                         },

@@ -40,7 +40,6 @@ internal object StyleLintAllowlist {
         "src/main/java/com/android/purebilibili/feature/dynamic/components/RepostDialog.kt",
         "src/main/java/com/android/purebilibili/feature/dynamic/components/VideoCards.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/cards/GlassVideoCard.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/list/CommonListScreen.kt",
         "src/main/java/com/android/purebilibili/feature/live/components/LandscapeChatOverlay.kt",
         "src/main/java/com/android/purebilibili/feature/live/components/LiveChatSection.kt",
@@ -130,7 +129,6 @@ internal object StyleLintAllowlist {
     val MOTION_HITS: Set<String> = setOf(
         "src/main/java/com/android/purebilibili/feature/dynamic/components/DynamicSidebar.kt",
         "src/main/java/com/android/purebilibili/feature/dynamic/DynamicScreen.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/list/CommonListScreen.kt",
         "src/main/java/com/android/purebilibili/feature/login/LoginComponents.kt",
         "src/main/java/com/android/purebilibili/feature/login/LoginScreen.kt",
@@ -168,7 +166,6 @@ internal object StyleLintAllowlist {
         "src/main/java/com/android/purebilibili/feature/dynamic/DynamicScreen.kt",
         "src/main/java/com/android/purebilibili/feature/following/FollowingListScreen.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/cards/GlassVideoCard.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/list/CommonListScreen.kt",
         "src/main/java/com/android/purebilibili/feature/live/LivePlayerScreen.kt",
         "src/main/java/com/android/purebilibili/feature/message/ChatScreen.kt",

@@ -22,6 +22,7 @@ class HomeTokenAdoptionTest {
         "src/main/java/com/android/purebilibili/feature/home/components/BottomBarLiquidSegmentedControl.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/CrashTrackingConsentDialog.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/HomeTopTabChrome.kt",
+        "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/MineSideDrawer.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/SideBar.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt",
@@ -31,6 +32,7 @@ class HomeTokenAdoptionTest {
     )
 
     private val migratedHomeMotionFiles = listOf(
+        "src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/LiquidIndicator.kt"
     )
 
