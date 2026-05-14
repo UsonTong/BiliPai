@@ -23,7 +23,9 @@ class HomeTokenAdoptionTest {
         "src/main/java/com/android/purebilibili/feature/home/components/MineSideDrawer.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/SideBar.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt",
-        "src/main/java/com/android/purebilibili/feature/home/components/VideoPreviewDialog.kt"
+        "src/main/java/com/android/purebilibili/feature/home/components/VideoPreviewDialog.kt",
+        "src/main/java/com/android/purebilibili/feature/home/components/cards/StoryVideoCard.kt",
+        "src/main/java/com/android/purebilibili/feature/home/components/cards/VideoCard.kt"
     )
 
     @Test

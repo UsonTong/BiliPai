@@ -41,6 +41,8 @@ import androidx.compose.animation.core.spring
 
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
 import com.android.purebilibili.core.theme.iOSCornerRadius
@@ -282,7 +284,7 @@ fun StoryVideoCard(
             if (premiumBadgeLabel != null) {
                 HomeVideoBadgePill(
                     style = badgeStylePolicy.coverStyle,
-                    shape = RoundedCornerShape(6.dp),
+                    shape = AppShapes.container(ContainerLevel.Chip),
                     containerColor = BiliPink.copy(alpha = 0.82f),
                     borderColor = Color.White.copy(alpha = 0.24f),
                     modifier = Modifier
@@ -306,7 +308,7 @@ fun StoryVideoCard(
                         .align(Alignment.BottomEnd)
                         .padding(8.dp),
                     color = Color.Black.copy(alpha = durationBadgeStyle.backgroundAlpha),
-                    shape = RoundedCornerShape(6.dp)
+                    shape = AppShapes.container(ContainerLevel.Chip)
                 ) {
                     Text(
                         text = durationText,
@@ -383,7 +385,7 @@ fun StoryVideoCard(
             if (emphasizePublishTime) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(999.dp)
+                    shape = AppShapes.container(ContainerLevel.Pill)
                 ) {
                     Text(
                         text = publishTimeRowText,

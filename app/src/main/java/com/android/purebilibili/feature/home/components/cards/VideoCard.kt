@@ -54,6 +54,9 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.spring
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -232,9 +235,9 @@ fun ElegantVideoCard(
         glassEnabled = glassEnabled,
         blurEnabled = blurEnabled,
         emphasized = false,
-        baseColor = MaterialTheme.colorScheme.surface
+        baseColor = AppSurfaceTokens.cardContainer()
     )
-    val isDarkCardTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val isDarkCardTheme = AppSurfaceTokens.chromeBackground().luminance() < 0.5f
     val infoSurfaceAppearance = remember(wallpaperTintEnabled, wallpaperEffectMode, isDarkCardTheme, isDataSaverActive) {
         resolveHomeCardInfoSurfaceAppearance(
             wallpaperTintEnabled = wallpaperTintEnabled,
@@ -612,7 +615,7 @@ fun ElegantVideoCard(
                         HomeVideoBadgePill(
                             modifier = viewsOnCoverModifier,
                             style = badgeStylePolicy.coverStyle,
-                            shape = RoundedCornerShape(999.dp),
+                            shape = AppShapes.container(ContainerLevel.Pill),
                             containerColor = coverPillColors.containerColor,
                             borderColor = coverPillColors.borderColor
                         ) {
@@ -638,7 +641,7 @@ fun ElegantVideoCard(
                             HomeVideoBadgePill(
                                 modifier = Modifier.weight(1f, fill = false),
                                 style = badgeStylePolicy.coverStyle,
-                                shape = RoundedCornerShape(999.dp),
+                                shape = AppShapes.container(ContainerLevel.Pill),
                                 containerColor = coverPillColors.containerColor,
                                 borderColor = coverPillColors.borderColor
                             ) {
@@ -664,7 +667,7 @@ fun ElegantVideoCard(
                             HomeVideoBadgePill(
                                 modifier = Modifier.weight(1f, fill = false),
                                 style = badgeStylePolicy.coverStyle,
-                                shape = RoundedCornerShape(999.dp),
+                                shape = AppShapes.container(ContainerLevel.Pill),
                                 containerColor = coverPillColors.containerColor,
                                 borderColor = coverPillColors.borderColor
                             ) {
@@ -799,7 +802,7 @@ fun ElegantVideoCard(
             Modifier
                 .fillMaxWidth()
                 .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = infoSurfaceAppearance.containerAlpha),
+                    color = AppSurfaceTokens.cardContainer().copy(alpha = infoSurfaceAppearance.containerAlpha),
                     shape = infoSurfaceShape
                 )
                 .border(
@@ -983,7 +986,7 @@ fun ElegantVideoCard(
                         if (badgeStylePolicy.infoStyle == HomeVideoBadgeStyle.GLASS) {
                             Surface(
                                 modifier = followBadgeModifier,
-                                shape = RoundedCornerShape(999.dp),
+                                shape = AppShapes.container(ContainerLevel.Pill),
                                 color = inlinePillColors.containerColor,
                                 border = BorderStroke(0.8.dp, inlinePillColors.borderColor)
                             ) {
@@ -1059,7 +1062,7 @@ fun ElegantVideoCard(
             if (emphasizePublishTime) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(999.dp)
+                    shape = AppShapes.container(ContainerLevel.Pill)
                 ) {
                     Text(
                         text = publishTimeRowText,
@@ -1103,7 +1106,7 @@ fun ElegantVideoCard(
                 Box(modifier = viewsRowModifier) {
                     HomeVideoBadgePill(
                         style = badgeStylePolicy.infoStyle,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = AppShapes.container(ContainerLevel.Pill),
                         containerColor = inlinePillColors.containerColor,
                         borderColor = inlinePillColors.borderColor
                     ) {
@@ -1126,7 +1129,7 @@ fun ElegantVideoCard(
                 if (commentCount > 0) {
                     HomeVideoBadgePill(
                         style = badgeStylePolicy.infoStyle,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = AppShapes.container(ContainerLevel.Pill),
                         containerColor = inlinePillColors.containerColor,
                         borderColor = inlinePillColors.borderColor
                     ) {
@@ -1148,7 +1151,7 @@ fun ElegantVideoCard(
                 if (onlineCount.isNotEmpty()) {
                     HomeVideoBadgePill(
                         style = badgeStylePolicy.infoStyle,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = AppShapes.container(ContainerLevel.Pill),
                         containerColor = inlinePillColors.containerColor,
                         borderColor = inlinePillColors.borderColor
                     ) {
