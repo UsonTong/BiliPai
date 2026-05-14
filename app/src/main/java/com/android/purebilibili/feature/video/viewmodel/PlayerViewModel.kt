@@ -95,15 +95,15 @@ import com.android.purebilibili.feature.video.interaction.applyInteractiveNative
 import com.android.purebilibili.feature.video.interaction.evaluateInteractiveChoiceCondition
 import com.android.purebilibili.feature.video.interaction.shouldTriggerInteractiveQuestion
 import com.android.purebilibili.feature.video.policy.resolveFavoriteFolderMediaId
+import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.ui.feedback.resolveTripleActionFeedbackMessage
 import com.android.purebilibili.feature.video.ui.feedback.resolveTripleActionVisualState
 import com.android.purebilibili.feature.video.subtitle.SubtitleCue
 import com.android.purebilibili.feature.video.subtitle.SubtitleTrackMeta
 import com.android.purebilibili.feature.video.subtitle.isSubtitleFeatureEnabledForUser
 import com.android.purebilibili.feature.video.subtitle.isLikelyAiSubtitleTrack
-import com.android.purebilibili.feature.video.subtitle.isTrustedBilibiliSubtitleUrl
+import com.android.purebilibili.feature.video.subtitle.mapPlayerInfoSubtitleTracks
 import com.android.purebilibili.feature.video.subtitle.normalizeBilibiliSubtitleUrl
-import com.android.purebilibili.feature.video.subtitle.orderSubtitleTracksByPreference
 import com.android.purebilibili.feature.video.subtitle.resolveDefaultSubtitleLanguages
 
 private const val PLAYBACK_CDN_FIRST_FRAME_FALLBACK_TIMEOUT_MS = 2_500L
@@ -985,6 +985,8 @@ class PlayerViewModel : ViewModel() {
     //  [新增] 视频章节/看点数据
     private val _viewPoints = MutableStateFlow<List<ViewPoint>>(emptyList())
     val viewPoints = _viewPoints.asStateFlow()
+    private val _pbpProgressData = MutableStateFlow<PbpProgressData?>(null)
+    val pbpProgressData = _pbpProgressData.asStateFlow()
 
     private val _interactiveChoicePanel = MutableStateFlow(InteractiveChoicePanelUiState())
     val interactiveChoicePanel = _interactiveChoicePanel.asStateFlow()
@@ -3953,6 +3955,7 @@ class PlayerViewModel : ViewModel() {
             "SUB_DBG loadPlayerInfo start: request=$bvid/$cid, token=$requestToken, current=$currentBvid/$currentCid"
         )
         playerInfoJob?.cancel()
+        _pbpProgressData.value = null
         playerInfoJob = viewModelScope.launch {
             try {
                 val result = VideoRepository.getPlayerInfo(bvid, cid)
@@ -3987,6 +3990,41 @@ class PlayerViewModel : ViewModel() {
                         Logger.d("PlayerVM", "📖 Loaded ${points.size} chapter points")
                     } else {
                         _viewPoints.value = emptyList()
+                    }
+
+                    VideoRepository.getPbpProgressData(
+                        bvid = bvid,
+                        cid = cid,
+                        aid = currentState.info.aid
+                    ).onSuccess { pbpData ->
+                        if (shouldApplyPlayerInfoResult(
+                                activeRequestToken = currentLoadRequestToken,
+                                resultRequestToken = requestToken,
+                                expectedBvid = bvid,
+                                expectedCid = cid,
+                                currentBvid = currentBvid,
+                                currentCid = currentCid
+                            )
+                        ) {
+                            _pbpProgressData.value = pbpData
+                            Logger.d(
+                                "PlayerVM",
+                                "📈 Loaded PBP progress: step=${pbpData.stepSeconds}s points=${pbpData.values.size}"
+                            )
+                        }
+                    }.onFailure { e ->
+                        if (shouldApplyPlayerInfoResult(
+                                activeRequestToken = currentLoadRequestToken,
+                                resultRequestToken = requestToken,
+                                expectedBvid = bvid,
+                                expectedCid = cid,
+                                currentBvid = currentBvid,
+                                currentCid = currentCid
+                            )
+                        ) {
+                            _pbpProgressData.value = null
+                        }
+                        Logger.d("PlayerVM", "📈 Failed to load PBP progress: ${e.message}")
                     }
 
                     // 2. 处理 BGM 信息
@@ -4061,6 +4099,7 @@ class PlayerViewModel : ViewModel() {
                         "SUB_DBG playerInfo failed: bvid=$bvid, cid=$cid, token=$requestToken, err=${e.message}"
                     )
                     _viewPoints.value = emptyList()
+                    _pbpProgressData.value = null
                     clearSubtitleTracksForCurrentVideo(bvid = bvid, cid = cid)
                 }
             } catch (e: Exception) {
@@ -4082,6 +4121,7 @@ class PlayerViewModel : ViewModel() {
                     "SUB_DBG playerInfo exception: bvid=$bvid, cid=$cid, token=$requestToken, err=${e.message}"
                 )
                 _viewPoints.value = emptyList()
+                _pbpProgressData.value = null
                 clearSubtitleTracksForCurrentVideo(bvid = bvid, cid = cid)
             }
         }
@@ -4116,28 +4156,12 @@ class PlayerViewModel : ViewModel() {
     }
 
     private fun mapSubtitleTracksForPlayback(subtitles: List<SubtitleItem>): List<SubtitleTrackMeta> {
-        return orderSubtitleTracksByPreference(
-            subtitles.mapNotNull { item ->
-                val normalizedUrl = normalizeBilibiliSubtitleUrl(item.subtitleUrl)
-                if (!isTrustedBilibiliSubtitleUrl(normalizedUrl)) {
-                    Logger.d(
-                        "PlayerVM",
-                        "SUB_DBG ignore untrusted subtitle track: lan=${item.lan}, url=${item.subtitleUrl.take(80)}"
-                    )
-                    return@mapNotNull null
-                }
-                SubtitleTrackMeta(
-                    id = item.id,
-                    idStr = item.idStr,
-                    lan = item.lan,
-                    lanDoc = item.lanDoc,
-                    subtitleUrl = normalizedUrl,
-                    aiStatus = item.aiStatus,
-                    aiType = item.aiType,
-                    type = item.type
-                )
-            }.distinctBy { meta -> "${meta.lan}|${meta.idStr}|${meta.id}|${meta.subtitleUrl}" }
-        )
+        val tracks = mapPlayerInfoSubtitleTracks(subtitles)
+        val dropped = subtitles.size - tracks.size
+        if (dropped > 0) {
+            Logger.d("PlayerVM", "SUB_DBG ignored $dropped invalid/untrusted subtitle tracks")
+        }
+        return tracks
     }
 
     private fun loadSubtitleTracksFromPlayerInfo(

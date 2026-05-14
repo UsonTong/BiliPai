@@ -148,6 +148,7 @@ import com.android.purebilibili.core.store.LiquidGlassStyle // [New] Top-level e
 import com.android.purebilibili.core.store.LiquidGlassMode
 import androidx.compose.foundation.isSystemInDarkTheme // [New] Theme detection for adaptive readability
 import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.FastOutSlowInEasing
 import kotlin.math.sign
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationDisplayMode as MiuixNavigationDisplayMode
@@ -1082,17 +1083,41 @@ internal fun resolveBottomBarBackdropPresetProgress(
 internal fun resolveBottomBarIndicatorLayerTransform(
     motionProgress: Float,
     velocityItemsPerSecond: Float,
+    isDragging: Boolean = true,
+    dragScaleProgress: Float = if (isDragging) 1f else 0f,
     motionSpec: com.android.purebilibili.core.ui.motion.BottomBarMotionSpec = resolveBottomBarMotionSpec()
 ): BottomBarIndicatorLayerTransform {
     val clampedProgress = motionProgress.coerceIn(0f, 1f)
-    val baseScale = lerp(1f, BOTTOM_BAR_INDICATOR_DRAG_SCALE_TARGET, clampedProgress)
-    val velocity = velocityItemsPerSecond / 10f
+    val clampedDragScaleProgress = dragScaleProgress.coerceIn(0f, 1f)
+    val baseScale = lerp(
+        start = 1f,
+        stop = BOTTOM_BAR_INDICATOR_DRAG_SCALE_TARGET,
+        fraction = clampedDragScaleProgress
+    )
+    val velocity = if (isDragging) velocityItemsPerSecond / 10f else 0f
     val velocityScaleX = (velocity * 0.75f).coerceIn(-0.2f, 0.2f)
     val velocityScaleY = (velocity * 0.25f).coerceIn(-0.2f, 0.2f)
     return BottomBarIndicatorLayerTransform(
         scaleX = baseScale / (1f - velocityScaleX),
         scaleY = baseScale * (1f - velocityScaleY)
     )
+}
+
+@Composable
+private fun rememberBottomBarIndicatorDragScaleProgress(
+    isDragging: Boolean
+): Float {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(isDragging) {
+        progress.animateTo(
+            targetValue = if (isDragging) 1f else 0f,
+            animationSpec = tween(
+                durationMillis = if (isDragging) 90 else 220,
+                easing = if (isDragging) EaseOut else FastOutSlowInEasing
+            )
+        )
+    }
+    return progress.value
 }
 
 internal fun resolveBottomBarVisualIndicatorPosition(
@@ -2229,6 +2254,9 @@ private fun KernelSuAlignedBottomBar(
         profile = tunedRefractionMotionProfile
     )
     val motionProgress = maxOf(pressMotionProgress, refractionMotionProfile.progress)
+    val indicatorDragScaleProgress = rememberBottomBarIndicatorDragScaleProgress(
+        isDragging = dampedDragState.isDragging
+    )
     val verticalGlassProfile = resolveBottomBarVerticalGlassMotionProfile(
         scrollOffsetPx = scrollOffset,
         glassEnabled = glassEnabled
@@ -2782,6 +2810,8 @@ private fun KernelSuAlignedBottomBar(
                                                 val indicatorLayerTransform = resolveBottomBarIndicatorLayerTransform(
                                                     motionProgress = motionProgress,
                                                     velocityItemsPerSecond = dampedDragState.velocity,
+                                                    isDragging = dampedDragState.isDragging,
+                                                    dragScaleProgress = indicatorDragScaleProgress,
                                                     motionSpec = bottomBarMotionSpec
                                                 )
                                                 scaleX = indicatorLayerTransform.scaleX

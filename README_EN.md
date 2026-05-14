@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-13 · Synced to v8.1.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-14 · Synced to v8.1.5 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
@@ -432,13 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.5 · 2026-05-13)
+### Latest (v8.1.5 · 2026-05-14)
 
-- Dynamic feed now reacts to unfollow events and removes the author from feed items, sidebar entries, and cached dynamic data.
-- Added a playback setting for default-expanded video descriptions, with Settings Search and Settings Share support.
-- Refined player progress, PBP ridge rendering, subtitle tracks, fullscreen controls, drag preview, and tablet layout behavior.
-- Improved the built-in CDN region plugin with IP/province/carrier-aware route selection and fallback coverage.
-- Flattened search video result cards and removed the unfinished Android Native / MD3E appearance variant.
+- Fixed release builds where player controls could fail to appear while double-tap pause and long-press speed gestures still worked.
+- Restored the player progress, PBP ridge, subtitle-track, fullscreen-control, drag-preview, and progress-display refinements.
+- Kept the built-in CDN plugin fix, limiting playback URL rewriting to `bilivideo.com` while preserving original URLs as fallbacks.
+- Synchronized dynamic-feed unfollow state so unfollowed authors are removed from cached feeds and followed-user sidebars.
+- Flattened search video result cards and continued consolidating appearance-setting and theme-component branches.
+- Refined bottom-bar indicator dragging: drag keeps enlargement and finger-follow deformation, tap switching does not enlarge, and release eases back to the original size.
 - Bumped the app to `8.1.5` with `versionCode` `188`.
 
 ---

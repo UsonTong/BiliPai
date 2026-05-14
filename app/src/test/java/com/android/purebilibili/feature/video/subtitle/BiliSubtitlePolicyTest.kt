@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.video.subtitle
 
+import com.android.purebilibili.data.model.response.PlayerInfoResponse
+import com.android.purebilibili.data.model.response.SubtitleItem
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -7,6 +10,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BiliSubtitlePolicyTest {
+    private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun normalizeBilibiliSubtitleUrl_supportsProtocolRelativeUrl() {
@@ -77,6 +81,86 @@ class BiliSubtitlePolicyTest {
     }
 
     @Test
+    fun playerInfoResponse_decodesApiSubtitleContract() {
+        val response = json.decodeFromString<PlayerInfoResponse>(
+            """
+            {
+              "code": 0,
+              "message": "0",
+              "data": {
+                "bvid": "BV1xx",
+                "cid": 123,
+                "need_login_subtitle": false,
+                "subtitle": {
+                  "allow_submit": true,
+                  "lan": "",
+                  "lan_doc": "",
+                  "subtitles": [
+                    {
+                      "id": 11,
+                      "id_str": "subtitle-11",
+                      "lan": "zh-Hans",
+                      "lan_doc": "中文（简体）",
+                      "subtitle_url": "//aisubtitle.hdslb.com/bfs/subtitle/track.json?auth_key=abc",
+                      "ai_status": 0,
+                      "ai_type": 0,
+                      "is_lock": false,
+                      "type": 0
+                    }
+                  ]
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val subtitle = response.data?.subtitle?.subtitles?.single()
+        assertEquals("zh-Hans", subtitle?.lan)
+        assertEquals("中文（简体）", subtitle?.lanDoc)
+        assertEquals("//aisubtitle.hdslb.com/bfs/subtitle/track.json?auth_key=abc", subtitle?.subtitleUrl)
+    }
+
+    @Test
+    fun mapPlayerInfoSubtitleTracks_filtersUntrustedAndBuildsStableTrackKeys() {
+        val tracks = mapPlayerInfoSubtitleTracks(
+            listOf(
+                SubtitleItem(
+                    id = 2L,
+                    idStr = "official",
+                    lan = "zh-Hans",
+                    lanDoc = "中文（简体）",
+                    subtitleUrl = "//aisubtitle.hdslb.com/bfs/subtitle/official.json",
+                    aiStatus = 0,
+                    aiType = 0
+                ),
+                SubtitleItem(
+                    id = 1L,
+                    idStr = "ai",
+                    lan = "zh-Hans",
+                    lanDoc = "中文（自动生成）",
+                    subtitleUrl = "//aisubtitle.hdslb.com/bfs/subtitle/ai.json",
+                    aiStatus = 1,
+                    aiType = 1
+                ),
+                SubtitleItem(
+                    id = 3L,
+                    idStr = "bad",
+                    lan = "en-US",
+                    lanDoc = "英语",
+                    subtitleUrl = "https://example.com/bfs/subtitle/bad.json"
+                )
+            )
+        )
+
+        assertEquals(2, tracks.size)
+        assertEquals("official", tracks.first().idStr)
+        assertEquals(
+            "2|official|zh-Hans|https://aisubtitle.hdslb.com/bfs/subtitle/official.json",
+            tracks.first().trackKey
+        )
+    }
+
+    @Test
     fun resolveDefaultSubtitleLanguages_prefersChineseAndEnglish() {
         val tracks = listOf(
             SubtitleTrackMeta(lan = "ja-JP", lanDoc = "日语", subtitleUrl = "https://a"),
@@ -116,6 +200,13 @@ class BiliSubtitlePolicyTest {
 
         assertEquals("B", resolveSubtitleTextAt(cues, 1200L))
         assertNull(resolveSubtitleTextAt(cues, 950L))
+    }
+
+    @Test
+    fun subtitleVerticalOffsetFraction_clampsToReadableFullscreenRange() {
+        assertEquals(0.30f, normalizeSubtitleVerticalOffsetFraction(0.8f))
+        assertEquals(-0.30f, normalizeSubtitleVerticalOffsetFraction(-0.8f))
+        assertEquals(0.12f, normalizeSubtitleVerticalOffsetFraction(0.12f))
     }
 
     @Test

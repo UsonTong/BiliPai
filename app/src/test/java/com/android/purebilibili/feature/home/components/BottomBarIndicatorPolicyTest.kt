@@ -355,11 +355,77 @@ class BottomBarIndicatorPolicyTest {
         val transform = resolveBottomBarIndicatorLayerTransform(
             motionProgress = 1f,
             velocityItemsPerSecond = 0f,
+            isDragging = true,
             motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
         )
 
         assertTrue(transform.scaleX > 1.5f)
         assertTrue(transform.scaleY > 1.5f)
+    }
+
+    @Test
+    fun `indicator keeps enlarged base during active drag while preserving velocity deformation`() {
+        val partial = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 0.12f,
+            velocityItemsPerSecond = 0f,
+            isDragging = true,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+        val full = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 0f,
+            isDragging = true,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+        val deformed = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 0.12f,
+            velocityItemsPerSecond = 2f,
+            isDragging = true,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+
+        assertEquals(full.scaleX, partial.scaleX, 0.001f)
+        assertEquals(full.scaleY, partial.scaleY, 0.001f)
+        assertTrue(partial.scaleX > 1.5f)
+        assertTrue(partial.scaleY > 1.5f)
+        assertTrue(deformed.scaleX > partial.scaleX)
+        assertTrue(deformed.scaleY < partial.scaleY)
+    }
+
+    @Test
+    fun `indicator does not enlarge during tap driven switch motion`() {
+        val transform = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 2f,
+            isDragging = false,
+            dragScaleProgress = 0f,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+
+        assertEquals(1f, transform.scaleX, 0.001f)
+        assertEquals(1f, transform.scaleY, 0.001f)
+    }
+
+    @Test
+    fun `indicator drag enlargement can ease back through intermediate scale`() {
+        val settling = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 2f,
+            isDragging = false,
+            dragScaleProgress = 0.5f,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+        val full = resolveBottomBarIndicatorLayerTransform(
+            motionProgress = 1f,
+            velocityItemsPerSecond = 0f,
+            isDragging = true,
+            dragScaleProgress = 1f,
+            motionSpec = resolveBottomBarMotionSpec(BottomBarMotionProfile.ANDROID_NATIVE_FLOATING)
+        )
+
+        assertTrue(settling.scaleX > 1f)
+        assertTrue(settling.scaleX < full.scaleX)
+        assertEquals(settling.scaleX, settling.scaleY, 0.001f)
     }
 
     @Test

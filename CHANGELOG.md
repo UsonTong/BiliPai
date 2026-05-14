@@ -1,24 +1,28 @@
 # Changelog
 
-## v8.1.5 (2026-05-13)
+## v8.1.5 (2026-05-14)
 
 ### 版本信息
 - 版本号从 `8.1.4` 升级到 `8.1.5`，`versionCode` 升级到 `188`。
-- 本次为“播放进度/字幕/CDN 增强 + 动态关注状态同步 + 搜索与外观收敛”的维护更新。
+- 本次为“播放进度/字幕/CDN 增强 + 动态关注状态同步 + 正式版播放器控件修复”的维护更新。
 
 ### 更新内容
-- **动态取消关注同步**：关注/取关成功后会广播关注状态变化；动态页在取消关注后立即移除该 UP 的动态、关注侧栏条目和相关缓存，避免取关后仍在动态流里反复出现。
-- **视频简介默认展开开关**：播放设置新增“默认展开视频简介”开关，并接入设置搜索和设置分享；关闭后视频详情简介默认收起，默认行为仍保持展开。
+- **正式版播放控件**：补充播放器控件 Overlay 的 R8 保留规则，修复正式版中双击暂停、长按倍速等手势正常，但单击后 UI 控件不显示的问题。
 - **播放进度与控制条**：接入高能进度（PBP）数据解析与归一化，播放器底部进度条可展示强度脊线；横屏/竖屏底部控制条、拖动预览、平板影院布局和进度显示策略继续收敛。
-- **字幕能力补强**：播放器信息中的字幕轨道会映射为受信任字幕源，支持更稳定的一/双语字幕选择、AI 字幕识别、字幕位置偏移和大字号显示，并补充字幕解析/排序/去重策略。
-- **CDN 与地区线路**：内置 CDN 区域插件会结合 IP 归属地、省份别名和运营商信息选择更合适的线路，未知地区不再随机落到错误区域；播放侧补充 CDN 回退策略测试。
-- **搜索与外观收敛**：搜索视频卡片改为更扁平的列表视觉，减少重复卡片包裹；移除未完成的 Android Native / MD3E 外观变体，降低设置、主题和组件分支的维护成本。
-- **横屏与布局细节**：非紧凑布局会释放手机方向锁，降低平板/大屏从详情页进入播放器后的方向残留；相关布局策略补充回归测试。
-- **策略与回归覆盖**：补充动态取消关注、视频简介默认展开、设置搜索、PBP 进度、字幕轨道、播放器控制条、CDN 区域选择、CDN 回退和视频详情布局等测试。
+- **字幕能力补强**：播放器信息中的字幕轨道会映射为受信任字幕源，支持更稳定的一/双语字幕选择、AI 字幕识别、字幕位置偏移和大字号显示，并补充字幕解析、排序和去重策略。
+- **CDN 插件**：保留并同步内置 CDN 区域插件修复，继续限制到 `bilivideo.com` 播放地址改写，并保留原始播放地址作为回退候选。
+- **动态同步**：关注/取消关注操作会向动态页同步状态；取消关注后会从动态缓存列表、已关注用户侧栏和直播缓存中移除对应 UP。
+- **搜索与外观收敛**：搜索视频卡片改为更扁平的列表视觉，减少重复卡片包裹；外观设置和主题组件分支继续收敛，降低维护成本。
+- **视频简介设置**：播放设置新增“默认展开视频简介”开关，并接入设置搜索和设置分享；关闭后视频详情简介默认收起，默认行为仍保持展开。
+- **视频方向策略**：保留大屏/分栏返回时的方向锁释放修复，避免返回后方向状态异常。
+- **底栏手感**：底栏指示器拖拽时保持放大和跟手形变；点按切换不放大；松手停下时平滑回到原始大小，避免突然缩回。
 
 ### 验证
-- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.dynamic.DynamicScreenStatePolicyTest' --tests 'com.android.purebilibili.feature.video.ui.section.VideoInfoDisplayPolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsSearchPolicyTest'`
-- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.plugin.CdnRegionPolicyTest' --tests 'com.android.purebilibili.feature.video.viewmodel.PlaybackCdnFallbackPolicyTest' --tests 'com.android.purebilibili.feature.video.screen.VideoDetailLayoutModePolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.ReleasePlayerOverlayR8KeepRulesTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.search.SearchResultCardAppearancePolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsSearchPolicyTest' --tests 'com.android.purebilibili.feature.video.progress.PbpProgressPolicyTest' --tests 'com.android.purebilibili.feature.video.subtitle.BiliSubtitlePolicyTest' --tests 'com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionPolicyTest' --tests 'com.android.purebilibili.feature.video.ui.section.VideoInfoDisplayPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest' --tests 'com.android.purebilibili.feature.home.components.TopTabRefractionPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `./gradlew :app:compileReleaseKotlin`
 - `git diff --check`
 
 ## v8.1.4 (2026-05-13)

@@ -612,8 +612,6 @@ app/src/main/java/com/android/purebilibili
 
 ### 最近更新 (v8.0.6 · 2026-05-06)
 
-- 🎨 **@Jay3-yy** 新增安卓原生 MD3E / Material 3 Expressive 子风格，接入主题 shape、typography、motion 与外观设置。
-- 🧩 **@Jay3-yy** 深度适配顶部栏、底栏、首页顶部分类、共享列表、搜索、通用列表和视频设置面板的 MD3E 策略。
 - 🔄 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 修复平板屏幕旋转体验，调整屏幕大小检测方式。
 - 📺 **[@chenx-dust](https://github.com/chenx-dust) [#267](https://github.com/jay3-yy/BiliPai/pull/267)** 同步修复视频和直播方向策略。
 - 🔖 版本号升级到 `8.0.6`，`versionCode` 升级到 `179`。

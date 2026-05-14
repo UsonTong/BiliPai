@@ -20,7 +20,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 //  Cupertino Icons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
@@ -44,6 +46,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.SponsorProgressMarker
+import com.android.purebilibili.feature.video.progress.PbpRidgeSample
 import com.android.purebilibili.feature.video.ui.components.SeekPreviewBubble
 import com.android.purebilibili.feature.video.ui.components.SeekPreviewBubblePlacement
 import com.android.purebilibili.feature.video.ui.components.SeekPreviewBubbleSimple
@@ -351,6 +354,7 @@ fun BottomControlBar(
     videoshotData: com.android.purebilibili.data.model.response.VideoshotData? = null,
     viewPoints: List<com.android.purebilibili.data.model.response.ViewPoint> = emptyList(),
     sponsorMarkers: List<SponsorProgressMarker> = emptyList(),
+    pbpRidgeSamples: List<PbpRidgeSample> = emptyList(),
     currentChapter: String? = null,
     onChapterClick: () -> Unit = {},
     
@@ -555,6 +559,7 @@ fun BottomControlBar(
             videoshotData = videoshotData,
             viewPoints = viewPoints,
             sponsorMarkers = sponsorMarkers,
+            pbpRidgeSamples = pbpRidgeSamples,
             currentChapter = currentChapter,
             onChapterClick = onChapterClick
         )
@@ -1058,6 +1063,7 @@ fun VideoProgressBar(
     videoshotData: com.android.purebilibili.data.model.response.VideoshotData? = null,
     viewPoints: List<com.android.purebilibili.data.model.response.ViewPoint> = emptyList(),
     sponsorMarkers: List<SponsorProgressMarker> = emptyList(),
+    pbpRidgeSamples: List<PbpRidgeSample> = emptyList(),
     currentChapter: String? = null,
     onChapterClick: () -> Unit = {}
 ) {
@@ -1263,6 +1269,49 @@ fun VideoProgressBar(
                         topLeft = Offset(0f, trackTop),
                         size = Size(width.coerceAtLeast(trackHeightPx), trackHeightPx),
                         cornerRadius = cornerRadius
+                    )
+                }
+
+                if (pbpRidgeSamples.size >= 2 && size.width > 0f) {
+                    val ridgeHeightPx = (size.height * 0.42f).coerceAtMost(18.dp.toPx())
+                    val baselineY = centerY
+                    val ridgePath = Path().apply {
+                        moveTo(0f, baselineY)
+                        pbpRidgeSamples.forEach { sample ->
+                            val x = size.width * sample.fraction.coerceIn(0f, 1f)
+                            val y = baselineY - ridgeHeightPx * sample.intensity.coerceIn(0f, 1f)
+                            lineTo(x, y)
+                        }
+                        lineTo(size.width, baselineY)
+                        close()
+                    }
+                    val ridgeLinePath = Path().apply {
+                        pbpRidgeSamples.forEachIndexed { index, sample ->
+                            val x = size.width * sample.fraction.coerceIn(0f, 1f)
+                            val y = baselineY - ridgeHeightPx * sample.intensity.coerceIn(0f, 1f)
+                            if (index == 0) moveTo(x, y) else lineTo(x, y)
+                        }
+                    }
+                    drawPath(
+                        path = ridgePath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.18f),
+                                primaryColor.copy(alpha = 0.03f)
+                            ),
+                            startY = baselineY - ridgeHeightPx,
+                            endY = baselineY
+                        )
+                    )
+                    drawPath(
+                        path = ridgeLinePath,
+                        color = primaryColor.copy(alpha = 0.14f),
+                        style = Stroke(width = trackHeightPx * 2.8f, cap = StrokeCap.Round)
+                    )
+                    drawPath(
+                        path = ridgeLinePath,
+                        color = primaryColor.copy(alpha = 0.46f),
+                        style = Stroke(width = trackHeightPx * 0.9f, cap = StrokeCap.Round)
                     )
                 }
 

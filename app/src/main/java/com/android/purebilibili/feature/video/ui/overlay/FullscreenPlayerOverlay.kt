@@ -242,7 +242,7 @@ fun FullscreenPlayerOverlay(
             }
         }
     }
-    
+
     // 手势状态
     var gestureMode by remember { mutableStateOf(FullscreenGestureMode.None) }
     var gestureValue by remember { mutableFloatStateOf(0f) }
@@ -280,7 +280,7 @@ fun FullscreenPlayerOverlay(
             } catch (e: Exception) { 0.5f }
         )
     }
-    
+
     // 播放器状态
     var isPlaying by remember { mutableStateOf(player?.isPlaying ?: false) }
     var currentProgress by remember { mutableFloatStateOf(0f) }
@@ -340,7 +340,7 @@ fun FullscreenPlayerOverlay(
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
             )
         }
-        
+
         // 设置横屏
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         
@@ -697,7 +697,7 @@ fun FullscreenPlayerOverlay(
                 danmakuManager.isEnabled = false
             }
         }
-        
+
         //  弹幕设置变化时实时应用
         LaunchedEffect(
             danmakuOpacity,
