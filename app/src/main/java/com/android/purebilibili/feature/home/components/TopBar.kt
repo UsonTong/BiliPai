@@ -71,6 +71,9 @@ import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.feature.home.HomeCategory
 import com.android.purebilibili.feature.home.resolveHomeTopCategories
 import com.android.purebilibili.core.store.LiquidGlassStyle
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
 import com.android.purebilibili.core.ui.blur.shouldAllowDirectHazeLiquidGlassFallback
@@ -405,8 +408,8 @@ fun FluidHomeTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,  //  使用主题色，适配深色模式
+            shape = AppShapes.container(ContainerLevel.Floating),
+            color = AppSurfaceTokens.cardContainer(),  //  使用预设感知表面色，适配深色模式
             shadowElevation = 6.dp,  // 添加阴影增加层次感
             tonalElevation = 0.dp,
             border = androidx.compose.foundation.BorderStroke(
@@ -455,7 +458,7 @@ fun FluidHomeTopBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(AppShapes.container(ContainerLevel.Pill))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .clickable(
                             interactionSource = searchClickInteractionSource,
@@ -1890,7 +1893,7 @@ fun CategoryTabItem(
 
      Box(
          modifier = Modifier
-             .clip(RoundedCornerShape(16.dp)) 
+             .clip(AppShapes.container(ContainerLevel.Pill))
              .then(
                  if (isInteractive) {
                      Modifier.combinedClickable(
