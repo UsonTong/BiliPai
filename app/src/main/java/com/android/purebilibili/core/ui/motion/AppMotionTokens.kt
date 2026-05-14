@@ -2,11 +2,17 @@ package com.android.purebilibili.core.ui.motion
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
+import com.android.purebilibili.core.theme.LocalUiPreset
+import com.android.purebilibili.core.theme.UiPreset
 
 internal object AppMotionEasing {
     val EmphasizedEnter: Easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -63,3 +69,90 @@ internal fun indicatorSpring(): SpringSpec<Float> =
         dampingRatio = 0.7f,
         stiffness = Spring.StiffnessMedium
     )
+
+/**
+ * Preset-aware motion tokens. Screens should call the @Composable accessors
+ * (e.g. [AppMotionTokens.standardSpec]) instead of writing literal `tween(...)`
+ * or `spring(...)` calls. iOS resolves to spring physics; MD3 and Miuix resolve
+ * to tween durations sourced from [com.android.purebilibili.core.theme.AndroidNativeChromeTokens].
+ */
+object AppMotionTokens {
+
+    private const val IOS_STANDARD_DAMPING = 0.86f
+    private const val IOS_STANDARD_STIFFNESS = 380f
+    private const val IOS_EMPHASIZED_STIFFNESS = 280f
+    private const val IOS_EXPRESSIVE_DAMPING = 0.72f
+    private const val IOS_EXPRESSIVE_STIFFNESS = 520f
+
+    fun <T> resolveStandardSpec(
+        uiPreset: UiPreset,
+        androidNativeVariant: AndroidNativeVariant
+    ): FiniteAnimationSpec<T> = when {
+        uiPreset == UiPreset.IOS -> spring(
+            dampingRatio = IOS_STANDARD_DAMPING,
+            stiffness = IOS_STANDARD_STIFFNESS
+        )
+        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> tween(
+            durationMillis = 180,
+            easing = AppMotionEasing.Continuity
+        )
+        else -> tween(
+            durationMillis = 200,
+            easing = AppMotionEasing.Continuity
+        )
+    }
+
+    fun <T> resolveEmphasizedSpec(
+        uiPreset: UiPreset,
+        androidNativeVariant: AndroidNativeVariant
+    ): FiniteAnimationSpec<T> = when {
+        uiPreset == UiPreset.IOS -> spring(
+            dampingRatio = IOS_STANDARD_DAMPING,
+            stiffness = IOS_EMPHASIZED_STIFFNESS
+        )
+        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> tween(
+            durationMillis = 240,
+            easing = AppMotionEasing.EmphasizedEnter
+        )
+        else -> tween(
+            durationMillis = 300,
+            easing = AppMotionEasing.EmphasizedEnter
+        )
+    }
+
+    fun <T> resolveExpressiveSpec(
+        uiPreset: UiPreset,
+        androidNativeVariant: AndroidNativeVariant
+    ): FiniteAnimationSpec<T> = when {
+        uiPreset == UiPreset.IOS -> spring(
+            dampingRatio = IOS_EXPRESSIVE_DAMPING,
+            stiffness = IOS_EXPRESSIVE_STIFFNESS
+        )
+        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> tween(
+            durationMillis = 150,
+            easing = AppMotionEasing.EmphasizedExit
+        )
+        else -> tween(
+            durationMillis = 180,
+            easing = AppMotionEasing.EmphasizedExit
+        )
+    }
+
+    @Composable
+    fun <T> standardSpec(): FiniteAnimationSpec<T> = resolveStandardSpec(
+        uiPreset = LocalUiPreset.current,
+        androidNativeVariant = LocalAndroidNativeVariant.current
+    )
+
+    @Composable
+    fun <T> emphasizedSpec(): FiniteAnimationSpec<T> = resolveEmphasizedSpec(
+        uiPreset = LocalUiPreset.current,
+        androidNativeVariant = LocalAndroidNativeVariant.current
+    )
+
+    @Composable
+    fun <T> expressiveSpec(): FiniteAnimationSpec<T> = resolveExpressiveSpec(
+        uiPreset = LocalUiPreset.current,
+        androidNativeVariant = LocalAndroidNativeVariant.current
+    )
+}

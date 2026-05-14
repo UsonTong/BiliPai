@@ -14,7 +14,9 @@ data class AndroidNativeChromeTokens(
     val denseHorizontalSpacingDp: Int,
     val rowMinTouchTargetDp: Int,
     val expressiveMotionDurationMillis: Int,
-    val motionScale: Float
+    val motionScale: Float,
+    val motionStandardMillis: Int,
+    val motionEmphasizedMillis: Int
 )
 
 fun resolveAndroidNativeChromeTokens(
@@ -30,7 +32,9 @@ fun resolveAndroidNativeChromeTokens(
             denseHorizontalSpacingDp = 16,
             rowMinTouchTargetDp = 48,
             expressiveMotionDurationMillis = 180,
-            motionScale = 1f
+            motionScale = 1f,
+            motionStandardMillis = 180,
+            motionEmphasizedMillis = 240
         )
         uiPreset == UiPreset.MD3 -> AndroidNativeChromeTokens(
             containerCornerRadiusDp = 24,
@@ -40,7 +44,9 @@ fun resolveAndroidNativeChromeTokens(
             denseHorizontalSpacingDp = 18,
             rowMinTouchTargetDp = 48,
             expressiveMotionDurationMillis = 200,
-            motionScale = 1f
+            motionScale = 1f,
+            motionStandardMillis = 200,
+            motionEmphasizedMillis = 300
         )
         else -> AndroidNativeChromeTokens(
             containerCornerRadiusDp = 20,
@@ -50,7 +56,10 @@ fun resolveAndroidNativeChromeTokens(
             denseHorizontalSpacingDp = 16,
             rowMinTouchTargetDp = 44,
             expressiveMotionDurationMillis = 180,
-            motionScale = 1f
+            motionScale = 1f,
+            // Nominal iOS values; iOS motion specs use spring, not tween.
+            motionStandardMillis = 280,
+            motionEmphasizedMillis = 360
         )
     }
 }
