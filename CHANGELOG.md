@@ -1,5 +1,24 @@
 # Changelog
 
+## v8.2.0 (2026-05-15)
+
+### 版本信息
+- 版本号从 `8.1.6` 升级到 `8.2.0`，`versionCode` 升级到 `190`。
+- 本次为“播放器音量根因修复 + 底栏交互收敛 + 视觉 token 化”的主线更新。
+
+### 更新内容
+- **系统音量手势**：主播放器和番剧播放器的右侧上下滑音量手势改为直接控制系统媒体音量，移除应用内播放音量上限和持久化残留，避免关闭手势后仍被旧音量值限制。
+- **播放器与播放设置**：改进视频加载与横屏方向反馈；稍后再看播放进度可正确传递；双击跳转整合到播放设置，新用户默认关闭，减少误触。
+- **底栏交互**：底栏指示器、图标和文字的点按切换节奏更统一，跨多个入口切换时按距离调整过渡时长；滑动形变改用实时速度，停靠回弹更轻；实验高光默认关闭并从设置中隐藏。
+- **首页和底栏性能**：首页滚动期底栏玻璃采样更克制，降低滚动时的额外渲染压力；底栏、顶部栏、首页卡片、侧栏和液态指示器继续收敛到统一 motion / shape / surface token。
+- **设置与视觉基础设施**：新增预设感知的基础渲染策略，设置页和首页组件迁移到共享 token；补充硬编码 motion、shape、surface 的守护测试，减少后续视觉参数回退。
+- **回归覆盖**：补充播放器系统音量策略、设置映射、底栏指示器、底栏结构、导航切换时长、动画设置隐藏项、token 覆盖和播放设置入口等策略测试。
+
+### 验证
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionPolicyTest' --tests 'com.android.purebilibili.core.store.PlayerInteractionSettingsMappingPolicyTest' --tests 'com.android.purebilibili.core.store.HomeSettingsMappingPolicyTest' --tests 'com.android.purebilibili.core.ui.animation.DampedDragAnimationPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarIndicatorPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest' --tests 'com.android.purebilibili.feature.settings.AnimationSettingsPolicyTest' --tests 'com.android.purebilibili.navigation.AppTopLevelNavigationPolicyTest'`
+- `./gradlew --no-daemon :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.1.6 (2026-05-14)
 
 ### 版本信息

@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-14 · Synced to v8.1.6 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-15 · Synced to v8.2.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.1.6-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.2.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,16 +432,16 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.1.6 · 2026-05-14)
+### Latest (v8.2.0 · 2026-05-15)
 
-- Fixed player controls that could fail to reappear after being hidden, while preserving the release Overlay R8 keep rules.
-- Respected manual pause across video navigation and restored the video orientation policy baseline.
-- Expanded watch-later / playback queue sources across more video-list scenarios and tightened queue layout and empty-state behavior.
-- Added a compressed/fade launch transition for the bottom-bar search entry and synchronized search-page entry motion.
-- Smoothed the profile wallpaper transition from clear header image to blurred background, and aligned wallpaper action labels in two lines on compact three-column phones.
-- Reworked immersive profile services into a lightweight list island, separated account actions, and compressed favorite-folder shortcuts into horizontal chips.
-- Added focused regression coverage for player lifecycle, orientation, queue, bottom-bar search, search entry motion, and profile wallpaper/services layout.
-- Bumped the app to `8.1.6` with `versionCode` `189`.
+- Routed player volume gestures to the system media stream and removed the in-app playback volume cap.
+- Improved video loading feedback, landscape orientation handling, and watch-later progress handoff.
+- Moved double-tap seek into playback settings and kept it off by default for new users.
+- Refined bottom-bar tap transitions, drag deformation, and settle rebound; the experimental follow highlight is off by default and hidden from settings.
+- Reduced bottom-bar glass sampling during home scrolling to lower rendering pressure.
+- Continued migrating home, bottom bar, top bar, sidebar, cards, and settings surfaces to shared motion / shape / surface tokens.
+- Added focused regression coverage for system volume, bottom-bar interaction, navigation timing, settings mapping, and token adoption.
+- Bumped the app to `8.2.0` with `versionCode` `190`.
 
 ---
 

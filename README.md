@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.1.6-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.1.6" />
+  <img src="https://img.shields.io/badge/Version-8.2.0-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.2.0" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -37,7 +37,7 @@
   </a>
 </p>
 
-<sub>README 更新：2026-05-14 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
+<sub>README 更新：2026-05-15 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
 
 </div>
 
@@ -179,15 +179,15 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.1.6 / versionCode 189`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.1.6`：
+当前仓库版本号已更新到 `8.2.0 / versionCode 190`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.2.0`：
 
-- 修复播放器控件隐藏后单击显示不稳定的问题，并保留正式版 Overlay R8 规则。
-- 跨视频切换时尊重手动暂停状态，恢复视频方向策略基线。
-- 稍后看/播放队列来源扩展到更多视频列表场景，队列布局和空状态继续收敛。
-- 底栏搜索入口新增点击后的压缩/淡出过渡，并联动搜索页入场动效。
-- 优化“我的”页沉浸壁纸渐隐过渡，减少横向断层；壁纸操作按钮在手机三列下统一两行排版。
-- 沉浸式“我的服务”改为轻量列表岛，账号操作独立到底部，收藏夹快捷入口压缩为横向小卡。
-- 补充播放器生命周期、方向策略、队列、底栏搜索、搜索页入场和个人页壁纸/服务区相关回归测试。
+- 播放器音量手势改为直接控制系统媒体音量，移除应用内播放音量上限。
+- 改进视频加载、横屏方向反馈和稍后再看播放进度传递。
+- 双击跳转整合到播放设置，新用户默认关闭，减少误触。
+- 底栏点按切换、滑动形变和停靠回弹进一步统一，实验高光默认关闭并隐藏设置入口。
+- 首页滚动期底栏玻璃采样更克制，降低滚动时的额外渲染压力。
+- 首页、底栏、顶部栏、侧栏、卡片和设置组件继续迁移到统一 motion / shape / surface token。
+- 补充系统音量、底栏交互、导航切换、设置映射和 token 覆盖相关回归测试。
 
 ## 路线图
 
