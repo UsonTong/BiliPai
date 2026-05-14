@@ -20,6 +20,7 @@ class HomeTokenAdoptionTest {
         "src/main/java/com/android/purebilibili/feature/home/components/BottomBarLiquidSegmentedControl.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/CrashTrackingConsentDialog.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/HomeTopTabChrome.kt",
+        "src/main/java/com/android/purebilibili/feature/home/components/MineSideDrawer.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/SideBar.kt",
         "src/main/java/com/android/purebilibili/feature/home/components/VideoPreviewDialog.kt"
     )

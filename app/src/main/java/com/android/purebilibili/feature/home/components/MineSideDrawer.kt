@@ -37,8 +37,10 @@ import com.android.purebilibili.core.ui.rememberAppInboxIcon
 import com.android.purebilibili.core.ui.rememberAppLogoutIcon
 import com.android.purebilibili.core.ui.rememberAppTvIcon
 import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
+import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.components.IOSClickableItem
 import com.android.purebilibili.core.ui.components.UserLevelBadge
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.feature.home.UserState
 import dev.chrisbanes.haze.HazeState
@@ -276,7 +278,7 @@ fun MineSideDrawer(
                                 if (user.isVip) {
                                     Surface(
                                         color = colorScheme.primary,
-                                        shape = RoundedCornerShape(4.dp)
+                                        shape = AppShapes.container(ContainerLevel.Tag)
                                     ) {
                                         Text(
                                             text = "大会员",
