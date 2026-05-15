@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.player.PlaylistItem
@@ -375,7 +376,7 @@ fun BangumiPlayerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isLandscape) Color.Black else MaterialTheme.colorScheme.background)
+            .background(if (isLandscape) Color.Black else AppSurfaceTokens.groupedListContainer())
     ) {
         //  获取清晰度数据
         val bangumiPages = remember(successState) {
@@ -515,7 +516,7 @@ fun BangumiPlayerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(AppSurfaceTokens.groupedListContainer())
                 ) {
                     when (val state = uiState) {
                         is BangumiPlayerState.Loading -> {

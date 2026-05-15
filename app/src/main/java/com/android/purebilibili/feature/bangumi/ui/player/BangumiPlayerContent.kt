@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.ContainerLevel
 //  Cupertino Icons - iOS SF Symbols 风格图标
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
@@ -155,7 +156,7 @@ fun BangumiPlayerContent(
                         Surface(
                             onClick = { showJumpDialog = true },
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(20.dp)
+                            shape = AppShapes.container(ContainerLevel.Sheet)
                         ) {
                             Text(
                                 text = "跳转",
@@ -212,7 +213,7 @@ fun BangumiPlayerContent(
                             Surface(
                                 onClick = { selectedPage = page },
                                 color = if (isCurrentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                shape = RoundedCornerShape(16.dp)
+                                shape = AppShapes.container(ContainerLevel.Dialog)
                             ) {
                                 Text(
                                     text = "$start-$end",
@@ -294,7 +295,7 @@ fun BangumiPlayerContent(
                                 showFollowStatusDialog = false
                                 onFollowStatusSelect(option.status)
                             },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = AppShapes.container(ContainerLevel.Chip),
                             color = if (detail.userStatus?.followStatus == option.status) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
@@ -344,7 +345,7 @@ fun EpisodeChipSelectable(
 
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
+        shape = AppShapes.container(ContainerLevel.Chip),
         color = if (isSelected) selectedColors.backgroundColor else MaterialTheme.colorScheme.surfaceVariant
     ) {
         Text(

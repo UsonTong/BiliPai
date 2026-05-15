@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.ChevronDown
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.data.model.response.BangumiFilter
 import com.android.purebilibili.feature.bangumi.BangumiDisplayMode
 import com.android.purebilibili.feature.bangumi.resolveBangumiTopModes
@@ -41,7 +43,7 @@ fun BangumiModeTabs(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.container(ContainerLevel.Sheet),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
     ) {
         Row(
@@ -55,8 +57,8 @@ fun BangumiModeTabs(
                 Surface(
                     modifier = Modifier.weight(1f),
                     onClick = { onModeChange(mode) },
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                    shape = AppShapes.container(ContainerLevel.Dialog),
+                    color = if (isSelected) AppSurfaceTokens.cardContainer() else Color.Transparent,
                     shadowElevation = if (isSelected) 1.dp else 0.dp
                 ) {
                     Box(
@@ -188,7 +190,7 @@ fun FilterChip(
         Surface(
             onClick = onClick,
             color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            shape = RoundedCornerShape(8.dp)
+            shape = AppShapes.container(ContainerLevel.Chip)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
