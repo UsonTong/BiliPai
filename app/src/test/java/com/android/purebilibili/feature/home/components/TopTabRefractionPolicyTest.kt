@@ -293,7 +293,10 @@ class TopTabRefractionPolicyTest {
 
         assertFalse(source.contains("val isInteracting = false"))
         assertFalse(source.contains("resolveTopTabStaticIndicatorVisualPolicy(\n                    useNeutralIndicatorTint = true"))
-        assertTrue(source.contains("val rawIndicatorInteracting by remember(pagerState, effectiveLiquidGlassEnabled)"))
+        assertTrue(source.contains("val pagerDragHeld = rememberTopTabPagerDragHeld(pagerState)"))
+        assertTrue(source.contains("val isDragged by pagerState.interactionSource.collectIsDraggedAsState()"))
+        assertTrue(source.contains("val rawIndicatorInteracting by remember(pagerState, pagerDragHeld, effectiveLiquidGlassEnabled)"))
+        assertTrue(source.contains("pagerIsDragging = pagerDragHeld"))
         assertTrue(source.contains("var isInteracting by remember { mutableStateOf(false) }"))
         assertTrue(source.contains("LaunchedEffect(rawIndicatorInteracting, effectiveLiquidGlassEnabled)"))
         assertTrue(source.contains("resolveTopTabIndicatorInteractionReleaseDelayMillis("))

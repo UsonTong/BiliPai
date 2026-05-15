@@ -56,6 +56,18 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
+    fun `held pager drag keeps top tab indicator interacting even when scroll flag drops`() {
+        val interacting = shouldTopTabIndicatorBeInteracting(
+            pagerIsDragging = true,
+            pagerIsScrolling = false,
+            combinedVelocityPxPerSecond = 0f,
+            liquidGlassEnabled = true
+        )
+
+        assertEquals(true, interacting)
+    }
+
+    @Test
     fun `liquid glass top tab keeps enlarged interaction briefly after pager stops`() {
         assertEquals(
             140L,

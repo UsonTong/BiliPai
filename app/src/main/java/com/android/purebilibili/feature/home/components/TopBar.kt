@@ -816,9 +816,11 @@ fun CategoryTabRow(
                 }
             }
             val indicatorVelocityPxPerSecond = 0f
-            val rawIndicatorInteracting by remember(pagerState, effectiveLiquidGlassEnabled) {
+            val pagerDragHeld = rememberTopTabPagerDragHeld(pagerState)
+            val rawIndicatorInteracting by remember(pagerState, pagerDragHeld, effectiveLiquidGlassEnabled) {
                 derivedStateOf {
                     shouldTopTabIndicatorBeInteracting(
+                        pagerIsDragging = pagerDragHeld,
                         pagerIsScrolling = pagerState?.isScrollInProgress == true,
                         combinedVelocityPxPerSecond = indicatorVelocityPxPerSecond,
                         liquidGlassEnabled = effectiveLiquidGlassEnabled
@@ -1607,6 +1609,15 @@ private fun MiuixCategoryTabRow(
     }
 }
 
+@Composable
+private fun rememberTopTabPagerDragHeld(
+    pagerState: androidx.compose.foundation.pager.PagerState?
+): Boolean {
+    if (pagerState == null) return false
+    val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+    return isDragged
+}
+
 internal fun resolveTopTabIndicatorVelocity(
     horizontalVelocityPxPerSecond: Float
 ): Float {
@@ -1615,10 +1626,12 @@ internal fun resolveTopTabIndicatorVelocity(
 }
 
 internal fun shouldTopTabIndicatorBeInteracting(
+    pagerIsDragging: Boolean = false,
     pagerIsScrolling: Boolean,
     combinedVelocityPxPerSecond: Float,
     liquidGlassEnabled: Boolean
 ): Boolean {
+    if (pagerIsDragging) return true
     if (pagerIsScrolling) return true
     val combinedThreshold = if (liquidGlassEnabled) 20f else 60f
     return abs(combinedVelocityPxPerSecond) > combinedThreshold
