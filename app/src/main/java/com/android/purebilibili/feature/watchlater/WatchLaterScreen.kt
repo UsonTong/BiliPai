@@ -57,6 +57,7 @@ import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.data.model.response.Owner
 import com.android.purebilibili.data.model.response.Stat
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.list.resolveDeleteBatchParallelism
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -636,7 +637,16 @@ fun WatchLaterScreen(
 
                         itemsIndexed(
                             items = state.items,
-                            key = { _, item -> item.bvid } 
+                            key = { index, item ->
+                                resolveIndexedVideoLazyKey(
+                                    namespace = "watch_later_video",
+                                    index = index,
+                                    bvid = item.bvid,
+                                    id = item.id,
+                                    aid = item.aid,
+                                    cid = item.cid
+                                )
+                            }
                         ) { index, item ->
                             val isDissolving = item.bvid in state.dissolvingIds
                             val isSelected = item.bvid in selectedBvids

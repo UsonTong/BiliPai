@@ -28,6 +28,7 @@ import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
 import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
 import com.android.purebilibili.core.util.LocalWindowSizeClass
@@ -209,7 +210,16 @@ fun CategoryScreen(
                 ) {
                     itemsIndexed(
                         items = videos,
-                        key = { _, video -> video.bvid }
+                        key = { index, video ->
+                            resolveIndexedVideoLazyKey(
+                                namespace = "category_video",
+                                index = index,
+                                bvid = video.bvid,
+                                id = video.id,
+                                aid = video.aid,
+                                cid = video.cid
+                            )
+                        }
                     ) { index, video ->
                         //  [修复] 根据首页设置选择卡片样式（与 HomeScreen 一致）
                         when (displayMode) {

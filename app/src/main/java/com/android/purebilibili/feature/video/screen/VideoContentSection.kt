@@ -60,6 +60,7 @@ import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.VideoTag
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.data.model.response.BgmInfo
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
@@ -641,7 +642,18 @@ private fun VideoIntroTab(
             VideoRecommendationHeader()
         }
 
-        itemsIndexed(items = relatedVideos, key = { _, item -> item.bvid }) { index, video ->
+        itemsIndexed(
+            items = relatedVideos,
+            key = { index, item ->
+                resolveIndexedVideoLazyKey(
+                    namespace = "video_related",
+                    index = index,
+                    bvid = item.bvid,
+                    aid = item.aid,
+                    cid = item.cid
+                )
+            }
+        ) { index, video ->
             val openRelatedVideo = {
                 val navOptions = if (video.cid > 0L) {
                     android.os.Bundle().apply {

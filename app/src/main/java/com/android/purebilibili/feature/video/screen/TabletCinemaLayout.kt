@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -92,6 +93,7 @@ import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
 import com.android.purebilibili.core.util.ShareUtils
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.video.state.VideoPlayerState
@@ -1205,10 +1207,18 @@ private fun CinemaRelatedPane(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(
+        itemsIndexed(
             items = success.related,
-            key = { "curtain_related_${it.bvid}" }
-        ) { video ->
+            key = { index, item ->
+                resolveIndexedVideoLazyKey(
+                    namespace = "cinema_related",
+                    index = index,
+                    bvid = item.bvid,
+                    aid = item.aid,
+                    cid = item.cid
+                )
+            }
+        ) { _, video ->
             RelatedVideoItem(
                 video = video,
                 isFollowed = video.owner.mid in success.followingMids,

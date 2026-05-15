@@ -8,6 +8,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import com.android.purebilibili.core.ui.AdaptiveSplitLayout
 import com.android.purebilibili.core.util.ShareUtils
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.video.state.VideoPlayerState
@@ -697,10 +699,18 @@ private fun TabletSecondaryContent(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(8.dp)
                     ) {
-                        items(
+                        itemsIndexed(
                             items = success.related,
-                            key = { "related_${it.bvid}" }
-                        ) { video ->
+                            key = { index, item ->
+                                resolveIndexedVideoLazyKey(
+                                    namespace = "tablet_related",
+                                    index = index,
+                                    bvid = item.bvid,
+                                    aid = item.aid,
+                                    cid = item.cid
+                                )
+                            }
+                        ) { _, video ->
                             RelatedVideoItem(
                                 video = video,
                                 isFollowed = video.owner.mid in success.followingMids,

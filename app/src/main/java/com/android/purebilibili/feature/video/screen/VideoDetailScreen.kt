@@ -101,6 +101,7 @@ import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.VideoTag
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 // Refactored UI components
 import com.android.purebilibili.feature.video.ui.section.VideoTitleSection
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
@@ -4232,7 +4233,17 @@ private fun ExternalPlaylistQueueSheetContent(
                 .heightIn(max = listMaxHeight),
             contentPadding = PaddingValues(bottom = bottomSpacerHeight)
         ) {
-            items(playlist.size, key = { index -> playlist[index].bvid }) { index ->
+            items(
+                playlist.size,
+                key = { index ->
+                    val item = playlist[index]
+                    resolveIndexedVideoLazyKey(
+                        namespace = "video_playlist",
+                        index = index,
+                        bvid = item.bvid
+                    )
+                }
+            ) { index ->
                 val item = playlist[index]
                 val selected = index == currentIndex
                 val normalizedCoverUrl = normalizePlaylistCoverUrlForUi(item.cover)

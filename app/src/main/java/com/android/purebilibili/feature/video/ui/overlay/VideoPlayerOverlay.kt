@@ -50,6 +50,7 @@ import com.android.purebilibili.feature.video.ui.components.PagesSelector
 import com.android.purebilibili.data.model.response.SponsorProgressMarker
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.video.progress.PbpRidgeSample
 import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
 import kotlinx.coroutines.delay
@@ -72,6 +73,7 @@ import com.android.purebilibili.core.util.Logger
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -2198,7 +2200,18 @@ fun LandscapeEndDrawer(
                                 contentPadding = PaddingValues(layoutPolicy.listContentPaddingDp.dp),
                                 verticalArrangement = Arrangement.spacedBy(layoutPolicy.listItemSpacingDp.dp)
                             ) {
-                                items(relatedVideos) { video ->
+                                itemsIndexed(
+                                    items = relatedVideos,
+                                    key = { index, item ->
+                                        resolveIndexedVideoLazyKey(
+                                            namespace = "overlay_related",
+                                            index = index,
+                                            bvid = item.bvid,
+                                            aid = item.aid,
+                                            cid = item.cid
+                                        )
+                                    }
+                                ) { _, video ->
                                     LandscapeVideoItem(
                                         video = video,
                                         layoutPolicy = layoutPolicy,
