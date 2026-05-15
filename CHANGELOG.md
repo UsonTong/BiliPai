@@ -1,5 +1,24 @@
 # Changelog
 
+## v8.2.1 (2026-05-15)
+
+### 版本信息
+- 版本号从 `8.2.0` 升级到 `8.2.1`，`versionCode` 升级到 `191`。
+- 本次为“原生控件适配 + 顶栏/底栏液态玻璃打磨 + 播放稳定性修复”的维护更新。
+
+### 更新内容
+- **MIUIX 原生控件适配**：升级并适配 MIUIX 0.9.1，补齐原生列表分组、开关和基础控件的结构策略，设置与列表表面更贴近系统控件语义。
+- **顶部标签液态玻璃**：优化 MIUIX 顶部标签的液态玻璃表现，稳定拖拽状态、折射强度和指示器跟手形变，减少拖拽结束后的突兀跳变。
+- **底栏指示器复用**：底栏指示器复用既有色散和形变动效，让图标、文字和指示器在切换时保持一致节奏，减少重复实现带来的手感差异。
+- **播放稳定性**：修复重复视频 Key 导致的闪退；修复竖屏弹幕显示区域比例，让竖屏播放下弹幕区域更符合播放器内容空间。
+- **关闭共享元素后的原生转场**：关闭共享元素动画时，视频详情进退场改为按来源卡片左右方向对称运动，左侧卡片与右侧卡片方向相反，返回不再像直接退出。
+- **番剧与视觉 token 收敛**：番剧列表、次级组件和部分播放器/列表入口继续迁移到预设 token，减少硬编码样式和跨页面视觉偏差。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationMotionSpecTest' --tests 'com.android.purebilibili.feature.common.VideoLazyKeyPolicyTest' --tests 'com.android.purebilibili.feature.video.ui.pager.PortraitVideoPagerPolicyTest' --tests 'com.android.purebilibili.feature.home.components.TopTabMotionVelocityTest' --tests 'com.android.purebilibili.feature.home.components.TopTabStylePolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControlStructureTest' --tests 'com.android.purebilibili.core.ui.components.AppAdaptiveSwitchPolicyTest' --tests 'com.android.purebilibili.core.ui.components.IOSGroupSurfaceShapeStructureTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.2.0 (2026-05-15)
 
 ### 版本信息
