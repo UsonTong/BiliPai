@@ -1,6 +1,7 @@
 package com.android.purebilibili.core.ui.components
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.MotionSpringConfig
@@ -8,15 +9,18 @@ import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 
 internal enum class AppAdaptiveSwitchTreatment {
     MATERIAL,
+    MIUIX,
     CUPERTINO,
     LIQUID_GLASS
 }
 
 internal fun resolveAppAdaptiveSwitchTreatment(
     uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
     settingsLiquidGlassEnabled: Boolean
 ): AppAdaptiveSwitchTreatment {
     return when {
+        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> AppAdaptiveSwitchTreatment.MIUIX
         uiPreset == UiPreset.MD3 -> AppAdaptiveSwitchTreatment.MATERIAL
         settingsLiquidGlassEnabled -> AppAdaptiveSwitchTreatment.LIQUID_GLASS
         else -> AppAdaptiveSwitchTreatment.CUPERTINO

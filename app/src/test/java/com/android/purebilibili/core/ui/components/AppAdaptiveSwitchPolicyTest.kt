@@ -1,6 +1,7 @@
 package com.android.purebilibili.core.ui.components
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
@@ -38,6 +39,19 @@ class AppAdaptiveSwitchPolicyTest {
             AppAdaptiveSwitchTreatment.MATERIAL,
             resolveAppAdaptiveSwitchTreatment(
                 uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                settingsLiquidGlassEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun `android native miuix variant uses miuix switch treatment`() {
+        assertEquals(
+            AppAdaptiveSwitchTreatment.MIUIX,
+            resolveAppAdaptiveSwitchTreatment(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
                 settingsLiquidGlassEnabled = true
             )
         )

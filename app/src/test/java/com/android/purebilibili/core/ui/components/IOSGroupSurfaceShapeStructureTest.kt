@@ -18,6 +18,27 @@ class IOSGroupSurfaceShapeStructureTest {
         assertTrue(iosGroupSource.contains("shape = appliedShape,"))
     }
 
+    @Test
+    fun `miuix grouped settings use native card and preference rows`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/core/ui/components/iOSListComponents.kt")
+        val iosGroupSource = source
+            .substringAfter("fun IOSGroup(")
+            .substringBefore("@Composable\nfun IOSSwitchItem")
+        val switchItemSource = source
+            .substringAfter("fun IOSSwitchItem(")
+            .substringBefore("@Composable\nfun IOSClickableItem")
+        val clickableItemSource = source
+            .substringAfter("fun IOSClickableItem(")
+            .substringBefore("@Composable\nfun IOSSearchBar")
+
+        assertTrue(source.contains("Card as MiuixCard"))
+        assertTrue(source.contains("SwitchPreference as MiuixSwitchPreference"))
+        assertTrue(source.contains("ArrowPreference as MiuixArrowPreference"))
+        assertTrue(iosGroupSource.contains("MiuixCard("))
+        assertTrue(switchItemSource.contains("MiuixSwitchPreference("))
+        assertTrue(clickableItemSource.contains("MiuixArrowPreference("))
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

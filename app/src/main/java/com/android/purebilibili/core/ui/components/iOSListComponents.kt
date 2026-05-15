@@ -62,6 +62,12 @@ import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
+import top.yukonga.miuix.kmp.basic.Card as MiuixCard
+import top.yukonga.miuix.kmp.basic.CardDefaults as MiuixCardDefaults
+import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
+import top.yukonga.miuix.kmp.preference.ArrowPreference as MiuixArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference as MiuixSwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.max
 
@@ -337,6 +343,7 @@ fun AppAdaptiveSwitch(
     enabled: Boolean = true
 ) {
     val uiPreset = LocalUiPreset.current
+    val androidNativeVariant = LocalAndroidNativeVariant.current
     val settingsLiquidGlassEnabled = LocalSettingsLiquidGlassEnabled.current
     val colorScheme = MaterialTheme.colorScheme
     val switchSpec = remember(uiPreset, colorScheme) {
@@ -348,6 +355,7 @@ fun AppAdaptiveSwitch(
     when (
         resolveAppAdaptiveSwitchTreatment(
             uiPreset = uiPreset,
+            androidNativeVariant = androidNativeVariant,
             settingsLiquidGlassEnabled = settingsLiquidGlassEnabled
         )
     ) {
@@ -375,6 +383,14 @@ fun AppAdaptiveSwitch(
                     )
                 )
             }
+        }
+        AppAdaptiveSwitchTreatment.MIUIX -> {
+            MiuixSwitch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                modifier = modifier
+            )
         }
         AppAdaptiveSwitchTreatment.CUPERTINO -> {
             CupertinoSwitch(
@@ -579,6 +595,18 @@ fun IOSGroup(
         androidNativeVariant = androidNativeVariant,
         globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
     )
+
+    if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+        MiuixCard(
+            modifier = modifier.padding(horizontal = 14.dp),
+            cornerRadius = visualSpec.groupCornerRadiusDp.dp,
+            insideMargin = PaddingValues(0.dp),
+            colors = MiuixCardDefaults.defaultColors(color = resolvedContainerColor)
+        ) {
+            content()
+        }
+        return
+    }
     
     Surface(
         modifier = modifier
@@ -639,6 +667,40 @@ fun IOSSwitchItem(
     val effectiveIconTint = rememberAdaptiveSemanticIconTint(iconTint, uiPreset)
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val iconCornerRadius = if (uiPreset == UiPreset.MD3) visualSpec.iconCornerRadiusDp.dp else iOSCornerRadius.Small * cornerRadiusScale
+    if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
+        MiuixSwitchPreference(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            title = title,
+            titleColor = BasicComponentDefaults.titleColor(color = textColor),
+            summary = subtitle,
+            summaryColor = BasicComponentDefaults.summaryColor(color = subtitleColor),
+            enabled = enabled,
+            insideMargin = PaddingValues(
+                horizontal = rowSpec.insideHorizontalPaddingDp.dp,
+                vertical = rowSpec.insideVerticalPaddingDp.dp
+            ),
+            startAction = {
+                if (icon != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(visualSpec.iconContainerSizeDp.dp)
+                            .clip(RoundedCornerShape(visualSpec.iconCornerRadiusDp.dp))
+                            .background(effectiveIconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = effectiveIconTint,
+                            modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                        )
+                    }
+                }
+            }
+        )
+        return
+    }
     if (uiPreset == UiPreset.MD3) {
         BasicComponent(
             title = title,
@@ -747,6 +809,83 @@ fun IOSClickableItem(
     val effectiveIconTint = rememberAdaptiveSemanticIconTint(iconTint, uiPreset)
     val cornerRadiusScale = LocalCornerRadiusScale.current
     val iconCornerRadius = if (uiPreset == UiPreset.MD3) visualSpec.iconCornerRadiusDp.dp else iOSCornerRadius.Small * cornerRadiusScale
+    if (
+        uiPreset == UiPreset.MD3 &&
+        androidNativeVariant == AndroidNativeVariant.MIUIX &&
+        onClick != null &&
+        showChevron &&
+        !centered
+    ) {
+        MiuixArrowPreference(
+            title = title,
+            titleColor = BasicComponentDefaults.titleColor(color = textColor),
+            summary = subtitle,
+            summaryColor = BasicComponentDefaults.summaryColor(color = subtitleColor),
+            onClick = onClick,
+            insideMargin = PaddingValues(
+                horizontal = rowSpec.insideHorizontalPaddingDp.dp,
+                vertical = rowSpec.insideVerticalPaddingDp.dp
+            ),
+            startAction = {
+                when {
+                    icon != null -> {
+                        Box(
+                            modifier = Modifier
+                                .size(visualSpec.iconContainerSizeDp.dp)
+                                .clip(RoundedCornerShape(visualSpec.iconCornerRadiusDp.dp))
+                                .background(effectiveIconTint.copy(alpha = visualSpec.iconBackgroundAlpha)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = effectiveIconTint,
+                                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                            )
+                        }
+                    }
+
+                    iconPainter != null -> {
+                        Box(
+                            modifier = Modifier
+                                .size(visualSpec.iconContainerSizeDp.dp)
+                                .clip(RoundedCornerShape(visualSpec.iconCornerRadiusDp.dp))
+                                .background(
+                                    if (effectiveIconTint == Color.Unspecified) {
+                                        Color.Transparent
+                                    } else {
+                                        effectiveIconTint.copy(alpha = visualSpec.iconBackgroundAlpha)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = iconPainter,
+                                contentDescription = null,
+                                tint = effectiveIconTint,
+                                modifier = Modifier.size(visualSpec.iconGlyphSizeDp.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            endActions = {
+                if (!value.isNullOrBlank()) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = valueColor,
+                        modifier = if (enableCopy) {
+                            Modifier.copyOnLongPress(copyValue ?: value, title)
+                        } else {
+                            Modifier
+                        }
+                    )
+                }
+            }
+        )
+        return
+    }
     if (uiPreset == UiPreset.MD3) {
         BasicComponent(
             title = title,

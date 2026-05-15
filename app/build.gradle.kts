@@ -63,7 +63,11 @@ val buildReleaseTag = providers.gradleProperty("bili.build.releaseTag")
 
 android {
     namespace = "com.android.purebilibili"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
 
     // 投屏服务进程开关：
     // 默认独立 :cast 进程（通过 CastBridgeService 做跨进程 IPC）
@@ -258,7 +262,7 @@ tasks.matching { task ->
 // }
 
 dependencies {
-    val miuixVersion = "0.8.6"
+    val miuixVersion = "0.9.1"
     val material3Version = "1.5.0-alpha18"
     val media3Version = "1.10.0"
     val lifecycleVersion = "2.10.0"
@@ -278,7 +282,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3:$material3Version")
     implementation("androidx.compose.material3:material3-window-size-class:$material3Version") // [新增] 窗口大小类
-    implementation("top.yukonga.miuix.kmp:miuix-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
     // 图标扩展库 (全屏、设置图标等)
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.animation:animation")

@@ -297,6 +297,7 @@ class BottomBarMiuixStructureTest {
         assertTrue(source.contains("private enum class SharedFloatingBottomBarIconStyle"))
         assertTrue(source.contains("MiuixNavigationBar("))
         assertTrue(source.contains("MiuixDockedBottomBarItem("))
+        assertTrue(source.contains("NavigationBarDisplayMode as MiuixNavigationBarDisplayMode"))
     }
 
     @Test
