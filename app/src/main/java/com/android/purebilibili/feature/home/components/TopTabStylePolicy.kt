@@ -327,3 +327,13 @@ internal fun resolveEffectiveTopTabLiquidGlassEnabled(
 ): Boolean {
     return isLiquidGlassEnabled
 }
+
+internal fun shouldDrawHomeTopTabOuterChromeSurface(
+    uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant,
+    materialMode: TopTabMaterialMode
+): Boolean {
+    return !(uiPreset == UiPreset.MD3 &&
+        androidNativeVariant == AndroidNativeVariant.MIUIX &&
+        materialMode == TopTabMaterialMode.LIQUID_GLASS)
+}

@@ -65,6 +65,7 @@ internal fun HomeTopTabChrome(
     gestureEnabled: Boolean = false,
     isTabsCollapsed: Boolean = false,
     onTabsCollapsedChange: ((Boolean) -> Unit)? = null,
+    drawChromeSurface: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -121,7 +122,7 @@ internal fun HomeTopTabChrome(
                 .fillMaxSize()
                 .padding(horizontal = tabHorizontalPadding, vertical = tabVerticalPadding)
                 .then(
-                    if (isTabFloating) {
+                    if (drawChromeSurface && isTabFloating) {
                         Modifier.shadow(
                             elevation = effectiveTabShadowElevation,
                             shape = tabShape,
@@ -132,22 +133,28 @@ internal fun HomeTopTabChrome(
                         Modifier
                     }
                 )
-                .homeTopChromeSurface(
-                    renderMode = tabChromeRenderMode,
-                    shape = tabShape,
-                    surfaceColor = tabSurfaceColor,
-                    hazeState = hazeState,
-                    backdrop = backdrop,
-                    liquidStyle = liquidStyle,
-                    liquidGlassTuning = liquidGlassTuning,
-                    motionTier = motionTier,
-                    isScrolling = isScrolling,
-                    isTransitionRunning = isTransitionRunning,
-                    forceLowBlurBudget = forceLowBlurBudget,
-                    preferFlatGlass = preferFlatGlass
+                .then(
+                    if (drawChromeSurface) {
+                        Modifier.homeTopChromeSurface(
+                            renderMode = tabChromeRenderMode,
+                            shape = tabShape,
+                            surfaceColor = tabSurfaceColor,
+                            hazeState = hazeState,
+                            backdrop = backdrop,
+                            liquidStyle = liquidStyle,
+                            liquidGlassTuning = liquidGlassTuning,
+                            motionTier = motionTier,
+                            isScrolling = isScrolling,
+                            isTransitionRunning = isTransitionRunning,
+                            forceLowBlurBudget = forceLowBlurBudget,
+                            preferFlatGlass = preferFlatGlass
+                        )
+                    } else {
+                        Modifier
+                    }
                 )
                 .then(
-                    if (isTabFloating) {
+                    if (drawChromeSurface && isTabFloating) {
                         Modifier.border(
                             width = 0.8.dp,
                             color = Color.White.copy(alpha = tabBorderAlpha),
@@ -159,26 +166,28 @@ internal fun HomeTopTabChrome(
                 )
                 .graphicsLayer { alpha = tabContentAlpha }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(tabContentUnderlayColor, tabShape)
-            )
-            if (isTabFloating) {
+            if (drawChromeSurface) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    tabHighlightColor,
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = tabShape
-                        )
+                        .fillMaxSize()
+                        .background(tabContentUnderlayColor, tabShape)
                 )
+                if (isTabFloating) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(16.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        tabHighlightColor,
+                                        Color.Transparent
+                                    )
+                                ),
+                                shape = tabShape
+                            )
+                    )
+                }
             }
             content()
         }

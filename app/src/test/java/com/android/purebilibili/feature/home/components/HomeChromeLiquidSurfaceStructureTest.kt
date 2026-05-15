@@ -60,8 +60,13 @@ class HomeChromeLiquidSurfaceStructureTest {
             topBar.readText().contains(".kernelSuFloatingDockSurface(")
         )
         assertTrue(
-            "top tab row should render its own dock surface when embedded in the unified top panel",
-            topHeaderSource.contains("hasOuterChromeSurface = !useUnifiedTopPanel")
+            "top tab row should only treat chrome as external when the outer surface is actually drawn",
+            topHeaderSource.contains("hasOuterChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface")
+        )
+        assertTrue(
+            "home header should be able to suppress the top tab outer chrome for native Miuix glass",
+            topHeaderSource.contains("drawChromeSurface = drawTopTabOuterChromeSurface") &&
+                topTabChrome.readText().contains("drawChromeSurface: Boolean = true")
         )
         assertTrue(
             "top tab dock should use the same KSU dock surface renderer as the bottom bar",

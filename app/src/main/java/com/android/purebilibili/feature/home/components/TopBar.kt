@@ -91,6 +91,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import com.android.purebilibili.core.ui.motion.BottomBarMotionProfile
 import com.android.purebilibili.core.ui.motion.resolveBottomBarMotionSpec
 import androidx.compose.foundation.combinedClickable // [Added]
@@ -815,13 +816,25 @@ fun CategoryTabRow(
                 }
             }
             val indicatorVelocityPxPerSecond = 0f
-            val isInteracting by remember(pagerState, effectiveLiquidGlassEnabled) {
+            val rawIndicatorInteracting by remember(pagerState, effectiveLiquidGlassEnabled) {
                 derivedStateOf {
                     shouldTopTabIndicatorBeInteracting(
                         pagerIsScrolling = pagerState?.isScrollInProgress == true,
                         combinedVelocityPxPerSecond = indicatorVelocityPxPerSecond,
                         liquidGlassEnabled = effectiveLiquidGlassEnabled
                     )
+                }
+            }
+            var isInteracting by remember { mutableStateOf(false) }
+            LaunchedEffect(rawIndicatorInteracting, effectiveLiquidGlassEnabled) {
+                if (rawIndicatorInteracting) {
+                    isInteracting = true
+                } else {
+                    val releaseDelayMillis = resolveTopTabIndicatorInteractionReleaseDelayMillis(
+                        liquidGlassEnabled = effectiveLiquidGlassEnabled
+                    )
+                    if (releaseDelayMillis > 0L) delay(releaseDelayMillis)
+                    isInteracting = false
                 }
             }
             val contentMotionInProgress = isInteracting
@@ -1609,6 +1622,12 @@ internal fun shouldTopTabIndicatorBeInteracting(
     if (pagerIsScrolling) return true
     val combinedThreshold = if (liquidGlassEnabled) 20f else 60f
     return abs(combinedVelocityPxPerSecond) > combinedThreshold
+}
+
+internal fun resolveTopTabIndicatorInteractionReleaseDelayMillis(
+    liquidGlassEnabled: Boolean
+): Long {
+    return if (liquidGlassEnabled) 140L else 0L
 }
 
 internal fun shouldTopTabIndicatorUseRefraction(

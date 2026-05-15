@@ -1350,6 +1350,11 @@ fun iOSHomeHeader(
         materialMode = topChromeMaterialMode,
         interactionBudget = interactionBudget
     )
+    val drawTopTabOuterChromeSurface = shouldDrawHomeTopTabOuterChromeSurface(
+        uiPreset = uiPreset,
+        androidNativeVariant = androidNativeVariant,
+        materialMode = effectiveTabMaterialMode
+    )
     val rawHeaderChromeColors = tuneHomeTopGlassColors(
         colors = rememberHomeGlassChromeColors(
             glassEnabled = isGlassEnabled,
@@ -2341,7 +2346,8 @@ fun iOSHomeHeader(
                         },
                         gestureEnabled = topTabsVisible && !isHeaderCollapseEnabled,
                         isTabsCollapsed = topTabsCollapsed,
-                        onTabsCollapsedChange = onTopTabsCollapsedChange
+                        onTabsCollapsedChange = onTopTabsCollapsedChange,
+                        drawChromeSurface = drawTopTabOuterChromeSurface
                     ) {
                         CategoryTabRow(
                             categories = topCategories,
@@ -2365,7 +2371,7 @@ fun iOSHomeHeader(
                             backdrop = backdrop,
                             isFloatingStyle = isTabFloating,
                             edgeToEdge = integratedCollapsedTopBar,
-                            hasOuterChromeSurface = !useUnifiedTopPanel,
+                            hasOuterChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface,
                             interactionBudget = interactionBudget,
                             motionTier = motionTier,
                             isTransitionRunning = isTransitionRunning,

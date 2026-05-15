@@ -252,6 +252,38 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `android native miuix liquid glass top tabs skip outer chrome surface`() {
+        assertFalse(
+            shouldDrawHomeTopTabOuterChromeSurface(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                materialMode = TopTabMaterialMode.LIQUID_GLASS
+            )
+        )
+        assertTrue(
+            shouldDrawHomeTopTabOuterChromeSurface(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                materialMode = TopTabMaterialMode.BLUR
+            )
+        )
+        assertTrue(
+            shouldDrawHomeTopTabOuterChromeSurface(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                materialMode = TopTabMaterialMode.LIQUID_GLASS
+            )
+        )
+        assertTrue(
+            shouldDrawHomeTopTabOuterChromeSurface(
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                materialMode = TopTabMaterialMode.LIQUID_GLASS
+            )
+        )
+    }
+
+    @Test
     fun `md3 selected top tab should reuse material primary emphasis`() {
         val colorScheme = lightColorScheme(
             surface = Color.White,

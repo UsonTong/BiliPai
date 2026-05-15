@@ -56,6 +56,18 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
+    fun `liquid glass top tab keeps enlarged interaction briefly after pager stops`() {
+        assertEquals(
+            140L,
+            resolveTopTabIndicatorInteractionReleaseDelayMillis(liquidGlassEnabled = true)
+        )
+        assertEquals(
+            0L,
+            resolveTopTabIndicatorInteractionReleaseDelayMillis(liquidGlassEnabled = false)
+        )
+    }
+
+    @Test
     fun `tiny pager jitter is ignored by horizontal delta resolver`() {
         val delta = resolveTopTabHorizontalDeltaPx(
             positionDeltaPages = 0.0008f,
