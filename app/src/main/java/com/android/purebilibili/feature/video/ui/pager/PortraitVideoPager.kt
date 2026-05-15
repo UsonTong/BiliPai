@@ -2248,7 +2248,8 @@ private fun PortraitDanmakuOverlay(
 internal fun resolvePortraitPagerRepeatMode(): Int = Player.REPEAT_MODE_OFF
 
 internal fun resolvePortraitDanmakuSurfaceMode(currentVideoAspect: Float): PortraitDanmakuSurfaceMode {
-    return PortraitDanmakuSurfaceMode.Page
+    // 显示区域比例应以视频画面为基准；挂在整页会让 1/4 在横向视频里看起来接近半屏。
+    return PortraitDanmakuSurfaceMode.VideoViewport
 }
 
 internal fun shouldInsetPortraitDanmakuFromStatusBar(

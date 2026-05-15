@@ -207,17 +207,17 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
-    fun portraitDanmakuSurface_usesPageLayerSoDanmakuStartsAtScreenTop() {
+    fun portraitDanmakuSurface_usesVideoViewportSoDisplayAreaMatchesVideoHeight() {
         assertEquals(
-            PortraitDanmakuSurfaceMode.Page,
+            PortraitDanmakuSurfaceMode.VideoViewport,
             resolvePortraitDanmakuSurfaceMode(currentVideoAspect = 16f / 9f)
         )
     }
 
     @Test
-    fun portraitDanmakuSurface_usesPageLayerForPortraitVideoToo() {
+    fun portraitDanmakuSurface_usesVideoViewportForPortraitVideoToo() {
         assertEquals(
-            PortraitDanmakuSurfaceMode.Page,
+            PortraitDanmakuSurfaceMode.VideoViewport,
             resolvePortraitDanmakuSurfaceMode(currentVideoAspect = 9f / 16f)
         )
     }
