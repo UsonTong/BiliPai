@@ -1182,7 +1182,7 @@ internal fun resolveBottomBarIndicatorLayerTransform(
 }
 
 @Composable
-private fun rememberBottomBarIndicatorDragScaleProgress(
+internal fun rememberBottomBarIndicatorDragScaleProgress(
     isDragging: Boolean
 ): Float {
     val progress = remember { Animatable(0f) }
