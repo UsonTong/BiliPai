@@ -1249,7 +1249,7 @@ internal fun resolveBottomBarSettleReboundTransform(
 }
 
 @Composable
-private fun rememberBottomBarClickPulseTransform(
+internal fun rememberBottomBarClickPulseTransform(
     pulseKey: Int
 ): BottomBarClickPulseTransform {
     val progress = remember { Animatable(1f) }
