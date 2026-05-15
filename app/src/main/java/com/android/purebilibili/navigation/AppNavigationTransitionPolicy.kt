@@ -18,6 +18,7 @@ internal enum class BackRouteMotionMode {
 
 internal enum class VideoCardReturnEnterAction {
     NO_OP,
+    LEFT_SLIDE,
     RIGHT_SLIDE,
     SOFT_FADE,
     SEAMLESS_FADE
@@ -35,7 +36,8 @@ internal enum class VideoPushEnterAction {
     NO_OP,
     HERO_EXPAND_FADE,
     SOFT_FADE,
-    LEFT_SLIDE
+    LEFT_SLIDE,
+    RIGHT_SLIDE
 }
 
 internal data class VideoPopExitDecision(
@@ -48,7 +50,8 @@ internal fun resolveVideoPushEnterAction(
     predictiveBackAnimationEnabled: Boolean,
     fromRoute: String?,
     toRoute: String?,
-    sharedTransitionReady: Boolean
+    sharedTransitionReady: Boolean,
+    lastClickedCardCenterX: Float? = null
 ): VideoPushEnterAction {
     if (
         shouldUseNoOpRouteTransitionBetweenVideoDetails(
@@ -58,6 +61,10 @@ internal fun resolveVideoPushEnterAction(
         )
     ) {
         return VideoPushEnterAction.NO_OP
+    }
+
+    if (!cardTransitionEnabled) {
+        return resolveVideoPushEnterActionForCardSource(lastClickedCardCenterX)
     }
 
     val backRouteMotionMode = resolveBackRouteMotionMode(
@@ -85,6 +92,7 @@ internal fun resolveVideoCardReturnEnterAction(
     sharedTransitionReady: Boolean,
     isTabletLayout: Boolean,
     allowNoOpSharedElement: Boolean,
+    lastClickedCardCenterX: Float? = null,
     noCardTransitionAction: VideoCardReturnEnterAction = VideoCardReturnEnterAction.RIGHT_SLIDE
 ): VideoCardReturnEnterAction? {
     if (!isVideoDetailRoute(fromRoute)) return null
@@ -106,6 +114,9 @@ internal fun resolveVideoCardReturnEnterAction(
     }
 
     if (backRouteMotionMode == BackRouteMotionMode.CARD_DISABLED) {
+        if (isVideoCardReturnTargetRoute(targetRoute)) {
+            return resolveVideoCardReturnEnterActionForCardSource(lastClickedCardCenterX)
+        }
         return noCardTransitionAction
     }
 
@@ -251,6 +262,30 @@ internal fun shouldUseNoOpRouteTransitionOnQuickReturn(
         VideoSharedTransitionProfile.COVER_ONLY -> sharedTransitionReady
         VideoSharedTransitionProfile.COVER_AND_METADATA -> true
     }
+}
+
+private fun resolveVideoPushEnterActionForCardSource(
+    lastClickedCardCenterX: Float?
+): VideoPushEnterAction {
+    return if (isLeftSourceCard(lastClickedCardCenterX)) {
+        VideoPushEnterAction.RIGHT_SLIDE
+    } else {
+        VideoPushEnterAction.LEFT_SLIDE
+    }
+}
+
+private fun resolveVideoCardReturnEnterActionForCardSource(
+    lastClickedCardCenterX: Float?
+): VideoCardReturnEnterAction {
+    return if (lastClickedCardCenterX == null || isLeftSourceCard(lastClickedCardCenterX)) {
+        VideoCardReturnEnterAction.RIGHT_SLIDE
+    } else {
+        VideoCardReturnEnterAction.LEFT_SLIDE
+    }
+}
+
+private fun isLeftSourceCard(lastClickedCardCenterX: Float?): Boolean {
+    return (lastClickedCardCenterX ?: 0.5f) < 0.5f
 }
 
 internal fun shouldUseNoOpRouteTransitionBetweenVideoDetails(

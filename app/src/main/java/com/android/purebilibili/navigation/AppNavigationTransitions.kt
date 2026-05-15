@@ -41,10 +41,12 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.resolveVideoCardR
             isQuickReturnFromDetail = CardPositionManager.isQuickReturnFromDetail,
             sharedTransitionReady = sharedTransitionReady,
             isTabletLayout = isTabletLayout,
-            allowNoOpSharedElement = allowNoOpSharedElement
+            allowNoOpSharedElement = allowNoOpSharedElement,
+            lastClickedCardCenterX = CardPositionManager.lastClickedCardCenter?.x
         )
     ) {
         VideoCardReturnEnterAction.NO_OP -> EnterTransition.None
+        VideoCardReturnEnterAction.LEFT_SLIDE -> slideEnterLeft(navMotionSpec)
         VideoCardReturnEnterAction.SOFT_FADE -> {
             fadeIn(
                 animationSpec = continuityTween(navMotionSpec.mediumFadeDurationMillis),

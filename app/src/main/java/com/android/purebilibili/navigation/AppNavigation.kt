@@ -1009,6 +1009,7 @@ fun AppNavigation(
                     sharedTransitionReady = sharedTransitionReady,
                     isTabletLayout = isTabletLayout,
                     allowNoOpSharedElement = true,
+                    lastClickedCardCenterX = CardPositionManager.lastClickedCardCenter?.x,
                     noCardTransitionAction = VideoCardReturnEnterAction.SOFT_FADE
                 )
                 if (fromSettings) {
@@ -1016,6 +1017,7 @@ fun AppNavigation(
                 } else {
                     when (action) {
                         VideoCardReturnEnterAction.NO_OP -> EnterTransition.None
+                        VideoCardReturnEnterAction.LEFT_SLIDE -> slideEnterLeft(navMotionSpec)
                         VideoCardReturnEnterAction.RIGHT_SLIDE -> slideEnterRight(navMotionSpec)
                         VideoCardReturnEnterAction.SEAMLESS_FADE -> {
                             fadeIn(
@@ -1419,7 +1421,8 @@ fun AppNavigation(
                         predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
                         fromRoute = fromRoute,
                         toRoute = targetRoute,
-                        sharedTransitionReady = sharedTransitionReady
+                        sharedTransitionReady = sharedTransitionReady,
+                        lastClickedCardCenterX = CardPositionManager.lastClickedCardCenter?.x
                     )
                 ) {
                     VideoPushEnterAction.NO_OP -> EnterTransition.None
@@ -1463,6 +1466,12 @@ fun AppNavigation(
                     VideoPushEnterAction.LEFT_SLIDE -> {
                         slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(navMotionSpec.slowFadeDurationMillis)
+                        )
+                    }
+                    VideoPushEnterAction.RIGHT_SLIDE -> {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(navMotionSpec.slowFadeDurationMillis)
                         )
                     }

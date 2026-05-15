@@ -286,7 +286,38 @@ class AppNavigationTransitionPolicyTest {
                 predictiveBackAnimationEnabled = false,
                 fromRoute = ScreenRoutes.Home.route,
                 toRoute = VideoRoute.route,
-                sharedTransitionReady = false
+                sharedTransitionReady = false,
+                lastClickedCardCenterX = null
+            )
+        )
+    }
+
+    @Test
+    fun videoPushEnterAction_cardTransitionDisabled_leftSourceEntersFromLeft() {
+        assertEquals(
+            VideoPushEnterAction.RIGHT_SLIDE,
+            resolveVideoPushEnterAction(
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = false,
+                fromRoute = ScreenRoutes.Home.route,
+                toRoute = VideoRoute.route,
+                sharedTransitionReady = false,
+                lastClickedCardCenterX = 0.2f
+            )
+        )
+    }
+
+    @Test
+    fun videoPushEnterAction_cardTransitionDisabled_rightSourceEntersFromRight() {
+        assertEquals(
+            VideoPushEnterAction.LEFT_SLIDE,
+            resolveVideoPushEnterAction(
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = false,
+                fromRoute = ScreenRoutes.Home.route,
+                toRoute = VideoRoute.route,
+                sharedTransitionReady = false,
+                lastClickedCardCenterX = 0.8f
             )
         )
     }
@@ -733,12 +764,69 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun videoCardReturnEnterAction_cardDisabled_respectsFallbackAction() {
+    fun videoCardReturnEnterAction_cardDisabled_cardTargetUsesDefaultNativeDirection() {
+        assertEquals(
+            VideoCardReturnEnterAction.RIGHT_SLIDE,
+            resolveVideoCardReturnEnterAction(
+                fromRoute = VideoRoute.route,
+                targetRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = false,
+                isQuickReturnFromDetail = false,
+                sharedTransitionReady = false,
+                isTabletLayout = false,
+                allowNoOpSharedElement = false,
+                lastClickedCardCenterX = null,
+                noCardTransitionAction = VideoCardReturnEnterAction.SOFT_FADE
+            )
+        )
+    }
+
+    @Test
+    fun videoCardReturnEnterAction_cardDisabled_leftSourceReturnsTowardLeft() {
+        assertEquals(
+            VideoCardReturnEnterAction.RIGHT_SLIDE,
+            resolveVideoCardReturnEnterAction(
+                fromRoute = VideoRoute.route,
+                targetRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = false,
+                isQuickReturnFromDetail = false,
+                sharedTransitionReady = false,
+                isTabletLayout = false,
+                allowNoOpSharedElement = false,
+                lastClickedCardCenterX = 0.2f,
+                noCardTransitionAction = VideoCardReturnEnterAction.SOFT_FADE
+            )
+        )
+    }
+
+    @Test
+    fun videoCardReturnEnterAction_cardDisabled_rightSourceReturnsTowardRight() {
+        assertEquals(
+            VideoCardReturnEnterAction.LEFT_SLIDE,
+            resolveVideoCardReturnEnterAction(
+                fromRoute = VideoRoute.route,
+                targetRoute = ScreenRoutes.Home.route,
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = false,
+                isQuickReturnFromDetail = false,
+                sharedTransitionReady = false,
+                isTabletLayout = false,
+                allowNoOpSharedElement = false,
+                lastClickedCardCenterX = 0.8f,
+                noCardTransitionAction = VideoCardReturnEnterAction.SOFT_FADE
+            )
+        )
+    }
+
+    @Test
+    fun videoCardReturnEnterAction_cardDisabled_nonCardTargetRespectsFallbackAction() {
         assertEquals(
             VideoCardReturnEnterAction.SOFT_FADE,
             resolveVideoCardReturnEnterAction(
                 fromRoute = VideoRoute.route,
-                targetRoute = ScreenRoutes.Home.route,
+                targetRoute = ScreenRoutes.Settings.route,
                 cardTransitionEnabled = false,
                 predictiveBackAnimationEnabled = false,
                 isQuickReturnFromDetail = false,
