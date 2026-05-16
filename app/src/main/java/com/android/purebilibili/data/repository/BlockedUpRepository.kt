@@ -6,16 +6,21 @@ import com.android.purebilibili.core.database.entity.BlockedUp
 import com.android.purebilibili.core.network.BilibiliApi
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 private const val BILIBILI_RELATION_ACT_BLOCK = 5
 private const val BILIBILI_RELATION_ACT_UNBLOCK = 6
 private const val BILIBILI_RELATION_BLOCK_RE_SRC = 11
+private const val BLOCKED_UP_PROFILE_REFRESH_DELAY_MS = 120L
 
 data class BlockedUpImportItem(
     val mid: Long,
     val name: String = "",
-    val face: String = ""
+    val face: String = "",
+    val sign: String = ""
 )
 
 data class BlockedUpImportResult(
@@ -34,6 +39,13 @@ enum class BilibiliBlockedListRemoteStatus {
 data class BlockedUpWriteResult(
     val localChanged: Boolean,
     val remoteStatus: BilibiliBlockedListRemoteStatus,
+    val message: String
+)
+
+data class BlockedUpMetadataRefreshResult(
+    val updatedCount: Int,
+    val deletedCount: Int,
+    val failedCount: Int,
     val message: String
 )
 
@@ -106,6 +118,46 @@ internal fun buildBlockedUpWriteMessage(
     }
 }
 
+internal fun buildBlockedUpMetadataRefreshMessage(
+    updatedCount: Int,
+    deletedCount: Int,
+    failedCount: Int
+): String {
+    return when {
+        updatedCount == 0 && deletedCount == 0 && failedCount == 0 -> "黑名单为空，无需刷新资料"
+        failedCount == 0 && deletedCount == 0 -> "已刷新 $updatedCount 个黑名单用户资料"
+        failedCount == 0 -> "已刷新 $updatedCount 个用户资料，$deletedCount 个账号疑似已注销"
+        else -> "刷新完成：$updatedCount 个成功，$deletedCount 个疑似已注销，$failedCount 个失败"
+    }
+}
+
+fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
+    if (blockedUps.isEmpty()) {
+        return "BiliPai 黑名单导出\n暂无黑名单用户"
+    }
+
+    val body = blockedUps.mapIndexed { index, up ->
+        val name = up.name.ifBlank { "UP主${up.mid}" }
+        val levelText = up.level?.let { "LV$it" } ?: "等级未知"
+        val statusText = if (up.isDeleted) "疑似已注销" else "正常"
+        val profileUrl = "https://space.bilibili.com/${up.mid}"
+        buildString {
+            append("${index + 1}. $name\n")
+            append("UID: ${up.mid}\n")
+            append("状态: $statusText · $levelText")
+            up.vipLabel.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+            up.officialTitle.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+            append('\n')
+            up.follower?.let { append("粉丝: $it\n") }
+            up.archiveCount?.let { append("投稿: $it\n") }
+            up.sign.takeIf { it.isNotBlank() }?.let { append("签名: ${it.trim()}\n") }
+            append("主页: $profileUrl")
+        }
+    }.joinToString(separator = "\n\n")
+
+    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body"
+}
+
 class BlockedUpRepository(
     context: Context,
     private val api: BilibiliApi = NetworkModule.api
@@ -147,7 +199,8 @@ class BlockedUpRepository(
                 BlockedUp(
                     mid = item.mid,
                     name = item.name,
-                    face = item.face
+                    face = item.face,
+                    sign = item.sign
                 )
             )
         }
@@ -179,6 +232,60 @@ class BlockedUpRepository(
                 blocked = false,
                 remoteStatus = remoteResult.first,
                 remoteMessage = remoteResult.second
+            )
+        )
+    }
+
+    suspend fun refreshBlockedUpProfiles(): BlockedUpMetadataRefreshResult = withContext(Dispatchers.IO) {
+        val blockedUps = blockedUpDao.getAllBlockedUpsSnapshot()
+        var updatedCount = 0
+        var deletedCount = 0
+        var failedCount = 0
+        val now = System.currentTimeMillis()
+
+        blockedUps.forEachIndexed { index, up ->
+            val response = runCatching { api.getUserCard(mid = up.mid, photo = true) }.getOrNull()
+            val card = response?.data?.card
+            if (response?.code == 0 && card != null) {
+                blockedUpDao.insert(
+                    up.copy(
+                        name = card.name.ifBlank { up.name },
+                        face = card.face.ifBlank { up.face },
+                        sign = card.sign,
+                        level = card.level_info?.current_level,
+                        vipLabel = card.vip?.label?.text.orEmpty(),
+                        officialTitle = card.Official?.title.orEmpty(),
+                        follower = response.data.follower.toLong(),
+                        archiveCount = response.data.archive_count,
+                        isDeleted = false,
+                        lastSyncedAt = now
+                    )
+                )
+                updatedCount += 1
+            } else if (response != null) {
+                blockedUpDao.insert(
+                    up.copy(
+                        isDeleted = true,
+                        lastSyncedAt = now
+                    )
+                )
+                deletedCount += 1
+            } else {
+                failedCount += 1
+            }
+            if (index != blockedUps.lastIndex) {
+                delay(BLOCKED_UP_PROFILE_REFRESH_DELAY_MS)
+            }
+        }
+
+        BlockedUpMetadataRefreshResult(
+            updatedCount = updatedCount,
+            deletedCount = deletedCount,
+            failedCount = failedCount,
+            message = buildBlockedUpMetadataRefreshMessage(
+                updatedCount = updatedCount,
+                deletedCount = deletedCount,
+                failedCount = failedCount
             )
         )
     }

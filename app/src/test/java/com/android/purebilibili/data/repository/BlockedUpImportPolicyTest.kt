@@ -1,6 +1,7 @@
 package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.data.model.response.FollowingUser
+import com.android.purebilibili.core.database.entity.BlockedUp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -29,14 +30,14 @@ class BlockedUpImportPolicyTest {
         val items = buildBlockedUpImportItemsFromRemoteBlacks(
             listOf(
                 FollowingUser(mid = 7L, uname = "测试UP", face = "https://i0.hdslb.com/test.jpg"),
-                FollowingUser(mid = 8L, uname = "   ", face = "")
+                FollowingUser(mid = 8L, uname = "   ", face = "", sign = "广告号")
             )
         )
 
         assertEquals(
             listOf(
                 BlockedUpImportItem(mid = 7L, name = "测试UP", face = "https://i0.hdslb.com/test.jpg"),
-                BlockedUpImportItem(mid = 8L, name = "UP主8", face = "")
+                BlockedUpImportItem(mid = 8L, name = "UP主8", face = "", sign = "广告号")
             ),
             items
         )
@@ -74,5 +75,70 @@ class BlockedUpImportPolicyTest {
         )
 
         assertEquals("已解除屏蔽；B站黑名单同步失败：csrf 校验失败", message)
+    }
+
+    @Test
+    fun `metadata refresh message reports updated deleted and failed counts`() {
+        assertEquals(
+            "已刷新 2 个用户资料，1 个账号疑似已注销",
+            buildBlockedUpMetadataRefreshMessage(
+                updatedCount = 2,
+                deletedCount = 1,
+                failedCount = 0
+            )
+        )
+        assertEquals(
+            "刷新完成：2 个成功，1 个疑似已注销，3 个失败",
+            buildBlockedUpMetadataRefreshMessage(
+                updatedCount = 2,
+                deletedCount = 1,
+                failedCount = 3
+            )
+        )
+    }
+
+    @Test
+    fun `blocked up share text includes visual metadata and profile link`() {
+        val text = buildBlockedUpShareText(
+            listOf(
+                BlockedUp(
+                    mid = 123L,
+                    name = "测试UP",
+                    face = "",
+                    level = 5,
+                    sign = "不要推荐",
+                    vipLabel = "年度大会员",
+                    officialTitle = "认证用户",
+                    follower = 99L,
+                    archiveCount = 3
+                ),
+                BlockedUp(
+                    mid = 456L,
+                    name = "",
+                    face = "",
+                    isDeleted = true
+                )
+            )
+        )
+
+        assertEquals(
+            """
+            BiliPai 黑名单导出（2 个用户）
+
+            1. 测试UP
+            UID: 123
+            状态: 正常 · LV5 · 年度大会员 · 认证用户
+            粉丝: 99
+            投稿: 3
+            签名: 不要推荐
+            主页: https://space.bilibili.com/123
+
+            2. UP主456
+            UID: 456
+            状态: 疑似已注销 · 等级未知
+            主页: https://space.bilibili.com/456
+            """.trimIndent(),
+            text
+        )
     }
 }

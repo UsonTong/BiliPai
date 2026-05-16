@@ -412,13 +412,54 @@ fun TabletSettingsLayout(
                             SettingsDetail.BLOCKED_LIST -> {
                                 // [New] Blocked List Content for Tablet
                                 val repository = remember { com.android.purebilibili.data.repository.BlockedUpRepository(context) }
+                                val syncRepository = remember { com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepository(repository) }
                                 val blockedUps by repository.getAllBlockedUps().collectAsState(initial = emptyList())
                                 // Pass scope for unblocking
                                 val scope = rememberCoroutineScope()
+                                var syncingBlockedList by remember { mutableStateOf(false) }
+                                var refreshingProfiles by remember { mutableStateOf(false) }
+                                var blockedListSyncMessage by remember { mutableStateOf<String?>(null) }
                                 BlockedListContent(
                                     blockedUps = blockedUps,
+                                    syncingBlockedList = syncingBlockedList,
+                                    refreshingProfiles = refreshingProfiles,
+                                    blockedListSyncMessage = blockedListSyncMessage,
+                                    onSyncBlockedList = {
+                                        if (!syncingBlockedList) {
+                                            scope.launch {
+                                                syncingBlockedList = true
+                                                blockedListSyncMessage = "正在同步 B站黑名单..."
+                                                val result = syncRepository.importFromBilibili()
+                                                blockedListSyncMessage = result.fold(
+                                                    onSuccess = { it.message },
+                                                    onFailure = { it.message ?: "同步 B站黑名单失败" }
+                                                )
+                                                syncingBlockedList = false
+                                            }
+                                        }
+                                    },
+                                    onRefreshProfiles = {
+                                        if (!refreshingProfiles) {
+                                            scope.launch {
+                                                refreshingProfiles = true
+                                                blockedListSyncMessage = "正在刷新黑名单用户资料..."
+                                                blockedListSyncMessage = repository.refreshBlockedUpProfiles().message
+                                                refreshingProfiles = false
+                                            }
+                                        }
+                                    },
+                                    onShareBlockedList = {
+                                        com.android.purebilibili.core.util.ShareUtils.shareText(
+                                            context = context,
+                                            subject = "BiliPai 黑名单",
+                                            text = com.android.purebilibili.data.repository.buildBlockedUpShareText(blockedUps),
+                                            chooserTitle = "分享黑名单"
+                                        )
+                                    },
                                     onUnblock = { mid ->
-                                        scope.launch { repository.unblockUp(mid) }
+                                        scope.launch {
+                                            blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message
+                                        }
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )

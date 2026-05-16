@@ -67,7 +67,8 @@ internal fun buildBlockedUpImportItemsFromRemoteBlacks(
         BlockedUpImportItem(
             mid = mid,
             name = user.uname.trim().takeIf { it.isNotEmpty() } ?: "UP主$mid",
-            face = user.face
+            face = user.face,
+            sign = user.sign
         )
     }
 }

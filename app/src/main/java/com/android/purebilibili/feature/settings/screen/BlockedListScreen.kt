@@ -16,10 +16,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepository
 import com.android.purebilibili.data.repository.BlockedUpRepository
+import com.android.purebilibili.data.repository.buildBlockedUpShareText
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AppShapes
@@ -27,7 +27,8 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.components.IOSSectionTitle
-import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
+import com.android.purebilibili.core.ui.components.UserLevelBadge
+import com.android.purebilibili.core.util.ShareUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,7 @@ fun BlockedListScreen(
     val blockedUps by repository.getAllBlockedUps().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var syncingBlockedList by remember { mutableStateOf(false) }
+    var refreshingProfiles by remember { mutableStateOf(false) }
     var blockedListSyncMessage by remember { mutableStateOf<String?>(null) }
 
     AdaptiveScaffold(
@@ -64,6 +66,7 @@ fun BlockedListScreen(
         BlockedListContent(
             blockedUps = blockedUps,
             syncingBlockedList = syncingBlockedList,
+            refreshingProfiles = refreshingProfiles,
             blockedListSyncMessage = blockedListSyncMessage,
             onSyncBlockedList = {
                 if (!syncingBlockedList) {
@@ -79,6 +82,24 @@ fun BlockedListScreen(
                     }
                 }
             },
+            onRefreshProfiles = {
+                if (!refreshingProfiles) {
+                    scope.launch {
+                        refreshingProfiles = true
+                        blockedListSyncMessage = "正在刷新黑名单用户资料..."
+                        blockedListSyncMessage = repository.refreshBlockedUpProfiles().message
+                        refreshingProfiles = false
+                    }
+                }
+            },
+            onShareBlockedList = {
+                ShareUtils.shareText(
+                    context = context,
+                    subject = "BiliPai 黑名单",
+                    text = buildBlockedUpShareText(blockedUps),
+                    chooserTitle = "分享黑名单"
+                )
+            },
             onUnblock = { mid ->
                 scope.launch {
                     blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message
@@ -93,8 +114,11 @@ fun BlockedListScreen(
 fun BlockedListContent(
     blockedUps: List<com.android.purebilibili.core.database.entity.BlockedUp>,
     syncingBlockedList: Boolean = false,
+    refreshingProfiles: Boolean = false,
     blockedListSyncMessage: String? = null,
     onSyncBlockedList: (() -> Unit)? = null,
+    onRefreshProfiles: (() -> Unit)? = null,
+    onShareBlockedList: (() -> Unit)? = null,
     onUnblock: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -113,8 +137,11 @@ fun BlockedListContent(
                 Spacer(modifier = Modifier.height(16.dp))
                 BlockedListSyncAction(
                     syncing = syncingBlockedList,
+                    refreshingProfiles = refreshingProfiles,
                     message = blockedListSyncMessage,
                     onSync = onSyncBlockedList,
+                    onRefreshProfiles = onRefreshProfiles,
+                    onShareBlockedList = onShareBlockedList,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
@@ -129,8 +156,11 @@ fun BlockedListContent(
                 if (onSyncBlockedList != null) {
                     BlockedListSyncAction(
                         syncing = syncingBlockedList,
+                        refreshingProfiles = refreshingProfiles,
                         message = blockedListSyncMessage,
-                        onSync = onSyncBlockedList
+                        onSync = onSyncBlockedList,
+                        onRefreshProfiles = onRefreshProfiles,
+                        onShareBlockedList = onShareBlockedList
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -140,8 +170,16 @@ fun BlockedListContent(
             
             items(blockedUps, key = { it.mid }) { up ->
                 BlockedUpItem(
+                    mid = up.mid,
                     name = up.name,
                     face = up.face,
+                    level = up.level,
+                    sign = up.sign,
+                    vipLabel = up.vipLabel,
+                    officialTitle = up.officialTitle,
+                    follower = up.follower,
+                    archiveCount = up.archiveCount,
+                    isDeleted = up.isDeleted,
                     onUnblock = { onUnblock(up.mid) }
                 )
             }
@@ -152,8 +190,11 @@ fun BlockedListContent(
 @Composable
 private fun BlockedListSyncAction(
     syncing: Boolean,
+    refreshingProfiles: Boolean,
     message: String?,
     onSync: () -> Unit,
+    onRefreshProfiles: (() -> Unit)?,
+    onShareBlockedList: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -165,7 +206,7 @@ private fun BlockedListSyncAction(
     ) {
         Button(
             onClick = onSync,
-            enabled = !syncing,
+            enabled = !syncing && !refreshingProfiles,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
@@ -180,6 +221,39 @@ private fun BlockedListSyncAction(
             }
             Text(if (syncing) "同步中" else "同步 B站黑名单")
         }
+        if (onRefreshProfiles != null || onShareBlockedList != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (onRefreshProfiles != null) {
+                    OutlinedButton(
+                        onClick = onRefreshProfiles,
+                        enabled = !syncing && !refreshingProfiles,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (refreshingProfiles) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(if (refreshingProfiles) "刷新中" else "刷新资料")
+                    }
+                }
+                if (onShareBlockedList != null) {
+                    OutlinedButton(
+                        onClick = onShareBlockedList,
+                        enabled = !syncing && !refreshingProfiles,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("分享黑名单")
+                    }
+                }
+            }
+        }
         if (!message.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -193,8 +267,16 @@ private fun BlockedListSyncAction(
 
 @Composable
 private fun BlockedUpItem(
+    mid: Long,
     name: String,
     face: String,
+    level: Int?,
+    sign: String,
+    vipLabel: String,
+    officialTitle: String,
+    follower: Long?,
+    archiveCount: Int?,
+    isDeleted: Boolean,
     onUnblock: () -> Unit
 ) {
     Row(
@@ -217,16 +299,68 @@ private fun BlockedUpItem(
         
         Spacer(modifier = Modifier.width(16.dp))
         
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name.ifBlank { "UP主$mid" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+                level?.let {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    UserLevelBadge(level = it, height = 12.dp)
+                }
+            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = buildBlockedUpMetaLine(
+                    mid = mid,
+                    level = level,
+                    vipLabel = vipLabel,
+                    officialTitle = officialTitle,
+                    follower = follower,
+                    archiveCount = archiveCount,
+                    isDeleted = isDeleted
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isDeleted) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
+            )
+            if (sign.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = sign.trim(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
+            }
+        }
         
         TextButton(onClick = onUnblock) {
             Text("解除屏蔽", color = Color.Red)
         }
     }
+}
+
+internal fun buildBlockedUpMetaLine(
+    mid: Long,
+    level: Int?,
+    vipLabel: String,
+    officialTitle: String,
+    follower: Long?,
+    archiveCount: Int?,
+    isDeleted: Boolean
+): String {
+    val parts = mutableListOf("UID $mid")
+    parts += level?.let { "LV$it" } ?: "等级未知"
+    if (isDeleted) parts += "疑似已注销"
+    if (vipLabel.isNotBlank()) parts += vipLabel
+    if (officialTitle.isNotBlank()) parts += officialTitle
+    follower?.let { parts += "粉丝 $it" }
+    archiveCount?.let { parts += "投稿 $it" }
+    return parts.joinToString(" · ")
 }
