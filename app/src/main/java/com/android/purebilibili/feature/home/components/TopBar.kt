@@ -311,6 +311,10 @@ internal fun resolveMd3TopTabActionIconSize(
 
 internal fun resolveMd3TopTabActionContentBottomPadding(): Dp = 4.dp
 
+internal fun resolveMd3TopTabVerticalLiftDp(): Float = 4f
+
+internal fun resolveMd3TopTabIndicatorBottomPadding(): Dp = 8.dp
+
 internal fun resolveIosTopTabRowHeight(
     isFloatingStyle: Boolean,
     labelMode: Int = com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
@@ -629,6 +633,7 @@ private fun LightweightHomeTopTabs(
         }
         val density = LocalDensity.current
         val md3IndicatorWidth = 28.dp
+        val md3TopTabVerticalLiftPx = with(density) { resolveMd3TopTabVerticalLiftDp().dp.toPx() }
         val md3IndicatorTranslationXPx by remember(currentPosition, itemWidth, md3IndicatorWidth, density, listState) {
             derivedStateOf {
                 with(density) {
@@ -643,7 +648,15 @@ private fun LightweightHomeTopTabs(
             }
         }
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = if (renderer == HomeTopTabRenderer.MD3) {
+                        -md3TopTabVerticalLiftPx
+                    } else {
+                        0f
+                    }
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -689,7 +702,7 @@ private fun LightweightHomeTopTabs(
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(bottom = 4.dp)
+                            .padding(bottom = resolveMd3TopTabIndicatorBottomPadding())
                             .graphicsLayer {
                                 translationX = md3IndicatorTranslationXPx
                             }
