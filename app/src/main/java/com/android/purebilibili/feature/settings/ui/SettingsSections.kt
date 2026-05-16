@@ -273,7 +273,7 @@ internal fun SettingsSceneShortcutSection(
                 icon = visual.icon,
                 iconPainter = visual.iconResId?.let { painterResource(id = it) },
                 title = shortcut.title,
-                value = shortcut.value,
+                subtitle = shortcut.value,
                 onClick = {
                     resolveSettingsSceneDetailFocus(shortcut.target)?.let { detailFocus ->
                         SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)
@@ -760,6 +760,7 @@ private fun FeedDynamicTabVisibilityItem(
                     },
                     modifier = Modifier.weight(1f)
                 )
+                Spacer(modifier = Modifier.width(12.dp))
                 AppAdaptiveSwitch(
                     checked = checked,
                     onCheckedChange = { onTabVisibilityChange(tab.id) },
@@ -827,8 +828,7 @@ private fun FeedSwitchItem(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

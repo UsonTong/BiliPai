@@ -43,4 +43,33 @@ class SettingsRootCategoryContentStructureTest {
         assertTrue(sectionBlock.contains("SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)"))
         assertTrue(sectionBlock.contains("shortcut.onClick()"))
     }
+
+    @Test
+    fun sceneShortcutSection_rendersLongDescriptionAsSubtitle() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt")
+        ).first { it.exists() }.readText()
+
+        val sectionBlock = source
+            .substringAfter("internal fun SettingsSceneShortcutSection(")
+            .substringBefore("internal fun SettingsRootCategoryContent(")
+
+        assertTrue(sectionBlock.contains("subtitle = shortcut.value"))
+    }
+
+    @Test
+    fun feedSwitchDescription_allowsWrappingInIosSettings() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt")
+        ).first { it.exists() }.readText()
+
+        val feedSwitchBlock = source
+            .substringAfter("private fun FeedSwitchItem(")
+            .substringBefore("@Composable\nprivate fun FeedRefreshCountItem(")
+
+        assertTrue(feedSwitchBlock.contains("text = subtitle"))
+        assertTrue(!feedSwitchBlock.contains("maxLines = 1"))
+    }
 }
