@@ -36,6 +36,11 @@ data class SettingsSearchFocusRequest(
     val token: Long = System.nanoTime()
 )
 
+data class SettingsSceneDetailFocus(
+    val target: SettingsSearchTarget,
+    val focusId: String
+)
+
 object SettingsSearchFocusController {
     private val _request = MutableStateFlow<SettingsSearchFocusRequest?>(null)
     val request = _request.asStateFlow()
@@ -108,4 +113,63 @@ internal fun resolveAnimationSettingsScrollIndex(
         SettingsSearchFocusIds.ANIMATION_VISUAL_EFFECTS -> 2
         else -> null
     }
+}
+
+internal fun resolveSettingsSceneDetailFocus(
+    target: SettingsSearchTarget
+): SettingsSceneDetailFocus? = when (target) {
+    SettingsSearchTarget.INTERFACE_THEME -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.APPEARANCE,
+        focusId = SettingsSearchFocusIds.APPEARANCE_THEME
+    )
+    SettingsSearchTarget.HOME_FEED -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.APPEARANCE,
+        focusId = SettingsSearchFocusIds.APPEARANCE_HOME
+    )
+    SettingsSearchTarget.NAVIGATION -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.BOTTOM_BAR,
+        focusId = SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS
+    )
+    SettingsSearchTarget.PLAYBACK_QUALITY -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.PLAYBACK,
+        focusId = SettingsSearchFocusIds.PLAYBACK_NETWORK
+    )
+    SettingsSearchTarget.FULLSCREEN_GESTURE -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.PLAYBACK,
+        focusId = SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+    )
+    SettingsSearchTarget.INTERACTION_COMMENT -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.PLAYBACK,
+        focusId = SettingsSearchFocusIds.PLAYBACK_INTERACTION
+    )
+    SettingsSearchTarget.DIAGNOSTICS -> SettingsSceneDetailFocus(
+        target = SettingsSearchTarget.PLAYBACK,
+        focusId = SettingsSearchFocusIds.PLAYBACK_DEBUG
+    )
+    SettingsSearchTarget.DATA_BACKUP,
+    SettingsSearchTarget.PRIVACY_PERMISSION,
+    SettingsSearchTarget.ABOUT_SUPPORT,
+    SettingsSearchTarget.APPEARANCE,
+    SettingsSearchTarget.ANIMATION,
+    SettingsSearchTarget.PLAYBACK,
+    SettingsSearchTarget.BOTTOM_BAR,
+    SettingsSearchTarget.PERMISSION,
+    SettingsSearchTarget.BLOCKED_LIST,
+    SettingsSearchTarget.SETTINGS_SHARE,
+    SettingsSearchTarget.WEBDAV_BACKUP,
+    SettingsSearchTarget.DOWNLOAD_PATH,
+    SettingsSearchTarget.CLEAR_CACHE,
+    SettingsSearchTarget.PLUGINS,
+    SettingsSearchTarget.EXPORT_LOGS,
+    SettingsSearchTarget.OPEN_SOURCE_LICENSES,
+    SettingsSearchTarget.OPEN_SOURCE_HOME,
+    SettingsSearchTarget.CHECK_UPDATE,
+    SettingsSearchTarget.VIEW_RELEASE_NOTES,
+    SettingsSearchTarget.REPLAY_ONBOARDING,
+    SettingsSearchTarget.TIPS,
+    SettingsSearchTarget.OPEN_LINKS,
+    SettingsSearchTarget.DONATE,
+    SettingsSearchTarget.TELEGRAM,
+    SettingsSearchTarget.TWITTER,
+    SettingsSearchTarget.DISCLAIMER -> null
 }

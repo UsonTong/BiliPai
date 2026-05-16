@@ -245,7 +245,22 @@ fun TabletSettingsLayout(
                     ) {
                         SettingsSearchResultsSection(
                             results = searchResults,
-                            onResultClick = { target ->
+                            onResultClick = resultClick@{ target ->
+                                resolveSettingsSceneDetailFocus(target.target)?.let { detailFocus ->
+                                    resolveSettingsRootCategoryForSearchTarget(target.target)?.let { category ->
+                                        selectedCategory = category
+                                    }
+                                    activeDetail = when (detailFocus.target) {
+                                        SettingsSearchTarget.APPEARANCE -> SettingsDetail.APPEARANCE
+                                        SettingsSearchTarget.ANIMATION -> SettingsDetail.ANIMATION
+                                        SettingsSearchTarget.PLAYBACK -> SettingsDetail.PLAYBACK
+                                        SettingsSearchTarget.BOTTOM_BAR -> SettingsDetail.BOTTOM_BAR
+                                        else -> null
+                                    }
+                                    SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)
+                                    onSearchQueryChange("")
+                                    return@resultClick
+                                }
                                 if (isSceneSettingsSearchTarget(target.target)) {
                                     resolveSettingsRootCategoryForSearchTarget(target.target)?.let { category ->
                                         selectedCategory = category

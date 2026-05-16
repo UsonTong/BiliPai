@@ -814,6 +814,17 @@ fun SettingsScreen(
     }
     val onSettingsSearchResultClick: (SettingsSearchResult) -> Unit = handler@{ result ->
         settingsSearchQuery = ""
+        resolveSettingsSceneDetailFocus(result.target)?.let { detailFocus ->
+            SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)
+            when (detailFocus.target) {
+                SettingsSearchTarget.APPEARANCE -> onAppearanceClick()
+                SettingsSearchTarget.ANIMATION -> onAnimationClick()
+                SettingsSearchTarget.PLAYBACK -> onPlaybackClick()
+                SettingsSearchTarget.BOTTOM_BAR -> onNavigateToBottomBarSettings()
+                else -> Unit
+            }
+            return@handler
+        }
         if (isSceneSettingsSearchTarget(result.target)) {
             SettingsSearchFocusController.submit(result.target, result.focusId ?: result.target.name)
             return@handler

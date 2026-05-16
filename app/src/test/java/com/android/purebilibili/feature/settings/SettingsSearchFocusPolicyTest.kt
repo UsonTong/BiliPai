@@ -50,4 +50,50 @@ class SettingsSearchFocusPolicyTest {
             }
         )
     }
+
+    @Test
+    fun sceneSearchTargetsResolveToExistingDetailFocus() {
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.APPEARANCE,
+                focusId = SettingsSearchFocusIds.APPEARANCE_HOME
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.HOME_FEED)
+        )
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.BOTTOM_BAR,
+                focusId = SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.NAVIGATION)
+        )
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.PLAYBACK,
+                focusId = SettingsSearchFocusIds.PLAYBACK_NETWORK
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.PLAYBACK_QUALITY)
+        )
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.PLAYBACK,
+                focusId = SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.FULLSCREEN_GESTURE)
+        )
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.PLAYBACK,
+                focusId = SettingsSearchFocusIds.PLAYBACK_INTERACTION
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.INTERACTION_COMMENT)
+        )
+        assertEquals(
+            SettingsSceneDetailFocus(
+                target = SettingsSearchTarget.PLAYBACK,
+                focusId = SettingsSearchFocusIds.PLAYBACK_DEBUG
+            ),
+            resolveSettingsSceneDetailFocus(SettingsSearchTarget.DIAGNOSTICS)
+        )
+    }
 }
