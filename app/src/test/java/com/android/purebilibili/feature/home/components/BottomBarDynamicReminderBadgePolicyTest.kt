@@ -44,6 +44,19 @@ class BottomBarDynamicReminderBadgePolicyTest {
     }
 
     @Test
+    fun `android native item does not clip dynamic reminder badge`() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt"),
+            File("src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        ).first { it.exists() }.readText()
+        val itemSource = source
+            .substringAfter("@Composable\nprivate fun RowScope.AndroidNativeBottomBarItem(")
+            .substringBefore("private fun resolveMaterialBottomBarIcon(")
+
+        assertFalse(itemSource.contains(".clip(resolveSharedBottomBarCapsuleShape())"))
+    }
+
+    @Test
     fun `dynamic reminder polling does not consume unread baseline`() {
         val source = listOf(
             File("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt"),

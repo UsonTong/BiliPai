@@ -77,6 +77,11 @@ fun DynamicCardV2(
     val context = LocalContext.current
     val dynamicPreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
         .collectAsState(initial = true)
+    val contentHasImages = content?.major?.draw?.items?.isNotEmpty() == true ||
+        content?.major?.opus?.pics?.isNotEmpty() == true
+    val visibleDynamicDesc = content?.desc?.let { desc ->
+        resolveDynamicDescForImages(desc, hasImages = contentHasImages)
+    }
     val type = DynamicType.fromApiValue(item.type)
     val cardClickAction = remember(item) { resolveDynamicCardPrimaryAction(item) }
     val watchLaterAid = remember(item) { resolveDynamicWatchLaterAid(item) }
@@ -236,8 +241,8 @@ fun DynamicCardV2(
         }
         
         //  动态内容文字（支持@高亮）
-        content?.desc?.let { desc ->
-            if (desc.text.isNotEmpty()) {
+        visibleDynamicDesc?.let { desc ->
+            if (shouldRenderDynamicRichText(desc)) {
                 RichTextContent(
                     desc = desc,
                     onUserClick = onUserClick
@@ -280,10 +285,10 @@ fun DynamicCardV2(
         content?.major?.draw?.let { draw ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
             var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-            val drawPreviewText = remember(author?.name, content.desc?.text) {
+            val drawPreviewText = remember(author?.name, visibleDynamicDesc?.text) {
                 ImagePreviewTextContent(
                     headline = author?.name.orEmpty(),
-                    body = content.desc?.text.orEmpty()
+                    body = visibleDynamicDesc?.text.orEmpty()
                 )
             }
             
@@ -318,8 +323,8 @@ fun DynamicCardV2(
         content?.major?.opus?.let { opus ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
             var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-            val opusPreviewText = remember(author?.name, content.desc?.text, opus.summary?.text) {
-                val body = content.desc?.text.takeUnless { it.isNullOrBlank() }
+            val opusPreviewText = remember(author?.name, visibleDynamicDesc?.text, opus.summary?.text) {
+                val body = visibleDynamicDesc?.text.takeUnless { it.isNullOrBlank() }
                     ?: opus.summary?.text.orEmpty()
                 ImagePreviewTextContent(
                     headline = author?.name.orEmpty(),
@@ -341,7 +346,7 @@ fun DynamicCardV2(
             }
             
             // 显示文字摘要 (如果有且 desc 为空)
-            if (content.desc?.text.isNullOrEmpty()) {
+            if (!shouldRenderDynamicRichText(visibleDynamicDesc)) {
                 opus.summary?.let { summary ->
                     if (summary.text.isNotEmpty()) {
                         RichTextContent(

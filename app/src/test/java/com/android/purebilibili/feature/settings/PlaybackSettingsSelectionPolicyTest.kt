@@ -41,7 +41,7 @@ class PlaybackSettingsSelectionPolicyTest {
         val fullscreenBlock = source
             .substringAfter("private fun PlaybackFullscreenGestureSettingsSection(")
 
-        listOf("评论回复预览", "评论发送检测", "评论区个性装扮").forEach { title ->
+        listOf("评论回复预览", "评论发送检测", "评论区个性装扮", "图片长按保存").forEach { title ->
             assertTrue(interactionBlock.contains(title))
             assertFalse(fullscreenBlock.contains(title))
         }

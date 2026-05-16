@@ -7,6 +7,11 @@ import kotlin.test.assertEquals
 class ImagePreviewFeedbackPolicyTest {
 
     @Test
+    fun longPressSaveStartFeedback_usesMediumHaptic() {
+        assertEquals(HapticType.MEDIUM, resolveImagePreviewLongPressSaveStartFeedback())
+    }
+
+    @Test
     fun saveFeedback_usesLightHapticOnSuccess() {
         assertEquals(HapticType.LIGHT, resolveImagePreviewSaveFeedback(success = true))
     }

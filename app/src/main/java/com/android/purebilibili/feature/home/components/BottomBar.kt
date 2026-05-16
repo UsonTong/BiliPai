@@ -2786,7 +2786,10 @@ private fun KernelSuAlignedBottomBar(
                 }
 
                 if (shouldRenderRefractionCapture && backdrop != null) {
-                    val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth
+                    val rawCaptureWidth = dockWidth + launchAdjustedSearchGap + searchWidth
+                    val captureHorizontalOverscan = rawCaptureWidth *
+                        ((refractionMotionProfile.exportCaptureWidthScale - 1f) / 2f).coerceAtLeast(0f)
+                    val captureWidth = rawCaptureWidth + captureHorizontalOverscan * 2f
                     Box(
                         modifier = Modifier
                             .width(captureWidth)
@@ -2795,8 +2798,7 @@ private fun KernelSuAlignedBottomBar(
                             .alpha(0f)
                             .layerBackdrop(tabsBackdrop)
                             .graphicsLayer {
-                                translationX = panelOffsetPx
-                                scaleX = refractionMotionProfile.exportCaptureWidthScale
+                                translationX = panelOffsetPx - captureHorizontalOverscan.toPx()
                             }
                             .run {
                                 when (liquidGlassPreset) {
@@ -2853,6 +2855,7 @@ private fun KernelSuAlignedBottomBar(
                     ) {
                         Box(
                             modifier = Modifier
+                                .offset(x = captureHorizontalOverscan)
                                 .width(dockWidth)
                                 .height(dockHeight)
                                 .align(Alignment.CenterStart)
@@ -2910,7 +2913,7 @@ private fun KernelSuAlignedBottomBar(
                         if (searchEnabled) {
                             Box(
                                 modifier = Modifier
-                                    .offset(x = dockWidth + launchAdjustedSearchGap)
+                                    .offset(x = captureHorizontalOverscan + dockWidth + launchAdjustedSearchGap)
                                     .width(searchWidth)
                                     .height(searchHeight)
                                     .align(Alignment.CenterStart)
@@ -3481,7 +3484,6 @@ private fun RowScope.AndroidNativeBottomBarItem(
             .weight(1f)
             .defaultMinSize(minWidth = 76.dp)
             .fillMaxHeight()
-            .clip(resolveSharedBottomBarCapsuleShape())
             .graphicsLayer {
                 scaleX = scale * clickPulseTransform.scaleX
                 scaleY = scale * clickPulseTransform.scaleY

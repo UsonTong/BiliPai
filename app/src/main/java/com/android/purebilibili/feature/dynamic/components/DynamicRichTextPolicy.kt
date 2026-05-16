@@ -45,6 +45,31 @@ internal fun buildDynamicRichTextAnnotatedString(
     }
 }
 
+internal fun resolveDynamicDescForImages(
+    desc: DynamicDesc,
+    hasImages: Boolean
+): DynamicDesc {
+    if (!hasImages || !isDynamicStandaloneImagePlaceholder(desc.text)) return desc
+    return desc.copy(
+        text = "",
+        rich_text_nodes = desc.rich_text_nodes.filterNot { node ->
+            isDynamicStandaloneImagePlaceholder(node.text)
+        }
+    )
+}
+
+internal fun shouldRenderDynamicRichText(desc: DynamicDesc?): Boolean {
+    if (desc == null) return false
+    if (desc.text.isNotBlank()) return true
+    return desc.rich_text_nodes.any { node ->
+        node.text.isNotBlank() && !isDynamicStandaloneImagePlaceholder(node.text)
+    }
+}
+
+private fun isDynamicStandaloneImagePlaceholder(text: String): Boolean {
+    return text.trim() in setOf("[图片]", "【图片】")
+}
+
 internal fun resolveDynamicRichTextOpenMode(
     rawUrl: String
 ): DynamicRichTextOpenMode? {

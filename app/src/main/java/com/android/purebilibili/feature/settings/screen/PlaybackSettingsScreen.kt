@@ -986,6 +986,9 @@ private fun PlaybackInteractionSettingsSection(
     val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
         .getCommentMemberDecorationsEnabled(context)
         .collectAsState(initial = false)
+    val imagePreviewLongPressSaveEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getImagePreviewLongPressSaveEnabled(context)
+        .collectAsState(initial = true)
     val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
         .getCommentCollapsedReplyPreviewLimit(context)
         .collectAsState(
@@ -1221,6 +1224,24 @@ private fun PlaybackInteractionSettingsSection(
                 }
             },
             iconTint = iOSOrange
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowDownCircle,
+            title = "图片长按保存",
+            subtitle = if (imagePreviewLongPressSaveEnabled) {
+                "查看图片时长按会直接保存到相册"
+            } else {
+                "关闭后长按图片不再自动保存，仍可点右上角下载"
+            },
+            checked = imagePreviewLongPressSaveEnabled,
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setImagePreviewLongPressSaveEnabled(context, enabled)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSGreen
         )
     }
 

@@ -234,6 +234,13 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByImagePreviewLongPressSave_hitsPlaybackEntry() {
+        val results = resolveSettingsSearchResults("图片长按保存")
+
+        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+    }
+
+    @Test
     fun queryByAppScreenshotGesture_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("应用内干净截图")
 

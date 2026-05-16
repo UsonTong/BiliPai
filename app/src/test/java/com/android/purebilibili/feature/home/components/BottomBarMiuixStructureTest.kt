@@ -107,7 +107,7 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("Shadow(alpha = indicatorGlowAlpha)"))
         assertTrue(kernelSuRendererSource.contains("radius = 8.dp * indicatorGlowAlpha"))
         assertTrue(kernelSuRendererSource.contains("alpha = indicatorGlowAlpha"))
-        assertTrue(kernelSuRendererSource.contains("scaleX = refractionMotionProfile.exportCaptureWidthScale"))
+        assertTrue(kernelSuRendererSource.contains("translationX = panelOffsetPx - captureHorizontalOverscan.toPx()"))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarGlassVisibleContentColor("))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarGlassExportContentColor("))
         assertTrue(kernelSuRendererSource.contains("indicatorProgress = backdropPresetProgress.indicatorProgress"))
@@ -227,7 +227,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("val shouldComposeDockContent = shouldComposeBottomBarDockContent("))
         assertTrue(kernelSuRendererSource.contains("if (shouldComposeDockContent) {"))
         assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null) {"))
-        assertTrue(kernelSuRendererSource.contains("val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
+        assertTrue(kernelSuRendererSource.contains("val rawCaptureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
+        assertTrue(kernelSuRendererSource.contains("val captureHorizontalOverscan = rawCaptureWidth *"))
+        assertTrue(kernelSuRendererSource.contains("val captureWidth = rawCaptureWidth + captureHorizontalOverscan * 2f"))
         assertTrue(kernelSuRendererSource.contains(".width(captureWidth)"))
     }
 
@@ -243,10 +245,12 @@ class BottomBarMiuixStructureTest {
 
         assertFalse(source.contains("private fun KernelSuBottomBarSearchRefractionCapture("))
         assertFalse(kernelSuRendererSource.contains("KernelSuBottomBarSearchRefractionCapture("))
-        assertTrue(refractionCaptureSource.contains("val captureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
+        assertTrue(refractionCaptureSource.contains("val rawCaptureWidth = dockWidth + launchAdjustedSearchGap + searchWidth"))
+        assertTrue(refractionCaptureSource.contains("val captureHorizontalOverscan = rawCaptureWidth *"))
+        assertTrue(refractionCaptureSource.contains("val captureWidth = rawCaptureWidth + captureHorizontalOverscan * 2f"))
         assertTrue(refractionCaptureSource.contains(".width(captureWidth)"))
         assertTrue(refractionCaptureSource.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(refractionCaptureSource.contains(".offset(x = dockWidth + launchAdjustedSearchGap)"))
+        assertTrue(refractionCaptureSource.contains(".offset(x = captureHorizontalOverscan + dockWidth + launchAdjustedSearchGap)"))
         assertTrue(refractionCaptureSource.contains("KernelSuBottomBarSearchVisualContent("))
         assertTrue(refractionCaptureSource.contains("interactive = false"))
     }

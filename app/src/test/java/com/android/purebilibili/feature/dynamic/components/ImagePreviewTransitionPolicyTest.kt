@@ -3,10 +3,43 @@ package com.android.purebilibili.feature.dynamic.components
 import androidx.compose.ui.geometry.Rect
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ImagePreviewTransitionPolicyTest {
+
+    @Test
+    fun shouldHandleImagePreviewLongPressSave_respectsUserSwitchAndBusyState() {
+        assertTrue(
+            shouldHandleImagePreviewLongPressSave(
+                longPressSaveEnabled = true,
+                imageUrl = "https://i0.hdslb.com/test.jpg",
+                isSaving = false
+            )
+        )
+        assertFalse(
+            shouldHandleImagePreviewLongPressSave(
+                longPressSaveEnabled = false,
+                imageUrl = "https://i0.hdslb.com/test.jpg",
+                isSaving = false
+            )
+        )
+        assertFalse(
+            shouldHandleImagePreviewLongPressSave(
+                longPressSaveEnabled = true,
+                imageUrl = "",
+                isSaving = false
+            )
+        )
+        assertFalse(
+            shouldHandleImagePreviewLongPressSave(
+                longPressSaveEnabled = true,
+                imageUrl = "https://i0.hdslb.com/test.jpg",
+                isSaving = true
+            )
+        )
+    }
 
     @Test
     fun resolveImagePreviewTransitionFrame_clampsVisualProgressButKeepsLayoutOvershoot() {

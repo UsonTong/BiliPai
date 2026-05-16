@@ -75,6 +75,7 @@ import com.android.purebilibili.core.ui.motion.expressiveSnapSpring
 import com.android.purebilibili.core.ui.motion.indicatorSpring
 import com.android.purebilibili.core.ui.motion.interactiveSnapSpring
 import com.android.purebilibili.core.ui.motion.softLandingSpring
+import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.rememberHapticFeedback
 import java.io.File
 
@@ -243,6 +244,8 @@ private fun ImagePreviewOverlayContent(
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
     var isVerticalDismissDragging by remember { mutableStateOf(false) }
+    val longPressSaveEnabled by SettingsManager.getImagePreviewLongPressSaveEnabled(context)
+        .collectAsState(initial = true)
     var imagePreviewTextVisible by remember(textContent, defaultTextVisible) {
         mutableStateOf(
             resolveImagePreviewInitialTextVisibility(
@@ -647,7 +650,15 @@ private fun ImagePreviewOverlayContent(
                                 }
                             },
                             onLongPress = {
-                                if (page == pagerState.currentPage) {
+                                if (
+                                    page == pagerState.currentPage &&
+                                    shouldHandleImagePreviewLongPressSave(
+                                        longPressSaveEnabled = longPressSaveEnabled,
+                                        imageUrl = imageUrl,
+                                        isSaving = isSaving
+                                    )
+                                ) {
+                                    haptic(resolveImagePreviewLongPressSaveStartFeedback())
                                     requestSaveCurrentImage(imageUrl)
                                 }
                             },

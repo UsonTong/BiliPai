@@ -341,7 +341,7 @@ internal fun resolveSearchSwipeTargetType(
     val currentIndex = tabs.indexOf(currentType)
     if (tabs.isEmpty() || currentIndex !in tabs.indices) return null
     if (kotlin.math.abs(dragDistancePx) < thresholdPx) return null
-    val targetIndex = if (dragDistancePx > 0f) currentIndex + 1 else currentIndex - 1
+    val targetIndex = if (dragDistancePx > 0f) currentIndex - 1 else currentIndex + 1
     return tabs.getOrNull(targetIndex)?.takeIf { it != currentType }
 }
 

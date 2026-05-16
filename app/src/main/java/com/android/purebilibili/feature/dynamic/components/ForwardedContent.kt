@@ -75,8 +75,13 @@ fun ForwardedContent(
     val content = orig.modules.module_dynamic
     var previewState by remember { mutableStateOf<ForwardedImagePreviewState?>(null) }
     var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
-    val previewTextContent = remember(author?.name, content?.desc?.text, content?.major?.opus?.summary?.text) {
-        val bodyText = content?.desc?.text.takeUnless { it.isNullOrBlank() }
+    val contentHasImages = content?.major?.draw?.items?.isNotEmpty() == true ||
+        content?.major?.opus?.pics?.isNotEmpty() == true
+    val visibleDynamicDesc = content?.desc?.let { desc ->
+        resolveDynamicDescForImages(desc, hasImages = contentHasImages)
+    }
+    val previewTextContent = remember(author?.name, visibleDynamicDesc?.text, content?.major?.opus?.summary?.text) {
+        val bodyText = visibleDynamicDesc?.text.takeUnless { it.isNullOrBlank() }
             ?: content?.major?.opus?.summary?.text.orEmpty()
         ImagePreviewTextContent(
             headline = author?.name.orEmpty(),
@@ -111,8 +116,8 @@ fun ForwardedContent(
         }
         
         // 原文字内容 - 使用 RichTextContent 支持表情
-        content?.desc?.let { desc ->
-            if (desc.text.isNotEmpty()) {
+        visibleDynamicDesc?.let { desc ->
+            if (shouldRenderDynamicRichText(desc)) {
                 RichTextContent(
                     desc = desc,
                     onUserClick = onUserClick
@@ -160,7 +165,7 @@ fun ForwardedContent(
         //  [新增] 原 Opus 图文动态
         content?.major?.opus?.let { opus ->
             // 显示文字摘要 (如果 desc 为空)
-            if (content.desc?.text.isNullOrEmpty()) {
+            if (!shouldRenderDynamicRichText(visibleDynamicDesc)) {
                 opus.summary?.let { summary ->
                     if (summary.text.isNotEmpty()) {
                         RichTextContent(

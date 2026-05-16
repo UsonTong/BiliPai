@@ -340,6 +340,14 @@ internal fun resolveImagePreviewTextVisibilityAfterToggle(currentVisible: Boolea
     return !currentVisible
 }
 
+internal fun shouldHandleImagePreviewLongPressSave(
+    longPressSaveEnabled: Boolean,
+    imageUrl: String,
+    isSaving: Boolean
+): Boolean {
+    return longPressSaveEnabled && imageUrl.isNotBlank() && !isSaving
+}
+
 private fun lerpFloat(start: Float, stop: Float, fraction: Float): Float {
     return start + (stop - start) * fraction
 }

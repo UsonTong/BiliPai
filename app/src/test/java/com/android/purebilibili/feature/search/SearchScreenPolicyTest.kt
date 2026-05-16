@@ -159,24 +159,24 @@ class SearchScreenPolicyTest {
     @Test
     fun searchResultSwipe_switchesToAdjacentSearchType() {
         assertEquals(
-            SearchType.UP,
-            resolveSearchSwipeTargetType(
-                currentType = SearchType.VIDEO,
-                dragDistancePx = 120f
-            )
-        )
-        assertEquals(
             SearchType.VIDEO,
             resolveSearchSwipeTargetType(
                 currentType = SearchType.UP,
-                dragDistancePx = -120f
+                dragDistancePx = 120f
             )
         )
         assertEquals(
             SearchType.BANGUMI,
             resolveSearchSwipeTargetType(
                 currentType = SearchType.UP,
-                dragDistancePx = 120f
+                dragDistancePx = -120f
+            )
+        )
+        assertEquals(
+            SearchType.UP,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.VIDEO,
+                dragDistancePx = -120f
             )
         )
     }
@@ -194,14 +194,14 @@ class SearchScreenPolicyTest {
             null,
             resolveSearchSwipeTargetType(
                 currentType = SearchType.VIDEO,
-                dragDistancePx = -120f
+                dragDistancePx = 120f
             )
         )
         assertEquals(
             null,
             resolveSearchSwipeTargetType(
                 currentType = SearchType.PHOTO,
-                dragDistancePx = 120f
+                dragDistancePx = -120f
             )
         )
     }
