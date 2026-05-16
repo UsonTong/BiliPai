@@ -611,43 +611,76 @@ private fun LightweightHomeTopTabs(
             HomeTopTabRenderer.MD3,
             HomeTopTabRenderer.MIUIX -> resolveMd3TopTabItemWidthDp(maxWidth.value).dp
         }
+        val density = LocalDensity.current
+        val md3IndicatorWidth = 28.dp
+        val md3IndicatorTranslationXPx by remember(currentPosition, itemWidth, md3IndicatorWidth, density, listState) {
+            derivedStateOf {
+                with(density) {
+                    resolveMd3TopTabIndicatorTranslationPx(
+                        absolutePagerPosition = currentPosition,
+                        itemWidthPx = itemWidth.toPx(),
+                        rowScrollOffsetPx = listState.firstVisibleItemIndex * itemWidth.toPx() +
+                            listState.firstVisibleItemScrollOffset,
+                        indicatorWidthPx = md3IndicatorWidth.toPx()
+                    )
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LazyRow(
-                state = listState,
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-                contentPadding = PaddingValues(horizontal = if (renderer == HomeTopTabRenderer.IOS) 2.dp else 0.dp)
+                    .fillMaxHeight()
             ) {
-                itemsIndexed(
-                    items = categories,
-                    key = { index, category -> categoryKeys.getOrNull(index) ?: category }
-                ) { index, category ->
-                    val categoryKey = categoryKeys.getOrNull(index) ?: category
-                    val selectionFraction = (1f - abs(currentPosition - index.toFloat())).coerceIn(0f, 1f)
-                    LightweightTopTabItem(
-                        renderer = renderer,
-                        category = category,
-                        categoryKey = categoryKey,
-                        index = index,
-                        selectionFraction = selectionFraction,
-                        selectedIndex = selectedIndex,
-                        showIcon = showIcon,
-                        showText = showText,
-                        itemWidth = itemWidth,
-                        onClick = {
-                            performHomeTopBarTap(haptic = haptic, onClick = {
-                                when (resolveTopTabClickAction(index, selectedIndex)) {
-                                    TopTabClickAction.SELECT_TAB -> onCategorySelected(index)
-                                    TopTabClickAction.SCROLL_TO_TOP -> scrollChannel?.trySend(Unit)
-                                }
-                            })
-                        }
+                LazyRow(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                    contentPadding = PaddingValues(horizontal = if (renderer == HomeTopTabRenderer.IOS) 2.dp else 0.dp)
+                ) {
+                    itemsIndexed(
+                        items = categories,
+                        key = { index, category -> categoryKeys.getOrNull(index) ?: category }
+                    ) { index, category ->
+                        val categoryKey = categoryKeys.getOrNull(index) ?: category
+                        val selectionFraction = (1f - abs(currentPosition - index.toFloat())).coerceIn(0f, 1f)
+                        LightweightTopTabItem(
+                            renderer = renderer,
+                            category = category,
+                            categoryKey = categoryKey,
+                            index = index,
+                            selectionFraction = selectionFraction,
+                            selectedIndex = selectedIndex,
+                            showIcon = showIcon,
+                            showText = showText,
+                            itemWidth = itemWidth,
+                            onClick = {
+                                performHomeTopBarTap(haptic = haptic, onClick = {
+                                    when (resolveTopTabClickAction(index, selectedIndex)) {
+                                        TopTabClickAction.SELECT_TAB -> onCategorySelected(index)
+                                        TopTabClickAction.SCROLL_TO_TOP -> scrollChannel?.trySend(Unit)
+                                    }
+                                })
+                            }
+                        )
+                    }
+                }
+                if (renderer == HomeTopTabRenderer.MD3) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(bottom = 4.dp)
+                            .graphicsLayer {
+                                translationX = md3IndicatorTranslationXPx
+                            }
+                            .width(md3IndicatorWidth)
+                            .height(2.dp)
+                            .clip(AppShapes.container(ContainerLevel.Pill))
+                            .background(MaterialTheme.colorScheme.primary)
                     )
                 }
             }
@@ -763,16 +796,6 @@ private fun LightweightTopTabItem(
             }
         }
 
-        if (renderer == HomeTopTabRenderer.MD3) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .width(28.dp)
-                    .height(2.dp)
-                    .clip(AppShapes.container(ContainerLevel.Pill))
-                    .background(colorScheme.primary.copy(alpha = selectionFraction))
-            )
-        }
     }
 }
 

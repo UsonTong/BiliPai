@@ -169,3 +169,15 @@ internal fun resolveMd3TopTabViewportPosition(
         .coerceAtLeast(0)
         .toFloat()
 }
+
+internal fun resolveMd3TopTabIndicatorTranslationPx(
+    absolutePagerPosition: Float,
+    itemWidthPx: Float,
+    rowScrollOffsetPx: Float,
+    indicatorWidthPx: Float,
+    contentPaddingPx: Float = 0f
+): Float {
+    if (itemWidthPx <= 0f || indicatorWidthPx <= 0f) return contentPaddingPx
+    val indicatorCenterPx = contentPaddingPx + (absolutePagerPosition * itemWidthPx) + (itemWidthPx / 2f)
+    return indicatorCenterPx - rowScrollOffsetPx - (indicatorWidthPx / 2f)
+}

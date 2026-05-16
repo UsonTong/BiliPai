@@ -61,8 +61,8 @@ class HomeChromeLiquidSurfaceStructureTest {
             topHeaderSource.contains("hasOuterChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface")
         )
         assertTrue(
-            "home header should be able to suppress the top tab outer chrome for native Miuix glass",
-            topHeaderSource.contains("drawChromeSurface = drawTopTabOuterChromeSurface") &&
+            "home header should suppress the nested top tab chrome when the unified top panel already draws it",
+            topHeaderSource.contains("drawChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface") &&
                 topTabChrome.readText().contains("drawChromeSurface: Boolean = true")
         )
         assertTrue(
@@ -95,6 +95,18 @@ class HomeChromeLiquidSurfaceStructureTest {
             "top tab row should continue to follow pager drag offset",
             topBarSource.contains("resolveTopTabIndicatorRenderPosition(") &&
                 topBarSource.contains("pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction")
+        )
+        assertTrue(
+            "MD3 top tab indicator should be a single moving layer tied to pager offset",
+            topBarSource.contains("resolveMd3TopTabIndicatorTranslationPx(") &&
+                topBarSource.contains("translationX = md3IndicatorTranslationXPx")
+        )
+        val lightweightTopTabItemSource = topBarSource
+            .substringAfter("private fun LightweightTopTabItem(")
+            .substringBefore("@OptIn(ExperimentalMaterial3Api::class)")
+        assertFalse(
+            "MD3 top tab item should not draw a second per-item underline",
+            lightweightTopTabItemSource.contains(".align(Alignment.BottomCenter)")
         )
         assertTrue(
             "matched top dock helper should still use the KSU floating dock renderer for header controls",

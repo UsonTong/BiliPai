@@ -1780,7 +1780,7 @@ fun iOSHomeHeader(
             gestureEnabled = topTabsVisible && !isHeaderCollapseEnabled,
             isTabsCollapsed = topTabsCollapsed,
             onTabsCollapsedChange = onTopTabsCollapsedChange,
-            drawChromeSurface = drawTopTabOuterChromeSurface
+            drawChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface
         ) {
             CategoryTabRow(
                 categories = topCategories,
