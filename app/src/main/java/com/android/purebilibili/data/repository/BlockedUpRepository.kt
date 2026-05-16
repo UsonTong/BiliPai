@@ -6,6 +6,9 @@ import com.android.purebilibili.core.database.entity.BlockedUp
 import com.android.purebilibili.core.network.BilibiliApi
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -15,12 +18,19 @@ private const val BILIBILI_RELATION_ACT_BLOCK = 5
 private const val BILIBILI_RELATION_ACT_UNBLOCK = 6
 private const val BILIBILI_RELATION_BLOCK_RE_SRC = 11
 private const val BLOCKED_UP_PROFILE_REFRESH_DELAY_MS = 120L
+private const val BLOCKED_UP_SHARE_MARKER = "BILIPAI_BLOCKED_UPS_V1"
 
 data class BlockedUpImportItem(
     val mid: Long,
     val name: String = "",
     val face: String = "",
-    val sign: String = ""
+    val sign: String = "",
+    val level: Int? = null,
+    val vipLabel: String = "",
+    val officialTitle: String = "",
+    val follower: Long? = null,
+    val archiveCount: Int? = null,
+    val isDeleted: Boolean = false
 )
 
 data class BlockedUpImportResult(
@@ -48,6 +58,31 @@ data class BlockedUpMetadataRefreshResult(
     val failedCount: Int,
     val message: String
 )
+
+@Serializable
+private data class BlockedUpSharePayload(
+    val version: Int = 1,
+    val items: List<BlockedUpShareItem>
+)
+
+@Serializable
+private data class BlockedUpShareItem(
+    val mid: Long,
+    val name: String = "",
+    val face: String = "",
+    val sign: String = "",
+    val level: Int? = null,
+    val vipLabel: String = "",
+    val officialTitle: String = "",
+    val follower: Long? = null,
+    val archiveCount: Int? = null,
+    val isDeleted: Boolean = false
+)
+
+private val blockedUpShareJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = false
+}
 
 internal data class BlockedUpImportPlan(
     val itemsToInsert: List<BlockedUpImportItem>,
@@ -133,18 +168,18 @@ internal fun buildBlockedUpMetadataRefreshMessage(
 
 fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
     if (blockedUps.isEmpty()) {
-        return "BiliPai 黑名单导出\n暂无黑名单用户"
+        return "BiliPai 黑名单导出\n暂无黑名单用户\n\n$BLOCKED_UP_SHARE_MARKER\n{\"version\":1,\"items\":[]}"
     }
 
     val body = blockedUps.mapIndexed { index, up ->
         val name = up.name.ifBlank { "UP主${up.mid}" }
-        val levelText = up.level?.let { "LV$it" } ?: "等级未知"
         val statusText = if (up.isDeleted) "疑似已注销" else "正常"
         val profileUrl = "https://space.bilibili.com/${up.mid}"
         buildString {
             append("${index + 1}. $name\n")
             append("UID: ${up.mid}\n")
-            append("状态: $statusText · $levelText")
+            append("状态: $statusText")
+            up.level?.let { append(" · LV$it") }
             up.vipLabel.takeIf { it.isNotBlank() }?.let { append(" · $it") }
             up.officialTitle.takeIf { it.isNotBlank() }?.let { append(" · $it") }
             append('\n')
@@ -155,7 +190,61 @@ fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
         }
     }.joinToString(separator = "\n\n")
 
-    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body"
+    val payload = BlockedUpSharePayload(
+        items = blockedUps.map { up ->
+            BlockedUpShareItem(
+                mid = up.mid,
+                name = up.name,
+                face = up.face,
+                sign = up.sign,
+                level = up.level,
+                vipLabel = up.vipLabel,
+                officialTitle = up.officialTitle,
+                follower = up.follower,
+                archiveCount = up.archiveCount,
+                isDeleted = up.isDeleted
+            )
+        }
+    )
+
+    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body\n\n$BLOCKED_UP_SHARE_MARKER\n" +
+        blockedUpShareJson.encodeToString(payload)
+}
+
+fun parseBlockedUpShareText(text: String): List<BlockedUpImportItem> {
+    val markerIndex = text.indexOf(BLOCKED_UP_SHARE_MARKER)
+    if (markerIndex >= 0) {
+        val payloadText = text
+            .substring(markerIndex + BLOCKED_UP_SHARE_MARKER.length)
+            .trim()
+        val payload = runCatching {
+            blockedUpShareJson.decodeFromString<BlockedUpSharePayload>(payloadText)
+        }.getOrNull()
+        if (payload != null) {
+            return payload.items.map { item ->
+                BlockedUpImportItem(
+                    mid = item.mid,
+                    name = item.name,
+                    face = item.face,
+                    sign = item.sign,
+                    level = item.level,
+                    vipLabel = item.vipLabel,
+                    officialTitle = item.officialTitle,
+                    follower = item.follower,
+                    archiveCount = item.archiveCount,
+                    isDeleted = item.isDeleted
+                )
+            }
+        }
+    }
+
+    return Regex("""(?m)^\s*UID:\s*(\d+)\s*$""")
+        .findAll(text)
+        .mapNotNull { match ->
+            val mid = match.groupValues.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+            BlockedUpImportItem(mid = mid)
+        }
+        .toList()
 }
 
 class BlockedUpRepository(
@@ -200,7 +289,13 @@ class BlockedUpRepository(
                     mid = item.mid,
                     name = item.name,
                     face = item.face,
-                    sign = item.sign
+                    sign = item.sign,
+                    level = item.level,
+                    vipLabel = item.vipLabel,
+                    officialTitle = item.officialTitle,
+                    follower = item.follower,
+                    archiveCount = item.archiveCount,
+                    isDeleted = item.isDeleted
                 )
             )
         }

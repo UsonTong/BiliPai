@@ -24,8 +24,11 @@ class BilibiliBlockedListSyncRepository(
         try {
             val remoteUsers = fetchBlockedListUsers()
             val importItems = buildBlockedUpImportItemsFromRemoteBlacks(remoteUsers)
+            val importResult = localRepository.importBlockedUps(importItems)
+            val refreshResult = localRepository.refreshBlockedUpProfiles()
+            val message = "${importResult.message}；${refreshResult.message}"
 
-            Result.success(localRepository.importBlockedUps(importItems))
+            Result.success(importResult.copy(message = message))
         } catch (e: Exception) {
             Result.failure(e)
         }

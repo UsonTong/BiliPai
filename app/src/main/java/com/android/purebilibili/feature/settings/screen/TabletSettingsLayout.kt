@@ -456,6 +456,12 @@ fun TabletSettingsLayout(
                                             chooserTitle = "分享黑名单"
                                         )
                                     },
+                                    onImportBlockedList = { text ->
+                                        scope.launch {
+                                            val items = com.android.purebilibili.data.repository.parseBlockedUpShareText(text)
+                                            blockedListSyncMessage = repository.importBlockedUps(items).message
+                                        }
+                                    },
                                     onUnblock = { mid ->
                                         scope.launch {
                                             blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message

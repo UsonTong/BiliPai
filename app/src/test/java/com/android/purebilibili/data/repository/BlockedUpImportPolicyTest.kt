@@ -4,6 +4,7 @@ import com.android.purebilibili.data.model.response.FollowingUser
 import com.android.purebilibili.core.database.entity.BlockedUp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class BlockedUpImportPolicyTest {
 
@@ -121,24 +122,60 @@ class BlockedUpImportPolicyTest {
             )
         )
 
-        assertEquals(
-            """
-            BiliPai 黑名单导出（2 个用户）
+        assertTrue(text.contains("BiliPai 黑名单导出（2 个用户）"))
+        assertTrue(text.contains("状态: 正常 · LV5 · 年度大会员 · 认证用户"))
+        assertTrue(text.contains("状态: 疑似已注销"))
+        assertTrue(!text.contains("等级未知"))
+        assertEquals(listOf(123L, 456L), parseBlockedUpShareText(text).map { it.mid })
+    }
 
-            1. 测试UP
-            UID: 123
-            状态: 正常 · LV5 · 年度大会员 · 认证用户
-            粉丝: 99
-            投稿: 3
-            签名: 不要推荐
-            主页: https://space.bilibili.com/123
-
-            2. UP主456
-            UID: 456
-            状态: 疑似已注销 · 等级未知
-            主页: https://space.bilibili.com/456
-            """.trimIndent(),
-            text
+    @Test
+    fun `blocked up share text can be parsed back for import`() {
+        val text = buildBlockedUpShareText(
+            listOf(
+                BlockedUp(
+                    mid = 123L,
+                    name = "测试UP",
+                    face = "https://i0.hdslb.com/test.jpg",
+                    level = 5,
+                    sign = "不要推荐",
+                    vipLabel = "年度大会员",
+                    officialTitle = "认证用户",
+                    follower = 99L,
+                    archiveCount = 3
+                )
+            )
         )
+
+        assertEquals(
+            listOf(
+                BlockedUpImportItem(
+                    mid = 123L,
+                    name = "测试UP",
+                    face = "https://i0.hdslb.com/test.jpg",
+                    sign = "不要推荐",
+                    level = 5,
+                    vipLabel = "年度大会员",
+                    officialTitle = "认证用户",
+                    follower = 99L,
+                    archiveCount = 3
+                )
+            ),
+            parseBlockedUpShareText(text)
+        )
+    }
+
+    @Test
+    fun `blocked up share parser accepts old readable text`() {
+        val items = parseBlockedUpShareText(
+            """
+            BiliPai 黑名单导出
+            UID: 123
+            UID: 456
+            """.trimIndent()
+        )
+
+        assertEquals(listOf(123L, 456L), items.map { it.mid })
+        assertTrue(items.all { it.name.isBlank() })
     }
 }

@@ -20,6 +20,7 @@ import coil.compose.AsyncImage
 import com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepository
 import com.android.purebilibili.data.repository.BlockedUpRepository
 import com.android.purebilibili.data.repository.buildBlockedUpShareText
+import com.android.purebilibili.data.repository.parseBlockedUpShareText
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
 import com.android.purebilibili.core.ui.AppShapes
@@ -100,6 +101,12 @@ fun BlockedListScreen(
                     chooserTitle = "分享黑名单"
                 )
             },
+            onImportBlockedList = { text ->
+                scope.launch {
+                    val items = parseBlockedUpShareText(text)
+                    blockedListSyncMessage = repository.importBlockedUps(items).message
+                }
+            },
             onUnblock = { mid ->
                 scope.launch {
                     blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message
@@ -119,9 +126,45 @@ fun BlockedListContent(
     onSyncBlockedList: (() -> Unit)? = null,
     onRefreshProfiles: (() -> Unit)? = null,
     onShareBlockedList: (() -> Unit)? = null,
+    onImportBlockedList: ((String) -> Unit)? = null,
     onUnblock: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importText by remember { mutableStateOf("") }
+    if (showImportDialog && onImportBlockedList != null) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("导入黑名单") },
+            text = {
+                OutlinedTextField(
+                    value = importText,
+                    onValueChange = { importText = it },
+                    label = { Text("粘贴分享出来的黑名单文本") },
+                    minLines = 5,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onImportBlockedList(importText)
+                        showImportDialog = false
+                        importText = ""
+                    },
+                    enabled = importText.isNotBlank()
+                ) {
+                    Text("导入")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     if (blockedUps.isEmpty()) {
         Column(
             modifier = modifier.fillMaxSize(),
@@ -142,6 +185,11 @@ fun BlockedListContent(
                     onSync = onSyncBlockedList,
                     onRefreshProfiles = onRefreshProfiles,
                     onShareBlockedList = onShareBlockedList,
+                    onImportBlockedListRequest = if (onImportBlockedList != null) {
+                        { showImportDialog = true }
+                    } else {
+                        null
+                    },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
@@ -160,7 +208,12 @@ fun BlockedListContent(
                         message = blockedListSyncMessage,
                         onSync = onSyncBlockedList,
                         onRefreshProfiles = onRefreshProfiles,
-                        onShareBlockedList = onShareBlockedList
+                        onShareBlockedList = onShareBlockedList,
+                        onImportBlockedListRequest = if (onImportBlockedList != null) {
+                            { showImportDialog = true }
+                        } else {
+                            null
+                        }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -195,6 +248,7 @@ private fun BlockedListSyncAction(
     onSync: () -> Unit,
     onRefreshProfiles: (() -> Unit)?,
     onShareBlockedList: (() -> Unit)?,
+    onImportBlockedListRequest: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -221,17 +275,14 @@ private fun BlockedListSyncAction(
             }
             Text(if (syncing) "同步中" else "同步 B站黑名单")
         }
-        if (onRefreshProfiles != null || onShareBlockedList != null) {
+        if (onRefreshProfiles != null || onShareBlockedList != null || onImportBlockedListRequest != null) {
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onRefreshProfiles != null) {
                     OutlinedButton(
                         onClick = onRefreshProfiles,
                         enabled = !syncing && !refreshingProfiles,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         if (refreshingProfiles) {
                             CircularProgressIndicator(
@@ -243,11 +294,20 @@ private fun BlockedListSyncAction(
                         Text(if (refreshingProfiles) "刷新中" else "刷新资料")
                     }
                 }
+                if (onImportBlockedListRequest != null) {
+                    OutlinedButton(
+                        onClick = onImportBlockedListRequest,
+                        enabled = !syncing && !refreshingProfiles,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("导入黑名单")
+                    }
+                }
                 if (onShareBlockedList != null) {
                     OutlinedButton(
                         onClick = onShareBlockedList,
                         enabled = !syncing && !refreshingProfiles,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("分享黑名单")
                     }
@@ -356,7 +416,7 @@ internal fun buildBlockedUpMetaLine(
     isDeleted: Boolean
 ): String {
     val parts = mutableListOf("UID $mid")
-    parts += level?.let { "LV$it" } ?: "等级未知"
+    level?.let { parts += "LV$it" }
     if (isDeleted) parts += "疑似已注销"
     if (vipLabel.isNotBlank()) parts += vipLabel
     if (officialTitle.isNotBlank()) parts += officialTitle

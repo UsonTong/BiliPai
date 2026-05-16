@@ -20,4 +20,20 @@ class BlockedListScreenPolicyTest {
             )
         )
     }
+
+    @Test
+    fun blockedUpMetaLine_doesNotShowUnknownLevelWhenProfileIsNotLoaded() {
+        assertEquals(
+            "UID 42",
+            buildBlockedUpMetaLine(
+                mid = 42L,
+                level = null,
+                vipLabel = "",
+                officialTitle = "",
+                follower = null,
+                archiveCount = null,
+                isDeleted = false
+            )
+        )
+    }
 }
