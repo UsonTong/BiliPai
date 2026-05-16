@@ -164,6 +164,7 @@ fun VideoCommentSheetHost(
     onUserClick: (Long) -> Unit,
     onVideoClick: ((String) -> Unit)? = null,
     onSearchKeywordClick: ((String) -> Unit)? = null,
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     screenHeightPx: Int = 0,
     topReservedPx: Int = 0,
     onTimestampClick: ((Long) -> Unit)? = null,
@@ -322,6 +323,10 @@ fun VideoCommentSheetHost(
     val openCommentUrl: (String) -> Unit = openCommentUrl@{ rawUrl ->
         val url = rawUrl.trim()
         if (url.isEmpty()) return@openCommentUrl
+        if (onOpenBilibiliLink != null) {
+            onOpenBilibiliLink(url)
+            return@openCommentUrl
+        }
 
         when (val target = resolveCommentUrlNavigationTarget(url)) {
             is CommentUrlNavigationTarget.Video -> {

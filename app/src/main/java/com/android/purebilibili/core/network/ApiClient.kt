@@ -752,6 +752,12 @@ interface BilibiliApi {
     @GET("x/relation/tags")
     suspend fun getRelationTags(): RelationTagsResponse
 
+    @GET("x/relation/blacks")
+    suspend fun getRelationBlacks(
+        @Query("ps") pageSize: Int = 50,
+        @Query("pn") page: Int = 1
+    ): com.android.purebilibili.data.model.response.RelationBlacksResponse
+
     @GET("x/relation/tag/user")
     suspend fun getRelationTagUser(
         @Query("fid") fid: Long

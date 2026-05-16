@@ -1,9 +1,8 @@
 package com.android.purebilibili.data.repository
 
-import com.android.purebilibili.data.model.response.RelationTagItem
+import com.android.purebilibili.data.model.response.FollowingUser
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class BlockedUpImportPolicyTest {
 
@@ -26,27 +25,34 @@ class BlockedUpImportPolicyTest {
     }
 
     @Test
-    fun `blocked list tag finder recognizes blacklist names without hardcoded ids`() {
-        val tag = findBilibiliBlockedListTag(
+    fun `remote blacklist users map to import items with names and faces`() {
+        val items = buildBlockedUpImportItemsFromRemoteBlacks(
             listOf(
-                RelationTagItem(tagid = 1L, name = "特别关注"),
-                RelationTagItem(tagid = 9L, name = "黑名单")
+                FollowingUser(mid = 7L, uname = "测试UP", face = "https://i0.hdslb.com/test.jpg"),
+                FollowingUser(mid = 8L, uname = "   ", face = "")
             )
         )
 
-        assertEquals(9L, tag?.tagid)
+        assertEquals(
+            listOf(
+                BlockedUpImportItem(mid = 7L, name = "测试UP", face = "https://i0.hdslb.com/test.jpg"),
+                BlockedUpImportItem(mid = 8L, name = "UP主8", face = "")
+            ),
+            items
+        )
     }
 
     @Test
-    fun `blocked list tag finder returns null when server exposes no blacklist group`() {
-        val tag = findBilibiliBlockedListTag(
+    fun `remote blacklist mapping drops invalid mids before import plan`() {
+        val items = buildBlockedUpImportItemsFromRemoteBlacks(
             listOf(
-                RelationTagItem(tagid = 1L, name = "默认分组"),
-                RelationTagItem(tagid = 2L, name = "游戏区")
+                FollowingUser(mid = 0L, uname = "无效"),
+                FollowingUser(mid = -1L, uname = "无效"),
+                FollowingUser(mid = 9L, uname = "有效")
             )
         )
 
-        assertNull(tag)
+        assertEquals(listOf(9L), items.map { it.mid })
     }
 
     @Test

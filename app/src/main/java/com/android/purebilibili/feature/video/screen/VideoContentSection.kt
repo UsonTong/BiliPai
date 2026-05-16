@@ -266,6 +266,7 @@ fun VideoContentSection(
     // [新增] 已点赞的评论 ID 集合
     likedComments: Set<Long> = emptySet(),
     onCommentUrlClick: (String) -> Unit = {},
+    onDescriptionUrlClick: ((String) -> Unit)? = null,
     onReportComment: (Long, Int) -> Unit = { _, _ -> },
     onToggleTopComment: (ReplyItem) -> Unit = {},
     // 🔗 [新增] 共享元素过渡开关
@@ -449,6 +450,7 @@ fun VideoContentSection(
                         showOnlineCount = showOnlineCount,
                         onTimestampClick = onTimestampClick,
                         onBgmClick = onBgmClick,
+                        onDescriptionUrlClick = onDescriptionUrlClick,
                         showInteractionActions = showInteractionActions,
                         animateVideoDetailLayout = animateVideoDetailLayout
                     )
@@ -564,6 +566,7 @@ private fun VideoIntroTab(
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onShareClick: () -> Unit = {},
+    onDescriptionUrlClick: ((String) -> Unit)? = null,
     contentPadding: PaddingValues,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     ownerFollowerCount: Int? = null,
@@ -624,6 +627,7 @@ private fun VideoIntroTab(
                 showOnlineCount = showOnlineCount,
                 onTimestampClick = onTimestampClick,
                 onBgmClick = onBgmClick,
+                onDescriptionUrlClick = onDescriptionUrlClick,
                 showInteractionActions = showInteractionActions,
                 animateVideoDetailLayout = animateVideoDetailLayout
             )
@@ -934,6 +938,7 @@ private fun VideoHeaderContent(
     bgmInfoList: List<BgmInfo> = emptyList(),
     onTimestampClick: ((Long) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {},
+    onDescriptionUrlClick: ((String) -> Unit)? = null,
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     showInteractionActions: Boolean = true,
@@ -974,6 +979,7 @@ private fun VideoHeaderContent(
             onlineCount = onlineCount,
             showOnlineCount = showOnlineCount,
             onBgmClick = onBgmClick,
+            onDescriptionUrlClick = onDescriptionUrlClick,
             animateLayout = animateVideoDetailLayout
         )
 

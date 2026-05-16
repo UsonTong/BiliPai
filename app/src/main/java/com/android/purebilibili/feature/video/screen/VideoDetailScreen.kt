@@ -690,6 +690,7 @@ fun VideoDetailScreen(
     onNavigateToAudioMode: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onSearchKeywordClick: (String) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     onVideoClick: (String, android.os.Bundle?) -> Unit,
     onUpClick: (Long) -> Unit = {},
     miniPlayerManager: MiniPlayerManager? = null,
@@ -778,6 +779,10 @@ fun VideoDetailScreen(
     val openCommentUrl: (String) -> Unit = openCommentUrl@{ rawUrl ->
         val url = rawUrl.trim()
         if (url.isEmpty()) return@openCommentUrl
+        if (onOpenBilibiliLink != null) {
+            onOpenBilibiliLink(url)
+            return@openCommentUrl
+        }
 
         when (val target = resolveCommentUrlNavigationTarget(url)) {
             is CommentUrlNavigationTarget.Video -> {
@@ -2412,6 +2417,7 @@ fun VideoDetailScreen(
                         onRelatedVideoClick = navigateToRelatedVideo,
                         showUpBadge = homeUpBadgesVisible,
                         onSearchKeywordClick = navigateToSearchKeywordFromVideo,
+                        onOpenBilibiliLink = onOpenBilibiliLink,
                         // 🔁 [新增] 播放模式
                         currentPlayMode = currentPlayMode,
                         onPlayModeClick = { com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode() },
@@ -2867,6 +2873,7 @@ fun VideoDetailScreen(
                                                         },
                                                         onLoadMoreReplies = { commentViewModel.loadComments() },
                                                         onCommentUrlClick = openCommentUrl,
+                                                        onDescriptionUrlClick = onOpenBilibiliLink,
                                                         onReportComment = commentViewModel::reportComment,
                                                         onToggleTopComment = commentViewModel::toggleTopComment,
                                                         onDownloadClick = { viewModel.openDownloadDialog() },
@@ -3811,6 +3818,7 @@ fun VideoDetailScreen(
                 navigateToRelatedVideo(targetVideoId, null)
             },
             onSearchKeywordClick = navigateToSearchKeywordFromVideo,
+            onOpenBilibiliLink = onOpenBilibiliLink,
             screenHeightPx = screenHeightPx,
             topReservedPx = danmakuDialogTopReservePx,
             onTimestampClick = { positionMs ->
@@ -4813,6 +4821,7 @@ private fun DetachedVideoCommentThreadHost(
     onUpClick: (Long) -> Unit,
     onNavigateToRelatedVideo: (String) -> Unit,
     onSearchKeywordClick: (String) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?,
     screenHeightPx: Int,
     topReservedPx: Int,
     onTimestampClick: (Long) -> Unit
@@ -4842,6 +4851,7 @@ private fun DetachedVideoCommentThreadHost(
         onUserClick = onUpClick,
         onVideoClick = onNavigateToRelatedVideo,
         onSearchKeywordClick = onSearchKeywordClick,
+        onOpenBilibiliLink = onOpenBilibiliLink,
         screenHeightPx = screenHeightPx,
         topReservedPx = topReservedPx,
         onTimestampClick = onTimestampClick,

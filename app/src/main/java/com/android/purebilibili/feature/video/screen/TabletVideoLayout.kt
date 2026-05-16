@@ -98,6 +98,7 @@ fun TabletVideoLayout(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showUpBadge: Boolean = true,
     onSearchKeywordClick: (String) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     // 🔁 [新增] 播放模式
     currentPlayMode: com.android.purebilibili.feature.video.player.PlayMode = com.android.purebilibili.feature.video.player.PlayMode.SEQUENTIAL,
     onPlayModeClick: () -> Unit = {},
@@ -261,6 +262,7 @@ fun TabletVideoLayout(
                         onDownloadClick = { viewModel.openDownloadDialog() },
                         onWatchLaterClick = { viewModel.toggleWatchLater() },
                         onRelatedVideoClick = onRelatedVideoClick,
+                        onOpenBilibiliLink = onOpenBilibiliLink,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
@@ -290,7 +292,8 @@ fun TabletVideoLayout(
                     onRelatedVideoClick = onRelatedVideoClick,
                     showUpBadge = showUpBadge,
                     showIdentityDecorations = commentMemberDecorationsEnabled,
-                    onSearchKeywordClick = onSearchKeywordClick
+                    onSearchKeywordClick = onSearchKeywordClick,
+                    onOpenBilibiliLink = onOpenBilibiliLink
                 )
             }
         },
@@ -315,7 +318,8 @@ private fun TabletSecondaryContent(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showUpBadge: Boolean,
     showIdentityDecorations: Boolean,
-    onSearchKeywordClick: (String) -> Unit
+    onSearchKeywordClick: (String) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     var selectedTab by rememberSaveable(success.info.bvid) {
@@ -364,6 +368,10 @@ private fun TabletSecondaryContent(
     val openCommentUrl: (String) -> Unit = openCommentUrl@{ rawUrl ->
         val url = rawUrl.trim()
         if (url.isEmpty()) return@openCommentUrl
+        if (onOpenBilibiliLink != null) {
+            onOpenBilibiliLink(url)
+            return@openCommentUrl
+        }
 
         when (val target = resolveCommentUrlNavigationTarget(url)) {
             is CommentUrlNavigationTarget.Video -> {
@@ -765,6 +773,7 @@ private fun ScrollableVideoInfoSection(
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?,
     relatedVideos: List<com.android.purebilibili.data.model.response.RelatedVideo> = emptyList(),
     modifier: Modifier = Modifier
 ) {
@@ -804,7 +813,8 @@ private fun ScrollableVideoInfoSection(
         item {
             VideoTitleWithDesc(
                 info = info,
-                videoTags = videoTags
+                videoTags = videoTags,
+                onDescriptionUrlClick = onOpenBilibiliLink
             )
             Spacer(modifier = Modifier.height(12.dp))
         }

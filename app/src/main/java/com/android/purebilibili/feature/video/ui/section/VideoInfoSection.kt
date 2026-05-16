@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,9 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -49,6 +57,65 @@ import com.android.purebilibili.feature.video.ui.FollowButtonTone
 import com.android.purebilibili.feature.video.ui.FollowTextTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
 
+internal const val VIDEO_DESCRIPTION_URL_TAG = "VIDEO_DESCRIPTION_URL"
+private val VIDEO_DESCRIPTION_URL_PATTERN =
+    """((https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|])""".toRegex()
+private val VIDEO_DESCRIPTION_INLINE_BVID_PATTERN =
+    Regex("""(?<![A-Za-z0-9])BV[a-zA-Z0-9]{10}(?![A-Za-z0-9])""", RegexOption.IGNORE_CASE)
+
+internal fun buildVideoDescriptionAnnotatedString(
+    desc: String,
+    urlColor: Color
+): AnnotatedString {
+    data class LinkMatch(
+        val range: IntRange,
+        val annotation: String,
+        val displayText: String,
+        val priority: Int
+    )
+
+    val matches = mutableListOf<LinkMatch>()
+    VIDEO_DESCRIPTION_URL_PATTERN.findAll(desc).forEach { match ->
+        matches += LinkMatch(
+            range = match.range,
+            annotation = match.value,
+            displayText = match.value,
+            priority = 0
+        )
+    }
+    VIDEO_DESCRIPTION_INLINE_BVID_PATTERN.findAll(desc).forEach { match ->
+        val overlapsUrl = matches.any { existing ->
+            match.range.first <= existing.range.last && match.range.last >= existing.range.first
+        }
+        if (!overlapsUrl) {
+            matches += LinkMatch(
+                range = match.range,
+                annotation = "https://www.bilibili.com/video/${match.value}",
+                displayText = match.value,
+                priority = 1
+            )
+        }
+    }
+    matches.sortWith(compareBy<LinkMatch> { it.range.first }.thenBy { it.priority })
+
+    return buildAnnotatedString {
+        var lastIndex = 0
+        matches.forEach { match ->
+            if (lastIndex < match.range.first) {
+                append(desc.substring(lastIndex, match.range.first))
+            }
+            pushStringAnnotation(tag = VIDEO_DESCRIPTION_URL_TAG, annotation = match.annotation)
+            withStyle(SpanStyle(color = urlColor, textDecoration = TextDecoration.Underline)) {
+                append(match.displayText)
+            }
+            pop()
+            lastIndex = match.range.last + 1
+        }
+        if (lastIndex < desc.length) {
+            append(desc.substring(lastIndex))
+        }
+    }
+}
 
 /**
  * Video Info Section Components
@@ -182,6 +249,7 @@ fun VideoTitleWithDesc(
     showOnlineCount: Boolean = true,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     animateLayout: Boolean = true,
+    onDescriptionUrlClick: ((String) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -446,16 +514,45 @@ fun VideoTitleWithDesc(
         ) {
             Column {
                 Spacer(Modifier.height(6.dp))
+                val descriptionUrlColor = MaterialTheme.colorScheme.primary
+                val descriptionText = remember(info.desc, descriptionUrlColor) {
+                    buildVideoDescriptionAnnotatedString(
+                        desc = info.desc,
+                        urlColor = descriptionUrlColor
+                    )
+                }
+                var descriptionTextLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+                val descriptionModifier = if (onDescriptionUrlClick != null) {
+                    Modifier.pointerInput(descriptionText, info.desc, onDescriptionUrlClick) {
+                        detectTapGestures { offset ->
+                            val layoutResult = descriptionTextLayout ?: return@detectTapGestures
+                            val position = layoutResult.getOffsetForPosition(offset)
+                            val searchStart = maxOf(0, position - 1)
+                            val searchEnd = minOf(descriptionText.length, position + 1)
+                            descriptionText.getStringAnnotations(
+                                tag = VIDEO_DESCRIPTION_URL_TAG,
+                                start = searchStart,
+                                end = searchEnd
+                            ).firstOrNull()?.let { annotation ->
+                                onDescriptionUrlClick(annotation.item)
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                }
                 // [新增] 使用 SelectionContainer 支持滑动复制
                 SelectionContainer {
                     Text(
-                        text = info.desc,
+                        text = descriptionText,
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontSize = 12.sp,
                             lineHeight = 17.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        modifier = if (animateLayout) Modifier.animateContentSize() else Modifier
+                        onTextLayout = { descriptionTextLayout = it },
+                        modifier = (if (animateLayout) Modifier.animateContentSize() else Modifier)
+                            .then(descriptionModifier)
                     )
                 }
             }

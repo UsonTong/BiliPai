@@ -74,6 +74,8 @@ import com.android.purebilibili.feature.dynamic.LocalDynamicScrollChannel
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewOverlayHost
 import com.android.purebilibili.feature.live.shouldStopLivePlaybackOnRouteDispose
 import com.android.purebilibili.core.util.CardPositionManager
+import com.android.purebilibili.core.util.BilibiliNavigationTarget
+import com.android.purebilibili.core.util.BilibiliNavigationTargetParser
 import com.android.purebilibili.core.ui.ProvideAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.SharedTransitionProvider
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
@@ -456,6 +458,67 @@ fun AppNavigation(
             restoreState = true
         }
         return true
+    }
+
+    fun openBilibiliLink(rawLink: String) {
+        fun openNativeTarget(target: BilibiliNavigationTarget): Boolean {
+            when (target) {
+                is BilibiliNavigationTarget.Video -> navigateToVideo(target.videoId, 0L, "")
+                is BilibiliNavigationTarget.Dynamic -> {
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.DynamicDetail.createRoute(target.dynamicId))
+                }
+                is BilibiliNavigationTarget.Search -> navigateToSearchKeyword(target.keyword)
+                is BilibiliNavigationTarget.Space -> {
+                    if (target.mid <= 0L || !canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.Space.createRoute(target.mid))
+                }
+                is BilibiliNavigationTarget.Live -> {
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.Live.createRoute(target.roomId, "", ""))
+                }
+                is BilibiliNavigationTarget.BangumiSeason -> {
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.BangumiDetail.createRoute(target.seasonId))
+                }
+                is BilibiliNavigationTarget.BangumiEpisode -> {
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.BangumiDetail.createRoute(seasonId = 0L, epId = target.epId))
+                }
+                is BilibiliNavigationTarget.Music -> {
+                    val auSid = target.musicId.removePrefix("au").removePrefix("AU").toLongOrNull() ?: return false
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.MusicDetail.createRoute(auSid))
+                }
+                is BilibiliNavigationTarget.Article -> {
+                    if (!canNavigate(false)) return false
+                    navController.navigate(ScreenRoutes.ArticleDetail.createRoute(target.articleId))
+                }
+            }
+            return true
+        }
+
+        when (val action = resolveBilibiliLinkNavigationAction(rawLink)) {
+            is BilibiliLinkNavigationAction.NativeTarget -> {
+                openNativeTarget(action.target)
+            }
+            is BilibiliLinkNavigationAction.InAppWeb -> {
+                if (isBilibiliShortWebLink(action.url)) {
+                    coroutineScope.launch {
+                        val resolvedTarget = BilibiliNavigationTargetParser.resolve(action.url)
+                        if (resolvedTarget == null || !openNativeTarget(resolvedTarget)) {
+                            navController.navigate(ScreenRoutes.Web.createRoute(action.url))
+                        }
+                    }
+                } else if (canNavigate(false)) {
+                    navController.navigate(ScreenRoutes.Web.createRoute(action.url))
+                }
+            }
+            is BilibiliLinkNavigationAction.External -> {
+                runCatching { uriHandler.openUri(action.url) }
+            }
+            BilibiliLinkNavigationAction.None -> Unit
+        }
     }
 
     fun navigateToSearchFromBottomBar() {
@@ -1697,6 +1760,7 @@ fun AppNavigation(
                         if (canNavigate(false)) navController.navigate(ScreenRoutes.Search.route)
                     },
                     onSearchKeywordClick = navigateToSearchKeyword,
+                    onOpenBilibiliLink = ::openBilibiliLink,
                     // [修复] 传递视频点击导航回调
                     onVideoClick = { vid, options ->
                         val targetCid = options?.getLong(

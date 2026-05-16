@@ -156,6 +156,7 @@ fun TabletCinemaLayout(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showUpBadge: Boolean = true,
     onSearchKeywordClick: (String) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     currentPlayMode: com.android.purebilibili.feature.video.player.PlayMode =
         com.android.purebilibili.feature.video.player.PlayMode.SEQUENTIAL,
     onPlayModeClick: () -> Unit = {},
@@ -293,6 +294,7 @@ fun TabletCinemaLayout(
                         },
                         onCollectionEpisodeClick = onRelatedVideoClick,
                         onPageSelect = { pageIndex -> viewModel.switchPage(pageIndex) },
+                        onOpenBilibiliLink = onOpenBilibiliLink,
                         onRetryAiSummary = viewModel::retryAiSummary
                     )
                 } else {
@@ -339,7 +341,8 @@ fun TabletCinemaLayout(
                 context = appContext,
                 showUpBadge = showUpBadge,
                 showIdentityDecorations = commentMemberDecorationsEnabled,
-                onSearchKeywordClick = onSearchKeywordClick
+                onSearchKeywordClick = onSearchKeywordClick,
+                onOpenBilibiliLink = onOpenBilibiliLink
             )
         }
     }
@@ -496,6 +499,7 @@ private fun CinemaMetaPanel(
     onOpenComments: () -> Unit,
     onCollectionEpisodeClick: (String, android.os.Bundle?) -> Unit,
     onPageSelect: (Int) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?,
     onRetryAiSummary: () -> Unit
 ) {
     val context = LocalContext.current
@@ -634,6 +638,7 @@ private fun CinemaMetaPanel(
                     CinemaMetaPanelBlock.INTRO -> {
                         CinemaVideoIntroSection(
                             success = success,
+                            onOpenBilibiliLink = onOpenBilibiliLink,
                             onRetryAiSummary = onRetryAiSummary
                         )
                     }
@@ -723,6 +728,7 @@ private fun CinemaMetaUpInfo(
 @Composable
 private fun CinemaVideoIntroSection(
     success: PlayerUiState.Success,
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     onRetryAiSummary: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -751,7 +757,8 @@ private fun CinemaVideoIntroSection(
                 info = success.info,
                 videoTags = success.videoTags,
                 bgmInfo = success.bgmInfo,
-                bgmInfoList = success.bgmInfoList
+                bgmInfoList = success.bgmInfoList,
+                onDescriptionUrlClick = onOpenBilibiliLink
             )
         }
         if (shouldShowAiSummaryEntry(
@@ -789,7 +796,8 @@ private fun CinemaSideCurtain(
     context: android.content.Context,
     showUpBadge: Boolean,
     showIdentityDecorations: Boolean,
-    onSearchKeywordClick: (String) -> Unit
+    onSearchKeywordClick: (String) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?
 ) {
     val subReplyState by commentViewModel.subReplyState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
     val transition = updateTransition(targetState = state, label = "SideCurtainAnimation")
@@ -924,7 +932,8 @@ private fun CinemaSideCurtain(
                                             context = context,
                                             onRelatedVideoClick = onRelatedVideoClick,
                                             showIdentityDecorations = showIdentityDecorations,
-                                            onSearchKeywordClick = onSearchKeywordClick
+                                            onSearchKeywordClick = onSearchKeywordClick,
+                                            onOpenBilibiliLink = onOpenBilibiliLink
                                         )
                                     }
 
@@ -958,7 +967,8 @@ private fun CinemaCommentsPane(
     context: android.content.Context,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showIdentityDecorations: Boolean,
-    onSearchKeywordClick: (String) -> Unit
+    onSearchKeywordClick: (String) -> Unit,
+    onOpenBilibiliLink: ((String) -> Unit)?
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val listState = rememberLazyListState()
@@ -967,6 +977,10 @@ private fun CinemaCommentsPane(
     val openCommentUrl: (String) -> Unit = openCommentUrl@{ rawUrl ->
         val url = rawUrl.trim()
         if (url.isEmpty()) return@openCommentUrl
+        if (onOpenBilibiliLink != null) {
+            onOpenBilibiliLink(url)
+            return@openCommentUrl
+        }
         when (val target = resolveCommentUrlNavigationTarget(url)) {
             is CommentUrlNavigationTarget.Video -> {
                 onRelatedVideoClick(target.videoId, null)

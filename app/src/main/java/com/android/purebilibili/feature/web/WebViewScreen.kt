@@ -153,6 +153,7 @@ fun WebViewScreen(
 
                                             is BilibiliNavigationTarget.Dynamic -> false
                                             is BilibiliNavigationTarget.Search -> false
+                                            is BilibiliNavigationTarget.Article -> false
                                         }
                                     }
 

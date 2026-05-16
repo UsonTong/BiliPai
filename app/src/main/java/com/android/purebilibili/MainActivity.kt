@@ -344,6 +344,10 @@ internal fun resolveMainActivityLinkNavigation(
                 pendingNavigationRoute = ScreenRoutes.MusicDetail.createRoute(auSid)
             )
         }
+
+        is BilibiliNavigationTarget.Article -> MainActivityLinkNavigation(
+            pendingNavigationRoute = ScreenRoutes.ArticleDetail.createRoute(target.articleId)
+        )
     }
 }
 

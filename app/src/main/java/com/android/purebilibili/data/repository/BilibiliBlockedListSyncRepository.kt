@@ -3,12 +3,12 @@ package com.android.purebilibili.data.repository
 import com.android.purebilibili.core.network.BilibiliApi
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
-import com.android.purebilibili.data.model.response.RelationTagItem
+import com.android.purebilibili.data.model.response.FollowingUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-private const val BLOCKED_LIST_PAGE_SIZE = 100
+private const val BLOCKED_LIST_PAGE_SIZE = 50
 private const val BLOCKED_LIST_MAX_PAGES = 120
 private const val BLOCKED_LIST_PAGE_DELAY_MS = 220L
 
@@ -22,19 +22,8 @@ class BilibiliBlockedListSyncRepository(
         }
 
         try {
-            val tagsResponse = api.getRelationTags()
-            if (tagsResponse.code != 0) {
-                return@withContext Result.failure(
-                    Exception(tagsResponse.message.ifBlank { "获取 B站关系分组失败: ${tagsResponse.code}" })
-                )
-            }
-
-            val blockedTag = findBilibiliBlockedListTag(tagsResponse.data)
-                ?: return@withContext Result.failure(Exception("当前账号接口未返回黑名单分组"))
-            val remoteMids = fetchBlockedListMids(blockedTag.tagid)
-            val importItems = remoteMids.map { mid ->
-                BlockedUpImportItem(mid = mid, name = "UP主$mid", face = "")
-            }
+            val remoteUsers = fetchBlockedListUsers()
+            val importItems = buildBlockedUpImportItemsFromRemoteBlacks(remoteUsers)
 
             Result.success(localRepository.importBlockedUps(importItems))
         } catch (e: Exception) {
@@ -42,13 +31,13 @@ class BilibiliBlockedListSyncRepository(
         }
     }
 
-    private suspend fun fetchBlockedListMids(tagId: Long): List<Long> {
-        val result = linkedSetOf<Long>()
+    private suspend fun fetchBlockedListUsers(): List<FollowingUser> {
+        val result = mutableListOf<FollowingUser>()
         var page = 1
+        var total = 0
 
         while (page <= BLOCKED_LIST_MAX_PAGES) {
-            val response = api.getRelationTagMembers(
-                tagId = tagId,
+            val response = api.getRelationBlacks(
                 pageSize = BLOCKED_LIST_PAGE_SIZE,
                 page = page
             )
@@ -56,14 +45,12 @@ class BilibiliBlockedListSyncRepository(
                 throw Exception(response.message.ifBlank { "获取 B站黑名单成员失败: ${response.code}" })
             }
 
-            val mids = response.data
-                .asSequence()
-                .map { it.mid }
-                .filter { it > 0L }
-                .toList()
+            val users = response.data.list
+            total = response.data.total
 
-            result.addAll(mids)
-            if (mids.size < BLOCKED_LIST_PAGE_SIZE) break
+            result.addAll(users)
+            if (users.size < BLOCKED_LIST_PAGE_SIZE) break
+            if (total > 0 && result.size >= total) break
             page += 1
             delay(BLOCKED_LIST_PAGE_DELAY_MS)
         }
@@ -72,20 +59,15 @@ class BilibiliBlockedListSyncRepository(
     }
 }
 
-internal fun findBilibiliBlockedListTag(tags: List<RelationTagItem>): RelationTagItem? {
-    return tags.firstOrNull { tag ->
-        val normalizedName = tag.name.normalizeRelationTagText()
-        val normalizedTip = tag.tip.normalizeRelationTagText()
-        normalizedName.contains("黑名单") ||
-            normalizedName.contains("拉黑") ||
-            normalizedTip.contains("黑名单") ||
-            normalizedTip.contains("拉黑")
+internal fun buildBlockedUpImportItemsFromRemoteBlacks(
+    users: List<FollowingUser>
+): List<BlockedUpImportItem> {
+    return users.mapNotNull { user ->
+        val mid = user.mid.takeIf { it > 0L } ?: return@mapNotNull null
+        BlockedUpImportItem(
+            mid = mid,
+            name = user.uname.trim().takeIf { it.isNotEmpty() } ?: "UP主$mid",
+            face = user.face
+        )
     }
-}
-
-private fun String.normalizeRelationTagText(): String {
-    return lowercase()
-        .replace(Regex("\\s+"), "")
-        .replace("_", "")
-        .replace("-", "")
 }
