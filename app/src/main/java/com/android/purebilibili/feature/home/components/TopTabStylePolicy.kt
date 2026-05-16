@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.material3.ColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -57,6 +58,19 @@ data class TopTabVisualState(
     val materialMode: TopTabMaterialMode
 )
 
+data class MiuixTopTabRowColors(
+    val backgroundColor: Color,
+    val contentColor: Color,
+    val selectedBackgroundColor: Color,
+    val selectedContentColor: Color
+)
+
+data class MiuixTopTabActionColors(
+    val containerColor: Color,
+    val borderColor: Color,
+    val contentColor: Color
+)
+
 data class Md3TopTabVisualSpec(
     val rowHeight: Dp,
     val selectedCapsuleHeight: Dp,
@@ -110,6 +124,32 @@ internal fun resolveTopTabContentScale(
         UiPreset.MD3 -> 1.04f
     }
     return 1f + ((maxScale - 1f) * clampedFraction)
+}
+
+internal fun resolveMiuixTopTabRowColors(
+    surfaceContainer: Color,
+    onSurfaceVariant: Color,
+    secondaryContainer: Color,
+    onSecondaryContainer: Color
+): MiuixTopTabRowColors {
+    return MiuixTopTabRowColors(
+        backgroundColor = surfaceContainer.copy(alpha = 0.72f),
+        contentColor = onSurfaceVariant,
+        selectedBackgroundColor = secondaryContainer.copy(alpha = 0.58f),
+        selectedContentColor = onSecondaryContainer
+    )
+}
+
+internal fun resolveMiuixTopTabActionColors(
+    surfaceContainer: Color,
+    outlineVariant: Color,
+    contentColor: Color
+): MiuixTopTabActionColors {
+    return MiuixTopTabActionColors(
+        containerColor = surfaceContainer.copy(alpha = 0.74f),
+        borderColor = outlineVariant.copy(alpha = 0.42f),
+        contentColor = contentColor
+    )
 }
 
 internal fun resolveMd3TopTabVisualSpec(

@@ -4,6 +4,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import java.io.File
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
@@ -252,6 +253,29 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `android native miuix top tab chrome should avoid large primary color fills`() {
+        val source = sourceText("src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
+        val miuixTabRowSource = source.substringAfter("private fun MiuixCategoryTabRow(")
+
+        assertTrue(
+            "MiuiX 分类条必须通过颜色策略收敛普通态背景",
+            miuixTabRowSource.contains("resolveMiuixTopTabRowColors(")
+        )
+        assertTrue(
+            "MiuiX 分区按钮必须通过颜色策略收敛普通态背景",
+            miuixTabRowSource.contains("resolveMiuixTopTabActionColors(")
+        )
+        assertFalse(
+            "MiuiX 分类条普通容器不应使用 primary 大面积铺色",
+            miuixTabRowSource.contains("backgroundColor = MiuixTheme.colorScheme.primary.copy")
+        )
+        assertFalse(
+            "MiuiX 分区按钮普通态不应使用 primary 大面积铺色",
+            miuixTabRowSource.contains("color = MiuixTheme.colorScheme.primary.copy")
+        )
+    }
+
+    @Test
     fun `android native miuix liquid glass top tabs skip outer chrome surface`() {
         assertFalse(
             shouldDrawHomeTopTabOuterChromeSurface(
@@ -336,6 +360,51 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `android native miuix top tab row colors should stay neutral outside selection`() {
+        val colorScheme = lightColorScheme(
+            primary = Color(0xFF1E88E5),
+            surfaceContainer = Color(0xFFF4F5F8),
+            secondaryContainer = Color(0xFFE3EAF8),
+            onSecondaryContainer = Color(0xFF1B2230),
+            onSurfaceVariant = Color(0xFF5F6368)
+        )
+
+        val colors = resolveMiuixTopTabRowColors(
+            surfaceContainer = colorScheme.surfaceContainer,
+            onSurfaceVariant = colorScheme.onSurfaceVariant,
+            secondaryContainer = colorScheme.secondaryContainer,
+            onSecondaryContainer = colorScheme.onSecondaryContainer
+        )
+
+        assertEquals(colorScheme.surfaceContainer.copy(alpha = 0.72f), colors.backgroundColor)
+        assertEquals(colorScheme.secondaryContainer.copy(alpha = 0.58f), colors.selectedBackgroundColor)
+        assertEquals(colorScheme.onSurfaceVariant, colors.contentColor)
+        assertEquals(colorScheme.onSecondaryContainer, colors.selectedContentColor)
+        assertFalse(colors.backgroundColor == colorScheme.primary.copy(alpha = 0.10f))
+    }
+
+    @Test
+    fun `android native miuix top tab action colors should stay neutral`() {
+        val colorScheme = lightColorScheme(
+            primary = Color(0xFF1E88E5),
+            surfaceContainer = Color(0xFFF4F5F8),
+            outlineVariant = Color(0xFFC9CDD6),
+            onSurfaceVariant = Color(0xFF5F6368)
+        )
+
+        val colors = resolveMiuixTopTabActionColors(
+            surfaceContainer = colorScheme.surfaceContainer,
+            outlineVariant = colorScheme.outlineVariant,
+            contentColor = colorScheme.onSurfaceVariant
+        )
+
+        assertEquals(colorScheme.surfaceContainer.copy(alpha = 0.74f), colors.containerColor)
+        assertEquals(colorScheme.outlineVariant.copy(alpha = 0.42f), colors.borderColor)
+        assertEquals(colorScheme.onSurfaceVariant, colors.contentColor)
+        assertFalse(colors.containerColor == colorScheme.primary.copy(alpha = 0.10f))
+    }
+
+    @Test
     fun `md3 preset uses material tab indicator style`() {
         assertEquals(
             TopTabIndicatorStyle.MATERIAL,
@@ -408,5 +477,14 @@ class TopTabStylePolicyTest {
                 androidNativeVariant = AndroidNativeVariant.MIUIX
             )
         )
+    }
+
+    private fun sourceText(path: String): String {
+        val sourceFile = listOf(
+            File(path),
+            File("app/$path")
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

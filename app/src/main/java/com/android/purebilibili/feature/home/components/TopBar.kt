@@ -1534,6 +1534,17 @@ private fun MiuixCategoryTabRow(
         isFloatingStyle = false,
         androidNativeVariant = AndroidNativeVariant.MIUIX
     )
+    val tabRowColors = resolveMiuixTopTabRowColors(
+        surfaceContainer = MiuixTheme.colorScheme.surfaceContainer,
+        onSurfaceVariant = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        secondaryContainer = MiuixTheme.colorScheme.secondaryContainer,
+        onSecondaryContainer = MiuixTheme.colorScheme.onSecondaryContainer
+    )
+    val actionColors = resolveMiuixTopTabActionColors(
+        surfaceContainer = MiuixTheme.colorScheme.surfaceContainer,
+        outlineVariant = MaterialTheme.colorScheme.outlineVariant,
+        contentColor = MiuixTheme.colorScheme.onSurfaceVariantActions
+    )
 
     Row(
         modifier = Modifier
@@ -1563,10 +1574,10 @@ private fun MiuixCategoryTabRow(
                     .fillMaxWidth()
                     .height(topTabSpec.rowHeight),
                 colors = MiuixTabRowDefaults.tabRowColors(
-                    backgroundColor = MiuixTheme.colorScheme.primary.copy(alpha = 0.10f),
-                    contentColor = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    selectedBackgroundColor = MiuixTheme.colorScheme.primary.copy(alpha = 0.18f),
-                    selectedContentColor = MiuixTheme.colorScheme.onSecondaryContainer
+                    backgroundColor = tabRowColors.backgroundColor,
+                    contentColor = tabRowColors.contentColor,
+                    selectedBackgroundColor = tabRowColors.selectedBackgroundColor,
+                    selectedContentColor = tabRowColors.selectedContentColor
                 ),
                 height = topTabSpec.rowHeight,
                 cornerRadius = topTabSpec.selectedCapsuleCornerRadius + 4.dp,
@@ -1586,10 +1597,10 @@ private fun MiuixCategoryTabRow(
                     performHomeTopBarTap(haptic = haptic, onClick = onPartitionClick)
             },
             shape = RoundedCornerShape(actionButtonCorner),
-            color = MiuixTheme.colorScheme.primary.copy(alpha = 0.10f),
+            color = actionColors.containerColor,
             border = BorderStroke(
                 width = 0.8.dp,
-                color = MiuixTheme.colorScheme.primary.copy(alpha = 0.16f)
+                color = actionColors.borderColor
             )
         ) {
             Box(
@@ -1599,7 +1610,7 @@ private fun MiuixCategoryTabRow(
                 Icon(
                     resolveTopTabPartitionIcon(UiPreset.MD3),
                     contentDescription = "浏览全部分区",
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    tint = actionColors.contentColor,
                     modifier = Modifier.size(actionIconSize)
                 )
             }
