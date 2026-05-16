@@ -55,9 +55,7 @@ import com.android.purebilibili.core.store.HomeSettings
 import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
-import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
-import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.animation.DampedDragAnimationState
 import com.android.purebilibili.core.ui.animation.rememberDampedDragAnimationState
 import com.android.purebilibili.core.ui.adaptive.MotionTier
@@ -372,8 +370,8 @@ fun BottomBarLiquidSegmentedControl(
             }
         }
     )
-    val containerShape = AppShapes.container(ContainerLevel.Pill)
     val indicatorShape = resolveSharedBottomBarCapsuleShape()
+    val containerShape = indicatorShape
     val indicatorCorner = indicatorHeight / 2
     val isDarkTheme = isSystemInDarkTheme()
     val surfaceColor = AppSurfaceTokens.cardContainer()
