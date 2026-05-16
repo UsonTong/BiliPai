@@ -338,12 +338,22 @@ class BottomBarLayoutPolicyTest {
     @Test
     fun `bottom bar search performance guards keep expensive layers transient`() {
         assertEquals(
-            true,
+            false,
             shouldRenderBottomBarRefractionCapture(
                 glassEnabled = true,
                 hasBackdrop = true,
                 captureProgress = 0.01f,
                 isFeedScrollInProgress = false
+            )
+        )
+        assertEquals(
+            true,
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 0.01f,
+                isFeedScrollInProgress = false,
+                isBottomBarInteractionActive = true
             )
         )
         assertEquals(

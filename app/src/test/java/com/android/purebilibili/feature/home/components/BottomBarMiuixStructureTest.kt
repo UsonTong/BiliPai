@@ -100,7 +100,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("shouldRenderBottomBarRefractionCapture("))
         assertTrue(kernelSuRendererSource.contains("if (shouldRenderRefractionCapture && backdrop != null)"))
         assertTrue(kernelSuRendererSource.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(kernelSuRendererSource.contains("backdropPresetProgress.indicatorProgress > 0f"))
+        assertTrue(kernelSuRendererSource.contains("val shouldRenderIndicatorBackdrop = shouldRenderBottomBarIndicatorBackdrop("))
+        assertTrue(kernelSuRendererSource.contains("isBottomBarInteractionActive = isBottomBarInteractionActive"))
+        assertTrue(kernelSuRendererSource.contains("if (shouldRenderIndicatorBackdrop && backdrop != null)"))
         assertTrue(kernelSuRendererSource.contains("Highlight.Default.copy(alpha = maxOf(indicatorHighlightAlpha, indicatorGlowAlpha))"))
         assertTrue(kernelSuRendererSource.contains("Shadow(alpha = indicatorGlowAlpha)"))
         assertTrue(kernelSuRendererSource.contains("radius = 8.dp * indicatorGlowAlpha"))
@@ -203,7 +205,7 @@ class BottomBarMiuixStructureTest {
             "val coverage = itemCoverage(index)"
         )
         val tintCaptureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
-        val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = contentBackdrop")
+        val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = indicatorBackdrop")
         val hitOverlayIndex = kernelSuRendererSource.indexOf(
             "if (!effectiveSearchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(contentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
             startIndex = indicatorIndex

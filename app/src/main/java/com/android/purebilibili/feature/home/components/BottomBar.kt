@@ -546,11 +546,40 @@ internal fun shouldRenderBottomBarRefractionCapture(
     glassEnabled: Boolean,
     hasBackdrop: Boolean,
     captureProgress: Float,
+    isTransitionRunning: Boolean = false,
     isFeedScrollInProgress: Boolean = false,
     isBottomBarInteractionActive: Boolean = false
 ): Boolean {
     if (!glassEnabled || !hasBackdrop || captureProgress <= BottomBarTransientAlphaThreshold) return false
-    return !isFeedScrollInProgress || isBottomBarInteractionActive
+    return shouldRenderBottomBarHeavyInteractiveEffects(
+        isTransitionRunning = isTransitionRunning,
+        isBottomBarInteractionActive = isBottomBarInteractionActive,
+        progress = captureProgress
+    )
+}
+
+internal fun shouldRenderBottomBarIndicatorBackdrop(
+    glassEnabled: Boolean,
+    hasContentBackdrop: Boolean,
+    indicatorProgress: Float,
+    isTransitionRunning: Boolean = false,
+    isBottomBarInteractionActive: Boolean = false
+): Boolean {
+    if (!glassEnabled || !hasContentBackdrop) return false
+    return shouldRenderBottomBarHeavyInteractiveEffects(
+        isTransitionRunning = isTransitionRunning,
+        isBottomBarInteractionActive = isBottomBarInteractionActive,
+        progress = indicatorProgress
+    )
+}
+
+internal fun shouldRenderBottomBarHeavyInteractiveEffects(
+    isTransitionRunning: Boolean,
+    isBottomBarInteractionActive: Boolean,
+    progress: Float
+): Boolean {
+    if (isTransitionRunning) return false
+    return isBottomBarInteractionActive && progress > BottomBarTransientAlphaThreshold
 }
 
 internal fun shouldComposeBottomBarDockContent(
@@ -785,9 +814,10 @@ internal fun resolveBottomBarGlassVisibleContentColor(
     selectedColor: Color,
     themeWeight: Float,
     glassEnabled: Boolean,
-    indicatorProgress: Float
+    indicatorProgress: Float,
+    indicatorBackdropEnabled: Boolean = true
 ): Color {
-    if (glassEnabled && indicatorProgress > 0.001f) {
+    if (glassEnabled && indicatorBackdropEnabled && indicatorProgress > 0.001f) {
         return unselectedColor
     }
     return lerpColor(
@@ -2366,11 +2396,6 @@ private fun KernelSuAlignedBottomBar(
         scrollOffsetPx = scrollOffset,
         glassEnabled = glassEnabled
     )
-    val contentBackdrop = if (backdrop != null) {
-        rememberCombinedBackdrop(backdrop, tabsBackdrop)
-    } else {
-        null
-    }
     var searchExpansionOverride by remember {
         mutableStateOf(BottomBarSearchExpansionOverride.FOLLOW_AUTO)
     }
@@ -2579,16 +2604,30 @@ private fun KernelSuAlignedBottomBar(
                 glassEnabled = glassEnabled,
                 pressProgress = dampedDragState.pressProgress
             )
+            val isBottomBarInteractionActive = dampedDragState.isDragging ||
+                dampedDragState.isRunning ||
+                dampedDragState.pressProgress > BottomBarTransientAlphaThreshold ||
+                searchLaunchProgress > BottomBarTransientAlphaThreshold
             val shouldRenderRefractionCapture = shouldRenderBottomBarRefractionCapture(
                 glassEnabled = glassEnabled,
                 hasBackdrop = backdrop != null,
                 captureProgress = backdropPresetProgress.captureProgress,
+                isTransitionRunning = isTransitionRunning,
                 isFeedScrollInProgress = isFeedScrollInProgress,
-                isBottomBarInteractionActive = dampedDragState.isDragging ||
-                    dampedDragState.isRunning ||
-                    dampedDragState.pressProgress > BottomBarTransientAlphaThreshold ||
-                    searchLaunchProgress > BottomBarTransientAlphaThreshold
+                isBottomBarInteractionActive = isBottomBarInteractionActive
             )
+            val shouldRenderIndicatorBackdrop = shouldRenderBottomBarIndicatorBackdrop(
+                glassEnabled = glassEnabled,
+                hasContentBackdrop = backdrop != null,
+                indicatorProgress = backdropPresetProgress.indicatorProgress,
+                isTransitionRunning = isTransitionRunning,
+                isBottomBarInteractionActive = isBottomBarInteractionActive
+            )
+            val contentBackdrop = if (shouldRenderIndicatorBackdrop && backdrop != null) {
+                rememberCombinedBackdrop(backdrop, tabsBackdrop)
+            } else {
+                null
+            }
             fun itemCoverage(index: Int): Float = resolveBottomBarItemCoverage(
                 itemIndex = index,
                 indicatorPosition = visualIndicatorPosition,
@@ -2617,7 +2656,8 @@ private fun KernelSuAlignedBottomBar(
                 selectedColor = selectedContentColor(item),
                 themeWeight = coverage,
                 glassEnabled = glassEnabled,
-                indicatorProgress = backdropPresetProgress.indicatorProgress
+                indicatorProgress = backdropPresetProgress.indicatorProgress,
+                indicatorBackdropEnabled = shouldRenderIndicatorBackdrop
             )
 
             fun exportItemContentColor(
@@ -2929,13 +2969,10 @@ private fun KernelSuAlignedBottomBar(
                             .height(56.dp)
                             .align(Alignment.CenterStart)
                             .run {
-                                if (
-                                    glassEnabled &&
-                                    contentBackdrop != null &&
-                                    backdropPresetProgress.indicatorProgress > 0f
-                                ) {
+                                val indicatorBackdrop = contentBackdrop
+                                if (indicatorBackdrop != null) {
                                     drawBackdrop(
-                                        backdrop = contentBackdrop,
+                                        backdrop = indicatorBackdrop,
                                         shape = { shellShape },
                                         effects = {
                                             lens(

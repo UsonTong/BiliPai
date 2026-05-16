@@ -322,6 +322,24 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
+    fun `android native glass visible selected item stays themed when indicator backdrop is disabled`() {
+        val unselected = Color(0xFF202124)
+        val selected = Color(0xFF00A1D6)
+        val color = resolveBottomBarGlassVisibleContentColor(
+            unselectedColor = unselected,
+            selectedColor = selected,
+            themeWeight = 1f,
+            glassEnabled = true,
+            indicatorProgress = 1f,
+            indicatorBackdropEnabled = false
+        )
+
+        assertEquals(selected.red, color.red, 0.001f)
+        assertEquals(selected.green, color.green, 0.001f)
+        assertEquals(selected.blue, color.blue, 0.001f)
+    }
+
+    @Test
     fun `android native glass export content keeps full theme hue while partially covered`() {
         val unselected = Color(0xFF202124)
         val selected = Color(0xFF00A1D6)

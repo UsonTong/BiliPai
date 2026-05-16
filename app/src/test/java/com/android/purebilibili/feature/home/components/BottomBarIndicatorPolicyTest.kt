@@ -115,6 +115,107 @@ class BottomBarIndicatorPolicyTest {
     }
 
     @Test
+    fun `transitioning bottom pager disables hidden refraction capture`() {
+        assertFalse(
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 1f,
+                isTransitionRunning = true,
+                isFeedScrollInProgress = false,
+                isBottomBarInteractionActive = true
+            )
+        )
+        assertTrue(
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 1f,
+                isTransitionRunning = false,
+                isFeedScrollInProgress = false,
+                isBottomBarInteractionActive = true
+            )
+        )
+    }
+
+    @Test
+    fun `transitioning bottom pager uses opaque indicator fallback instead of transparent lens`() {
+        assertFalse(
+            shouldRenderBottomBarIndicatorBackdrop(
+                glassEnabled = true,
+                hasContentBackdrop = true,
+                indicatorProgress = 1f,
+                isTransitionRunning = true,
+                isBottomBarInteractionActive = true
+            )
+        )
+        assertTrue(
+            shouldRenderBottomBarIndicatorBackdrop(
+                glassEnabled = true,
+                hasContentBackdrop = true,
+                indicatorProgress = 1f,
+                isTransitionRunning = false,
+                isBottomBarInteractionActive = true
+            )
+        )
+    }
+
+    @Test
+    fun `idle bottom bar does not render hidden capture or indicator backdrop`() {
+        assertFalse(
+            shouldRenderBottomBarRefractionCapture(
+                glassEnabled = true,
+                hasBackdrop = true,
+                captureProgress = 1f,
+                isTransitionRunning = false,
+                isFeedScrollInProgress = false,
+                isBottomBarInteractionActive = false
+            )
+        )
+        assertFalse(
+            shouldRenderBottomBarIndicatorBackdrop(
+                glassEnabled = true,
+                hasContentBackdrop = true,
+                indicatorProgress = 1f,
+                isTransitionRunning = false,
+                isBottomBarInteractionActive = false
+            )
+        )
+    }
+
+    @Test
+    fun `heavy bottom bar effects require settled interaction progress`() {
+        assertFalse(
+            shouldRenderBottomBarHeavyInteractiveEffects(
+                isTransitionRunning = true,
+                isBottomBarInteractionActive = true,
+                progress = 1f
+            )
+        )
+        assertFalse(
+            shouldRenderBottomBarHeavyInteractiveEffects(
+                isTransitionRunning = false,
+                isBottomBarInteractionActive = false,
+                progress = 1f
+            )
+        )
+        assertFalse(
+            shouldRenderBottomBarHeavyInteractiveEffects(
+                isTransitionRunning = false,
+                isBottomBarInteractionActive = true,
+                progress = 0f
+            )
+        )
+        assertTrue(
+            shouldRenderBottomBarHeavyInteractiveEffects(
+                isTransitionRunning = false,
+                isBottomBarInteractionActive = true,
+                progress = 1f
+            )
+        )
+    }
+
+    @Test
     fun `idle hold keeps refraction layer alive without marking indicator moving`() {
         val idle = BottomBarIndicatorVisualPolicy(
             isInMotion = false,
