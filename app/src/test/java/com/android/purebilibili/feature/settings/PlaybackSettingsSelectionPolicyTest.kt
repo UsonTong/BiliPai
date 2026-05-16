@@ -13,6 +13,23 @@ import org.junit.Test
 class PlaybackSettingsSelectionPolicyTest {
 
     @Test
+    fun `playback interaction and fullscreen blocks should be split into scene composables`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt"
+        )
+
+        assertTrue(source.contains("private fun PlaybackInteractionSettingsSection("))
+        assertTrue(source.contains("private fun PlaybackFullscreenGestureSettingsSection("))
+        val contentBlock = source
+            .substringAfter("fun PlaybackSettingsContent(")
+            .substringBefore("private fun PlaybackInteractionSettingsSection(")
+        assertTrue(contentBlock.contains("IOSSectionTitle(\"互动与评论\")"))
+        assertTrue(contentBlock.contains("IOSSectionTitle(\"全屏与手势\")"))
+        assertTrue(contentBlock.contains("PlaybackInteractionSettingsSection("))
+        assertTrue(contentBlock.contains("PlaybackFullscreenGestureSettingsSection("))
+    }
+
+    @Test
     fun `resolveSelectionIndex should return matched option index`() {
         val options = listOf(
             PlaybackSegmentOption("avc1", "AVC"),

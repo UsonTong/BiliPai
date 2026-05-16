@@ -693,36 +693,12 @@ fun PlaybackSettingsContent(
             //  交互设置
             item {
                 Box(modifier = Modifier.staggeredEntrance(10, isVisible, motionTier = effectiveMotionTier)) {
-                    IOSSectionTitle("交互")
+                    IOSSectionTitle("互动与评论")
                 }
             }
             item {
                 Box(modifier = Modifier.staggeredEntrance(11, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
-                    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
-                        .getPortraitPlayerCollapseMode(context)
-                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
-                    val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
-                    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getCenterSwipeToFullscreenEnabled(context).collectAsState(initial = true)
-                    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
-                    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
-                    val inlineSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getInlineSwipeSeekSeconds(context).collectAsState(initial = 30)
-                    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
-                    val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
-                    val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getDoubleTapSeekEnabled(context).collectAsState(initial = false)
-                    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getSeekForwardSeconds(context).collectAsState(initial = 10)
-                    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getSeekBackwardSeconds(context).collectAsState(initial = 10)
-                    
                     //  [新增] 自动播放下一个
                     val autoPlayEnabled by com.android.purebilibili.core.store.SettingsManager
                         .getAutoPlay(context).collectAsState(initial = true)
@@ -743,9 +719,6 @@ fun PlaybackSettingsContent(
                     val videoInfoDefaultExpanded by com.android.purebilibili.core.store.SettingsManager
                         .getVideoInfoDefaultExpanded(context)
                         .collectAsState(initial = true)
-                    val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
-                        .getDanmakuHideInteractiveCommands(context)
-                        .collectAsState(initial = false)
                     val subtitlePreferenceDescription = when (subtitleAutoPreference) {
                         SubtitleAutoPreference.OFF -> "默认关闭字幕"
                         SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
@@ -753,7 +726,8 @@ fun PlaybackSettingsContent(
                         SubtitleAutoPreference.AUTO -> "静音时可自动启用 AI 字幕"
                     }
                     
-                    IOSGroup {
+                    PlaybackInteractionSettingsSection(
+                        content = {
                         // --- Click to Play ---
                         val clickToPlayEnabled by com.android.purebilibili.core.store.SettingsManager
                             .getClickToPlay(context).collectAsState(initial = true)
@@ -930,7 +904,46 @@ fun PlaybackSettingsContent(
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPink
                         )
-                        IOSDivider()
+                        }
+                    )
+                }
+            }
+            item {
+                Box(modifier = Modifier.staggeredEntrance(12, isVisible, motionTier = effectiveMotionTier)) {
+                    IOSSectionTitle("全屏与手势")
+                }
+            }
+            item {
+                Box(modifier = Modifier.staggeredEntrance(13, isVisible, motionTier = effectiveMotionTier)) {
+                    val scope = rememberCoroutineScope()
+                    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
+                        .getPortraitPlayerCollapseMode(context)
+                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
+                    val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+                    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getCenterSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+                    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
+                    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
+                    val inlineSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getInlineSwipeSeekSeconds(context).collectAsState(initial = 30)
+                    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
+                    val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
+                    val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getDoubleTapSeekEnabled(context).collectAsState(initial = false)
+                    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getSeekForwardSeconds(context).collectAsState(initial = 10)
+                    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
+                        .getSeekBackwardSeconds(context).collectAsState(initial = 10)
+                    val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
+                        .getDanmakuHideInteractiveCommands(context)
+                        .collectAsState(initial = false)
+                    PlaybackFullscreenGestureSettingsSection(
+                        content = {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1208,8 +1221,6 @@ fun PlaybackSettingsContent(
                                 }
                             )
                         }
-                        
-                        // 🔄 [新增] 自动横竖屏切换
                         IOSDivider()
                         val autoRotateEnabled by com.android.purebilibili.core.store.SettingsManager
                             .getAutoRotateEnabled(context).collectAsState(initial = false)
@@ -1603,18 +1614,19 @@ fun PlaybackSettingsContent(
                                 }
                             }
                         )
-                    }
+                        }
+                    )
                 }
             }
             
             //  网络与画质
             item {
-                Box(modifier = Modifier.staggeredEntrance(12, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(14, isVisible, motionTier = effectiveMotionTier)) {
                     IOSSectionTitle("网络与画质")
                 }
             }
             item {
-                Box(modifier = Modifier.staggeredEntrance(13, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(15, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
                     val wifiQuality by com.android.purebilibili.core.store.SettingsManager
                         .getWifiQuality(context).collectAsState(initial = 80)
@@ -1759,12 +1771,12 @@ fun PlaybackSettingsContent(
             
             // 📉 省流量模式
             item {
-                Box(modifier = Modifier.staggeredEntrance(14, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(16, isVisible, motionTier = effectiveMotionTier)) {
                     IOSSectionTitle("省流量")
                 }
             }
             item {
-                Box(modifier = Modifier.staggeredEntrance(15, isVisible, motionTier = effectiveMotionTier)) {
+                Box(modifier = Modifier.staggeredEntrance(17, isVisible, motionTier = effectiveMotionTier)) {
                     val scope = rememberCoroutineScope()
                     val dataSaverMode by com.android.purebilibili.core.store.SettingsManager
                         .getDataSaverMode(context).collectAsState(
@@ -1842,4 +1854,18 @@ fun PlaybackSettingsContent(
             
             item { Spacer(modifier = Modifier.height(32.dp)) }
 }
+}
+
+@Composable
+private fun PlaybackInteractionSettingsSection(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    IOSGroup(content = content)
+}
+
+@Composable
+private fun PlaybackFullscreenGestureSettingsSection(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    IOSGroup(content = content)
 }

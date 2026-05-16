@@ -86,9 +86,9 @@ internal fun resolvePlaybackSettingsScrollIndex(
         SettingsSearchFocusIds.PLAYBACK_GESTURE -> 6
         SettingsSearchFocusIds.PLAYBACK_DEBUG -> 8
         SettingsSearchFocusIds.PLAYBACK_INTERACTION -> 10
-        SettingsSearchFocusIds.PLAYBACK_NETWORK -> 12
-        SettingsSearchFocusIds.PLAYBACK_DATA_SAVER -> 14
-        SettingsSearchFocusIds.PLAYBACK_FULLSCREEN -> 10
+        SettingsSearchFocusIds.PLAYBACK_FULLSCREEN -> 12
+        SettingsSearchFocusIds.PLAYBACK_NETWORK -> 14
+        SettingsSearchFocusIds.PLAYBACK_DATA_SAVER -> 16
         else -> null
     }
 }
