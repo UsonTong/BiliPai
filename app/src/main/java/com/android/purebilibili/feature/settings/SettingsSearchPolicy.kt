@@ -3,6 +3,16 @@ package com.android.purebilibili.feature.settings
 import com.android.purebilibili.core.util.PinyinUtils
 
 enum class SettingsSearchTarget {
+    INTERFACE_THEME,
+    HOME_FEED,
+    NAVIGATION,
+    PLAYBACK_QUALITY,
+    FULLSCREEN_GESTURE,
+    INTERACTION_COMMENT,
+    DATA_BACKUP,
+    PRIVACY_PERMISSION,
+    DIAGNOSTICS,
+    ABOUT_SUPPORT,
     APPEARANCE,
     ANIMATION,
     PLAYBACK,
@@ -46,6 +56,76 @@ private data class SettingsSearchEntry(
 )
 
 private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.INTERFACE_THEME,
+        title = "界面与主题",
+        subtitle = "UI 预设、主题、字体、DPI、动态图标与开屏",
+        section = "设置",
+        aliases = listOf("界面", "主题", "ui预设", "md3", "miuix", "字体", "dpi", "动态图标", "应用图标", "开屏", "开屏壁纸")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.HOME_FEED,
+        title = "首页与推荐",
+        subtitle = "首页展示、推荐流、刷新数量、动态栏位、首页壁纸与底栏搜索入口",
+        section = "设置",
+        aliases = listOf("首页", "推荐", "推荐流", "首页展示", "首页壁纸", "壁纸效果", "刷新数量", "动态栏位", "底栏搜索入口", "搜索入口")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.NAVIGATION,
+        title = "导航与标签",
+        subtitle = "底栏、顶部标签、平板侧边栏与底栏项目顺序",
+        section = "设置",
+        aliases = listOf("导航", "底栏", "底部栏", "顶部标签", "顶部标签页", "标签排序", "平板侧边栏", "侧边导航栏", "底栏顺序", "底栏项目")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.PLAYBACK_QUALITY,
+        title = "播放与画质",
+        subtitle = "解码、画质、字幕、倍速、连播与网络策略",
+        section = "设置",
+        aliases = listOf("播放", "解码", "画质", "默认画质", "最高画质", "自动最高画质", "省流量", "定向流量", "字幕", "倍速", "自动连播")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.FULLSCREEN_GESTURE,
+        title = "全屏与手势",
+        subtitle = "全屏方向、截图、锁定按钮、亮度、音量与进度手势",
+        section = "设置",
+        aliases = listOf("全屏", "全屏方向", "自动横竖屏", "锁定按钮", "截图", "截图按钮", "应用内截图", "应用内干净截图", "手选区域", "区域截图", "三指截图", "亮度", "音量", "进度手势", "手势")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.INTERACTION_COMMENT,
+        title = "互动与评论",
+        subtitle = "评论发送检测、评论装扮、AI 总结、双击点赞与视频简介",
+        section = "设置",
+        aliases = listOf("互动", "评论", "评论检测", "发评反诈", "评论发送检测", "评论装扮", "个性装扮", "ai总结", "视频总结", "双击点赞", "视频简介", "简介默认展开")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.DATA_BACKUP,
+        title = "数据与备份",
+        subtitle = "设置分享、WebDAV、下载位置与清除缓存",
+        section = "设置",
+        aliases = listOf("数据", "备份", "设置分享", "webdav", "云备份", "下载位置", "下载目录", "清除缓存", "清缓存", "缓存")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.PRIVACY_PERMISSION,
+        title = "隐私与权限",
+        subtitle = "隐私无痕、权限管理与黑名单",
+        section = "设置",
+        aliases = listOf("隐私", "无痕", "权限", "权限管理", "黑名单", "屏蔽", "拉黑")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.DIAGNOSTICS,
+        title = "诊断与开发",
+        subtitle = "崩溃追踪、统计、播放器诊断日志、画质降档弹窗、插件与导出日志",
+        section = "设置",
+        aliases = listOf("诊断", "开发", "崩溃追踪", "使用情况统计", "播放器诊断日志", "画质降档诊断弹窗", "降档弹窗", "仅提示一次", "仅弹窗一次", "插件", "导出日志", "日志")
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.ABOUT_SUPPORT,
+        title = "关于与支持",
+        subtitle = "版本、更新、开源、发布渠道、小贴士、默认打开链接、社群与捐赠",
+        section = "设置",
+        aliases = listOf("关于", "支持", "版本", "更新", "开源", "发布渠道", "小贴士", "默认打开链接", "telegram", "twitter", "捐赠", "打赏")
+    ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "外观设置",

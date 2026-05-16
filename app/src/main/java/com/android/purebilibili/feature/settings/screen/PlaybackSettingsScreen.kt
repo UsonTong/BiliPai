@@ -1295,7 +1295,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.RectangleStack,
+                            icon = CupertinoIcons.Default.Eye,
                             title = "横屏适配",
                             subtitle = horizontalAdaptationSubtitle,
                             checked = horizontalAdaptationEnabled,
@@ -1358,7 +1358,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Sparkles,
+                            icon = CupertinoIcons.Default.PaintbrushPointed,
                             title = "评论区个性装扮",
                             subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
                             checked = commentMemberDecorationsEnabled,
@@ -1412,7 +1412,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.EyeSlash,
+                            icon = CupertinoIcons.Default.RectangleStack,
                             title = "播放页隐藏状态栏",
                             subtitle = if (hideVideoPageStatusBar) {
                                 "普通播放页隐藏顶部系统状态栏，底部手势条保持显示"
@@ -1486,7 +1486,7 @@ fun PlaybackSettingsContent(
                         )
                         IOSDivider()
                         IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Camera,
+                            icon = CupertinoIcons.Default.Photo,
                             title = "应用内干净截图",
                             subtitle = "在 BiliPai 前台通过应用内手势导出当前窗口 PNG",
                             checked = appGestureScreenshotEnabled,

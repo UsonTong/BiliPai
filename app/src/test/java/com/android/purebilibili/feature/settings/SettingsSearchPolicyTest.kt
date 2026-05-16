@@ -237,21 +237,29 @@ class SettingsSearchPolicyTest {
     fun queryByAppScreenshotGesture_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("应用内干净截图")
 
-        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+        assertTrue(results.any { it.target == SettingsSearchTarget.FULLSCREEN_GESTURE })
     }
 
     @Test
     fun queryByRegionScreenshot_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("手选区域")
 
-        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+        assertTrue(results.any { it.target == SettingsSearchTarget.FULLSCREEN_GESTURE })
     }
 
     @Test
     fun queryByQualityDowngradeDialog_hitsPlaybackEntry() {
         val results = resolveSettingsSearchResults("仅弹窗一次")
 
-        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+        assertTrue(results.any { it.target == SettingsSearchTarget.DIAGNOSTICS })
+    }
+
+    @Test
+    fun sceneQueries_hitDedicatedRootEntries() {
+        assertTrue(resolveSettingsSearchResults("顶部标签").any { it.target == SettingsSearchTarget.NAVIGATION })
+        assertTrue(resolveSettingsSearchResults("首页壁纸").any { it.target == SettingsSearchTarget.HOME_FEED })
+        assertTrue(resolveSettingsSearchResults("评论装扮").any { it.target == SettingsSearchTarget.INTERACTION_COMMENT })
+        assertTrue(resolveSettingsSearchResults("WebDAV").any { it.target == SettingsSearchTarget.DATA_BACKUP })
     }
 
     @Test

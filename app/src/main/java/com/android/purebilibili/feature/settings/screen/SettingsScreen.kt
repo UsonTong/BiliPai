@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -811,10 +812,24 @@ fun SettingsScreen(
     BackHandler(enabled = shouldConsumeSettingsBack(showBlockedList)) {
         showBlockedList = false
     }
-    val onSettingsSearchResultClick: (SettingsSearchResult) -> Unit = { result ->
+    val onSettingsSearchResultClick: (SettingsSearchResult) -> Unit = handler@{ result ->
         settingsSearchQuery = ""
+        if (isSceneSettingsSearchTarget(result.target)) {
+            SettingsSearchFocusController.submit(result.target, result.focusId ?: result.target.name)
+            return@handler
+        }
         SettingsSearchFocusController.submit(result.target, result.focusId)
         when (result.target) {
+            SettingsSearchTarget.INTERFACE_THEME,
+            SettingsSearchTarget.HOME_FEED,
+            SettingsSearchTarget.NAVIGATION,
+            SettingsSearchTarget.PLAYBACK_QUALITY,
+            SettingsSearchTarget.FULLSCREEN_GESTURE,
+            SettingsSearchTarget.INTERACTION_COMMENT,
+            SettingsSearchTarget.DATA_BACKUP,
+            SettingsSearchTarget.PRIVACY_PERMISSION,
+            SettingsSearchTarget.DIAGNOSTICS,
+            SettingsSearchTarget.ABOUT_SUPPORT -> Unit
             SettingsSearchTarget.APPEARANCE -> onAppearanceClick()
             SettingsSearchTarget.ANIMATION -> onAnimationClick()
             SettingsSearchTarget.PLAYBACK -> onPlaybackClick()
@@ -856,6 +871,7 @@ fun SettingsScreen(
                 TabletSettingsLayout(
                     onBack = onBack,
                     onAppearanceClick = onAppearanceClick,
+                    onAnimationClick = onAnimationClick,
                     onPlaybackClick = onPlaybackClick,
                     onPermissionClick = onPermissionClick,
                     onPluginsClick = onPluginsClick,
@@ -952,6 +968,7 @@ fun SettingsScreen(
                 MobileSettingsLayout(
                     onBack = onBack,
                     onAppearanceClick = onAppearanceClick,
+                    onAnimationClick = onAnimationClick,
                     onPlaybackClick = onPlaybackClick,
                     onPermissionClick = onPermissionClick,
                     onNavigateToBottomBarSettings = onNavigateToBottomBarSettings,
@@ -1057,39 +1074,6 @@ fun SettingsScreen(
     }
 }
 
-internal enum class MobileSettingsRootSection {
-    FOLLOW_AUTHOR,
-    GENERAL,
-    PRIVACY,
-    STORAGE,
-    DEVELOPER,
-    FEED,
-    ABOUT,
-    SUPPORT
-}
-
-internal fun resolveMobileSettingsRootSectionOrder(): List<MobileSettingsRootSection> = listOf(
-    MobileSettingsRootSection.FOLLOW_AUTHOR,
-    MobileSettingsRootSection.GENERAL,
-    MobileSettingsRootSection.PRIVACY,
-    MobileSettingsRootSection.STORAGE,
-    MobileSettingsRootSection.DEVELOPER,
-    MobileSettingsRootSection.FEED,
-    MobileSettingsRootSection.ABOUT,
-    MobileSettingsRootSection.SUPPORT
-)
-
-internal fun resolveMobileSettingsRootSectionTitleRes(section: MobileSettingsRootSection): Int = when (section) {
-    MobileSettingsRootSection.FOLLOW_AUTHOR -> R.string.settings_section_follow_author
-    MobileSettingsRootSection.GENERAL -> R.string.settings_section_general
-    MobileSettingsRootSection.PRIVACY -> R.string.settings_section_privacy
-    MobileSettingsRootSection.STORAGE -> R.string.settings_section_storage
-    MobileSettingsRootSection.DEVELOPER -> R.string.settings_section_developer
-    MobileSettingsRootSection.FEED -> R.string.settings_section_feed
-    MobileSettingsRootSection.ABOUT -> R.string.settings_section_about
-    MobileSettingsRootSection.SUPPORT -> R.string.settings_section_support
-}
-
 internal fun shouldMarkCacheClearAnimationComplete(clearSucceeded: Boolean): Boolean = clearSucceeded
 
 internal fun resolveCacheClearFailureMessage(error: Throwable?): String {
@@ -1113,6 +1097,7 @@ private fun MobileSettingsLayout(
     onBack: () -> Unit,
     // Callbacks
     onAppearanceClick: () -> Unit,
+    onAnimationClick: () -> Unit,
     onPlaybackClick: () -> Unit,
     onPermissionClick: () -> Unit,
     onNavigateToBottomBarSettings: () -> Unit,
@@ -1186,6 +1171,7 @@ private fun MobileSettingsLayout(
     onHomeRefreshCountChange: (Int) -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     val windowSizeClass = LocalWindowSizeClass.current
     val deviceUiProfile = remember(windowSizeClass.widthSizeClass) {
         resolveDeviceUiProfile(
@@ -1195,7 +1181,8 @@ private fun MobileSettingsLayout(
     val effectiveMotionTier = remember(deviceUiProfile.motionTier) {
         resolveSettingsEntranceMotionTier(deviceUiProfile.motionTier)
     }
-    val sectionOrder = remember { resolveMobileSettingsRootSectionOrder() }
+    val sectionOrder = remember { resolveSettingsRootCategoryOrder() }
+    val focusRequest by SettingsSearchFocusController.request.collectAsState()
     val bottomBarVisible = LocalBottomBarVisible.current
     val bottomInset = resolveSettingsContentBottomPadding(
         navigationBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
@@ -1208,6 +1195,15 @@ private fun MobileSettingsLayout(
     val backLabel = stringResource(R.string.common_back)
 
     LaunchedEffect(Unit) { isVisible = true }
+    LaunchedEffect(focusRequest, searchQuery) {
+        val request = focusRequest ?: return@LaunchedEffect
+        if (!isSceneSettingsSearchTarget(request.target) || searchQuery.isNotBlank()) {
+            return@LaunchedEffect
+        }
+        val category = resolveSettingsRootCategoryForSearchTarget(request.target) ?: return@LaunchedEffect
+        listState.animateScrollToItem(resolveSettingsRootCategoryListIndex(category))
+        SettingsSearchFocusController.clear(request.token)
+    }
 
     AdaptiveScaffold(
         topBar = {
@@ -1235,6 +1231,7 @@ private fun MobileSettingsLayout(
         contentWindowInsets = WindowInsets(0.dp)
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
@@ -1260,107 +1257,77 @@ private fun MobileSettingsLayout(
                     item {
                         Box(modifier = Modifier.staggeredEntrance(index * 2, isVisible, motionTier = effectiveMotionTier)) {
                             SettingsCategoryHeader(
-                                title = stringResource(resolveMobileSettingsRootSectionTitleRes(section))
+                                title = section.title
                             )
                         }
                     }
                     item {
                         Box(modifier = Modifier.staggeredEntrance(index * 2 + 1, isVisible, motionTier = effectiveMotionTier)) {
-                            when (section) {
-                                MobileSettingsRootSection.FOLLOW_AUTHOR -> {
-                                    FollowAuthorSection(
-                                        onTelegramClick = onTelegramClick,
-                                        onTwitterClick = onTwitterClick,
-                                        onDonateClick = onDonateClick
-                                    )
-                                }
-                                MobileSettingsRootSection.GENERAL -> {
-                                    GeneralSection(
-                                        onAppearanceClick = onAppearanceClick,
-                                        onPlaybackClick = onPlaybackClick,
-                                        onBottomBarClick = onNavigateToBottomBarSettings
-                                    )
-                                }
-                                MobileSettingsRootSection.PRIVACY -> {
-                                    PrivacySection(
-                                        privacyModeEnabled = privacyModeEnabled,
-                                        onPrivacyModeChange = onPrivacyModeChange,
-                                        onPermissionClick = onPermissionClick,
-                                        onBlockedListClick = onBlockedListClick
-                                    )
-                                }
-                                MobileSettingsRootSection.STORAGE -> {
-                                    DataStorageSection(
-                                        customDownloadPath = customDownloadPath,
-                                        cacheSize = cacheSize,
-                                        onSettingsShareClick = onSettingsShareClick,
-                                        onWebDavBackupClick = onWebDavBackupClick,
-                                        onDownloadPathClick = onDownloadPathClick,
-                                        onClearCacheClick = onClearCacheClick
-                                    )
-                                }
-                                MobileSettingsRootSection.DEVELOPER -> {
-                                    DeveloperSection(
-                                        crashTrackingEnabled = crashTrackingEnabled,
-                                        analyticsEnabled = analyticsEnabled,
-                                        pluginCount = pluginCount,
-                                        onCrashTrackingChange = onCrashTrackingChange,
-                                        onAnalyticsChange = onAnalyticsChange,
-                                        onPluginsClick = onPluginsClick,
-                                        onExportLogsClick = onExportLogsClick
-                                    )
-                                }
-                                MobileSettingsRootSection.FEED -> {
-                                    FeedApiSection(
-                                        feedApiType = feedApiType,
-                                        onFeedApiTypeChange = onFeedApiTypeChange,
-                                        incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
-                                        onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
-                                        dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
-                                        onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
-                                        dynamicVisibleTabIds = dynamicVisibleTabIds,
-                                        onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
-                                        homeRefreshCount = homeRefreshCount,
-                                        onHomeRefreshCountChange = onHomeRefreshCountChange
-                                    )
-                                }
-                                MobileSettingsRootSection.ABOUT -> {
-                                    AboutSection(
-                                        versionName = versionName,
-                                        easterEggEnabled = easterEggEnabled,
-                                        onDisclaimerClick = onDisclaimerClick,
-                                        onLicenseClick = onLicenseClick,
-                                        onGithubClick = onGithubClick,
-                                        onVerificationClick = onVerificationClick,
-                                        onBuildSourceClick = onBuildSourceClick,
-                                        onBuildFingerprintClick = onBuildFingerprintClick,
-                                        onCheckUpdateClick = onCheckUpdateClick,
-                                        onViewReleaseNotesClick = onViewReleaseNotesClick,
-                                        autoCheckUpdateEnabled = autoCheckUpdateEnabled,
-                                        onAutoCheckUpdateChange = onAutoCheckUpdateChange,
-                                        onVersionClick = onVersionClick,
-                                        onReplayOnboardingClick = onReplayOnboardingClick,
-                                        onEasterEggChange = onEasterEggChange,
-                                        updateStatusText = updateStatusText,
-                                        isCheckingUpdate = isCheckingUpdate,
-                                        verificationLabel = verificationLabel,
-                                        verificationSubtitle = verificationSubtitle,
-                                        buildSourceValue = buildSourceValue,
-                                        buildSourceSubtitle = buildSourceSubtitle,
-                                        buildFingerprintValue = buildFingerprintValue,
-                                        buildFingerprintCopyValue = buildFingerprintCopyValue,
-                                        buildFingerprintSubtitle = buildFingerprintSubtitle,
-                                        versionClickCount = versionClickCount,
-                                        versionClickThreshold = versionClickThreshold
-                                    )
-                                }
-                                MobileSettingsRootSection.SUPPORT -> {
-                                    SupportToolsSection(
-                                        onTipsClick = onTipsClick,
-                                        onOpenLinksClick = onOpenLinksClick
-                                    )
-                                }
-                            }
+                            SettingsRootCategoryContent(
+                                category = section,
+                                onAppearanceClick = onAppearanceClick,
+                                onAnimationClick = onAnimationClick,
+                                onPlaybackClick = onPlaybackClick,
+                                onBottomBarClick = onNavigateToBottomBarSettings,
+                                onPermissionClick = onPermissionClick,
+                                onBlockedListClick = onBlockedListClick,
+                                onPluginsClick = onPluginsClick,
+                                onExportLogsClick = onExportLogsClick,
+                                onSettingsShareClick = onSettingsShareClick,
+                                onWebDavBackupClick = onWebDavBackupClick,
+                                onDownloadPathClick = onDownloadPathClick,
+                                onClearCacheClick = onClearCacheClick,
+                                onGithubClick = onGithubClick,
+                                onTelegramClick = onTelegramClick,
+                                onTwitterClick = onTwitterClick,
+                                onDonateClick = onDonateClick,
+                                onDisclaimerClick = onDisclaimerClick,
+                                onLicenseClick = onLicenseClick,
+                                onVerificationClick = onVerificationClick,
+                                onBuildSourceClick = onBuildSourceClick,
+                                onBuildFingerprintClick = onBuildFingerprintClick,
+                                onCheckUpdateClick = onCheckUpdateClick,
+                                onViewReleaseNotesClick = onViewReleaseNotesClick,
+                                onVersionClick = onVersionClick,
+                                onReplayOnboardingClick = onReplayOnboardingClick,
+                                onTipsClick = onTipsClick,
+                                onOpenLinksClick = onOpenLinksClick,
+                                privacyModeEnabled = privacyModeEnabled,
+                                onPrivacyModeChange = onPrivacyModeChange,
+                                crashTrackingEnabled = crashTrackingEnabled,
+                                analyticsEnabled = analyticsEnabled,
+                                pluginCount = pluginCount,
+                                onCrashTrackingChange = onCrashTrackingChange,
+                                onAnalyticsChange = onAnalyticsChange,
+                                customDownloadPath = customDownloadPath,
+                                cacheSize = cacheSize,
+                                versionName = versionName,
+                                easterEggEnabled = easterEggEnabled,
+                                onEasterEggChange = onEasterEggChange,
+                                updateStatusText = updateStatusText,
+                                isCheckingUpdate = isCheckingUpdate,
+                                autoCheckUpdateEnabled = autoCheckUpdateEnabled,
+                                onAutoCheckUpdateChange = onAutoCheckUpdateChange,
+                                verificationLabel = verificationLabel,
+                                verificationSubtitle = verificationSubtitle,
+                                buildSourceValue = buildSourceValue,
+                                buildSourceSubtitle = buildSourceSubtitle,
+                                buildFingerprintValue = buildFingerprintValue,
+                                buildFingerprintCopyValue = buildFingerprintCopyValue,
+                                buildFingerprintSubtitle = buildFingerprintSubtitle,
+                                versionClickCount = versionClickCount,
+                                versionClickThreshold = versionClickThreshold,
+                                feedApiType = feedApiType,
+                                onFeedApiTypeChange = onFeedApiTypeChange,
+                                incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
+                                onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
+                                dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                                onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
+                                dynamicVisibleTabIds = dynamicVisibleTabIds,
+                                onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
+                                homeRefreshCount = homeRefreshCount,
+                                onHomeRefreshCountChange = onHomeRefreshCountChange
+                            )
                         }
                     }
                 }

@@ -45,11 +45,18 @@ import com.android.purebilibili.core.ui.AppIcons
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.ArrowCounterclockwise
 import io.github.alexzhirkevich.cupertino.icons.outlined.ArrowTriangle2Circlepath
+import io.github.alexzhirkevich.cupertino.icons.outlined.BellBadge
+import io.github.alexzhirkevich.cupertino.icons.outlined.Bolt
+import io.github.alexzhirkevich.cupertino.icons.outlined.Camera
+import io.github.alexzhirkevich.cupertino.icons.outlined.ChartBar
+import io.github.alexzhirkevich.cupertino.icons.outlined.Clock
 import io.github.alexzhirkevich.cupertino.icons.outlined.DocOnDoc
 import io.github.alexzhirkevich.cupertino.icons.outlined.DocText
+import io.github.alexzhirkevich.cupertino.icons.outlined.EyeSlash
 import io.github.alexzhirkevich.cupertino.icons.outlined.ExclamationmarkTriangle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Folder
 import io.github.alexzhirkevich.cupertino.icons.outlined.Gift
+import io.github.alexzhirkevich.cupertino.icons.outlined.InfoCircle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
 import io.github.alexzhirkevich.cupertino.icons.outlined.Link
 import io.github.alexzhirkevich.cupertino.icons.outlined.ListBullet
@@ -61,6 +68,8 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.PlayCircle
 import io.github.alexzhirkevich.cupertino.icons.outlined.PuzzlepieceExtension
 import io.github.alexzhirkevich.cupertino.icons.outlined.SquareAndArrowUp
 import io.github.alexzhirkevich.cupertino.icons.outlined.SquareStack3dUp
+import io.github.alexzhirkevich.cupertino.icons.outlined.Sparkles
+import io.github.alexzhirkevich.cupertino.icons.outlined.Tag
 import io.github.alexzhirkevich.cupertino.icons.outlined.Terminal
 import io.github.alexzhirkevich.cupertino.icons.outlined.Trash
 import io.github.alexzhirkevich.cupertino.icons.outlined.WandAndStars
@@ -135,6 +144,9 @@ internal fun rememberSettingsEntryTint(
 private fun resolveMd3SettingsEntryTintRole(
     target: SettingsSearchTarget
 ): SettingsEntryTintRole = when (target) {
+    SettingsSearchTarget.INTERFACE_THEME,
+    SettingsSearchTarget.HOME_FEED,
+    SettingsSearchTarget.NAVIGATION,
     SettingsSearchTarget.APPEARANCE,
     SettingsSearchTarget.ANIMATION,
     SettingsSearchTarget.PLUGINS,
@@ -142,6 +154,10 @@ private fun resolveMd3SettingsEntryTintRole(
     SettingsSearchTarget.REPLAY_ONBOARDING,
     SettingsSearchTarget.TIPS -> SettingsEntryTintRole.TERTIARY
 
+    SettingsSearchTarget.PLAYBACK_QUALITY,
+    SettingsSearchTarget.FULLSCREEN_GESTURE,
+    SettingsSearchTarget.INTERACTION_COMMENT,
+    SettingsSearchTarget.DATA_BACKUP,
     SettingsSearchTarget.PLAYBACK,
     SettingsSearchTarget.BOTTOM_BAR,
     SettingsSearchTarget.SETTINGS_SHARE,
@@ -153,6 +169,9 @@ private fun resolveMd3SettingsEntryTintRole(
     SettingsSearchTarget.OPEN_LINKS,
     SettingsSearchTarget.PERMISSION -> SettingsEntryTintRole.SECONDARY
 
+    SettingsSearchTarget.PRIVACY_PERMISSION,
+    SettingsSearchTarget.DIAGNOSTICS,
+    SettingsSearchTarget.ABOUT_SUPPORT,
     SettingsSearchTarget.CHECK_UPDATE,
     SettingsSearchTarget.DONATE,
     SettingsSearchTarget.TELEGRAM,
@@ -185,6 +204,46 @@ internal fun resolveSettingsEntryVisual(
     if (uiPreset == UiPreset.MD3) {
         val iconTint = md3Palette.resolve(resolveMd3SettingsEntryTintRole(target))
         return when (target) {
+            SettingsSearchTarget.INTERFACE_THEME -> SettingsEntryVisual(
+                icon = Icons.Outlined.Palette,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.HOME_FEED -> SettingsEntryVisual(
+                icon = Icons.Outlined.Feed,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.NAVIGATION -> SettingsEntryVisual(
+                icon = Icons.Outlined.Widgets,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.PLAYBACK_QUALITY -> SettingsEntryVisual(
+                icon = Icons.Outlined.PlayCircle,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.FULLSCREEN_GESTURE -> SettingsEntryVisual(
+                icon = Icons.Outlined.WarningAmber,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.INTERACTION_COMMENT -> SettingsEntryVisual(
+                icon = Icons.Outlined.Article,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.DATA_BACKUP -> SettingsEntryVisual(
+                icon = Icons.Outlined.Backup,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.PRIVACY_PERMISSION -> SettingsEntryVisual(
+                icon = Icons.Outlined.Security,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.DIAGNOSTICS -> SettingsEntryVisual(
+                icon = Icons.Outlined.Extension,
+                iconTint = iconTint
+            )
+            SettingsSearchTarget.ABOUT_SUPPORT -> SettingsEntryVisual(
+                icon = Icons.Outlined.Description,
+                iconTint = iconTint
+            )
             SettingsSearchTarget.APPEARANCE -> SettingsEntryVisual(
                 icon = Icons.Outlined.Palette,
                 iconTint = iconTint
@@ -281,6 +340,46 @@ internal fun resolveSettingsEntryVisual(
     }
 
     return when (target) {
+        SettingsSearchTarget.INTERFACE_THEME -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Sparkles,
+            iconTint = iOSPink
+        )
+        SettingsSearchTarget.HOME_FEED -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.ChartBar,
+            iconTint = iOSOrange
+        )
+        SettingsSearchTarget.NAVIGATION -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.BellBadge,
+            iconTint = iOSBlue
+        )
+        SettingsSearchTarget.PLAYBACK_QUALITY -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Bolt,
+            iconTint = iOSGreen
+        )
+        SettingsSearchTarget.FULLSCREEN_GESTURE -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Camera,
+            iconTint = iOSPurple
+        )
+        SettingsSearchTarget.INTERACTION_COMMENT -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Person,
+            iconTint = iOSTeal
+        )
+        SettingsSearchTarget.DATA_BACKUP -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Clock,
+            iconTint = iOSBlue
+        )
+        SettingsSearchTarget.PRIVACY_PERMISSION -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.EyeSlash,
+            iconTint = iOSPurple
+        )
+        SettingsSearchTarget.DIAGNOSTICS -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.Tag,
+            iconTint = iOSTeal
+        )
+        SettingsSearchTarget.ABOUT_SUPPORT -> SettingsEntryVisual(
+            icon = CupertinoIcons.Default.InfoCircle,
+            iconTint = iOSOrange
+        )
         SettingsSearchTarget.APPEARANCE -> SettingsEntryVisual(
             icon = CupertinoIcons.Default.PaintbrushPointed,
             iconTint = iOSPink

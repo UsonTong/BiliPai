@@ -186,6 +186,270 @@ fun GeneralSection(
     }
 }
 
+internal data class SettingsSceneShortcut(
+    val target: SettingsSearchTarget,
+    val title: String,
+    val value: String,
+    val onClick: () -> Unit
+)
+
+@Composable
+internal fun SettingsSceneShortcutSection(
+    shortcuts: List<SettingsSceneShortcut>
+) {
+    val uiPreset = LocalUiPreset.current
+    SettingsCardGroup {
+        shortcuts.forEachIndexed { index, shortcut ->
+            val visual = rememberSettingsEntryVisual(shortcut.target, uiPreset)
+            SettingClickableItem(
+                icon = visual.icon,
+                iconPainter = visual.iconResId?.let { painterResource(id = it) },
+                title = shortcut.title,
+                value = shortcut.value,
+                onClick = shortcut.onClick,
+                iconTint = visual.iconTint
+            )
+            if (index != shortcuts.lastIndex) {
+                SettingsDivider(startIndent = 66.dp)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SettingsRootCategoryContent(
+    category: SettingsRootCategory,
+    onAppearanceClick: () -> Unit,
+    onAnimationClick: () -> Unit,
+    onPlaybackClick: () -> Unit,
+    onBottomBarClick: () -> Unit,
+    onPermissionClick: () -> Unit,
+    onBlockedListClick: () -> Unit,
+    onPluginsClick: () -> Unit,
+    onExportLogsClick: () -> Unit,
+    onSettingsShareClick: () -> Unit,
+    onWebDavBackupClick: () -> Unit,
+    onDownloadPathClick: () -> Unit,
+    onClearCacheClick: () -> Unit,
+    onGithubClick: () -> Unit,
+    onTelegramClick: () -> Unit,
+    onTwitterClick: () -> Unit,
+    onDonateClick: () -> Unit,
+    onDisclaimerClick: () -> Unit,
+    onLicenseClick: () -> Unit,
+    onVerificationClick: () -> Unit,
+    onBuildSourceClick: () -> Unit,
+    onBuildFingerprintClick: () -> Unit,
+    onCheckUpdateClick: () -> Unit,
+    onViewReleaseNotesClick: () -> Unit,
+    onVersionClick: () -> Unit,
+    onReplayOnboardingClick: () -> Unit,
+    onTipsClick: () -> Unit,
+    onOpenLinksClick: () -> Unit,
+    privacyModeEnabled: Boolean,
+    onPrivacyModeChange: (Boolean) -> Unit,
+    crashTrackingEnabled: Boolean,
+    analyticsEnabled: Boolean,
+    pluginCount: Int,
+    onCrashTrackingChange: (Boolean) -> Unit,
+    onAnalyticsChange: (Boolean) -> Unit,
+    customDownloadPath: String?,
+    cacheSize: String,
+    versionName: String,
+    easterEggEnabled: Boolean,
+    onEasterEggChange: (Boolean) -> Unit,
+    updateStatusText: String,
+    isCheckingUpdate: Boolean,
+    autoCheckUpdateEnabled: Boolean,
+    onAutoCheckUpdateChange: (Boolean) -> Unit,
+    verificationLabel: String,
+    verificationSubtitle: String,
+    buildSourceValue: String,
+    buildSourceSubtitle: String,
+    buildFingerprintValue: String,
+    buildFingerprintCopyValue: String,
+    buildFingerprintSubtitle: String,
+    versionClickCount: Int,
+    versionClickThreshold: Int,
+    feedApiType: com.android.purebilibili.core.store.SettingsManager.FeedApiType,
+    onFeedApiTypeChange: (com.android.purebilibili.core.store.SettingsManager.FeedApiType) -> Unit,
+    incrementalTimelineRefreshEnabled: Boolean,
+    onIncrementalTimelineRefreshChange: (Boolean) -> Unit,
+    dynamicImagePreviewTextVisible: Boolean,
+    onDynamicImagePreviewTextVisibleChange: (Boolean) -> Unit,
+    dynamicVisibleTabIds: Set<String>,
+    onDynamicTabVisibilityChange: (String) -> Unit,
+    homeRefreshCount: Int,
+    onHomeRefreshCountChange: (Int) -> Unit
+) {
+    when (category) {
+        SettingsRootCategory.INTERFACE_THEME -> SettingsSceneShortcutSection(
+            shortcuts = listOf(
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.INTERFACE_THEME,
+                    title = "界面与主题",
+                    value = "UI 预设、主题、字体、DPI、动态图标与开屏",
+                    onClick = onAppearanceClick
+                ),
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.ANIMATION,
+                    title = "动效与图标",
+                    value = "过渡动画、触感反馈、动态图标与底栏搜索入口",
+                    onClick = onAnimationClick
+                )
+            )
+        )
+        SettingsRootCategory.HOME_FEED -> {
+            SettingsSceneShortcutSection(
+                shortcuts = listOf(
+                    SettingsSceneShortcut(
+                        target = SettingsSearchTarget.HOME_FEED,
+                        title = "首页展示与壁纸",
+                        value = "展示样式、首页壁纸效果、推荐流卡片宽度",
+                        onClick = onAppearanceClick
+                    )
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            FeedApiSection(
+                feedApiType = feedApiType,
+                onFeedApiTypeChange = onFeedApiTypeChange,
+                incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
+                onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
+                dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
+                dynamicVisibleTabIds = dynamicVisibleTabIds,
+                onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
+                homeRefreshCount = homeRefreshCount,
+                onHomeRefreshCountChange = onHomeRefreshCountChange
+            )
+        }
+        SettingsRootCategory.NAVIGATION_LABELS -> SettingsSceneShortcutSection(
+            shortcuts = listOf(
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.NAVIGATION,
+                    title = "导航与标签",
+                    value = "底栏、顶部标签、平板侧边栏与底栏项目顺序",
+                    onClick = onBottomBarClick
+                )
+            )
+        )
+        SettingsRootCategory.PLAYBACK_QUALITY -> SettingsSceneShortcutSection(
+            shortcuts = listOf(
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.PLAYBACK_QUALITY,
+                    title = "播放与画质",
+                    value = "解码、默认画质、自动最高画质、网络、省流量、字幕、倍速与连播",
+                    onClick = onPlaybackClick
+                )
+            )
+        )
+        SettingsRootCategory.FULLSCREEN_GESTURE -> SettingsSceneShortcutSection(
+            shortcuts = listOf(
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.FULLSCREEN_GESTURE,
+                    title = "全屏与手势",
+                    value = "全屏方向、截图按钮、应用内截图、亮度/音量/进度手势",
+                    onClick = onPlaybackClick
+                )
+            )
+        )
+        SettingsRootCategory.INTERACTION_COMMENT -> SettingsSceneShortcutSection(
+            shortcuts = listOf(
+                SettingsSceneShortcut(
+                    target = SettingsSearchTarget.INTERACTION_COMMENT,
+                    title = "互动与评论",
+                    value = "评论发送检测、评论装扮、AI 总结、双击点赞与视频简介",
+                    onClick = onPlaybackClick
+                )
+            )
+        )
+        SettingsRootCategory.DATA_BACKUP -> DataStorageSection(
+            customDownloadPath = customDownloadPath,
+            cacheSize = cacheSize,
+            onSettingsShareClick = onSettingsShareClick,
+            onWebDavBackupClick = onWebDavBackupClick,
+            onDownloadPathClick = onDownloadPathClick,
+            onClearCacheClick = onClearCacheClick
+        )
+        SettingsRootCategory.PRIVACY_PERMISSION -> PrivacySection(
+            privacyModeEnabled = privacyModeEnabled,
+            onPrivacyModeChange = onPrivacyModeChange,
+            onPermissionClick = onPermissionClick,
+            onBlockedListClick = onBlockedListClick
+        )
+        SettingsRootCategory.DIAGNOSTICS_DEVELOPER -> {
+            SettingsSceneShortcutSection(
+                shortcuts = listOf(
+                    SettingsSceneShortcut(
+                        target = SettingsSearchTarget.DIAGNOSTICS,
+                        title = "播放器诊断",
+                        value = "诊断日志、详细统计信息、画质降档弹窗与仅提示一次",
+                        onClick = onPlaybackClick
+                    )
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            DeveloperSection(
+                crashTrackingEnabled = crashTrackingEnabled,
+                analyticsEnabled = analyticsEnabled,
+                pluginCount = pluginCount,
+                onCrashTrackingChange = onCrashTrackingChange,
+                onAnalyticsChange = onAnalyticsChange,
+                onPluginsClick = onPluginsClick,
+                onExportLogsClick = onExportLogsClick
+            )
+        }
+        SettingsRootCategory.ABOUT_SUPPORT -> {
+            ReleaseChannelPinnedCard(
+                onGithubClick = onGithubClick,
+                onTelegramClick = onTelegramClick,
+                onDisclaimerClick = onDisclaimerClick
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            FollowAuthorSection(
+                onTelegramClick = onTelegramClick,
+                onTwitterClick = onTwitterClick,
+                onDonateClick = onDonateClick
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            AboutSection(
+                versionName = versionName,
+                easterEggEnabled = easterEggEnabled,
+                onDisclaimerClick = onDisclaimerClick,
+                onLicenseClick = onLicenseClick,
+                onGithubClick = onGithubClick,
+                onVerificationClick = onVerificationClick,
+                onBuildSourceClick = onBuildSourceClick,
+                onBuildFingerprintClick = onBuildFingerprintClick,
+                onCheckUpdateClick = onCheckUpdateClick,
+                onViewReleaseNotesClick = onViewReleaseNotesClick,
+                autoCheckUpdateEnabled = autoCheckUpdateEnabled,
+                onAutoCheckUpdateChange = onAutoCheckUpdateChange,
+                onVersionClick = onVersionClick,
+                onReplayOnboardingClick = onReplayOnboardingClick,
+                onEasterEggChange = onEasterEggChange,
+                updateStatusText = updateStatusText,
+                isCheckingUpdate = isCheckingUpdate,
+                verificationLabel = verificationLabel,
+                verificationSubtitle = verificationSubtitle,
+                buildSourceValue = buildSourceValue,
+                buildSourceSubtitle = buildSourceSubtitle,
+                buildFingerprintValue = buildFingerprintValue,
+                buildFingerprintCopyValue = buildFingerprintCopyValue,
+                buildFingerprintSubtitle = buildFingerprintSubtitle,
+                versionClickCount = versionClickCount,
+                versionClickThreshold = versionClickThreshold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SupportToolsSection(
+                onTipsClick = onTipsClick,
+                onOpenLinksClick = onOpenLinksClick
+            )
+        }
+    }
+}
+
 @Composable
 fun SupportToolsSection(
     onTipsClick: () -> Unit,

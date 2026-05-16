@@ -33,35 +33,16 @@ import com.android.purebilibili.core.ui.AdaptiveSplitLayout
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.rememberAppBackIcon
-import com.android.purebilibili.core.ui.rememberAppCollectionIcon
-import com.android.purebilibili.core.ui.rememberAppInfoIcon
-import com.android.purebilibili.core.ui.rememberAppLockIcon
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
 import dev.chrisbanes.haze.HazeState
-import com.android.purebilibili.core.theme.iOSBlue
-import com.android.purebilibili.core.theme.iOSGreen
-import com.android.purebilibili.core.theme.iOSOrange
-import com.android.purebilibili.core.theme.iOSPink
-import com.android.purebilibili.core.theme.iOSPurple
-import com.android.purebilibili.core.theme.iOSTeal
 import kotlinx.coroutines.launch
-
-enum class SettingsCategory(
-    val titleResId: Int,
-    val color: Color
-) {
-    GENERAL(R.string.settings_section_general, iOSPink),
-    PRIVACY(R.string.settings_section_privacy, iOSPurple),
-    STORAGE(R.string.settings_section_storage, iOSBlue),
-    DEVELOPER(R.string.settings_section_developer, iOSTeal),
-    ABOUT(R.string.settings_section_about, iOSOrange)
-}
 
 @Composable
 fun TabletSettingsLayout(
     // Callbacks
     onBack: () -> Unit,
     onAppearanceClick: () -> Unit,
+    onAnimationClick: () -> Unit,
     onPlaybackClick: () -> Unit,
     onPermissionClick: () -> Unit,
     onPluginsClick: () -> Unit,
@@ -132,7 +113,7 @@ fun TabletSettingsLayout(
     
     modifier: Modifier = Modifier
 ) {
-    var selectedCategory by remember { mutableStateOf(SettingsCategory.GENERAL) }
+    var selectedCategory by remember { mutableStateOf(SettingsRootCategory.INTERFACE_THEME) }
     val coroutineScope = rememberCoroutineScope()
     var pendingLanguageRestart by remember { mutableStateOf<AppLanguage?>(null) }
     val uiPreset = com.android.purebilibili.core.theme.LocalUiPreset.current
@@ -159,11 +140,8 @@ fun TabletSettingsLayout(
     val viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
     val state by viewModel.state.collectAsState()
-    val generalIcon = rememberAppSettingsIcon()
-    val privacyIcon = rememberAppLockIcon()
-    val storageIcon = rememberAppCollectionIcon()
-    val developerIcon = rememberSettingsEntryVisual(SettingsSearchTarget.PLUGINS, uiPreset).icon
-    val aboutIcon = rememberAppInfoIcon()
+    val fallbackCategoryIcon = rememberAppSettingsIcon()
+    val categoryOrder = remember { resolveTabletSettingsRootCategoryOrder() }
 
     AdaptiveSplitLayout(
         modifier = modifier,
@@ -209,17 +187,12 @@ fun TabletSettingsLayout(
                     onQueryChange = onSearchQueryChange
                 )
 
-                SettingsCategory.entries.forEach { category ->
+                categoryOrder.forEach { category ->
                     val isSelected = category == selectedCategory
-                    val categoryIcon = when (category) {
-                        SettingsCategory.GENERAL -> generalIcon
-                        SettingsCategory.PRIVACY -> privacyIcon
-                        SettingsCategory.STORAGE -> storageIcon
-                        SettingsCategory.DEVELOPER -> developerIcon ?: generalIcon
-                        SettingsCategory.ABOUT -> aboutIcon
-                    }
+                    val categoryVisual = rememberSettingsEntryVisual(category.searchTarget, uiPreset)
+                    val categoryIcon = categoryVisual.icon ?: fallbackCategoryIcon
                     NavigationDrawerItem(
-                        label = { Text(stringResource(category.titleResId)) },
+                        label = { Text(category.title) },
                         selected = isSelected,
                         onClick = { 
                             selectedCategory = category 
@@ -229,7 +202,11 @@ fun TabletSettingsLayout(
                             Icon(
                                 categoryIcon,
                                 contentDescription = null,
-                                tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else category.color
+                                tint = if (isSelected) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    categoryVisual.iconTint
+                                }
                             ) 
                         },
                         modifier = Modifier
@@ -269,6 +246,12 @@ fun TabletSettingsLayout(
                         SettingsSearchResultsSection(
                             results = searchResults,
                             onResultClick = { target ->
+                                if (isSceneSettingsSearchTarget(target.target)) {
+                                    resolveSettingsRootCategoryForSearchTarget(target.target)?.let { category ->
+                                        selectedCategory = category
+                                        activeDetail = null
+                                    }
+                                }
                                 activeDetail = null
                                 onSearchResultClick(target)
                             }
@@ -443,7 +426,7 @@ fun TabletSettingsLayout(
                             .verticalScroll(rememberScrollState())
                         ) {
                             Text(
-                                text = stringResource(category.titleResId),
+                                text = category.title,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
@@ -452,100 +435,71 @@ fun TabletSettingsLayout(
                                     .statusBarsPadding()
                             )
                             
-                            when (category) {
-                                SettingsCategory.GENERAL -> {
-                                    GeneralSection(
-                                        onAppearanceClick = { activeDetail = SettingsDetail.APPEARANCE },
-                                        onPlaybackClick = { activeDetail = SettingsDetail.PLAYBACK },
-                                        onBottomBarClick = { activeDetail = SettingsDetail.BOTTOM_BAR }
-                                    )
-                                }
-                                SettingsCategory.PRIVACY -> PrivacySection(
-                                    privacyModeEnabled = privacyModeEnabled,
-                                    onPrivacyModeChange = onPrivacyModeChange,
-                                    onPermissionClick = { activeDetail = SettingsDetail.PERMISSION },
-                                    onBlockedListClick = { activeDetail = SettingsDetail.BLOCKED_LIST } // [New]
-                                )
-                                SettingsCategory.STORAGE -> {
-                                    FeedApiSection(
-                                        feedApiType = feedApiType,
-                                        onFeedApiTypeChange = onFeedApiTypeChange,
-                                        incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
-                                        onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
-                                        dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
-                                        onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
-                                        dynamicVisibleTabIds = dynamicVisibleTabIds,
-                                        onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
-                                        homeRefreshCount = homeRefreshCount,
-                                        onHomeRefreshCountChange = onHomeRefreshCountChange
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    DataStorageSection(
-                                        customDownloadPath = customDownloadPath,
-                                        cacheSize = cacheSize,
-                                        onSettingsShareClick = onSettingsShareClick,
-                                        onWebDavBackupClick = onWebDavBackupClick,
-                                        onDownloadPathClick = onDownloadPathClick,
-                                        onClearCacheClick = onClearCacheClick
-                                    )
-                                }
-                                SettingsCategory.DEVELOPER -> DeveloperSection(
-                                    crashTrackingEnabled = crashTrackingEnabled,
-                                    analyticsEnabled = analyticsEnabled,
-                                    pluginCount = pluginCount,
-                                    onCrashTrackingChange = onCrashTrackingChange,
-                                    onAnalyticsChange = onAnalyticsChange,
-                                    onPluginsClick = { activeDetail = SettingsDetail.PLUGINS },
-                                    onExportLogsClick = onExportLogsClick
-                                )
-                                SettingsCategory.ABOUT -> {
-                                    ReleaseChannelPinnedCard(
-                                        onGithubClick = onGithubClick,
-                                        onTelegramClick = onTelegramClick,
-                                        onDisclaimerClick = onDisclaimerClick
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    FollowAuthorSection(
-                                        onTelegramClick = onTelegramClick,
-                                        onTwitterClick = onTwitterClick,
-                                        onDonateClick = onDonateClick
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    AboutSection(
-                                        versionName = versionName,
-                                        easterEggEnabled = easterEggEnabled,
-                                        onDisclaimerClick = onDisclaimerClick,
-                                        onLicenseClick = onLicenseClick,
-                                        onGithubClick = onGithubClick,
-                                        onVerificationClick = onVerificationClick,
-                                        onBuildSourceClick = onBuildSourceClick,
-                                        onBuildFingerprintClick = onBuildFingerprintClick,
-                                        onCheckUpdateClick = onCheckUpdateClick,
-                                        onViewReleaseNotesClick = onViewReleaseNotesClick,
-                                        autoCheckUpdateEnabled = autoCheckUpdateEnabled,
-                                        onAutoCheckUpdateChange = onAutoCheckUpdateChange,
-                                        onVersionClick = onVersionClick,
-                                        onReplayOnboardingClick = onReplayOnboardingClick,
-                                        onEasterEggChange = onEasterEggChange,
-                                        updateStatusText = updateStatusText,
-                                        isCheckingUpdate = isCheckingUpdate,
-                                        verificationLabel = verificationLabel,
-                                        verificationSubtitle = verificationSubtitle,
-                                        buildSourceValue = buildSourceValue,
-                                        buildSourceSubtitle = buildSourceSubtitle,
-                                        buildFingerprintValue = buildFingerprintValue,
-                                        buildFingerprintCopyValue = buildFingerprintCopyValue,
-                                        buildFingerprintSubtitle = buildFingerprintSubtitle,
-                                        versionClickCount = versionClickCount,
-                                        versionClickThreshold = versionClickThreshold
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    SupportToolsSection(
-                                        onTipsClick = onTipsClick,
-                                        onOpenLinksClick = onOpenLinksClick
-                                    )
-                                }
-                            }
+                            SettingsRootCategoryContent(
+                                category = category,
+                                onAppearanceClick = { activeDetail = SettingsDetail.APPEARANCE },
+                                onAnimationClick = { activeDetail = SettingsDetail.ANIMATION },
+                                onPlaybackClick = { activeDetail = SettingsDetail.PLAYBACK },
+                                onBottomBarClick = { activeDetail = SettingsDetail.BOTTOM_BAR },
+                                onPermissionClick = { activeDetail = SettingsDetail.PERMISSION },
+                                onBlockedListClick = { activeDetail = SettingsDetail.BLOCKED_LIST },
+                                onPluginsClick = { activeDetail = SettingsDetail.PLUGINS },
+                                onExportLogsClick = onExportLogsClick,
+                                onSettingsShareClick = onSettingsShareClick,
+                                onWebDavBackupClick = onWebDavBackupClick,
+                                onDownloadPathClick = onDownloadPathClick,
+                                onClearCacheClick = onClearCacheClick,
+                                onGithubClick = onGithubClick,
+                                onTelegramClick = onTelegramClick,
+                                onTwitterClick = onTwitterClick,
+                                onDonateClick = onDonateClick,
+                                onDisclaimerClick = onDisclaimerClick,
+                                onLicenseClick = onLicenseClick,
+                                onVerificationClick = onVerificationClick,
+                                onBuildSourceClick = onBuildSourceClick,
+                                onBuildFingerprintClick = onBuildFingerprintClick,
+                                onCheckUpdateClick = onCheckUpdateClick,
+                                onViewReleaseNotesClick = onViewReleaseNotesClick,
+                                onVersionClick = onVersionClick,
+                                onReplayOnboardingClick = onReplayOnboardingClick,
+                                onTipsClick = onTipsClick,
+                                onOpenLinksClick = onOpenLinksClick,
+                                privacyModeEnabled = privacyModeEnabled,
+                                onPrivacyModeChange = onPrivacyModeChange,
+                                crashTrackingEnabled = crashTrackingEnabled,
+                                analyticsEnabled = analyticsEnabled,
+                                pluginCount = pluginCount,
+                                onCrashTrackingChange = onCrashTrackingChange,
+                                onAnalyticsChange = onAnalyticsChange,
+                                customDownloadPath = customDownloadPath,
+                                cacheSize = cacheSize,
+                                versionName = versionName,
+                                easterEggEnabled = easterEggEnabled,
+                                onEasterEggChange = onEasterEggChange,
+                                updateStatusText = updateStatusText,
+                                isCheckingUpdate = isCheckingUpdate,
+                                autoCheckUpdateEnabled = autoCheckUpdateEnabled,
+                                onAutoCheckUpdateChange = onAutoCheckUpdateChange,
+                                verificationLabel = verificationLabel,
+                                verificationSubtitle = verificationSubtitle,
+                                buildSourceValue = buildSourceValue,
+                                buildSourceSubtitle = buildSourceSubtitle,
+                                buildFingerprintValue = buildFingerprintValue,
+                                buildFingerprintCopyValue = buildFingerprintCopyValue,
+                                buildFingerprintSubtitle = buildFingerprintSubtitle,
+                                versionClickCount = versionClickCount,
+                                versionClickThreshold = versionClickThreshold,
+                                feedApiType = feedApiType,
+                                onFeedApiTypeChange = onFeedApiTypeChange,
+                                incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
+                                onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
+                                dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                                onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
+                                dynamicVisibleTabIds = dynamicVisibleTabIds,
+                                onDynamicTabVisibilityChange = onDynamicTabVisibilityChange,
+                                homeRefreshCount = homeRefreshCount,
+                                onHomeRefreshCountChange = onHomeRefreshCountChange
+                            )
                             Spacer(modifier = Modifier
                                 .windowInsetsBottomHeight(WindowInsets.navigationBars)
                             )
