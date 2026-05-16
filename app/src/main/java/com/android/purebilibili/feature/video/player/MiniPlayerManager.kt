@@ -48,6 +48,7 @@ import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.MediaUtils
 import com.android.purebilibili.core.util.NetworkUtils
 import com.android.purebilibili.data.repository.VideoRepository
+import com.android.purebilibili.data.repository.resolveVideoPlaybackAuthState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -1756,8 +1757,10 @@ class MiniPlayerManager private constructor(private val context: Context) :
         backgroundSkipJob?.cancel()
         backgroundSkipJob = scope.launch {
             backgroundPlaybackUseCase.attachPlayer(currentPlayer)
-            val isLoggedIn = !TokenManager.sessDataCache.isNullOrEmpty() ||
-                !TokenManager.accessTokenCache.isNullOrEmpty()
+            val isLoggedIn = resolveVideoPlaybackAuthState(
+                hasSessionCookie = !TokenManager.sessDataCache.isNullOrEmpty(),
+                hasAccessToken = !TokenManager.accessTokenCache.isNullOrEmpty()
+            )
             val storedQuality = NetworkUtils.getDefaultQualityId(context)
             val autoHighestEnabled = SettingsManager.getAutoHighestQualitySync(context)
             val effectiveVip = VideoRepository.refreshVipStatusForPreferredQualityIfNeeded(

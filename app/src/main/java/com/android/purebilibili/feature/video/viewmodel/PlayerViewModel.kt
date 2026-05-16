@@ -28,6 +28,7 @@ import com.android.purebilibili.data.model.VideoLoadError
 import com.android.purebilibili.data.model.response.*
 import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.data.repository.ViewGrpcRepository
+import com.android.purebilibili.data.repository.resolveVideoPlaybackAuthState
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
@@ -378,6 +379,49 @@ internal data class QualitySwitchFailureDialogState(
     val message: String
 )
 
+internal enum class InitialQualityUnavailableReason {
+    DATA_SAVER,
+    LOGIN_REQUIRED,
+    VIP_REQUIRED,
+    SERVER_DOWNGRADED
+}
+
+internal fun resolveInitialQualityUnavailableReason(
+    requestedQualityId: Int,
+    actualQualityId: Int,
+    isLoggedIn: Boolean,
+    isVip: Boolean,
+    dataSaverLimited: Boolean
+): InitialQualityUnavailableReason? {
+    if (dataSaverLimited && requestedQualityId > 32) {
+        return InitialQualityUnavailableReason.DATA_SAVER
+    }
+    if (requestedQualityId < 80 || actualQualityId >= requestedQualityId) {
+        return null
+    }
+    if (requestedQualityId >= 112 && !isVip) {
+        return InitialQualityUnavailableReason.VIP_REQUIRED
+    }
+    if (requestedQualityId >= 80 && !isLoggedIn) {
+        return InitialQualityUnavailableReason.LOGIN_REQUIRED
+    }
+    return InitialQualityUnavailableReason.SERVER_DOWNGRADED
+}
+
+internal fun resolveInitialQualityWarningTarget(
+    requestedQualityId: Int,
+    isLoggedIn: Boolean,
+    isVip: Boolean
+): Int {
+    if (requestedQualityId < 127) return requestedQualityId
+    return when {
+        isVip -> 120
+        isLoggedIn -> 80
+        else -> 64
+    }
+}
+
+
 internal fun shouldBlockPremiumQualitySwitchDuringCooldown(
     requestedQualityId: Int,
     cacheContainsRequestedQuality: Boolean,
@@ -409,8 +453,22 @@ internal fun resolveQualitySwitchFailureMessage(
     loadError: VideoLoadError? = null,
     hasCachedDashTracks: Boolean = true,
     cacheContainsRequestedQuality: Boolean = true,
-    qualityRefetchCooldownRemainingMs: Long? = null
+    qualityRefetchCooldownRemainingMs: Long? = null,
+    initialUnavailableReason: InitialQualityUnavailableReason? = null
 ): String {
+    initialUnavailableReason?.let { reason ->
+        return when (reason) {
+            InitialQualityUnavailableReason.DATA_SAVER ->
+                "$requestedQualityLabel 已被省流量模式限制为 480P。关闭省流量模式或切换到不受限网络后会重新请求高画质。"
+            InitialQualityUnavailableReason.LOGIN_REQUIRED ->
+                "$requestedQualityLabel 需要有效登录 Cookie，当前取流接口没有通过登录鉴权，所以服务端只返回了低画质。"
+            InitialQualityUnavailableReason.VIP_REQUIRED ->
+                "$requestedQualityLabel 属于大会员画质，当前账号不是大会员，已自动使用可播放的较低画质。"
+            InitialQualityUnavailableReason.SERVER_DOWNGRADED ->
+                "服务端没有返回 $requestedQualityLabel 的可播放轨道，可能是该分P不支持、接口临时降档或当前 Cookie 已失效。"
+        }
+    }
+
     permissionResult?.let { permission ->
         return when (permission) {
             is QualityPermissionResult.RequiresVip -> "$requestedQualityLabel 需要大会员，当前账号暂时不能切换到这个画质。"
@@ -454,19 +512,25 @@ internal fun buildQualitySwitchFailureDialogState(
     loadError: VideoLoadError? = null,
     hasCachedDashTracks: Boolean = true,
     cacheContainsRequestedQuality: Boolean = true,
-    qualityRefetchCooldownRemainingMs: Long? = null
+    qualityRefetchCooldownRemainingMs: Long? = null,
+    initialUnavailableReason: InitialQualityUnavailableReason? = null
 ): QualitySwitchFailureDialogState {
     return QualitySwitchFailureDialogState(
         requestedQualityId = requestedQualityId,
         requestedQualityLabel = requestedQualityLabel,
-        title = "切换到 $requestedQualityLabel 失败",
+        title = if (initialUnavailableReason != null) {
+            "未能使用 $requestedQualityLabel"
+        } else {
+            "切换到 $requestedQualityLabel 失败"
+        },
         message = resolveQualitySwitchFailureMessage(
             requestedQualityLabel = requestedQualityLabel,
             permissionResult = permissionResult,
             loadError = loadError,
             hasCachedDashTracks = hasCachedDashTracks,
             cacheContainsRequestedQuality = cacheContainsRequestedQuality,
-            qualityRefetchCooldownRemainingMs = qualityRefetchCooldownRemainingMs
+            qualityRefetchCooldownRemainingMs = qualityRefetchCooldownRemainingMs,
+            initialUnavailableReason = initialUnavailableReason
         )
     )
 }
@@ -2247,12 +2311,18 @@ class PlayerViewModel : ViewModel() {
             }
             _uiState.value = PlayerUiState.Loading.Initial
             
-                val isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
-                    !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                val isLoggedIn = resolveVideoPlaybackAuthState(
+                    hasSessionCookie = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty(),
+                    hasAccessToken = !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                )
+                var storedQualityForWarning = 64
+                var autoHighestQualityEnabledForLoad = false
                 val defaultQuality = appContext?.let { context ->
                     val storedQuality = NetworkUtils.getDefaultQualityId(context)
                     val autoHighestEnabled = com.android.purebilibili.core.store.SettingsManager
                         .getAutoHighestQualitySync(context)
+                    storedQualityForWarning = storedQuality
+                    autoHighestQualityEnabledForLoad = autoHighestEnabled
                     val effectiveVip = VideoRepository.refreshVipStatusForPreferredQualityIfNeeded(
                         isLoggedIn = isLoggedIn,
                         cachedIsVip = com.android.purebilibili.core.store.TokenManager.isVipCache,
@@ -2320,7 +2390,8 @@ class PlayerViewModel : ViewModel() {
             }
             
             var finalQuality = defaultQuality
-            if (shouldLimitQuality && finalQuality > 32) {
+            val dataSaverLimitedQuality = shouldLimitQuality && finalQuality > 32
+            if (dataSaverLimitedQuality) {
                 finalQuality = 32
                 com.android.purebilibili.core.util.Logger.d("PlayerViewModel", "📉 省流量模式(${dataSaverMode.label}): 限制画质为480P")
             }
@@ -2444,6 +2515,31 @@ class PlayerViewModel : ViewModel() {
                             currentAudioLang = result.curAudioLang,
                             videoDurationMs = result.duration
                         )
+                        val requestedQualityForWarning = if (autoHighestQualityEnabledForLoad) {
+                            defaultQuality
+                        } else {
+                            storedQualityForWarning
+                        }
+                        val initialQualityWarningTarget = resolveInitialQualityWarningTarget(
+                            requestedQualityId = requestedQualityForWarning,
+                            isLoggedIn = result.isLoggedIn,
+                            isVip = result.isVip
+                        )
+                        val initialQualityUnavailableReason = resolveInitialQualityUnavailableReason(
+                            requestedQualityId = initialQualityWarningTarget,
+                            actualQualityId = result.quality,
+                            isLoggedIn = result.isLoggedIn,
+                            isVip = result.isVip,
+                            dataSaverLimited = dataSaverLimitedQuality
+                        )
+                        if (initialQualityUnavailableReason != null) {
+                            showQualitySwitchFailureDialog(
+                                requestedQualityId = initialQualityWarningTarget,
+                                hasCachedDashTracks = result.cachedDashVideos.isNotEmpty(),
+                                cacheContainsRequestedQuality = result.cachedDashVideos.any { it.id == initialQualityWarningTarget },
+                                initialUnavailableReason = initialQualityUnavailableReason
+                            )
+                        }
                         maybeEmitResumePlaybackSuggestion(
                             requestCid = playbackRequest.cid,
                             loadedInfo = result.info
@@ -2672,8 +2768,10 @@ class PlayerViewModel : ViewModel() {
                     }
                     
                     // 获取默认画质
-                    val isLoggedIn = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty() ||
-                        !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                    val isLoggedIn = resolveVideoPlaybackAuthState(
+                        hasSessionCookie = !com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty(),
+                        hasAccessToken = !com.android.purebilibili.core.store.TokenManager.accessTokenCache.isNullOrEmpty()
+                    )
                     val defaultQuality = appContext?.let { context ->
                         val storedQuality = com.android.purebilibili.core.util.NetworkUtils
                             .getDefaultQualityId(context)
@@ -6139,7 +6237,8 @@ class PlayerViewModel : ViewModel() {
         loadError: VideoLoadError? = null,
         hasCachedDashTracks: Boolean = true,
         cacheContainsRequestedQuality: Boolean = true,
-        qualityRefetchCooldownRemainingMs: Long? = null
+        qualityRefetchCooldownRemainingMs: Long? = null,
+        initialUnavailableReason: InitialQualityUnavailableReason? = null
     ) {
         val requestedQualityLabel = if (requestedQualityId > 0) {
             qualityManager.getQualityLabel(requestedQualityId)
@@ -6153,13 +6252,15 @@ class PlayerViewModel : ViewModel() {
             loadError = loadError,
             hasCachedDashTracks = hasCachedDashTracks,
             cacheContainsRequestedQuality = cacheContainsRequestedQuality,
-            qualityRefetchCooldownRemainingMs = qualityRefetchCooldownRemainingMs
+            qualityRefetchCooldownRemainingMs = qualityRefetchCooldownRemainingMs,
+            initialUnavailableReason = initialUnavailableReason
         )
         Logger.w(
             "PlayerVM",
             "QUALITY_SWITCH_FAILURE requested=$requestedQualityId label=$requestedQualityLabel " +
                 "permission=$permissionResult error=$loadError hasCache=$hasCachedDashTracks " +
                 "containsRequested=$cacheContainsRequestedQuality cooldownMs=${qualityRefetchCooldownRemainingMs ?: 0L} " +
+                "initialReason=$initialUnavailableReason " +
                 "message=${dialogState.message}"
         )
         _qualitySwitchFailureDialog.value = dialogState

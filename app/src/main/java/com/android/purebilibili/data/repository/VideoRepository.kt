@@ -361,7 +361,15 @@ object VideoRepository {
             requestKind = PlayUrlRequestKind.INITIAL
         ) ?: return@withContext null
 
-        if (shouldCachePlayUrlResult(fetchResult.source, audioLang)) {
+        val dashVideoIds = fetchResult.data.dash?.video?.map { it.id }?.distinct() ?: emptyList()
+        if (shouldCachePlayUrlResult(
+                source = fetchResult.source,
+                audioLang = audioLang,
+                requestedQuality = startQuality,
+                returnedQuality = fetchResult.data.quality,
+                dashVideoIds = dashVideoIds
+            )
+        ) {
             PlayUrlCache.put(
                 bvid = bvid,
                 cid = cid,
@@ -880,7 +888,14 @@ object VideoRepository {
             if (!hasDash && !hasDurl) throw Exception("播放地址解析失败 (无 dash/durl)")
 
             //  [优化] 缓存结果 (仅默认语言缓存)
-            if (shouldCachePlayUrlResult(fetchResult.source, audioLang)) {
+            if (shouldCachePlayUrlResult(
+                    source = fetchResult.source,
+                    audioLang = audioLang,
+                    requestedQuality = startQuality,
+                    returnedQuality = playData.quality,
+                    dashVideoIds = dashVideoIds
+                )
+            ) {
                 PlayUrlCache.put(
                     bvid = cacheBvid,
                     cid = cid,
