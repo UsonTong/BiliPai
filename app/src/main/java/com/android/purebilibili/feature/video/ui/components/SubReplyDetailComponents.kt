@@ -135,8 +135,13 @@ internal fun resolveSubReplyDetailSectionTitle(replyCount: Int): String {
 
 internal fun resolveSubReplyDetailDisplayCount(
     rootReply: ReplyItem,
-    loadedReplyCount: Int
+    loadedReplyCount: Int,
+    remoteReplyCount: Int = 0
 ): Int {
+    if (remoteReplyCount > 0) {
+        return maxOf(remoteReplyCount, loadedReplyCount).coerceAtLeast(0)
+    }
+
     return maxOf(
         resolveReplyThreadCount(rootReply),
         loadedReplyCount
@@ -269,6 +274,7 @@ internal fun VideoInlineSubReplyDetailContent(
     SubReplyDetailContent(
         rootReply = rootReply,
         subReplies = state.items,
+        remoteReplyCount = state.totalCount,
         isLoading = state.isLoading,
         isEnd = state.isEnd,
         emoteMap = emoteMap,
@@ -327,7 +333,8 @@ internal fun SubReplyDetailContent(
     onUrlClick: ((String) -> Unit)? = null,
     showIdentityDecorations: Boolean = true,
     onAvatarClick: ((String) -> Unit)? = null,
-    maxTimestampMs: Long? = null
+    maxTimestampMs: Long? = null,
+    remoteReplyCount: Int = 0
 ) {
     val layoutPolicy = remember {
         resolveSubReplyDetailLayoutPolicy(showRootCommentEntry = false)
@@ -349,10 +356,11 @@ internal fun SubReplyDetailContent(
     }
     val localConversationMode = conversationAnchor != null
     val effectiveConversationMode = isConversationMode || localConversationMode
-    val detailReplyDisplayCount = remember(rootReply, subReplies.size) {
+    val detailReplyDisplayCount = remember(rootReply, subReplies.size, remoteReplyCount) {
         resolveSubReplyDetailDisplayCount(
             rootReply = rootReply,
-            loadedReplyCount = subReplies.size
+            loadedReplyCount = subReplies.size,
+            remoteReplyCount = remoteReplyCount
         )
     }
     val listScrollResetKey = remember(

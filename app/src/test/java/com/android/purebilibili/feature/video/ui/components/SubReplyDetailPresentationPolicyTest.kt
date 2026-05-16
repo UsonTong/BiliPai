@@ -2,11 +2,16 @@ package com.android.purebilibili.feature.video.ui.components
 
 import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.data.model.response.ReplyContent
+import com.android.purebilibili.data.model.response.ReplyCursor
+import com.android.purebilibili.data.model.response.ReplyData
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.ReplyMember
+import com.android.purebilibili.data.model.response.ReplyPage
 import com.android.purebilibili.data.model.response.ReplySailingCardBg
 import com.android.purebilibili.data.model.response.ReplySailingFan
 import com.android.purebilibili.data.model.response.ReplyUserSailing
+import com.android.purebilibili.feature.video.viewmodel.resolveSubReplyLoadedTotalCount
+import com.android.purebilibili.feature.video.viewmodel.resolveSubReplyRemoteTotalCount
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -35,6 +40,65 @@ class SubReplyDetailPresentationPolicyTest {
                 loadedReplyCount = 5
             )
         )
+    }
+
+    @Test
+    fun `sub reply detail display count uses remote total from loaded detail response`() {
+        assertEquals(
+            12,
+            resolveSubReplyDetailDisplayCount(
+                rootReply = ReplyItem(rcount = 2),
+                loadedReplyCount = 4,
+                remoteReplyCount = 12
+            )
+        )
+    }
+
+    @Test
+    fun `sub reply detail display count lets detail response correct stale root preview count`() {
+        assertEquals(
+            1,
+            resolveSubReplyDetailDisplayCount(
+                rootReply = ReplyItem(count = 2, rcount = 2),
+                loadedReplyCount = 1,
+                remoteReplyCount = 1
+            )
+        )
+    }
+
+    @Test
+    fun `sub reply loaded total count prefers remote detail count over stale root preview count`() {
+        assertEquals(
+            12,
+            resolveSubReplyLoadedTotalCount(
+                rootReply = ReplyItem(count = 2, rcount = 2),
+                loadedReplyCount = 4,
+                remoteReplyCount = 12
+            )
+        )
+    }
+
+    @Test
+    fun `sub reply loaded total count lets detail response correct stale root preview count`() {
+        assertEquals(
+            1,
+            resolveSubReplyLoadedTotalCount(
+                rootReply = ReplyItem(count = 2, rcount = 2),
+                loadedReplyCount = 1,
+                remoteReplyCount = 1
+            )
+        )
+    }
+
+    @Test
+    fun `sub reply remote total count follows reply detail page count before root count`() {
+        val data = ReplyData(
+            cursor = ReplyCursor(allCount = 2),
+            page = ReplyPage(count = 1),
+            root = ReplyItem(count = 2, rcount = 1)
+        )
+
+        assertEquals(1, resolveSubReplyRemoteTotalCount(data))
     }
 
     @Test

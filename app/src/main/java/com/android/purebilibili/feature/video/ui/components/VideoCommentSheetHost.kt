@@ -448,6 +448,7 @@ fun VideoCommentSheetHost(
                                 SubReplyDetailContent(
                                     rootReply = rootReply,
                                     subReplies = subReplyState.items,
+                                    remoteReplyCount = subReplyState.totalCount,
                                     isLoading = subReplyState.isLoading,
                                     isEnd = subReplyState.isEnd,
                                     emoteMap = emoteMap,

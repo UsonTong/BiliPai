@@ -49,6 +49,8 @@ data class ReplyData(
     val config: ReplyConfig? = null,
     //  普通评论列表
     val replies: List<ReplyItem>? = emptyList(),
+    //  二级评论详情接口会返回根评论，里面的 rcount 可作为详情页数量兜底。
+    val root: ReplyItem? = null,
     //  [新增] 置顶评论列表 (WBI API)
     @SerialName("top_replies")
     val topReplies: List<ReplyItem>? = null,

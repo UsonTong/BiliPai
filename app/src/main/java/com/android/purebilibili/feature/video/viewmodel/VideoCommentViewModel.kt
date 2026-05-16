@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.video.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.data.model.CommentFraudStatus
+import com.android.purebilibili.data.model.response.ReplyData
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.repository.CommentRepository
 import com.android.purebilibili.data.repository.shouldStartCommentFraudDetection
@@ -70,6 +71,7 @@ data class SubReplyUiState(
     val rootReply: ReplyItem? = null,
     val items: List<ReplyItem> = emptyList(),
     val baseItems: List<ReplyItem> = emptyList(),
+    val totalCount: Int = 0,
     val isLoading: Boolean = false,
     val page: Int = 1,
     val basePage: Int = 1,
@@ -83,6 +85,35 @@ data class SubReplyUiState(
     // [新增] 消散动画状态
     val dissolvingIds: Set<Long> = emptySet()
 )
+
+internal fun resolveSubReplyLoadedTotalCount(
+    rootReply: ReplyItem?,
+    loadedReplyCount: Int,
+    remoteReplyCount: Int
+): Int {
+    if (remoteReplyCount > 0) {
+        return maxOf(remoteReplyCount, loadedReplyCount).coerceAtLeast(0)
+    }
+
+    val rootDeclaredCount = maxOf(
+        rootReply?.count ?: 0,
+        rootReply?.rcount ?: 0,
+        rootReply?.replies.orEmpty().size
+    )
+    return maxOf(rootDeclaredCount, loadedReplyCount).coerceAtLeast(0)
+}
+
+internal fun resolveSubReplyRemoteTotalCount(data: ReplyData): Int {
+    // x/v2/reply/reply 文档中 data.page.count 才是二级评论数；
+    // root.count 可能大于实际二级回复数，只能作为无 page/cursor 时的兜底。
+    return listOf(
+        data.page.count,
+        data.root?.rcount ?: 0,
+        data.cursor.allCount,
+        data.root?.count ?: 0,
+        data.page.acount
+    ).firstOrNull { it > 0 } ?: 0
+}
 
 class VideoCommentViewModel : ViewModel() {
     private val _commentState = MutableStateFlow(CommentUiState())
@@ -289,6 +320,11 @@ class VideoCommentViewModel : ViewModel() {
         _subReplyState.value = SubReplyUiState(
             visible = true,
             rootReply = rootReply,
+            totalCount = resolveSubReplyLoadedTotalCount(
+                rootReply = rootReply,
+                loadedReplyCount = rootReply.replies.orEmpty().size,
+                remoteReplyCount = 0
+            ),
             isLoading = true,
             page = 1,
             upMid = _commentState.value.upMid  // [修复] 使用正确的 UP 主 mid
@@ -366,8 +402,14 @@ class VideoCommentViewModel : ViewModel() {
         )
 
         if (subState.visible && activeRootReply != null && newReply.root == activeRootReply.rpid) {
+            val updatedItems = (listOf(newReply) + subState.items).distinctBy { it.rpid }
             _subReplyState.value = subState.copy(
-                items = (listOf(newReply) + subState.items).distinctBy { it.rpid }
+                items = updatedItems,
+                totalCount = resolveSubReplyLoadedTotalCount(
+                    rootReply = activeRootReply,
+                    loadedReplyCount = updatedItems.size,
+                    remoteReplyCount = subState.totalCount + 1
+                )
             )
         }
     }
@@ -438,10 +480,16 @@ class VideoCommentViewModel : ViewModel() {
                 val isEnd = data.cursor.isEnd || newItems.isEmpty()
                 val updatedItems = if (page == 1) newItems else (current.items + newItems).distinctBy { it.rpid }
                 val nextOffset = data.grpcNextOffset.takeIf { it.isNotBlank() }
+                val totalCount = resolveSubReplyLoadedTotalCount(
+                    rootReply = current.rootReply,
+                    loadedReplyCount = updatedItems.size,
+                    remoteReplyCount = resolveSubReplyRemoteTotalCount(data)
+                )
 
                 _subReplyState.value = current.copy(
                     items = updatedItems,
                     baseItems = updatedItems,
+                    totalCount = totalCount,
                     isLoading = false,
                     page = page,
                     basePage = page,

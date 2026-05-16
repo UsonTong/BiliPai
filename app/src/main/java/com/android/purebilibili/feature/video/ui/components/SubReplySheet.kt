@@ -45,6 +45,7 @@ fun SubReplySheet(
             SubReplyDetailContent(
                 rootReply = rootReply,
                 subReplies = state.items,
+                remoteReplyCount = state.totalCount,
                 isLoading = state.isLoading,
                 isEnd = state.isEnd,
                 emoteMap = emoteMap,
