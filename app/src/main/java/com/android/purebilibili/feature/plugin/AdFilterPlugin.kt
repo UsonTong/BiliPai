@@ -40,6 +40,47 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 
 private const val TAG = "AdFilterPlugin"
+private const val AD_FILTER_CUSTOM_LIST_PREVIEW_LIMIT = 3
+
+internal data class AdFilterCustomListSummary(
+    val countText: String,
+    val previewText: String,
+    val hiddenCountText: String?
+)
+
+internal fun resolveAdFilterCustomListSummary(
+    items: List<String>,
+    emptyText: String,
+    previewLimit: Int = AD_FILTER_CUSTOM_LIST_PREVIEW_LIMIT
+): AdFilterCustomListSummary {
+    val safePreviewLimit = previewLimit.coerceAtLeast(1)
+    val previewItems = items.take(safePreviewLimit)
+    val hiddenCount = (items.size - previewItems.size).coerceAtLeast(0)
+    return AdFilterCustomListSummary(
+        countText = "${items.size} 个",
+        previewText = if (items.isEmpty()) emptyText else previewItems.joinToString("、"),
+        hiddenCountText = if (hiddenCount > 0) {
+            "还有 ${hiddenCount} 个，展开查看全部"
+        } else {
+            null
+        }
+    )
+}
+
+internal fun resolveAdFilterCustomListVisibleItems(
+    items: List<String>,
+    expanded: Boolean,
+    previewLimit: Int = AD_FILTER_CUSTOM_LIST_PREVIEW_LIMIT
+): List<String> {
+    return if (expanded) items else items.take(previewLimit.coerceAtLeast(1))
+}
+
+internal fun removeAdFilterCustomListItem(
+    items: List<String>,
+    item: String
+): List<String> {
+    return items.filterNot { it == item }
+}
 
 /**
  * 🚫 去广告增强插件 v2.0
@@ -307,11 +348,17 @@ class AdFilterPlugin : FeedPlugin {
         var filterLowQuality by remember { mutableStateOf(config.filterLowQuality) }
         var blockedUpNames by remember { mutableStateOf(config.blockedUpNames) }
         var blockedKeywords by remember { mutableStateOf(config.blockedKeywords) }
+        var upListExpanded by remember { mutableStateOf(false) }
+        var keywordListExpanded by remember { mutableStateOf(false) }
         
         // 输入对话框状态
         var showAddUpDialog by remember { mutableStateOf(false) }
         var showAddKeywordDialog by remember { mutableStateOf(false) }
         var inputText by remember { mutableStateOf("") }
+        fun persistConfig(updatedConfig: AdFilterConfig) {
+            config = updatedConfig
+            scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(updatedConfig)) }
+        }
         
         // 加载配置
         LaunchedEffect(Unit) {
@@ -379,145 +426,39 @@ class AdFilterPlugin : FeedPlugin {
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // ========== UP主拉黑 ==========
-            Text(
-                text = "UP主拉黑",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-            
-            // 已拉黑列表
-            if (blockedUpNames.isEmpty()) {
-                Text(
-                    text = "暂无拉黑的UP主",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                blockedUpNames.forEach { name ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            CupertinoIcons.Default.Person,
-                            contentDescription = null,
-                            tint = Color(0xFFE91E63),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = {
-                                blockedUpNames = blockedUpNames - name
-                                config = config.copy(blockedUpNames = blockedUpNames)
-                                scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                CupertinoIcons.Default.Xmark,
-                                contentDescription = "移除",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+            AdFilterCustomListSection(
+                title = "UP主拉黑",
+                items = blockedUpNames,
+                emptyText = "暂无拉黑的UP主",
+                expanded = upListExpanded,
+                icon = CupertinoIcons.Default.Person,
+                itemIconTint = Color(0xFFE91E63),
+                addButtonText = "添加UP主拉黑",
+                onExpandedChange = { upListExpanded = it },
+                onAddClick = { showAddUpDialog = true },
+                onRemove = { name ->
+                    blockedUpNames = removeAdFilterCustomListItem(blockedUpNames, name)
+                    persistConfig(config.copy(blockedUpNames = blockedUpNames))
                 }
-            }
-            
-            // 添加UP主按钮
-            OutlinedButton(
-                onClick = { showAddUpDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(CupertinoIcons.Default.Plus, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("添加UP主拉黑")
-            }
-            
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
             
-            // ========== 自定义关键词 ==========
-            Text(
-                text = "自定义屏蔽关键词",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(vertical = 8.dp)
+            AdFilterCustomListSection(
+                title = "自定义屏蔽关键词",
+                items = blockedKeywords,
+                emptyText = "暂无自定义屏蔽词",
+                expanded = keywordListExpanded,
+                icon = CupertinoIcons.Default.Tag,
+                itemIconTint = MaterialTheme.colorScheme.error,
+                addButtonText = "添加屏蔽关键词",
+                onExpandedChange = { keywordListExpanded = it },
+                onAddClick = { showAddKeywordDialog = true },
+                onRemove = { keyword ->
+                    blockedKeywords = removeAdFilterCustomListItem(blockedKeywords, keyword)
+                    persistConfig(config.copy(blockedKeywords = blockedKeywords))
+                }
             )
-            
-            if (blockedKeywords.isEmpty()) {
-                Text(
-                    text = "暂无自定义屏蔽词",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    blockedKeywords.take(5).forEach { keyword ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.errorContainer.copy(0.5f)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = keyword,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    CupertinoIcons.Default.Xmark,
-                                    contentDescription = "移除",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier
-                                        .size(14.dp)
-                                        .clickable {
-                                            blockedKeywords = blockedKeywords - keyword
-                                            config = config.copy(blockedKeywords = blockedKeywords)
-                                            scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
-                                        }
-                                )
-                            }
-                        }
-                    }
-                }
-                if (blockedKeywords.size > 5) {
-                    Text(
-                        text = "还有 ${blockedKeywords.size - 5} 个关键词...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-            
-            // 添加关键词按钮
-            OutlinedButton(
-                onClick = { showAddKeywordDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(CupertinoIcons.Default.Plus, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("添加屏蔽关键词")
-            }
         }
         
         // ========== 对话框 ==========
@@ -542,8 +483,7 @@ class AdFilterPlugin : FeedPlugin {
                         onClick = {
                             if (inputText.isNotBlank()) {
                                 blockedUpNames = blockedUpNames + inputText.trim()
-                                config = config.copy(blockedUpNames = blockedUpNames)
-                                scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
+                                persistConfig(config.copy(blockedUpNames = blockedUpNames))
                             }
                             showAddUpDialog = false
                             inputText = ""
@@ -576,8 +516,7 @@ class AdFilterPlugin : FeedPlugin {
                         onClick = {
                             if (inputText.isNotBlank()) {
                                 blockedKeywords = blockedKeywords + inputText.trim()
-                                config = config.copy(blockedKeywords = blockedKeywords)
-                                scope.launch { PluginStore.setConfigJson(context, id, Json.encodeToString(config)) }
+                                persistConfig(config.copy(blockedKeywords = blockedKeywords))
                             }
                             showAddKeywordDialog = false
                             inputText = ""
@@ -588,6 +527,136 @@ class AdFilterPlugin : FeedPlugin {
                     TextButton(onClick = { showAddKeywordDialog = false; inputText = "" }) { Text("取消") }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun AdFilterCustomListSection(
+    title: String,
+    items: List<String>,
+    emptyText: String,
+    expanded: Boolean,
+    icon: ImageVector,
+    itemIconTint: Color,
+    addButtonText: String,
+    onExpandedChange: (Boolean) -> Unit,
+    onAddClick: () -> Unit,
+    onRemove: (String) -> Unit
+) {
+    val summary = remember(items, emptyText) {
+        resolveAdFilterCustomListSummary(items = items, emptyText = emptyText)
+    }
+    val visibleItems = remember(items, expanded) {
+        resolveAdFilterCustomListVisibleItems(items = items, expanded = expanded)
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { onExpandedChange(!expanded) }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f)
+            ) {
+                Text(
+                    text = summary.countText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+            Icon(
+                imageVector = if (expanded) {
+                    CupertinoIcons.Default.ChevronUp
+                } else {
+                    CupertinoIcons.Default.ChevronDown
+                },
+                contentDescription = if (expanded) "收起$title" else "展开$title",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f),
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .size(18.dp)
+            )
+        }
+
+        Text(
+            text = summary.previewText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = if (summary.hiddenCountText == null) 0.dp else 2.dp)
+        )
+
+        if (!expanded) {
+            summary.hiddenCountText?.let { hiddenCountText ->
+                Text(
+                    text = hiddenCountText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
+                )
+            }
+        }
+
+        if (expanded && visibleItems.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                visibleItems.forEach { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = itemIconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = item,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { onRemove(item) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                CupertinoIcons.Default.Xmark,
+                                contentDescription = "移除$item",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = onAddClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(CupertinoIcons.Default.Plus, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(addButtonText)
         }
     }
 }
