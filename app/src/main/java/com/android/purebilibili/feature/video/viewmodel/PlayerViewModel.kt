@@ -30,6 +30,10 @@ import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.data.repository.ViewGrpcRepository
 import com.android.purebilibili.data.repository.resolveVideoPlaybackAuthState
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
+import com.android.purebilibili.feature.plugin.SponsorBlockInsightStore
+import com.android.purebilibili.feature.plugin.SponsorBlockSkipTrigger
+import com.android.purebilibili.feature.plugin.SponsorBlockVideoSnapshot
+import com.android.purebilibili.feature.plugin.buildSponsorBlockSkipRecord
 import com.android.purebilibili.feature.video.controller.QualityManager
 import com.android.purebilibili.feature.video.controller.QualityPermissionResult
 import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
@@ -135,6 +139,20 @@ internal fun reduceSponsorSkipUiState(
             label = null
         )
     }
+}
+
+internal fun buildSponsorBlockVideoSnapshot(currentState: PlayerUiState): SponsorBlockVideoSnapshot? {
+    val success = currentState as? PlayerUiState.Success ?: return null
+    val info = success.info
+    return SponsorBlockVideoSnapshot(
+        videoTitle = info.title,
+        bvid = info.bvid,
+        cid = info.cid,
+        videoCoverUrl = info.pic,
+        upName = info.owner.name,
+        upFaceUrl = info.owner.face,
+        upMid = info.owner.mid
+    )
 }
 
 internal data class PlaybackCdnFallbackState(
@@ -5882,8 +5900,17 @@ class PlayerViewModel : ViewModel() {
                     try {
                         when (val action = plugin.onPositionUpdate(currentPos)) {
                             is SkipAction.SkipTo -> {
+                                val snapshot = buildSponsorBlockVideoSnapshot(_uiState.value)
                                 clearSponsorSkipUi()
                                 playbackUseCase.seekTo(action.positionMs)
+                                recordSponsorBlockSkip(
+                                    snapshot = snapshot,
+                                    segmentId = action.segmentId,
+                                    segmentCategoryName = action.categoryName,
+                                    startMs = action.startMs,
+                                    endMs = action.positionMs,
+                                    trigger = SponsorBlockSkipTrigger.AUTO
+                                )
                                 toast(action.reason)
                                 Logger.d("PlayerVM", " Plugin ${plugin.name} skipped to ${action.positionMs}ms")
                             }
@@ -5924,13 +5951,51 @@ class PlayerViewModel : ViewModel() {
     fun skipCurrentSponsorSegment() {
         val targetPosition = _sponsorSkipUiState.value.skipToMs.takeIf { it > 0L } ?: return
         val segmentId = _sponsorSkipUiState.value.segmentId
+        val snapshot = buildSponsorBlockVideoSnapshot(_uiState.value)
         PluginManager.getEnabledPlayerPlugins().forEach { plugin ->
             if (plugin is com.android.purebilibili.feature.plugin.SponsorBlockPlugin && segmentId != null) {
-                plugin.markAsSkipped(segmentId)
+                val segment = plugin.markAsSkipped(segmentId)
+                recordSponsorBlockSkip(
+                    snapshot = snapshot,
+                    segmentId = segment?.UUID ?: segmentId,
+                    segmentCategoryName = segment?.categoryName,
+                    startMs = segment?.startTimeMs,
+                    endMs = segment?.endTimeMs ?: targetPosition,
+                    trigger = SponsorBlockSkipTrigger.MANUAL
+                )
             }
         }
         playbackUseCase.seekTo(targetPosition)
         clearSponsorSkipUi()
+    }
+
+    private fun recordSponsorBlockSkip(
+        snapshot: SponsorBlockVideoSnapshot?,
+        segmentId: String?,
+        segmentCategoryName: String?,
+        startMs: Long?,
+        endMs: Long,
+        trigger: SponsorBlockSkipTrigger
+    ) {
+        val context = appContext ?: return
+        val capturedSnapshot = snapshot ?: return
+        val capturedSegmentId = segmentId ?: return
+        val record = buildSponsorBlockSkipRecord(
+            snapshot = capturedSnapshot,
+            segmentId = capturedSegmentId,
+            segmentCategoryName = segmentCategoryName.orEmpty().ifBlank { "可跳过片段" },
+            startMs = startMs ?: 0L,
+            endMs = endMs,
+            trigger = trigger,
+            timestampMs = System.currentTimeMillis()
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                SponsorBlockInsightStore.appendRecord(context, record)
+            }.onFailure { error ->
+                Logger.w("PlayerVM", "记录空降助手跳过历史失败: ${error.message}")
+            }
+        }
     }
 
     fun notifyPluginsOfExplicitSeek(positionMs: Long) {

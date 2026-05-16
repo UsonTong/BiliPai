@@ -145,6 +145,90 @@ class SponsorBlockPluginPolicyTest {
         assertTrue(segment.UUID !in reset)
     }
 
+    @Test
+    fun buildSponsorBlockSkipRecord_capturesVideoCoverAndUpFace() {
+        val segment = sponsorSegment(
+            uuid = "segment",
+            startSeconds = 65f,
+            endSeconds = 95f,
+            category = SponsorCategory.SPONSOR
+        )
+
+        val record = buildSponsorBlockSkipRecord(
+            snapshot = SponsorBlockVideoSnapshot(
+                videoTitle = "测试视频",
+                bvid = "BV1",
+                cid = 123L,
+                videoCoverUrl = "https://cover.example/1.jpg",
+                upName = "测试UP",
+                upFaceUrl = "https://face.example/up.jpg",
+                upMid = 456L
+            ),
+            segment = segment,
+            trigger = SponsorBlockSkipTrigger.AUTO,
+            timestampMs = 1_700_000_000_000L
+        )
+
+        assertEquals("测试视频", record.videoTitle)
+        assertEquals("https://cover.example/1.jpg", record.videoCoverUrl)
+        assertEquals("测试UP", record.upName)
+        assertEquals("https://face.example/up.jpg", record.upFaceUrl)
+        assertEquals(30_000L, record.savedMs)
+        assertEquals("01:05 -> 01:35", record.progressText)
+        assertEquals("自动", record.triggerLabel)
+    }
+
+    @Test
+    fun resolveSponsorBlockInsightSummary_countsTodaySavedTimeAndUniqueUps() {
+        val records = listOf(
+            skipRecord(upMid = 1L, upName = "UP甲", savedMs = 20_000L, timestampMs = 10_000L),
+            skipRecord(upMid = 1L, upName = "UP甲", savedMs = 15_000L, timestampMs = 12_000L),
+            skipRecord(upMid = 2L, upName = "UP乙", savedMs = 40_000L, timestampMs = 2_000L)
+        )
+
+        val summary = resolveSponsorBlockInsightSummary(
+            records = records,
+            dayStartMs = 9_000L,
+            recentLimit = 2
+        )
+
+        assertEquals(3, summary.totalSkipCount)
+        assertEquals(75_000L, summary.totalSavedMs)
+        assertEquals(35_000L, summary.todaySavedMs)
+        assertEquals(2, summary.uniqueUpCount)
+        assertEquals(listOf(12_000L, 10_000L), summary.recentRecords.map { it.timestampMs })
+    }
+
+    @Test
+    fun buildSponsorBlockDailySummaryNotification_respectsEnabledAndRecords() {
+        val disabled = buildSponsorBlockDailySummaryNotification(
+            config = SponsorBlockConfig(dailySummaryNotificationEnabled = false),
+            records = listOf(skipRecord(savedMs = 20_000L, timestampMs = 10_000L)),
+            dayStartMs = 0L
+        )
+        val empty = buildSponsorBlockDailySummaryNotification(
+            config = SponsorBlockConfig(dailySummaryNotificationEnabled = true),
+            records = emptyList(),
+            dayStartMs = 0L
+        )
+        val notification = buildSponsorBlockDailySummaryNotification(
+            config = SponsorBlockConfig(
+                dailySummaryNotificationEnabled = true,
+                dailySummaryNotificationPrefix = "今日空降助手已帮你节省"
+            ),
+            records = listOf(
+                skipRecord(savedMs = 20_000L, timestampMs = 10_000L),
+                skipRecord(savedMs = 45_000L, timestampMs = 11_000L)
+            ),
+            dayStartMs = 0L
+        )
+
+        assertNull(disabled)
+        assertNull(empty)
+        assertEquals("空降助手今日汇总", notification?.title)
+        assertEquals("今日空降助手已帮你节省 2 次，累计 1 分 05 秒", notification?.body)
+    }
+
     private fun sponsorSegment(
         uuid: String,
         startSeconds: Float,
@@ -160,6 +244,30 @@ class SponsorBlockPluginPolicyTest {
             actionType = SponsorActionType.SKIP,
             locked = locked,
             votes = votes
+        )
+    }
+
+    private fun skipRecord(
+        upMid: Long = 1L,
+        upName: String = "UP",
+        savedMs: Long,
+        timestampMs: Long
+    ): SponsorBlockSkipRecord {
+        return SponsorBlockSkipRecord(
+            segmentId = "segment-$timestampMs",
+            videoTitle = "视频",
+            bvid = "BV1",
+            cid = 1L,
+            videoCoverUrl = "cover",
+            upName = upName,
+            upFaceUrl = "face",
+            upMid = upMid,
+            segmentCategoryName = "恰饭",
+            startMs = 0L,
+            endMs = savedMs,
+            savedMs = savedMs,
+            trigger = SponsorBlockSkipTrigger.AUTO,
+            timestampMs = timestampMs
         )
     }
 }
