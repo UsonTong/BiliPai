@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -57,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -290,6 +292,19 @@ internal fun resolveSearchFilterTabs(): List<SearchType> {
         SearchType.TOPIC,
         SearchType.PHOTO
     )
+}
+
+internal fun resolveSearchSwipeTargetType(
+    currentType: SearchType,
+    dragDistancePx: Float,
+    tabs: List<SearchType> = resolveSearchFilterTabs(),
+    thresholdPx: Float = 96f
+): SearchType? {
+    val currentIndex = tabs.indexOf(currentType)
+    if (tabs.isEmpty() || currentIndex !in tabs.indices) return null
+    if (kotlin.math.abs(dragDistancePx) < thresholdPx) return null
+    val targetIndex = if (dragDistancePx < 0f) currentIndex + 1 else currentIndex - 1
+    return tabs.getOrNull(targetIndex)?.takeIf { it != currentType }
 }
 
 internal fun resolveSearchFilterControls(
@@ -616,7 +631,14 @@ fun SearchScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .searchTypeSwipe(
+                                currentType = state.searchType,
+                                onTypeChange = viewModel::setSearchType
+                            )
+                    ) {
                         //  搜索彩蛋消息横幅
                         val easterEggMsg = state.easterEggMessage
                         if (easterEggMsg != null) {
@@ -1387,6 +1409,34 @@ fun SearchScreen(
                 )
             }
         }
+    }
+}
+
+private fun Modifier.searchTypeSwipe(
+    currentType: SearchType,
+    onTypeChange: (SearchType) -> Unit
+): Modifier {
+    return pointerInput(currentType) {
+        var dragDistancePx = 0f
+        detectHorizontalDragGestures(
+            onDragStart = {
+                dragDistancePx = 0f
+            },
+            onHorizontalDrag = { change, dragAmount ->
+                dragDistancePx += dragAmount
+                change.consume()
+            },
+            onDragCancel = {
+                dragDistancePx = 0f
+            },
+            onDragEnd = {
+                resolveSearchSwipeTargetType(
+                    currentType = currentType,
+                    dragDistancePx = dragDistancePx
+                )?.let(onTypeChange)
+                dragDistancePx = 0f
+            }
+        )
     }
 }
 

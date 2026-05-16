@@ -157,6 +157,56 @@ class SearchScreenPolicyTest {
     }
 
     @Test
+    fun searchResultSwipe_switchesToAdjacentSearchType() {
+        assertEquals(
+            SearchType.UP,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.VIDEO,
+                dragDistancePx = -120f
+            )
+        )
+        assertEquals(
+            SearchType.VIDEO,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.UP,
+                dragDistancePx = 120f
+            )
+        )
+        assertEquals(
+            SearchType.BANGUMI,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.UP,
+                dragDistancePx = -120f
+            )
+        )
+    }
+
+    @Test
+    fun searchResultSwipe_ignoresWeakDragAndClampsEdges() {
+        assertEquals(
+            null,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.UP,
+                dragDistancePx = -40f
+            )
+        )
+        assertEquals(
+            null,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.VIDEO,
+                dragDistancePx = 120f
+            )
+        )
+        assertEquals(
+            null,
+            resolveSearchSwipeTargetType(
+                currentType = SearchType.PHOTO,
+                dragDistancePx = -120f
+            )
+        )
+    }
+
+    @Test
     fun bottomBarSearchEntry_usesDedicatedTopBarContinuityMotion() {
         val navigationSource = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
         val searchSource = loadSource("app/src/main/java/com/android/purebilibili/feature/search/SearchScreen.kt")
