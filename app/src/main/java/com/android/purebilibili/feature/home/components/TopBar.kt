@@ -775,7 +775,7 @@ private fun LightweightTopTabItem(
         HomeTopTabRenderer.MIUIX -> colorScheme.secondaryContainer.copy(alpha = 0.70f * selectionFraction)
     }
     val itemShape = when (renderer) {
-        HomeTopTabRenderer.IOS -> AppShapes.container(ContainerLevel.Pill)
+        HomeTopTabRenderer.IOS -> resolveSharedBottomBarCapsuleShape()
         HomeTopTabRenderer.MD3 -> RoundedCornerShape(0.dp)
         HomeTopTabRenderer.MIUIX -> RoundedCornerShape(14.dp)
     }

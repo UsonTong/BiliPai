@@ -271,6 +271,17 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `ios lightweight top tab uses bottom bar capsule indicator shape`() {
+        val source = sourceText("app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
+        val itemBlock = source
+            .substringAfter("private fun LightweightTopTabItem(")
+            .substringBefore("Box(")
+
+        assertTrue(itemBlock.contains("HomeTopTabRenderer.IOS -> resolveSharedBottomBarCapsuleShape()"))
+        assertFalse(itemBlock.contains("HomeTopTabRenderer.IOS -> AppShapes.container(ContainerLevel.Pill)"))
+    }
+
+    @Test
     fun `ios top tab icon modes use readable glyph sizes`() {
         assertEquals(18f, resolveTopTabIconSizeDp(labelMode = 0), 0.001f)
         assertEquals(22f, resolveTopTabIconSizeDp(labelMode = 1), 0.001f)
@@ -597,9 +608,10 @@ class TopTabStylePolicyTest {
     }
 
     private fun sourceText(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(
             File(path),
-            File("app/$path")
+            File(normalizedPath)
         ).firstOrNull { it.exists() }
         require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
         return sourceFile.readText()
