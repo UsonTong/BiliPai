@@ -800,12 +800,12 @@ fun CategoryTabRow(
     forceLowBlurBudget: Boolean = false,
     isViewportSyncEnabled: Boolean = true
 ) {
-    val renderer = resolveHomeTopTabRenderer(
+    val presetStyle = resolveHomeTopPresetStyle(
         uiPreset = LocalUiPreset.current,
         androidNativeVariant = LocalAndroidNativeVariant.current,
         labelMode = labelMode
     )
-    if (renderer == HomeTopTabRenderer.MIUIX) {
+    if (presetStyle.renderer == HomeTopTabRenderer.MIUIX) {
         val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
         val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
         MiuixCategoryTabRow(
@@ -815,12 +815,13 @@ fun CategoryTabRow(
             onPartitionClick = onPartitionClick,
             pagerState = pagerState,
             haptic = haptic,
-            scrollChannel = scrollChannel
+            scrollChannel = scrollChannel,
+            presetStyle = presetStyle
         )
         return
     }
     LightweightHomeTopTabs(
-        renderer = renderer,
+        renderer = presetStyle.renderer,
         categories = categories,
         categoryKeys = categoryKeys,
         selectedIndex = selectedIndex,
@@ -841,7 +842,8 @@ private fun MiuixCategoryTabRow(
     onPartitionClick: () -> Unit,
     pagerState: androidx.compose.foundation.pager.PagerState?,
     haptic: (HapticType) -> Unit,
-    scrollChannel: kotlinx.coroutines.channels.Channel<Unit>?
+    scrollChannel: kotlinx.coroutines.channels.Channel<Unit>?,
+    presetStyle: HomeTopPresetStyle
 ) {
     val selectedTabIndex by remember(pagerState, selectedIndex, categories.size) {
         derivedStateOf {
@@ -854,22 +856,10 @@ private fun MiuixCategoryTabRow(
             ).roundToInt().coerceIn(0, (categories.size - 1).coerceAtLeast(0))
         }
     }
-    val topTabSpec = resolveMd3TopTabVisualSpec(
-        isFloatingStyle = false,
-        androidNativeVariant = AndroidNativeVariant.MIUIX
-    )
-    val actionButtonSize = resolveMd3TopTabActionButtonSize(
-        isFloatingStyle = false,
-        androidNativeVariant = AndroidNativeVariant.MIUIX
-    )
-    val actionButtonCorner = resolveMd3TopTabActionButtonCorner(
-        isFloatingStyle = false,
-        androidNativeVariant = AndroidNativeVariant.MIUIX
-    )
-    val actionIconSize = resolveMd3TopTabActionIconSize(
-        isFloatingStyle = false,
-        androidNativeVariant = AndroidNativeVariant.MIUIX
-    )
+    val topTabSpec = presetStyle.md3VisualSpec
+    val actionButtonSize = presetStyle.actionButtonSizeDocked
+    val actionButtonCorner = presetStyle.actionButtonCornerDocked
+    val actionIconSize = presetStyle.actionIconSizeDocked
     val tabRowColors = resolveMiuixTopTabRowColors(
         surfaceContainer = MiuixTheme.colorScheme.surfaceContainer,
         onSurfaceVariant = MiuixTheme.colorScheme.onSurfaceVariantSummary,

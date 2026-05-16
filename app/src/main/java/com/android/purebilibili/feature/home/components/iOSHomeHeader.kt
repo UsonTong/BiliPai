@@ -251,13 +251,7 @@ internal fun resolveHomeTopSearchBarHeight(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        50.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        52.dp
-    } else {
-        48.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchBarHeight
 }
 
 internal data class HomeHeaderScrollLayout(
@@ -271,11 +265,7 @@ internal fun resolveHomeTopSearchRevealDeadZone(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3) {
-        0.dp
-    } else {
-        8.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchRevealDeadZone
 }
 
 internal fun resolveHomeTopVisibleSearchHeightPx(
@@ -363,26 +353,11 @@ internal fun resolveHomeTopTabRowHeight(
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
     labelMode: Int = com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
 ): Dp {
-    val showIconAndText = normalizeTopTabLabelMode(labelMode) ==
-        com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.ICON_AND_TEXT
-    if (uiPreset == UiPreset.MD3) {
-        if (androidNativeVariant == AndroidNativeVariant.MIUIX) {
-            return if (showIconAndText) {
-                if (isTabFloating) 60.dp else 56.dp
-            } else {
-                if (isTabFloating) 54.dp else 48.dp
-            }
-        }
-        return if (showIconAndText) {
-            if (isTabFloating) 62.dp else 60.dp
-        } else {
-            if (isTabFloating) 52.dp else 48.dp
-        }
-    }
-    return if (showIconAndText) {
-        if (isTabFloating) 62.dp else 58.dp
+    val style = resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode)
+    return if (isTabFloating) {
+        style.tabRowHeightFloating
     } else {
-        if (isTabFloating) 62.dp else 56.dp
+        style.tabRowHeightDocked
     }
 }
 
@@ -390,52 +365,28 @@ internal fun resolveHomeTopSearchRowHorizontalPadding(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        14.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        16.dp
-    } else {
-        14.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchRowHorizontalPadding
 }
 
 internal fun resolveHomeTopSearchPillHeight(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        46.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        48.dp
-    } else {
-        34.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchPillHeight
 }
 
 internal fun resolveHomeTopSearchContentHorizontalPadding(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        14.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        16.dp
-    } else {
-        12.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchContentHorizontalPadding
 }
 
 internal fun resolveHomeTopSearchIconTextGap(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        8.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        10.dp
-    } else {
-        8.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchIconTextGap
 }
 
 internal fun resolveHomeTopSearchContainerShape(
@@ -476,21 +427,23 @@ internal fun resolveHomeTopEdgeControlGap(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        7.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        8.dp
-    } else {
-        6.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).edgeControlGap
 }
 
 internal fun shouldUseUnifiedHomeTopPanel(uiPreset: UiPreset = UiPreset.IOS): Boolean {
-    return uiPreset == UiPreset.IOS || uiPreset == UiPreset.MD3
+    return resolveHomeTopPresetStyle(
+        uiPreset = uiPreset,
+        androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+        labelMode = 2
+    ).useUnifiedPanel
 }
 
 internal fun resolveHomeTopUnifiedPanelHorizontalPadding(uiPreset: UiPreset = UiPreset.IOS): Dp {
-    return 0.dp
+    return resolveHomeTopPresetStyle(
+        uiPreset = uiPreset,
+        androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+        labelMode = 2
+    ).unifiedPanelHorizontalPadding
 }
 
 internal fun resolveHomeTopUnifiedPanelInnerPadding(
@@ -499,13 +452,7 @@ internal fun resolveHomeTopUnifiedPanelInnerPadding(
     collapsedIntoStatusBar: Boolean = false
 ): Dp {
     if (collapsedIntoStatusBar) return 2.dp
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        9.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        10.dp
-    } else {
-        6.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).unifiedPanelInnerPadding
 }
 
 internal fun shouldRenderHomeTopUnifiedPanelChrome(
@@ -525,17 +472,15 @@ internal fun resolveHomeTopUnifiedPanelCornerRadius(
     collapsedIntoStatusBar: Boolean = false
 ): Dp {
     if (collapsedIntoStatusBar) return 0.dp
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        18.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        16.dp
-    } else {
-        32.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).unifiedPanelCornerRadius
 }
 
 internal fun resolveHomeTopEmbeddedTabHorizontalPadding(uiPreset: UiPreset = UiPreset.IOS): Dp {
-    return 0.dp
+    return resolveHomeTopPresetStyle(
+        uiPreset = uiPreset,
+        androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+        labelMode = 2
+    ).embeddedTabHorizontalPadding
 }
 
 internal fun resolveHomeTopTabHorizontalPadding(
@@ -543,13 +488,11 @@ internal fun resolveHomeTopTabHorizontalPadding(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return when {
-        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX && isTabFloating -> 8.dp
-        uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX -> 2.dp
-        uiPreset == UiPreset.MD3 && isTabFloating -> 10.dp
-        uiPreset == UiPreset.MD3 -> 4.dp
-        isTabFloating -> 14.dp
-        else -> 0.dp
+    val style = resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2)
+    return if (isTabFloating) {
+        style.tabHorizontalPaddingFloating
+    } else {
+        style.tabHorizontalPaddingDocked
     }
 }
 
@@ -557,21 +500,14 @@ internal fun resolveHomeTopSearchToTabsSpacing(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        4.dp
-    } else if (uiPreset == UiPreset.IOS) {
-        4.dp
-    } else {
-        6.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchToTabsSpacing
 }
 
-internal fun resolveHomeTopSearchCollapseExtraSpacing(uiPreset: UiPreset = UiPreset.IOS): Dp {
-    return if (shouldUseUnifiedHomeTopPanel(uiPreset) && shouldShowUnifiedHomeTopPanelDivider(uiPreset)) {
-        5.dp
-    } else {
-        0.dp
-    }
+internal fun resolveHomeTopSearchCollapseExtraSpacing(
+    uiPreset: UiPreset = UiPreset.IOS,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
+): Dp {
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).searchCollapseExtraSpacing
 }
 
 internal fun resolveHomeTopSearchCollapseDistance(
@@ -581,7 +517,7 @@ internal fun resolveHomeTopSearchCollapseDistance(
 ): Dp {
     return searchBarHeight +
         resolveHomeTopSearchToTabsSpacing(uiPreset, androidNativeVariant) +
-        resolveHomeTopSearchCollapseExtraSpacing(uiPreset)
+        resolveHomeTopSearchCollapseExtraSpacing(uiPreset, androidNativeVariant)
 }
 
 internal fun shouldUseIntegratedCollapsedHomeTopBar(
@@ -595,13 +531,7 @@ internal fun resolveHomeTopContinuousSlabOverlap(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Dp {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
-        20.dp
-    } else if (uiPreset == UiPreset.MD3) {
-        24.dp
-    } else {
-        0.dp
-    }
+    return resolveHomeTopPresetStyle(uiPreset, androidNativeVariant, labelMode = 2).continuousSlabOverlap
 }
 
 internal fun resolveHomeTopContinuousSlabShape(uiPreset: UiPreset = UiPreset.IOS): Shape {
@@ -1103,8 +1033,15 @@ internal fun resolveHomeTopUnifiedPanelDividerAlpha(
     }
 }
 
-internal fun shouldShowUnifiedHomeTopPanelDivider(uiPreset: UiPreset = UiPreset.IOS): Boolean {
-    return uiPreset == UiPreset.MD3
+internal fun shouldShowUnifiedHomeTopPanelDivider(
+    uiPreset: UiPreset = UiPreset.IOS,
+    androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
+): Boolean {
+    return resolveHomeTopPresetStyle(
+        uiPreset = uiPreset,
+        androidNativeVariant = androidNativeVariant,
+        labelMode = 2
+    ).showUnifiedPanelDivider
 }
 
 internal fun resolveHomeTopTabContentUnderlayAlpha(
@@ -2247,7 +2184,7 @@ fun iOSHomeHeader(
 
                     if (
                         useUnifiedTopPanel &&
-                        shouldShowUnifiedHomeTopPanelDivider(uiPreset) &&
+                        shouldShowUnifiedHomeTopPanelDivider(uiPreset, androidNativeVariant) &&
                         drawUnifiedTopPanelChrome &&
                         currentTabHeight > 0.dp &&
                         tabAlpha * tabContentAlpha > 0f &&

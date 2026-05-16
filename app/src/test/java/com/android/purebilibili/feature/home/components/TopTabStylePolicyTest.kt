@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -160,6 +161,53 @@ class TopTabStylePolicyTest {
                 labelMode = 0
             )
         )
+    }
+
+    @Test
+    fun `home top preset style separates ios material3 and miuix text tabs`() {
+        val ios = resolveHomeTopPresetStyle(
+            uiPreset = UiPreset.IOS,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+            labelMode = 2
+        )
+        val material3 = resolveHomeTopPresetStyle(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+            labelMode = 2
+        )
+        val miuix = resolveHomeTopPresetStyle(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MIUIX,
+            labelMode = 2
+        )
+
+        assertNotEquals(ios.preset, material3.preset)
+        assertNotEquals(material3.preset, miuix.preset)
+        assertEquals(HomeTopPreset.IOS, ios.preset)
+        assertEquals(HomeTopPreset.MATERIAL3, material3.preset)
+        assertEquals(HomeTopPreset.MIUIX, miuix.preset)
+        assertEquals(HomeTopTabRenderer.IOS, ios.renderer)
+        assertEquals(HomeTopTabRenderer.MD3, material3.renderer)
+        assertEquals(HomeTopTabRenderer.MIUIX, miuix.renderer)
+        assertEquals(TopTabIndicatorStyle.CAPSULE, ios.indicatorStyle)
+        assertEquals(TopTabIndicatorStyle.MATERIAL, material3.indicatorStyle)
+        assertEquals(TopTabIndicatorStyle.CAPSULE, miuix.indicatorStyle)
+    }
+
+    @Test
+    fun `miuix icon modes keep miuix dimensions while falling back to shared md3 renderer`() {
+        val iconAndText = resolveHomeTopPresetStyle(
+            uiPreset = UiPreset.MD3,
+            androidNativeVariant = AndroidNativeVariant.MIUIX,
+            labelMode = 0
+        )
+
+        assertEquals(HomeTopPreset.MIUIX, iconAndText.preset)
+        assertEquals(HomeTopTabRenderer.MD3, iconAndText.renderer)
+        assertEquals(56.dp, iconAndText.tabRowHeightDocked)
+        assertEquals(60.dp, iconAndText.tabRowHeightFloating)
+        assertEquals(30.dp, iconAndText.md3VisualSpec.selectedCapsuleHeight)
+        assertEquals(44.dp, iconAndText.actionButtonSizeDocked)
     }
 
     @Test

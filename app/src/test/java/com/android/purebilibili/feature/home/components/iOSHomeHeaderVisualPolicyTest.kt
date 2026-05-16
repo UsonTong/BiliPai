@@ -396,15 +396,53 @@ class iOSHomeHeaderVisualPolicyTest {
         assertTrue(shouldUseUnifiedHomeTopPanel(UiPreset.IOS))
         assertTrue(shouldUseUnifiedHomeTopPanel(UiPreset.MD3))
         assertFalse(shouldShowUnifiedHomeTopPanelDivider(UiPreset.IOS))
-        assertTrue(shouldShowUnifiedHomeTopPanelDivider(UiPreset.MD3))
+        assertTrue(
+            shouldShowUnifiedHomeTopPanelDivider(
+                UiPreset.MD3,
+                AndroidNativeVariant.MATERIAL3
+            )
+        )
+        assertFalse(
+            shouldShowUnifiedHomeTopPanelDivider(
+                UiPreset.MD3,
+                AndroidNativeVariant.MIUIX
+            )
+        )
         assertEquals(0.dp, resolveHomeTopUnifiedPanelHorizontalPadding())
         assertEquals(0.dp, resolveHomeTopUnifiedPanelHorizontalPadding(UiPreset.MD3))
         assertEquals(6.dp, resolveHomeTopUnifiedPanelInnerPadding())
         assertEquals(10.dp, resolveHomeTopUnifiedPanelInnerPadding(UiPreset.MD3))
         assertEquals(32.dp, resolveHomeTopUnifiedPanelCornerRadius())
         assertEquals(16.dp, resolveHomeTopUnifiedPanelCornerRadius(UiPreset.MD3))
+        assertEquals(
+            18.dp,
+            resolveHomeTopUnifiedPanelCornerRadius(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
         assertEquals(0.dp, resolveHomeTopEmbeddedTabHorizontalPadding())
         assertEquals(0.dp, resolveHomeTopEmbeddedTabHorizontalPadding(UiPreset.MD3))
+    }
+
+    @Test
+    fun `home top preset style owns whole header spacing for three presets`() {
+        val ios = resolveHomeTopPresetStyle(UiPreset.IOS, AndroidNativeVariant.MATERIAL3, labelMode = 2)
+        val material3 = resolveHomeTopPresetStyle(UiPreset.MD3, AndroidNativeVariant.MATERIAL3, labelMode = 2)
+        val miuix = resolveHomeTopPresetStyle(UiPreset.MD3, AndroidNativeVariant.MIUIX, labelMode = 2)
+
+        assertEquals(48.dp, ios.searchBarHeight)
+        assertEquals(52.dp, material3.searchBarHeight)
+        assertEquals(50.dp, miuix.searchBarHeight)
+        assertEquals(32.dp, ios.unifiedPanelCornerRadius)
+        assertEquals(16.dp, material3.unifiedPanelCornerRadius)
+        assertEquals(18.dp, miuix.unifiedPanelCornerRadius)
+        assertEquals(4.dp, ios.searchToTabsSpacing)
+        assertEquals(6.dp, material3.searchToTabsSpacing)
+        assertEquals(4.dp, miuix.searchToTabsSpacing)
+        assertFalse(ios.showUnifiedPanelDivider)
+        assertTrue(material3.showUnifiedPanelDivider)
+        assertFalse(miuix.showUnifiedPanelDivider)
     }
 
     @Test
