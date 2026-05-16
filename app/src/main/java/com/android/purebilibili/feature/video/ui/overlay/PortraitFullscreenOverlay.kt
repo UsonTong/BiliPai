@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.MoreVert
+import com.android.purebilibili.feature.video.ui.components.PlaybackSpeed
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.core.util.FormatUtils
@@ -48,6 +49,19 @@ internal fun shouldShowPortraitViewCount(viewCount: Int, compactMode: Boolean): 
 }
 
 internal fun shouldShowPortraitTopMoreAction(): Boolean = false
+
+internal fun resolvePortraitProgressTimeLabel(
+    positionMs: Long,
+    durationMs: Long
+): String {
+    val safeDurationMs = durationMs.coerceAtLeast(0L)
+    val safePositionMs = if (safeDurationMs > 0L) {
+        positionMs.coerceIn(0L, safeDurationMs)
+    } else {
+        positionMs.coerceAtLeast(0L)
+    }
+    return "${FormatUtils.formatDuration(safePositionMs)} / ${FormatUtils.formatDuration(safeDurationMs)}"
+}
 
 /**
  * 竖屏全屏覆盖层 (B站官方风格) - 重构版
@@ -129,6 +143,17 @@ fun PortraitFullscreenOverlay(
             widthDp = configuration.screenWidthDp
         )
     }
+    val progressLayoutPolicy = remember(configuration.screenWidthDp) {
+        resolvePortraitProgressBarLayoutPolicy(
+            widthDp = configuration.screenWidthDp
+        )
+    }
+    val progressTimeLabel = remember(seekPositionMs, progress.current, progress.duration, isSeekScrubbing) {
+        resolvePortraitProgressTimeLabel(
+            positionMs = if (isSeekScrubbing) seekPositionMs else progress.current,
+            durationMs = progress.duration
+        )
+    }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -190,6 +215,16 @@ fun PortraitFullscreenOverlay(
                             .fillMaxWidth(layoutPolicy.infoWidthFraction)
                             .padding(horizontal = layoutPolicy.infoHorizontalPaddingDp.dp)
                             .padding(bottom = layoutPolicy.infoBottomPaddingDp.dp)
+                    )
+
+                    PortraitProgressControlStrip(
+                        timeLabel = progressTimeLabel,
+                        currentSpeed = currentSpeed,
+                        onSpeedClick = onSpeedClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = progressLayoutPolicy.horizontalPaddingDp.dp)
+                            .padding(bottom = 2.dp)
                     )
                     
                     // 底部进度条 (Progress Bar)
@@ -276,6 +311,44 @@ fun PortraitFullscreenOverlay(
                 current = progress.current,
                 duration = progress.duration,
                 modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PortraitProgressControlStrip(
+    timeLabel: String,
+    currentSpeed: Float,
+    onSpeedClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.height(40.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = timeLabel,
+            color = Color.White.copy(alpha = 0.86f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Surface(
+            onClick = onSpeedClick,
+            shape = RoundedCornerShape(999.dp),
+            color = Color.White.copy(alpha = 0.14f),
+            contentColor = if (currentSpeed == 1.0f) {
+                Color.White
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+        ) {
+            Text(
+                text = PlaybackSpeed.formatSpeed(currentSpeed),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
     }

@@ -123,6 +123,7 @@ import com.android.purebilibili.feature.video.playback.session.startPlaybackSeek
 import com.android.purebilibili.feature.video.playback.session.syncPlaybackSeekSession
 import com.android.purebilibili.feature.video.playback.session.updatePlaybackSeekInteraction
 import com.android.purebilibili.feature.video.ui.overlay.PlayerProgress
+import com.android.purebilibili.feature.video.ui.components.SpeedSelectionMenuDialog
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.feature.video.ui.overlay.PortraitFullscreenOverlay
 import com.android.purebilibili.feature.video.player.resolveHandleAudioFocusByPolicy
@@ -1021,6 +1022,10 @@ private fun VideoPageItem(
     
     // [修复] 手动监听 ExoPlayer 播放状态，确保 UI 及时更新
     var isPlaying by remember { mutableStateOf(exoPlayer.isPlaying) }
+    var currentPlaybackSpeed by remember(exoPlayer) {
+        mutableFloatStateOf(exoPlayer.playbackParameters.speed)
+    }
+    var showSpeedMenu by rememberSaveable(bvid) { mutableStateOf(false) }
     var keepPortraitPagerAwake by remember(exoPlayer) {
         mutableStateOf(
             shouldKeepVideoPlaybackAwake(
@@ -1064,6 +1069,10 @@ private fun VideoPageItem(
                 updateAwakeState()
             }
 
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                currentPlaybackSpeed = playbackParameters.speed
+            }
+
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 if (videoSize.width > 0 && videoSize.height > 0) {
                     currentVideoAspect = resolvePortraitRuntimeVideoAspectRatio(
@@ -1075,6 +1084,7 @@ private fun VideoPageItem(
             }
         }
         exoPlayer.addListener(listener)
+        currentPlaybackSpeed = exoPlayer.playbackParameters.speed
         updateAwakeState()
         onDispose {
             exoPlayer.removeListener(listener)
@@ -1982,7 +1992,7 @@ private fun VideoPageItem(
                 context.startActivity(android.content.Intent.createChooser(shareIntent, "Share too..."))
             },
             
-            currentSpeed = 1.0f,
+            currentSpeed = currentPlaybackSpeed,
             currentQualityLabel = "高清",
             currentRatio = VideoAspectRatio.FIT,
             danmakuEnabled = danmakuEnabled,
@@ -2052,7 +2062,12 @@ private fun VideoPageItem(
             onSeekDragCancel = {
                 seekSession = cancelPlaybackSeekInteraction(seekSession)
             },
-            onSpeedClick = { },
+            onSpeedClick = {
+                if (isCurrentPage) {
+                    showSpeedMenu = true
+                    isOverlayVisible = true
+                }
+            },
             onQualityClick = { },
             onRatioClick = { },
             onDanmakuToggle = toggleDanmaku,
@@ -2076,6 +2091,25 @@ private fun VideoPageItem(
             
             showControls = isOverlayVisible && !showCommentSheet && !showDetailSheet
         )
+
+        if (showSpeedMenu && isCurrentPage) {
+            SpeedSelectionMenuDialog(
+                currentSpeed = currentPlaybackSpeed,
+                onSpeedSelected = { speed ->
+                    val normalizedSpeed = speed.coerceAtLeast(0.1f)
+                    currentPlaybackSpeed = normalizedSpeed
+                    val handledByViewModel = viewModel.applyPlaybackSpeedFromUi(normalizedSpeed)
+                    if (!handledByViewModel || exoPlayer.playbackParameters.speed != normalizedSpeed) {
+                        exoPlayer.playbackParameters = PlaybackParameters(normalizedSpeed, 1.0f)
+                    }
+                    scope.launch {
+                        SettingsManager.setLastPlaybackSpeed(context, normalizedSpeed)
+                    }
+                    showSpeedMenu = false
+                },
+                onDismiss = { showSpeedMenu = false }
+            )
+        }
 
         PortraitCommentSheet(
             visible = showCommentSheet,
