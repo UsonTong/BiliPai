@@ -877,7 +877,7 @@ object SettingsManager {
     private val KEY_CARD_TRANSITION_ENABLED = booleanPreferencesKey("card_transition_enabled")
     private val KEY_VIDEO_TRANSITION_REALTIME_BLUR_ENABLED =
         booleanPreferencesKey("video_transition_realtime_blur_enabled")
-    // 预测性返回手势支持开关；manifest 保持 opt-in，关闭时由经典 BackHandler 拦截。
+    // 预测性返回动画开关；系统 opt-in 不能运行时可靠关闭，因此只控制应用内返回动效策略。
     private val KEY_PREDICTIVE_BACK_ANIMATION_ENABLED = booleanPreferencesKey("predictive_back_animation_enabled")
     // [New] 运行时视觉降级守卫开关
     private val KEY_SMART_VISUAL_GUARD_ENABLED = booleanPreferencesKey("smart_visual_guard_enabled")

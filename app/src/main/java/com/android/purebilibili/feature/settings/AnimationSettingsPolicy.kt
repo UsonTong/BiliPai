@@ -5,13 +5,13 @@ import com.android.purebilibili.core.store.normalizeLiquidGlassProgress
 import com.android.purebilibili.core.store.normalizeLiquidGlassStrength
 import com.android.purebilibili.core.store.resolveLegacyLiquidGlassProgress
 
-internal const val PREDICTIVE_BACK_TOGGLE_TITLE = "启用预测性返回手势"
+internal const val PREDICTIVE_BACK_TOGGLE_TITLE = "启用预测性返回动画"
 internal const val PREDICTIVE_BACK_TOGGLE_ACTIVE_SUBTITLE =
-    "当前放开系统预测性返回手势，关闭后改用经典回退动画"
+    "当前使用应用内预测式返回动画，关闭后改用经典回退动画"
 internal const val PREDICTIVE_BACK_TOGGLE_INACTIVE_SUBTITLE =
-    "当前使用经典回退动画，开启后放开系统预测性返回手势"
+    "当前使用经典回退动画，开启后使用应用内预测式返回动画"
 internal const val PREDICTIVE_BACK_TOGGLE_DEPENDENCY_SUBTITLE =
-    "需先开启“过渡动画”后，才能启用预测性返回手势"
+    "需先开启“过渡动画”后，才能启用预测性返回动画"
 
 internal data class PredictiveBackToggleUiState(
     val title: String,
