@@ -19,6 +19,12 @@ internal enum class AppSystemBackAction {
     FINISH_ACTIVITY
 }
 
+internal data class BottomPagerRenderBudget(
+    val isTransitionRunning: Boolean,
+    val forceLowBlurBudget: Boolean,
+    val deferProfileImmersiveBackground: Boolean
+)
+
 internal fun resolveTopLevelNavigationAction(
     currentRoute: String?,
     targetRoute: String,
@@ -98,6 +104,14 @@ internal fun resolveBottomPagerNavigationDurationMillis(
 
 internal fun resolveBottomPagerBeyondViewportPageCount(contentReady: Boolean): Int {
     return if (contentReady) 1 else 0
+}
+
+internal fun resolveBottomPagerRenderBudget(isNavigating: Boolean): BottomPagerRenderBudget {
+    return BottomPagerRenderBudget(
+        isTransitionRunning = isNavigating,
+        forceLowBlurBudget = isNavigating,
+        deferProfileImmersiveBackground = isNavigating
+    )
 }
 
 internal fun shouldEnableBottomPagerUserScroll(): Boolean = false

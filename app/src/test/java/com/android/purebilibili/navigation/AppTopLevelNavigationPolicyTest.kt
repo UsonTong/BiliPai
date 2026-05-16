@@ -295,6 +295,19 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun bottomPagerRenderBudget_downgradesOnlyWhileNavigating() {
+        val navigating = resolveBottomPagerRenderBudget(isNavigating = true)
+        val settled = resolveBottomPagerRenderBudget(isNavigating = false)
+
+        assertTrue(navigating.isTransitionRunning)
+        assertTrue(navigating.forceLowBlurBudget)
+        assertTrue(navigating.deferProfileImmersiveBackground)
+        assertFalse(settled.isTransitionRunning)
+        assertFalse(settled.forceLowBlurBudget)
+        assertFalse(settled.deferProfileImmersiveBackground)
+    }
+
+    @Test
     fun routeMatchingVisibleBottomItem_selectsThatItem() {
         assertEquals(
             BottomNavItem.HISTORY,

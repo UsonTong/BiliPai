@@ -642,6 +642,9 @@ fun AppNavigation(
             visibleBottomBarItems.size.coerceAtLeast(1)
         }
         val mainBottomPagerState = rememberMainBottomPagerState(bottomPagerState)
+        val bottomPagerRenderBudget = remember(mainBottomPagerState.isNavigating) {
+            resolveBottomPagerRenderBudget(isNavigating = mainBottomPagerState.isNavigating)
+        }
         var bottomPagerContentReady by remember { mutableStateOf(false) }
         LaunchedEffect(mainBottomPagerState.isNavigating) {
             if (mainBottomPagerState.isNavigating) {
@@ -1271,7 +1274,8 @@ fun AppNavigation(
                                 onDownloadClick = { navigateFromProfile(ScreenRoutes.DownloadList.route) },
                                 onWatchLaterClick = { navigateFromProfile(ScreenRoutes.WatchLater.route) },
                                 onInboxClick = { navigateFromProfile(ScreenRoutes.Inbox.route) },
-                                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") }
+                                onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
+                                deferImmersiveRenderBudget = bottomPagerRenderBudget.deferProfileImmersiveBackground
                             )
                         }
                         BottomNavItem.HISTORY -> {
@@ -3198,7 +3202,8 @@ fun AppNavigation(
                                     scrollOffset = scrollOffsetState.floatValue,
                                     backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                     motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
-                                    forceLowBlurBudget = false,
+                                    isTransitionRunning = bottomPagerRenderBudget.isTransitionRunning,
+                                    forceLowBlurBudget = bottomPagerRenderBudget.forceLowBlurBudget,
                                     isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
                                         homeFeedScrollInProgressState.value,
                                     onToggleSidebar = {
@@ -3235,7 +3240,8 @@ fun AppNavigation(
                                 scrollOffset = scrollOffsetState.floatValue,
                                 backdrop = bottomBarBackdrop, // [LayerBackdrop] Real background refraction
                                 motionTier = com.android.purebilibili.core.ui.adaptive.MotionTier.Normal,
-                                forceLowBlurBudget = false,
+                                isTransitionRunning = bottomPagerRenderBudget.isTransitionRunning,
+                                forceLowBlurBudget = bottomPagerRenderBudget.forceLowBlurBudget,
                                 isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
                                     homeFeedScrollInProgressState.value,
                                 onToggleSidebar = {

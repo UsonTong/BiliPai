@@ -163,6 +163,13 @@ internal fun resolveProfileWallpaperActionBlurEnabled(
     return headerBlurEnabled || bottomBarBlurEnabled
 }
 
+internal fun shouldRenderProfileImmersiveBackground(
+    hasTopPhoto: Boolean,
+    deferImmersiveRenderBudget: Boolean
+): Boolean {
+    return hasTopPhoto && !deferImmersiveRenderBudget
+}
+
 internal fun resolveProfileTopBarScrimAlpha(
     isImmersive: Boolean,
     collapsedFraction: Float
@@ -206,7 +213,8 @@ fun ProfileScreen(
     onDownloadClick: () -> Unit = {},  //  离线缓存点击
     onWatchLaterClick: () -> Unit = {}, // 稍后再看点击
     onInboxClick: () -> Unit = {},  //  [新增] 私信入口点击
-    onVideoClick: (String) -> Unit = {}  // [新增] 视频点击（三连彩蛋跳转用）
+    onVideoClick: (String) -> Unit = {},  // [新增] 视频点击（三连彩蛋跳转用）
+    deferImmersiveRenderBudget: Boolean = false
     // [注意] 移除了 globalHazeState - 双 hazeSource 模式与 Haze 库冲突
 ) {
     val state by viewModel.uiState.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
@@ -265,7 +273,6 @@ fun ProfileScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.loadProfile()
         viewModel.refreshSavedAccounts()
         //  [埋点] 页面浏览追踪
         com.android.purebilibili.core.util.AnalyticsHelper.logScreenView("ProfileScreen")
@@ -341,7 +348,11 @@ fun ProfileScreen(
             
             
             Box(modifier = Modifier.fillMaxSize()) {
-                ProfileBackground(user = guestUser, viewModel = viewModel)
+                ProfileBackground(
+                    user = guestUser,
+                    viewModel = viewModel,
+                    deferImmersiveRenderBudget = deferImmersiveRenderBudget
+                )
                 
                 MobileProfileContent(
                     user = guestUser,
@@ -490,7 +501,11 @@ fun ProfileScreen(
             ) { padding ->
                 Box(modifier = Modifier.fillMaxSize()) {
                     // [Refactor] Lift background to root
-                    ProfileBackground(user = currentUiState.user, viewModel = viewModel)
+                    ProfileBackground(
+                        user = currentUiState.user,
+                        viewModel = viewModel,
+                        deferImmersiveRenderBudget = deferImmersiveRenderBudget
+                    )
                     
                     if (windowSizeClass.shouldUseSplitLayout) {
                         TabletProfileContent(
@@ -556,7 +571,8 @@ internal fun resolveProfileTopBannerHeightDp(widthSizeClass: WindowWidthSizeClas
 @Composable
 private fun BoxScope.ProfileBackground(
     user: UserState,
-    viewModel: ProfileViewModel
+    viewModel: ProfileViewModel,
+    deferImmersiveRenderBudget: Boolean
 ) {
     val windowSizeClass = LocalWindowSizeClass.current
     val isTablet = windowSizeClass.shouldUseSplitLayout
@@ -569,7 +585,7 @@ private fun BoxScope.ProfileBackground(
         resolveProfileWallpaperLayout(windowSizeClass.widthSizeClass)
     }
 
-    if (isImmersive) {
+    if (shouldRenderProfileImmersiveBackground(isImmersive, deferImmersiveRenderBudget)) {
         when (profileWallpaperLayout) {
             ProfileWallpaperLayout.TOP_BANNER_BLUR_BG -> {
                 val bannerHeightDp = resolveProfileTopBannerHeightDp(windowSizeClass.widthSizeClass)
