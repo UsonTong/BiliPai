@@ -469,6 +469,13 @@ internal fun resolveMiuixTopTabActionColors(
     )
 }
 
+internal fun resolveMiuixTopTabRowVerticalInset(): Dp = 2.dp
+
+internal fun resolveMiuixTopTabContentHeight(rowHeight: Dp): Dp {
+    val contentHeight = rowHeight - (resolveMiuixTopTabRowVerticalInset() * 2)
+    return contentHeight.coerceAtLeast(40.dp)
+}
+
 internal fun resolveMd3TopTabVisualSpec(
     isFloatingStyle: Boolean,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,

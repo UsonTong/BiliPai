@@ -924,6 +924,8 @@ private fun MiuixCategoryTabRow(
     val actionButtonSize = presetStyle.actionButtonSizeDocked
     val actionButtonCorner = presetStyle.actionButtonCornerDocked
     val actionIconSize = presetStyle.actionIconSizeDocked
+    val rowVerticalInset = resolveMiuixTopTabRowVerticalInset()
+    val tabContentHeight = resolveMiuixTopTabContentHeight(topTabSpec.rowHeight)
     val tabRowColors = resolveMiuixTopTabRowColors(
         surfaceContainer = MiuixTheme.colorScheme.surfaceContainer,
         onSurfaceVariant = MiuixTheme.colorScheme.onSurfaceVariantSummary,
@@ -940,7 +942,7 @@ private fun MiuixCategoryTabRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(topTabSpec.rowHeight)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 4.dp, vertical = rowVerticalInset),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -964,14 +966,14 @@ private fun MiuixCategoryTabRow(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(topTabSpec.rowHeight),
+                    .height(tabContentHeight),
                 colors = MiuixTabRowDefaults.tabRowColors(
                     backgroundColor = tabRowColors.backgroundColor,
                     contentColor = tabRowColors.contentColor,
                     selectedBackgroundColor = tabRowColors.selectedBackgroundColor,
                     selectedContentColor = tabRowColors.selectedContentColor
                 ),
-                height = topTabSpec.rowHeight,
+                height = tabContentHeight,
                 cornerRadius = topTabSpec.selectedCapsuleCornerRadius + 4.dp,
                 itemSpacing = 6.dp
             )

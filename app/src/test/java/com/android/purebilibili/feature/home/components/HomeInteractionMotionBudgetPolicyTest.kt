@@ -185,9 +185,9 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
-    fun pagerSwipePosition_usesTargetDirectionWhenPagerOffsetSignIsOpposite() {
+    fun pagerSwipePosition_usesLiveOffsetWhenTargetDirectionIsStale() {
         assertEquals(
-            3.35f,
+            2.65f,
             resolveTopTabPagerPosition(
                 selectedIndex = 3,
                 pagerCurrentPage = 3,
@@ -197,7 +197,7 @@ class HomeInteractionMotionBudgetPolicyTest {
             )
         )
         assertEquals(
-            3.65f,
+            4.35f,
             resolveTopTabPagerPosition(
                 selectedIndex = 4,
                 pagerCurrentPage = 4,

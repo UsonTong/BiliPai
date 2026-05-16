@@ -419,6 +419,7 @@ internal fun resolveHomeTopSearchContainerShape(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): Shape {
+    if (uiPreset == UiPreset.IOS) return resolveSharedBottomBarCapsuleShape()
     return AppShapes.resolveContainerShape(
         level = ContainerLevel.Pill,
         uiPreset = uiPreset,

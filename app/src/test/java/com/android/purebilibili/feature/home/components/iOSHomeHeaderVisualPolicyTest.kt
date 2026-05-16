@@ -623,6 +623,14 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `ios home search pill uses the same capsule shape as bottom bar`() {
+        assertEquals(
+            resolveSharedBottomBarCapsuleShape(),
+            resolveHomeTopSearchContainerShape(UiPreset.IOS)
+        )
+    }
+
+    @Test
     fun `md3 home header keeps search pill and edge controls less circular`() {
         val searchShape = resolveHomeTopSearchContainerShape(UiPreset.MD3)
         val edgeShape = resolveHomeTopEdgeButtonShape(UiPreset.MD3)

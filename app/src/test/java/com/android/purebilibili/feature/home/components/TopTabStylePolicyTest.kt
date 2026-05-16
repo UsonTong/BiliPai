@@ -349,6 +349,14 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `android native miuix top tab content is inset from row bottom`() {
+        val rowHeight = 48.dp
+
+        assertEquals(2.dp, resolveMiuixTopTabRowVerticalInset())
+        assertEquals(44.dp, resolveMiuixTopTabContentHeight(rowHeight))
+    }
+
+    @Test
     fun `android native miuix text tabs should use native miuix row while icon modes stay shared`() {
         assertTrue(
             shouldUseNativeMiuixTopTabRow(
