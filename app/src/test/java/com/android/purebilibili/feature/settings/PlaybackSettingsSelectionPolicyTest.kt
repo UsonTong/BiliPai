@@ -49,6 +49,23 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
+    fun `fullscreen gesture section should own its setting state collection`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt"
+        )
+
+        val contentBlock = source
+            .substringAfter("fun PlaybackSettingsContent(")
+            .substringBefore("private fun PlaybackInteractionSettingsSection(")
+
+        assertTrue(source.contains("private fun PlaybackFullscreenGestureSettingsSection(\n    context: Context"))
+        assertTrue(contentBlock.contains("PlaybackFullscreenGestureSettingsSection(context = context)"))
+        assertFalse(contentBlock.contains("getFullscreenMode(context)"))
+        assertFalse(contentBlock.contains("getAppGestureScreenshotEnabled(context)"))
+        assertFalse(contentBlock.contains("getPortraitPlayerCollapseMode(context)"))
+    }
+
+    @Test
     fun `resolveSelectionIndex should return matched option index`() {
         val options = listOf(
             PlaybackSegmentOption("avc1", "AVC"),

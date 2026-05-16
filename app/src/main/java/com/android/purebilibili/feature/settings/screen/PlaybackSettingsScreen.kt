@@ -973,650 +973,7 @@ fun PlaybackSettingsContent(
             }
             item {
                 Box(modifier = Modifier.staggeredEntrance(13, isVisible, motionTier = effectiveMotionTier)) {
-                    val scope = rememberCoroutineScope()
-                    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
-                        .getPortraitPlayerCollapseMode(context)
-                        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
-                    val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
-                    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getCenterSwipeToFullscreenEnabled(context).collectAsState(initial = true)
-                    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
-                    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
-                    val inlineSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getInlineSwipeSeekSeconds(context).collectAsState(initial = 30)
-                    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
-                    val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
-                    val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getDoubleTapSeekEnabled(context).collectAsState(initial = false)
-                    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getSeekForwardSeconds(context).collectAsState(initial = 10)
-                    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
-                        .getSeekBackwardSeconds(context).collectAsState(initial = 10)
-                    val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
-                        .getDanmakuHideInteractiveCommands(context)
-                        .collectAsState(initial = false)
-                    PlaybackFullscreenGestureSettingsSection(
-                        content = {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "双击跳转",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = if (doubleTapSeekEnabled) {
-                                            "双击右侧快进 ${seekForwardSeconds} 秒，双击左侧后退 ${seekBackwardSeconds} 秒"
-                                        } else {
-                                            "已关闭：双击画面只切换播放/暂停，不再快进或后退"
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                AppAdaptiveSwitch(
-                                    checked = doubleTapSeekEnabled,
-                                    onCheckedChange = {
-                                        scope.launch {
-                                            com.android.purebilibili.core.store.SettingsManager
-                                                .setDoubleTapSeekEnabled(context, it)
-                                        }
-                                    }
-                                )
-                            }
-                            if (doubleTapSeekEnabled) {
-                                val doubleTapSeekOptions = listOf(
-                                    PlaybackSegmentOption(5, "5秒"),
-                                    PlaybackSegmentOption(10, "10秒"),
-                                    PlaybackSegmentOption(15, "15秒"),
-                                    PlaybackSegmentOption(30, "30秒"),
-                                    PlaybackSegmentOption(60, "60秒")
-                                )
-                                IOSSlidingSegmentedSetting(
-                                    title = "快进秒数（双击右侧）：${seekForwardSeconds} 秒",
-                                    subtitle = "调整右侧双击快进幅度",
-                                    options = doubleTapSeekOptions,
-                                    selectedValue = seekForwardSeconds,
-                                    onSelectionChange = { seconds ->
-                                        scope.launch {
-                                            com.android.purebilibili.core.store.SettingsManager
-                                                .setSeekForwardSeconds(context, seconds)
-                                        }
-                                    }
-                                )
-                                IOSSlidingSegmentedSetting(
-                                    title = "后退秒数（双击左侧）：${seekBackwardSeconds} 秒",
-                                    subtitle = "调整左侧双击后退幅度",
-                                    options = doubleTapSeekOptions,
-                                    selectedValue = seekBackwardSeconds,
-                                    onSelectionChange = { seconds ->
-                                        scope.launch {
-                                            com.android.purebilibili.core.store.SettingsManager
-                                                .setSeekBackwardSeconds(context, seconds)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.EyeSlash,
-                            title = "隐藏视频内互动提示",
-                            subtitle = if (hideInteractiveCommandDanmaku) {
-                                "已开启：不显示关注、一键三连、UP 提示和投票等视频内互动提示"
-                            } else {
-                                "关闭后：播放时仍显示关注、一键三连、UP 提示和投票等视频内互动提示"
-                            },
-                            checked = hideInteractiveCommandDanmaku,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setDanmakuHideInteractiveCommands(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPink
-                        )
-                        IOSDivider()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IOSSlidingSegmentedSetting(
-                                title = "播放器缩小策略：${portraitPlayerCollapseMode.label}",
-                                subtitle = portraitPlayerCollapseMode.description,
-                                options = resolvePortraitPlayerCollapseModeSegmentOptions(),
-                                selectedValue = portraitPlayerCollapseMode,
-                                onSelectionChange = { mode ->
-                                    scope.launch {
-                                        com.android.purebilibili.core.store.SettingsManager
-                                            .setPortraitPlayerCollapseMode(context, mode)
-                                    }
-                                }
-                            )
-                        }
-
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowLeftArrowRight,
-                            title = "竖屏上滑进入全屏",
-                            subtitle = if (portraitSwipeToFullscreenEnabled) {
-                                "开启后在竖屏下向上滑动可快速进入全屏"
-                            } else {
-                                "关闭后竖屏上滑不再触发进入全屏"
-                            },
-                            checked = portraitSwipeToFullscreenEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setPortraitSwipeToFullscreenEnabled(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandTap,
-                            title = "中部滑动切换全屏",
-                            subtitle = if (centerSwipeToFullscreenEnabled) {
-                                "开启后：播放器中部纵向滑动可切换进入/退出全屏（受手势反向影响）"
-                            } else {
-                                "关闭后：中部纵向滑动不再触发全屏切换"
-                            },
-                            checked = centerSwipeToFullscreenEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCenterSwipeToFullscreenEnabled(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.SpeakerWave2,
-                            title = "左右侧滑动调节亮度/音量",
-                            subtitle = if (slideVolumeBrightnessEnabled) {
-                                "左侧上下滑调亮度，右侧上下滑调音量"
-                            } else {
-                                "关闭后仅保留中部全屏手势和左右拖动进度"
-                            },
-                            checked = slideVolumeBrightnessEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setSlideVolumeBrightnessEnabled(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.SunMax,
-                            title = "调节系统亮度",
-                            subtitle = if (slideVolumeBrightnessEnabled) {
-                                "开启后亮度手势会尝试同步系统亮度（需系统允许）"
-                            } else {
-                                "依赖“左右侧滑动调节亮度/音量”开关"
-                            },
-                            checked = setSystemBrightnessEnabled,
-                            onCheckedChange = {
-                                if (!slideVolumeBrightnessEnabled) return@IOSSwitchItem
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setSetSystemBrightnessEnabled(context, it)
-                                }
-                            },
-                            iconTint = iOSOrange
-                        )
-
-                        IOSDivider()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "非全屏滑动调进度范围",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "左右拖动一屏最多调整 ${inlineSwipeSeekSeconds} 秒，数值越小越精确",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val inlineSeekOptions = listOf(
-                                PlaybackSegmentOption(5, "5秒"),
-                                PlaybackSegmentOption(10, "10秒"),
-                                PlaybackSegmentOption(15, "15秒"),
-                                PlaybackSegmentOption(30, "30秒"),
-                                PlaybackSegmentOption(60, "60秒")
-                            )
-                            IOSSlidingSegmentedControl(
-                                options = inlineSeekOptions,
-                                selectedValue = inlineSwipeSeekSeconds,
-                                onSelectionChange = { seconds ->
-                                    scope.launch {
-                                        com.android.purebilibili.core.store.SettingsManager
-                                            .setInlineSwipeSeekSeconds(context, seconds)
-                                    }
-                                }
-                            )
-                        }
-
-                        IOSDivider()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "横屏滑动调进度范围",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                AppAdaptiveSwitch(
-                                    checked = fullscreenSwipeSeekEnabled,
-                                    onCheckedChange = {
-                                        scope.launch {
-                                            com.android.purebilibili.core.store.SettingsManager
-                                                .setFullscreenSwipeSeekEnabled(context, it)
-                                        }
-                                    }
-                                )
-                            }
-                            Text(
-                                text = if (fullscreenSwipeSeekEnabled) {
-                                    "左右拖动一屏最多调整 ${fullscreenSwipeSeekSeconds} 秒，数值越小越精确"
-                                } else {
-                                    "已关闭横屏精细调进度（当前范围 ${fullscreenSwipeSeekSeconds} 秒，重新开启后生效）"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val seekStepOptions = listOf(
-                                PlaybackSegmentOption(10, "10秒"),
-                                PlaybackSegmentOption(15, "15秒"),
-                                PlaybackSegmentOption(20, "20秒"),
-                                PlaybackSegmentOption(30, "30秒")
-                            )
-                            IOSSlidingSegmentedControl(
-                                options = seekStepOptions,
-                                selectedValue = fullscreenSwipeSeekSeconds,
-                                enabled = fullscreenSwipeSeekEnabled,
-                                onSelectionChange = { seconds ->
-                                    if (!fullscreenSwipeSeekEnabled) return@IOSSlidingSegmentedControl
-                                    scope.launch {
-                                        com.android.purebilibili.core.store.SettingsManager
-                                            .setFullscreenSwipeSeekSeconds(context, seconds)
-                                    }
-                                }
-                            )
-                        }
-                        IOSDivider()
-                        val autoRotateEnabled by com.android.purebilibili.core.store.SettingsManager
-                            .getAutoRotateEnabled(context).collectAsState(initial = false)
-                        val fullscreenGestureReverse by com.android.purebilibili.core.store.SettingsManager
-                            .getFullscreenGestureReverse(context).collectAsState(initial = false)
-                        val autoEnterFullscreen by com.android.purebilibili.core.store.SettingsManager
-                            .getAutoEnterFullscreen(context).collectAsState(initial = false)
-                        val autoExitFullscreen by com.android.purebilibili.core.store.SettingsManager
-                            .getAutoExitFullscreen(context).collectAsState(initial = true)
-                        val showFullscreenLockButton by com.android.purebilibili.core.store.SettingsManager
-                            .getShowFullscreenLockButton(context).collectAsState(initial = true)
-                        val showFullscreenScreenshotButton by com.android.purebilibili.core.store.SettingsManager
-                            .getShowFullscreenScreenshotButton(context).collectAsState(initial = true)
-                        val appGestureScreenshotEnabled by SettingsManager
-                            .getAppGestureScreenshotEnabled(context).collectAsState(initial = false)
-                        val appScreenshotGestureMode by SettingsManager
-                            .getAppScreenshotGestureMode(context)
-                            .collectAsState(initial = AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS)
-                        val appScreenshotCaptureMode by SettingsManager
-                            .getAppScreenshotCaptureMode(context)
-                            .collectAsState(initial = AppScreenshotCaptureMode.FULL_WINDOW)
-                        val showFullscreenBatteryLevel by com.android.purebilibili.core.store.SettingsManager
-                            .getShowFullscreenBatteryLevel(context).collectAsState(initial = true)
-                        val showFullscreenTime by com.android.purebilibili.core.store.SettingsManager
-                            .getShowFullscreenTime(context).collectAsState(initial = true)
-                        val showFullscreenActionItems by com.android.purebilibili.core.store.SettingsManager
-                            .getShowFullscreenActionItems(context).collectAsState(initial = true)
-                        val showOnlineCount by com.android.purebilibili.core.store.SettingsManager
-                            .getShowOnlineCount(context).collectAsState(initial = false)
-                        val bottomProgressBehavior by com.android.purebilibili.core.store.SettingsManager
-                            .getBottomProgressBehavior(context)
-                            .collectAsState(initial = BottomProgressBehavior.ALWAYS_SHOW)
-                        val isLargeScreenDevice = context.resources.configuration.smallestScreenWidthDp >= 600
-                        val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
-                            .getHorizontalAdaptationEnabled(context)
-                            .collectAsState(initial = isLargeScreenDevice)
-                        val hideVideoPageStatusBar by com.android.purebilibili.core.store.SettingsManager
-                            .getHideVideoPageStatusBar(context)
-                            .collectAsState(initial = false)
-                        val tabletCommentPanelWidthPreset by com.android.purebilibili.core.store.SettingsManager
-                            .getTabletCommentPanelWidthPreset(context)
-                            .collectAsState(initial = com.android.purebilibili.core.store.TabletCommentPanelWidthPreset.STANDARD)
-                        val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
-                            .getFullscreenMode(context)
-                            .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
-                        val fullscreenAspectRatio by com.android.purebilibili.core.store.SettingsManager
-                            .getFullscreenAspectRatio(context)
-                            .collectAsState(initial = FullscreenAspectRatio.FIT)
-                        val fullscreenModeSubtitle = if (autoRotateEnabled) {
-                            "${fullscreenMode.description}；已开启自动横竖屏，日常会跟随设备方向自动进退全屏"
-                        } else {
-                            fullscreenMode.description
-                        }
-                        val horizontalAdaptationSubtitle = if (isLargeScreenDevice) {
-                            "启用横屏布局和横屏逻辑（平板/折叠屏建议开启）"
-                        } else {
-                            "主要用于平板/折叠屏，当前设备触发场景可能较少"
-                        }
-
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowTriangle2CirclepathCamera,  // 旋转图标
-                            title = "自动横竖屏切换",
-                            subtitle = "跟随手机方向自动进入/退出全屏",
-                            checked = autoRotateEnabled,
-                            onCheckedChange = { 
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setAutoRotateEnabled(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Eye,
-                            title = "横屏适配",
-                            subtitle = horizontalAdaptationSubtitle,
-                            checked = horizontalAdaptationEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setHorizontalAdaptationEnabled(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "平板评论区宽度：${tabletCommentPanelWidthPreset.label}",
-                            subtitle = if (horizontalAdaptationEnabled) {
-                                "调整横屏适配下右侧评论/推荐栏宽度"
-                            } else {
-                                "开启横屏适配后生效"
-                            },
-                            options = resolveTabletCommentPanelWidthSegmentOptions(),
-                            selectedValue = tabletCommentPanelWidthPreset,
-                            onSelectionChange = { preset ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setTabletCommentPanelWidthPreset(context, preset)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "默认全屏方向：${fullscreenMode.label}",
-                            subtitle = fullscreenModeSubtitle,
-                            options = resolveFullscreenModeSegmentOptions(),
-                            selectedValue = fullscreenMode,
-                            onSelectionChange = { mode ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setFullscreenMode(context, mode)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "固定全屏比例：${fullscreenAspectRatio.label}",
-                            subtitle = fullscreenAspectRatio.description,
-                            options = resolveFullscreenAspectRatioSegmentOptions(),
-                            selectedValue = fullscreenAspectRatio,
-                            onSelectionChange = { ratio ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setFullscreenAspectRatio(context, ratio)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowUpArrowDown,
-                            title = "全屏手势反向",
-                            subtitle = "默认上滑进全屏、下滑退全屏；开启后方向反转",
-                            checked = fullscreenGestureReverse,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setFullscreenGestureReverse(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.RectangleStack,
-                            title = "播放页隐藏状态栏",
-                            subtitle = if (hideVideoPageStatusBar) {
-                                "普通播放页隐藏顶部系统状态栏，底部手势条保持显示"
-                            } else {
-                                "关闭后播放页跟随系统状态栏显示"
-                            },
-                            checked = hideVideoPageStatusBar,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setHideVideoPageStatusBar(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSTeal
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
-                            title = "自动进入全屏",
-                            subtitle = "视频开始播放后自动切到全屏",
-                            checked = autoEnterFullscreen,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setAutoEnterFullscreen(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSGreen
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft,
-                            title = "自动退出全屏",
-                            subtitle = "视频结束播放后自动退出全屏",
-                            checked = autoExitFullscreen,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setAutoExitFullscreen(context, it)
-                                }
-                            },
-                            iconTint = iOSOrange
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Lock,
-                            title = "全屏显示锁定按钮",
-                            subtitle = "控制层中显示防误触锁定按钮",
-                            checked = showFullscreenLockButton,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowFullscreenLockButton(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Camera,
-                            title = "全屏显示截图按钮",
-                            subtitle = "控制层中显示快速截图入口",
-                            checked = showFullscreenScreenshotButton,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowFullscreenScreenshotButton(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Photo,
-                            title = "应用内干净截图",
-                            subtitle = "在 BiliPai 前台通过应用内手势导出当前窗口 PNG",
-                            checked = appGestureScreenshotEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    SettingsManager.setAppGestureScreenshotEnabled(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "截图触发方式：${appScreenshotGestureMode.label}",
-                            subtitle = appScreenshotGestureMode.description,
-                            options = resolveAppScreenshotGestureModeSegmentOptions(),
-                            selectedValue = appScreenshotGestureMode,
-                            onSelectionChange = { mode ->
-                                scope.launch {
-                                    SettingsManager.setAppScreenshotGestureMode(context, mode)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "截图范围：${appScreenshotCaptureMode.label}",
-                            subtitle = appScreenshotCaptureMode.description,
-                            options = resolveAppScreenshotCaptureModeSegmentOptions(),
-                            selectedValue = appScreenshotCaptureMode,
-                            onSelectionChange = { mode ->
-                                scope.launch {
-                                    SettingsManager.setAppScreenshotCaptureMode(context, mode)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Battery100,
-                            title = "全屏显示电量",
-                            subtitle = "在横屏左上角展示电池图标和电量百分比",
-                            checked = showFullscreenBatteryLevel,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowFullscreenBatteryLevel(context, it)
-                                }
-                            },
-                            iconTint = iOSGreen
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Clock,
-                            title = "全屏显示时间",
-                            subtitle = "在横屏左上角单独展示当前时间",
-                            checked = showFullscreenTime,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowFullscreenTime(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.SquareAndArrowUp,
-                            title = "全屏显示互动按钮",
-                            subtitle = if (showFullscreenActionItems) {
-                                "横屏顶部显示点赞/投币/分享等快捷操作"
-                            } else {
-                                "关闭后隐藏横屏顶部互动按钮，保留返回与更多入口"
-                            },
-                            checked = showFullscreenActionItems,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowFullscreenActionItems(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPink
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ChartBar,
-                            title = "卡片与视频页观看人数",
-                            subtitle = if (showOnlineCount) {
-                                "首页、搜索等视频卡片和视频页显示“xx人正在看”"
-                            } else {
-                                "关闭后隐藏卡片和视频页的观看人数展示"
-                            },
-                            checked = showOnlineCount,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setShowOnlineCount(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "底部进度条展示：${bottomProgressBehavior.label}",
-                            subtitle = bottomProgressBehavior.description,
-                            options = listOf(
-                                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_SHOW, "始终展示"),
-                                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_HIDE, "始终隐藏"),
-                                PlaybackSegmentOption(BottomProgressBehavior.ONLY_SHOW_FULLSCREEN, "仅全屏展示"),
-                                PlaybackSegmentOption(BottomProgressBehavior.ONLY_HIDE_FULLSCREEN, "仅全屏隐藏")
-                            ),
-                            selectedValue = bottomProgressBehavior,
-                            onSelectionChange = { behavior ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setBottomProgressBehavior(context, behavior)
-                                }
-                            }
-                        )
-                        }
-                    )
+                    PlaybackFullscreenGestureSettingsSection(context = context)
                 }
             }
             
@@ -1866,7 +1223,649 @@ private fun PlaybackInteractionSettingsSection(
 
 @Composable
 private fun PlaybackFullscreenGestureSettingsSection(
-    content: @Composable ColumnScope.() -> Unit
+    context: Context
 ) {
-    IOSGroup(content = content)
+    val scope = rememberCoroutineScope()
+    val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
+        .getPortraitPlayerCollapseMode(context)
+        .collectAsState(initial = PortraitPlayerCollapseMode.OFF)
+    val portraitSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getPortraitSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+    val centerSwipeToFullscreenEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCenterSwipeToFullscreenEnabled(context).collectAsState(initial = true)
+    val slideVolumeBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getSlideVolumeBrightnessEnabled(context).collectAsState(initial = true)
+    val setSystemBrightnessEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getSetSystemBrightnessEnabled(context).collectAsState(initial = false)
+    val inlineSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getInlineSwipeSeekSeconds(context).collectAsState(initial = 30)
+    val fullscreenSwipeSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getFullscreenSwipeSeekEnabled(context).collectAsState(initial = true)
+    val fullscreenSwipeSeekSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getFullscreenSwipeSeekSeconds(context).collectAsState(initial = 15)
+    val doubleTapSeekEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getDoubleTapSeekEnabled(context).collectAsState(initial = false)
+    val seekForwardSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getSeekForwardSeconds(context).collectAsState(initial = 10)
+    val seekBackwardSeconds by com.android.purebilibili.core.store.SettingsManager
+        .getSeekBackwardSeconds(context).collectAsState(initial = 10)
+    val hideInteractiveCommandDanmaku by com.android.purebilibili.core.store.SettingsManager
+        .getDanmakuHideInteractiveCommands(context)
+        .collectAsState(initial = false)
+    IOSGroup {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "双击跳转",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (doubleTapSeekEnabled) {
+                            "双击右侧快进 ${seekForwardSeconds} 秒，双击左侧后退 ${seekBackwardSeconds} 秒"
+                        } else {
+                            "已关闭：双击画面只切换播放/暂停，不再快进或后退"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                AppAdaptiveSwitch(
+                    checked = doubleTapSeekEnabled,
+                    onCheckedChange = {
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager
+                                .setDoubleTapSeekEnabled(context, it)
+                        }
+                    }
+                )
+            }
+            if (doubleTapSeekEnabled) {
+                val doubleTapSeekOptions = listOf(
+                    PlaybackSegmentOption(5, "5秒"),
+                    PlaybackSegmentOption(10, "10秒"),
+                    PlaybackSegmentOption(15, "15秒"),
+                    PlaybackSegmentOption(30, "30秒"),
+                    PlaybackSegmentOption(60, "60秒")
+                )
+                IOSSlidingSegmentedSetting(
+                    title = "快进秒数（双击右侧）：${seekForwardSeconds} 秒",
+                    subtitle = "调整右侧双击快进幅度",
+                    options = doubleTapSeekOptions,
+                    selectedValue = seekForwardSeconds,
+                    onSelectionChange = { seconds ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager
+                                .setSeekForwardSeconds(context, seconds)
+                        }
+                    }
+                )
+                IOSSlidingSegmentedSetting(
+                    title = "后退秒数（双击左侧）：${seekBackwardSeconds} 秒",
+                    subtitle = "调整左侧双击后退幅度",
+                    options = doubleTapSeekOptions,
+                    selectedValue = seekBackwardSeconds,
+                    onSelectionChange = { seconds ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager
+                                .setSeekBackwardSeconds(context, seconds)
+                        }
+                    }
+                )
+            }
+        }
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.EyeSlash,
+            title = "隐藏视频内互动提示",
+            subtitle = if (hideInteractiveCommandDanmaku) {
+                "已开启：不显示关注、一键三连、UP 提示和投票等视频内互动提示"
+            } else {
+                "关闭后：播放时仍显示关注、一键三连、UP 提示和投票等视频内互动提示"
+            },
+            checked = hideInteractiveCommandDanmaku,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setDanmakuHideInteractiveCommands(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPink
+        )
+        IOSDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IOSSlidingSegmentedSetting(
+                title = "播放器缩小策略：${portraitPlayerCollapseMode.label}",
+                subtitle = portraitPlayerCollapseMode.description,
+                options = resolvePortraitPlayerCollapseModeSegmentOptions(),
+                selectedValue = portraitPlayerCollapseMode,
+                onSelectionChange = { mode ->
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setPortraitPlayerCollapseMode(context, mode)
+                    }
+                }
+            )
+        }
+
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowLeftArrowRight,
+            title = "竖屏上滑进入全屏",
+            subtitle = if (portraitSwipeToFullscreenEnabled) {
+                "开启后在竖屏下向上滑动可快速进入全屏"
+            } else {
+                "关闭后竖屏上滑不再触发进入全屏"
+            },
+            checked = portraitSwipeToFullscreenEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setPortraitSwipeToFullscreenEnabled(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.HandTap,
+            title = "中部滑动切换全屏",
+            subtitle = if (centerSwipeToFullscreenEnabled) {
+                "开启后：播放器中部纵向滑动可切换进入/退出全屏（受手势反向影响）"
+            } else {
+                "关闭后：中部纵向滑动不再触发全屏切换"
+            },
+            checked = centerSwipeToFullscreenEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setCenterSwipeToFullscreenEnabled(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPurple
+        )
+
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.SpeakerWave2,
+            title = "左右侧滑动调节亮度/音量",
+            subtitle = if (slideVolumeBrightnessEnabled) {
+                "左侧上下滑调亮度，右侧上下滑调音量"
+            } else {
+                "关闭后仅保留中部全屏手势和左右拖动进度"
+            },
+            checked = slideVolumeBrightnessEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setSlideVolumeBrightnessEnabled(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.SunMax,
+            title = "调节系统亮度",
+            subtitle = if (slideVolumeBrightnessEnabled) {
+                "开启后亮度手势会尝试同步系统亮度（需系统允许）"
+            } else {
+                "依赖“左右侧滑动调节亮度/音量”开关"
+            },
+            checked = setSystemBrightnessEnabled,
+            onCheckedChange = {
+                if (!slideVolumeBrightnessEnabled) return@IOSSwitchItem
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setSetSystemBrightnessEnabled(context, it)
+                }
+            },
+            iconTint = iOSOrange
+        )
+
+        IOSDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "非全屏滑动调进度范围",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "左右拖动一屏最多调整 ${inlineSwipeSeekSeconds} 秒，数值越小越精确",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val inlineSeekOptions = listOf(
+                PlaybackSegmentOption(5, "5秒"),
+                PlaybackSegmentOption(10, "10秒"),
+                PlaybackSegmentOption(15, "15秒"),
+                PlaybackSegmentOption(30, "30秒"),
+                PlaybackSegmentOption(60, "60秒")
+            )
+            IOSSlidingSegmentedControl(
+                options = inlineSeekOptions,
+                selectedValue = inlineSwipeSeekSeconds,
+                onSelectionChange = { seconds ->
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setInlineSwipeSeekSeconds(context, seconds)
+                    }
+                }
+            )
+        }
+
+        IOSDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "横屏滑动调进度范围",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                AppAdaptiveSwitch(
+                    checked = fullscreenSwipeSeekEnabled,
+                    onCheckedChange = {
+                        scope.launch {
+                            com.android.purebilibili.core.store.SettingsManager
+                                .setFullscreenSwipeSeekEnabled(context, it)
+                        }
+                    }
+                )
+            }
+            Text(
+                text = if (fullscreenSwipeSeekEnabled) {
+                    "左右拖动一屏最多调整 ${fullscreenSwipeSeekSeconds} 秒，数值越小越精确"
+                } else {
+                    "已关闭横屏精细调进度（当前范围 ${fullscreenSwipeSeekSeconds} 秒，重新开启后生效）"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val seekStepOptions = listOf(
+                PlaybackSegmentOption(10, "10秒"),
+                PlaybackSegmentOption(15, "15秒"),
+                PlaybackSegmentOption(20, "20秒"),
+                PlaybackSegmentOption(30, "30秒")
+            )
+            IOSSlidingSegmentedControl(
+                options = seekStepOptions,
+                selectedValue = fullscreenSwipeSeekSeconds,
+                enabled = fullscreenSwipeSeekEnabled,
+                onSelectionChange = { seconds ->
+                    if (!fullscreenSwipeSeekEnabled) return@IOSSlidingSegmentedControl
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setFullscreenSwipeSeekSeconds(context, seconds)
+                    }
+                }
+            )
+        }
+        IOSDivider()
+        val autoRotateEnabled by com.android.purebilibili.core.store.SettingsManager
+            .getAutoRotateEnabled(context).collectAsState(initial = false)
+        val fullscreenGestureReverse by com.android.purebilibili.core.store.SettingsManager
+            .getFullscreenGestureReverse(context).collectAsState(initial = false)
+        val autoEnterFullscreen by com.android.purebilibili.core.store.SettingsManager
+            .getAutoEnterFullscreen(context).collectAsState(initial = false)
+        val autoExitFullscreen by com.android.purebilibili.core.store.SettingsManager
+            .getAutoExitFullscreen(context).collectAsState(initial = true)
+        val showFullscreenLockButton by com.android.purebilibili.core.store.SettingsManager
+            .getShowFullscreenLockButton(context).collectAsState(initial = true)
+        val showFullscreenScreenshotButton by com.android.purebilibili.core.store.SettingsManager
+            .getShowFullscreenScreenshotButton(context).collectAsState(initial = true)
+        val appGestureScreenshotEnabled by SettingsManager
+            .getAppGestureScreenshotEnabled(context).collectAsState(initial = false)
+        val appScreenshotGestureMode by SettingsManager
+            .getAppScreenshotGestureMode(context)
+            .collectAsState(initial = AppScreenshotGestureMode.TOP_RIGHT_TWO_FINGER_LONG_PRESS)
+        val appScreenshotCaptureMode by SettingsManager
+            .getAppScreenshotCaptureMode(context)
+            .collectAsState(initial = AppScreenshotCaptureMode.FULL_WINDOW)
+        val showFullscreenBatteryLevel by com.android.purebilibili.core.store.SettingsManager
+            .getShowFullscreenBatteryLevel(context).collectAsState(initial = true)
+        val showFullscreenTime by com.android.purebilibili.core.store.SettingsManager
+            .getShowFullscreenTime(context).collectAsState(initial = true)
+        val showFullscreenActionItems by com.android.purebilibili.core.store.SettingsManager
+            .getShowFullscreenActionItems(context).collectAsState(initial = true)
+        val showOnlineCount by com.android.purebilibili.core.store.SettingsManager
+            .getShowOnlineCount(context).collectAsState(initial = false)
+        val bottomProgressBehavior by com.android.purebilibili.core.store.SettingsManager
+            .getBottomProgressBehavior(context)
+            .collectAsState(initial = BottomProgressBehavior.ALWAYS_SHOW)
+        val isLargeScreenDevice = context.resources.configuration.smallestScreenWidthDp >= 600
+        val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
+            .getHorizontalAdaptationEnabled(context)
+            .collectAsState(initial = isLargeScreenDevice)
+        val hideVideoPageStatusBar by com.android.purebilibili.core.store.SettingsManager
+            .getHideVideoPageStatusBar(context)
+            .collectAsState(initial = false)
+        val tabletCommentPanelWidthPreset by com.android.purebilibili.core.store.SettingsManager
+            .getTabletCommentPanelWidthPreset(context)
+            .collectAsState(initial = com.android.purebilibili.core.store.TabletCommentPanelWidthPreset.STANDARD)
+        val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
+            .getFullscreenMode(context)
+            .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
+        val fullscreenAspectRatio by com.android.purebilibili.core.store.SettingsManager
+            .getFullscreenAspectRatio(context)
+            .collectAsState(initial = FullscreenAspectRatio.FIT)
+        val fullscreenModeSubtitle = if (autoRotateEnabled) {
+            "${fullscreenMode.description}；已开启自动横竖屏，日常会跟随设备方向自动进退全屏"
+        } else {
+            fullscreenMode.description
+        }
+        val horizontalAdaptationSubtitle = if (isLargeScreenDevice) {
+            "启用横屏布局和横屏逻辑（平板/折叠屏建议开启）"
+        } else {
+            "主要用于平板/折叠屏，当前设备触发场景可能较少"
+        }
+
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowTriangle2CirclepathCamera,  // 旋转图标
+            title = "自动横竖屏切换",
+            subtitle = "跟随手机方向自动进入/退出全屏",
+            checked = autoRotateEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setAutoRotateEnabled(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Eye,
+            title = "横屏适配",
+            subtitle = horizontalAdaptationSubtitle,
+            checked = horizontalAdaptationEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setHorizontalAdaptationEnabled(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "平板评论区宽度：${tabletCommentPanelWidthPreset.label}",
+            subtitle = if (horizontalAdaptationEnabled) {
+                "调整横屏适配下右侧评论/推荐栏宽度"
+            } else {
+                "开启横屏适配后生效"
+            },
+            options = resolveTabletCommentPanelWidthSegmentOptions(),
+            selectedValue = tabletCommentPanelWidthPreset,
+            onSelectionChange = { preset ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setTabletCommentPanelWidthPreset(context, preset)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "默认全屏方向：${fullscreenMode.label}",
+            subtitle = fullscreenModeSubtitle,
+            options = resolveFullscreenModeSegmentOptions(),
+            selectedValue = fullscreenMode,
+            onSelectionChange = { mode ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setFullscreenMode(context, mode)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "固定全屏比例：${fullscreenAspectRatio.label}",
+            subtitle = fullscreenAspectRatio.description,
+            options = resolveFullscreenAspectRatioSegmentOptions(),
+            selectedValue = fullscreenAspectRatio,
+            onSelectionChange = { ratio ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setFullscreenAspectRatio(context, ratio)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowUpArrowDown,
+            title = "全屏手势反向",
+            subtitle = "默认上滑进全屏、下滑退全屏；开启后方向反转",
+            checked = fullscreenGestureReverse,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setFullscreenGestureReverse(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPurple
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.RectangleStack,
+            title = "播放页隐藏状态栏",
+            subtitle = if (hideVideoPageStatusBar) {
+                "普通播放页隐藏顶部系统状态栏，底部手势条保持显示"
+            } else {
+                "关闭后播放页跟随系统状态栏显示"
+            },
+            checked = hideVideoPageStatusBar,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setHideVideoPageStatusBar(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSTeal
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowUpLeftAndArrowDownRight,
+            title = "自动进入全屏",
+            subtitle = "视频开始播放后自动切到全屏",
+            checked = autoEnterFullscreen,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setAutoEnterFullscreen(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSGreen
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowDownRightAndArrowUpLeft,
+            title = "自动退出全屏",
+            subtitle = "视频结束播放后自动退出全屏",
+            checked = autoExitFullscreen,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setAutoExitFullscreen(context, it)
+                }
+            },
+            iconTint = iOSOrange
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Lock,
+            title = "全屏显示锁定按钮",
+            subtitle = "控制层中显示防误触锁定按钮",
+            checked = showFullscreenLockButton,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowFullscreenLockButton(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Camera,
+            title = "全屏显示截图按钮",
+            subtitle = "控制层中显示快速截图入口",
+            checked = showFullscreenScreenshotButton,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowFullscreenScreenshotButton(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Photo,
+            title = "应用内干净截图",
+            subtitle = "在 BiliPai 前台通过应用内手势导出当前窗口 PNG",
+            checked = appGestureScreenshotEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    SettingsManager.setAppGestureScreenshotEnabled(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPurple
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "截图触发方式：${appScreenshotGestureMode.label}",
+            subtitle = appScreenshotGestureMode.description,
+            options = resolveAppScreenshotGestureModeSegmentOptions(),
+            selectedValue = appScreenshotGestureMode,
+            onSelectionChange = { mode ->
+                scope.launch {
+                    SettingsManager.setAppScreenshotGestureMode(context, mode)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "截图范围：${appScreenshotCaptureMode.label}",
+            subtitle = appScreenshotCaptureMode.description,
+            options = resolveAppScreenshotCaptureModeSegmentOptions(),
+            selectedValue = appScreenshotCaptureMode,
+            onSelectionChange = { mode ->
+                scope.launch {
+                    SettingsManager.setAppScreenshotCaptureMode(context, mode)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Battery100,
+            title = "全屏显示电量",
+            subtitle = "在横屏左上角展示电池图标和电量百分比",
+            checked = showFullscreenBatteryLevel,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowFullscreenBatteryLevel(context, it)
+                }
+            },
+            iconTint = iOSGreen
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Clock,
+            title = "全屏显示时间",
+            subtitle = "在横屏左上角单独展示当前时间",
+            checked = showFullscreenTime,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowFullscreenTime(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.SquareAndArrowUp,
+            title = "全屏显示互动按钮",
+            subtitle = if (showFullscreenActionItems) {
+                "横屏顶部显示点赞/投币/分享等快捷操作"
+            } else {
+                "关闭后隐藏横屏顶部互动按钮，保留返回与更多入口"
+            },
+            checked = showFullscreenActionItems,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowFullscreenActionItems(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPink
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ChartBar,
+            title = "卡片与视频页观看人数",
+            subtitle = if (showOnlineCount) {
+                "首页、搜索等视频卡片和视频页显示“xx人正在看”"
+            } else {
+                "关闭后隐藏卡片和视频页的观看人数展示"
+            },
+            checked = showOnlineCount,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setShowOnlineCount(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "底部进度条展示：${bottomProgressBehavior.label}",
+            subtitle = bottomProgressBehavior.description,
+            options = listOf(
+                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_SHOW, "始终展示"),
+                PlaybackSegmentOption(BottomProgressBehavior.ALWAYS_HIDE, "始终隐藏"),
+                PlaybackSegmentOption(BottomProgressBehavior.ONLY_SHOW_FULLSCREEN, "仅全屏展示"),
+                PlaybackSegmentOption(BottomProgressBehavior.ONLY_HIDE_FULLSCREEN, "仅全屏隐藏")
+            ),
+            selectedValue = bottomProgressBehavior,
+            onSelectionChange = { behavior ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setBottomProgressBehavior(context, behavior)
+                }
+            }
+        )
+    }
+
 }
