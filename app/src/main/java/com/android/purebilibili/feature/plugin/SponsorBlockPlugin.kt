@@ -486,91 +486,199 @@ class SponsorBlockPlugin : PlayerPluginApi {
 
 @Composable
 private fun SponsorBlockInsightPanel(summary: SponsorBlockInsightSummary) {
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(14.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "跳过统计",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "记录只保存在本地",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+        val useWideLayout = maxWidth >= 460.dp
+        if (useWideLayout) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "${summary.totalSkipCount} 次",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
+                SponsorBlockSummaryRail(
+                    summary = summary,
+                    modifier = Modifier.widthIn(min = 156.dp, max = 190.dp)
+                )
+                SponsorBlockRecentSection(
+                    summary = summary,
+                    modifier = Modifier.weight(1f)
                 )
             }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SponsorBlockSummaryHeader(summary = summary)
+                SponsorBlockCompactStats(summary = summary)
+                SponsorBlockRecentSection(summary = summary)
+            }
         }
+    }
+}
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+@Composable
+private fun SponsorBlockSummaryRail(
+    summary: SponsorBlockInsightSummary,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SponsorBlockSummaryHeader(summary = summary)
+        SponsorBlockStatTile(
+            title = "今日节省",
+            value = summary.todaySavedText,
+            modifier = Modifier.fillMaxWidth()
+        )
+        SponsorBlockStatTile(
+            title = "累计节省",
+            value = summary.totalSavedText,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SponsorBlockStatTile(
-                title = "今日节省",
-                value = summary.todaySavedText,
-                modifier = Modifier.weight(1f)
-            )
-            SponsorBlockStatTile(
-                title = "累计节省",
-                value = summary.totalSavedText,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SponsorBlockStatTile(
-                title = "跳过次数",
+                title = "次数",
                 value = "${summary.totalSkipCount}",
                 modifier = Modifier.weight(1f)
             )
             SponsorBlockStatTile(
-                title = "涉及 UP",
+                title = "UP",
                 value = "${summary.uniqueUpCount}",
                 modifier = Modifier.weight(1f)
             )
         }
+    }
+}
 
+@Composable
+private fun SponsorBlockSummaryHeader(summary: SponsorBlockInsightSummary) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = "跳过统计",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "记录只保存在本地",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Text(
+                text = "${summary.totalSkipCount} 次",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun SponsorBlockCompactStats(summary: SponsorBlockInsightSummary) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SponsorBlockCompactStatItem(
+            title = "今日",
+            value = summary.todaySavedText,
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "累计",
+            value = summary.totalSavedText,
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "次数",
+            value = "${summary.totalSkipCount}",
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "UP",
+            value = "${summary.uniqueUpCount}",
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SponsorBlockCompactStatItem(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SponsorBlockRecentSection(
+    summary: SponsorBlockInsightSummary,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         if (summary.recentRecords.isEmpty()) {
             SponsorBlockEmptyInsight()
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "最近跳过",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-                summary.recentRecords.forEach { record ->
-                    SponsorBlockRecordRow(record = record)
-                }
+            Text(
+                text = "最近跳过",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            summary.recentRecords.forEach { record ->
+                SponsorBlockRecordRow(record = record)
             }
         }
     }
