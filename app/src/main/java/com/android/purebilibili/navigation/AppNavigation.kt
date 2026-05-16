@@ -3109,6 +3109,9 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onNavigateToVideo = { bvid ->
                     navigateToVideo(bvid, 0L, "")
+                },
+                onOpenBilibiliLink = { link ->
+                    openBilibiliLink(link)
                 }
             )
         }

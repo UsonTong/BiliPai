@@ -27,12 +27,15 @@ data class UserBasicInfo(
 data class InboxUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
+    val selectedCategory: MessageSessionCategory = MessageSessionCategory.All,
     val sessions: List<SessionItem> = emptyList(),
     val unreadData: MessageUnreadData? = null,
     val feedUnreadData: MessageFeedUnreadData? = null,
     val hasMore: Boolean = false,
     val isLoadingMore: Boolean = false,
+    val isBatchOperating: Boolean = false,
     val error: String? = null,
+    val operationError: String? = null,
     val page: Int = 1,
     val endTs: Long = 0, //  游标 (此会话列表中最后一条的 session_ts，微秒级)
     val userInfoMap: Map<Long, UserBasicInfo> = emptyMap()  //  用户信息缓存
@@ -73,6 +76,7 @@ class InboxViewModel : ViewModel() {
      */
     fun loadSessions() {
         viewModelScope.launch {
+            val category = _uiState.value.selectedCategory
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
             // 并行加载未读数和会话列表
@@ -80,7 +84,7 @@ class InboxViewModel : ViewModel() {
             val feedUnreadResult = MessageRepository.getFeedUnread()
             // 初始加载，endTs = 0
             val sessionsResult = MessageRepository.getSessions(
-                sessionType = 4, // 4=所有消息 (包含企业号自动回复)
+                sessionType = category.apiSessionType,
                 size = 100,
                 endTs = 0
             )
@@ -106,7 +110,8 @@ class InboxViewModel : ViewModel() {
                         sessions = sessions.sortedByPin(),
                         hasMore = data.has_more == 1,
                         userInfoMap = primeSessionUserCache(sessions).toMap(),
-                        endTs = nextEndTs
+                        endTs = nextEndTs,
+                        page = 1
                     )
                     
                     // 异步加载用户信息
@@ -120,6 +125,20 @@ class InboxViewModel : ViewModel() {
                 }
             )
         }
+    }
+
+    fun selectCategory(category: MessageSessionCategory) {
+        if (_uiState.value.selectedCategory == category) return
+        _uiState.value = _uiState.value.copy(
+            selectedCategory = category,
+            sessions = emptyList(),
+            hasMore = false,
+            page = 1,
+            endTs = 0,
+            error = null,
+            operationError = null
+        )
+        loadSessions()
     }
     
     /**
@@ -187,7 +206,7 @@ class InboxViewModel : ViewModel() {
 
             val currentState = _uiState.value
             MessageRepository.getSessions(
-                sessionType = 4, // 4=所有消息
+                sessionType = currentState.selectedCategory.apiSessionType,
                 size = 100,
                 page = 1,
                 endTs = currentState.endTs
@@ -243,7 +262,7 @@ class InboxViewModel : ViewModel() {
             val feedUnreadResult = MessageRepository.getFeedUnread()
             // 刷新时重置游标
             val sessionsResult = MessageRepository.getSessions(
-                sessionType = 4, // 4=所有消息
+                sessionType = _uiState.value.selectedCategory.apiSessionType,
                 size = 100,
                 endTs = 0
             )
@@ -266,6 +285,7 @@ class InboxViewModel : ViewModel() {
                     
                     _uiState.value = _uiState.value.copy(
                         isRefreshing = false,
+                        isBatchOperating = false,
                         sessions = sessions.sortedByPin(),
                         hasMore = data.has_more == 1,
                         userInfoMap = primeSessionUserCache(sessions).toMap(),
@@ -278,6 +298,7 @@ class InboxViewModel : ViewModel() {
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         isRefreshing = false,
+                        isBatchOperating = false,
                         error = e.message ?: "刷新失败"
                     )
                 }
@@ -294,9 +315,14 @@ class InboxViewModel : ViewModel() {
                 .onSuccess {
                     // 从列表中移除
                     val newList = _uiState.value.sessions.filter { 
-                        it.talker_id != session.talker_id 
+                        it.talker_id != session.talker_id || it.session_type != session.session_type
                     }
                     _uiState.value = _uiState.value.copy(sessions = newList)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        operationError = error.message ?: "删除会话失败"
+                    )
                 }
         }
     }
@@ -328,12 +354,76 @@ class InboxViewModel : ViewModel() {
                 }
         }
     }
+
+    fun toggleDnd(session: SessionItem) {
+        viewModelScope.launch {
+            MessageRepository.setSessionDnd(
+                talkerId = session.talker_id,
+                sessionType = session.session_type,
+                enabled = session.is_dnd != 1
+            ).onSuccess {
+                refresh()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    operationError = error.message ?: "更新免打扰失败"
+                )
+            }
+        }
+    }
+
+    fun toggleIntercept(session: SessionItem) {
+        if (session.session_type != 1) return
+        viewModelScope.launch {
+            MessageRepository.setSessionIntercept(
+                talkerId = session.talker_id,
+                intercepted = session.is_intercept != 1
+            ).onSuccess {
+                refresh()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    operationError = error.message ?: "更新拦截状态失败"
+                )
+            }
+        }
+    }
+
+    fun markDustbinRead() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isBatchOperating = true, operationError = null)
+            MessageRepository.markDustbinRead()
+                .onSuccess { refresh() }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isBatchOperating = false,
+                        operationError = error.message ?: "拦截会话已读失败"
+                    )
+                }
+        }
+    }
+
+    fun clearDustbinSessions() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isBatchOperating = true, operationError = null)
+            MessageRepository.clearDustbinSessions()
+                .onSuccess { refresh() }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isBatchOperating = false,
+                        operationError = error.message ?: "清空拦截会话失败"
+                    )
+                }
+        }
+    }
     
     /**
      * 清除错误信息
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    fun clearOperationError() {
+        _uiState.value = _uiState.value.copy(operationError = null)
     }
 
     private fun primeSessionUserCache(sessions: List<SessionItem>): Map<Long, UserBasicInfo> {
@@ -355,7 +445,7 @@ class InboxViewModel : ViewModel() {
     private fun loadMoreSessionsByPageFallback(nextPage: Int) {
         viewModelScope.launch {
             MessageRepository.getSessions(
-                sessionType = 4,
+                sessionType = _uiState.value.selectedCategory.apiSessionType,
                 size = 100,
                 page = nextPage,
                 endTs = 0L

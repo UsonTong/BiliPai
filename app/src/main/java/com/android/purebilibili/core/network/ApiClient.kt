@@ -1565,6 +1565,36 @@ interface MessageApi {
         @Query("pn") pn: Int = 1,  //  页码 (第几页)
         @Query("end_ts") endTs: Long = 0  //  结束时间戳 (游标)
     ): com.android.purebilibili.data.model.response.SessionListResponse
+
+    @GET("session_svr/v1/session_svr/session_detail")
+    suspend fun getSessionDetail(
+        @Query("talker_id") talkerId: Long,
+        @Query("session_type") sessionType: Int,
+        @Query("build") build: Int = 0,
+        @Query("mobi_app") mobiApp: String = "web"
+    ): com.android.purebilibili.data.model.response.SessionDetailResponse
+
+    @GET("link_setting/v1/link_setting/is_limit")
+    suspend fun getSessionLimit(
+        @Query("uid") uid: Long,
+        @Query("type") type: Int = 1
+    ): com.android.purebilibili.data.model.response.MessageSessionLimitResponse
+
+    @GET("link_setting/v1/link_setting/get_msg_dnd")
+    suspend fun getMsgDnd(
+        @Query("own_uid") ownUid: Long,
+        @Query("uids") uid: Long? = null,
+        @Query("group_ids") groupId: Long? = null,
+        @Query("build") build: Int = 0,
+        @Query("mobi_app") mobiApp: String = "web"
+    ): com.android.purebilibili.data.model.response.MessageDndResponse
+
+    @GET("link_setting/v1/link_setting/get_session_ss")
+    suspend fun getSessionPushSetting(
+        @Query("talker_uid") talkerUid: Long,
+        @Query("build") build: Int = 0,
+        @Query("mobi_app") mobiApp: String = "web"
+    ): com.android.purebilibili.data.model.response.MessageSessionPushResponse
     
     // 获取私信消息记录
     @GET("svr_sync/v1/svr_sync/fetch_session_msgs")
@@ -1621,6 +1651,49 @@ interface MessageApi {
     suspend fun removeSession(
         @retrofit2.http.Field("talker_id") talkerId: Long,
         @retrofit2.http.Field("session_type") sessionType: Int,
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("link_setting/v1/link_setting/set_msg_dnd")
+    suspend fun setMsgDnd(
+        @retrofit2.http.Field("uid") ownUid: Long?,
+        @retrofit2.http.Field("setting") setting: Int,
+        @retrofit2.http.Field("dnd_uid") dndUid: Long?,
+        @retrofit2.http.Field("dnd_group_id") dndGroupId: Long?,
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("link_setting/v1/link_setting/set_push_ss")
+    suspend fun setPushSetting(
+        @retrofit2.http.Field("talker_uid") talkerUid: Long,
+        @retrofit2.http.Field("setting") setting: Int,
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("session_svr/v1/session_svr/update_intercept")
+    suspend fun updateIntercept(
+        @retrofit2.http.Field("talker_id") talkerId: Long,
+        @retrofit2.http.Field("status") status: Int,
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("session_svr/v1/session_svr/batch_update_dustbin_ack")
+    suspend fun batchUpdateDustbinAck(
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("session_svr/v1/session_svr/batch_rm_dustbin")
+    suspend fun batchRemoveDustbin(
         @retrofit2.http.Field("csrf") csrf: String,
         @retrofit2.http.Field("csrf_token") csrfToken: String
     ): com.android.purebilibili.data.model.response.SimpleApiResponse
