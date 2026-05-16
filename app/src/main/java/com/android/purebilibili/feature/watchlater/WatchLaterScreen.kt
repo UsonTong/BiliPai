@@ -71,6 +71,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -144,6 +145,7 @@ data class WatchLaterUiState(
     val items: List<VideoItem> = emptyList(),
     val totalCount: Int = 0,
     val isLoading: Boolean = false,
+    val isManaging: Boolean = false,
     val error: String? = null,
     val dissolvingIds: Set<String> = emptySet() // [新增] 用于已播放 Thanos Snap 动画的卡片
 )
@@ -154,6 +156,11 @@ data class WatchLaterUiState(
 class WatchLaterViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(WatchLaterUiState(isLoading = true))
     val uiState = _uiState.asStateFlow()
+
+    private data class WatchLaterManagementSnapshot(
+        val state: WatchLaterUiState,
+        val affectedCount: Int
+    )
     
     init {
         loadData()
@@ -356,6 +363,95 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
         }.awaitAll().filterNotNull().toSet()
     }
 
+    internal fun runManagementAction(action: WatchLaterManagementAction) {
+        val snapshotState = _uiState.value
+        if (snapshotState.isManaging) return
+        val snapshot = applyWatchLaterManagementOptimisticState(snapshotState, action)
+
+        viewModelScope.launch {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache.orEmpty()
+            if (csrf.isBlank()) {
+                _uiState.value = snapshot.state
+                android.widget.Toast.makeText(getApplication(), "请先登录", android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val result = executeWatchLaterManagementAction(action = action, csrf = csrf)
+            handleWatchLaterManagementResult(action, snapshot, result)
+        }
+    }
+
+    private fun applyWatchLaterManagementOptimisticState(
+        snapshotState: WatchLaterUiState,
+        action: WatchLaterManagementAction
+    ): WatchLaterManagementSnapshot {
+        val optimisticItems = resolveWatchLaterItemsAfterManagementAction(
+            items = snapshotState.items,
+            action = action
+        )
+        val affectedCount = (snapshotState.items.size - optimisticItems.size).coerceAtLeast(0)
+        val optimisticBvids = optimisticItems.map { it.bvid }.toSet()
+        val removedBvids = snapshotState.items.map { it.bvid }.filterNot { it in optimisticBvids }.toSet()
+        _uiState.value = snapshotState.copy(
+            items = optimisticItems,
+            totalCount = when (action) {
+                WatchLaterManagementAction.CLEAR_VIEWED ->
+                    (snapshotState.totalCount - affectedCount).coerceAtLeast(optimisticItems.size)
+                WatchLaterManagementAction.CLEAR_ALL -> 0
+            },
+            isManaging = true,
+            dissolvingIds = snapshotState.dissolvingIds - removedBvids
+        )
+        return WatchLaterManagementSnapshot(snapshotState, affectedCount)
+    }
+
+    private fun handleWatchLaterManagementResult(
+        action: WatchLaterManagementAction,
+        snapshot: WatchLaterManagementSnapshot,
+        result: Result<Unit>
+    ) {
+        if (result.isSuccess) {
+            _uiState.value = _uiState.value.copy(isManaging = false)
+            android.widget.Toast.makeText(
+                getApplication(),
+                resolveWatchLaterManagementSuccessMessage(action, snapshot.affectedCount),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            loadData()
+        } else {
+            _uiState.value = snapshot.state
+            android.widget.Toast.makeText(
+                getApplication(),
+                "操作失败: ${result.exceptionOrNull()?.message ?: "请稍后重试"}",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private suspend fun executeWatchLaterManagementAction(
+        action: WatchLaterManagementAction,
+        csrf: String
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val api = NetworkModule.api
+                val response = when (action) {
+                    WatchLaterManagementAction.CLEAR_VIEWED ->
+                        api.deleteFromWatchLater(viewed = true, csrf = csrf)
+                    WatchLaterManagementAction.CLEAR_ALL ->
+                        api.clearWatchLater(csrf = csrf)
+                }
+                if (response.code == 0) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(response.message.ifEmpty { "接口返回 ${response.code}" }))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     private suspend fun deleteWatchLaterAidWithRetry(
         aid: Long,
         csrf: String
@@ -434,12 +530,18 @@ fun WatchLaterScreen(
     var isBatchMode by rememberSaveable { mutableStateOf(false) }
     var selectedBvids by rememberSaveable { mutableStateOf(setOf<String>()) }
     var showBatchDeleteConfirm by rememberSaveable { mutableStateOf(false) }
+    var showManagementMenu by rememberSaveable { mutableStateOf(false) }
+    var pendingManagementAction by rememberSaveable { mutableStateOf<WatchLaterManagementAction?>(null) }
 
     LaunchedEffect(state.items) {
         val valid = state.items.map { it.bvid }.toSet()
         selectedBvids = selectedBvids.filter { it in valid }.toSet()
         if (isBatchMode && state.items.isEmpty()) {
             isBatchMode = false
+        }
+        if (state.items.isEmpty()) {
+            pendingManagementAction = null
+            showManagementMenu = false
         }
     }
 
@@ -556,6 +658,40 @@ fun WatchLaterScreen(
                                         contentDescription = "全部听",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
+                                }
+
+                                Box {
+                                    IconButton(
+                                        enabled = !state.isManaging,
+                                        onClick = { showManagementMenu = true }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.MoreVert,
+                                            contentDescription = "更多管理",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showManagementMenu,
+                                        onDismissRequest = { showManagementMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("清空已看") },
+                                            enabled = !state.isManaging,
+                                            onClick = {
+                                                showManagementMenu = false
+                                                pendingManagementAction = WatchLaterManagementAction.CLEAR_VIEWED
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("清空全部") },
+                                            enabled = !state.isManaging,
+                                            onClick = {
+                                                showManagementMenu = false
+                                                pendingManagementAction = WatchLaterManagementAction.CLEAR_ALL
+                                            }
+                                        )
+                                    }
                                 }
 
                                 TextButton(
@@ -790,6 +926,42 @@ fun WatchLaterScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBatchDeleteConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    pendingManagementAction?.let { action ->
+        val affectedCount = remember(action, state.items) {
+            state.items.size - resolveWatchLaterItemsAfterManagementAction(
+                items = state.items,
+                action = action
+            ).size
+        }
+        AlertDialog(
+            onDismissRequest = { pendingManagementAction = null },
+            title = {
+                Text(
+                    when (action) {
+                        WatchLaterManagementAction.CLEAR_VIEWED -> "清空已看"
+                        WatchLaterManagementAction.CLEAR_ALL -> "清空全部"
+                    }
+                )
+            },
+            text = { Text(resolveWatchLaterManagementConfirmText(action, affectedCount)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.runManagementAction(action)
+                        pendingManagementAction = null
+                    }
+                ) {
+                    Text("确认")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingManagementAction = null }) {
                     Text("取消")
                 }
             }

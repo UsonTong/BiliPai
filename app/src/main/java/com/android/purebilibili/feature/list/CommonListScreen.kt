@@ -50,6 +50,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.runtime.Composable
@@ -209,9 +210,15 @@ fun CommonListScreen(
     val seasonSeriesDetailViewModel = viewModel as? SeasonSeriesDetailViewModel
     val historyDeleteSession by historyViewModel?.deleteSession?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<HistoryDeleteSession?>(null) }
+    val isHistoryPaused by historyViewModel?.isHistoryPausedState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val isHistoryManagementBusy by historyViewModel?.isHistoryManagementBusyState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var isHistoryBatchMode by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var selectedHistoryKeys by rememberSaveable { androidx.compose.runtime.mutableStateOf(setOf<String>()) }
     var showHistoryBatchDeleteConfirm by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var showHistoryManagementMenu by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var showHistoryClearConfirm by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var pendingHistorySingleDeleteKey by rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.items, historyViewModel, isHistoryBatchMode) {
@@ -224,6 +231,9 @@ fun CommonListScreen(
         if (isHistoryBatchMode && state.items.isEmpty()) {
             isHistoryBatchMode = false
             selectedHistoryKeys = emptySet()
+        }
+        if (state.items.isEmpty()) {
+            showHistoryClearConfirm = false
         }
     }
 
@@ -815,8 +825,8 @@ fun CommonListScreen(
                                 }
                             }
 
-                            if (historyViewModel != null && state.items.isNotEmpty()) {
-                                if (isHistoryBatchMode) {
+                            if (historyViewModel != null) {
+                                if (isHistoryBatchMode && state.items.isNotEmpty()) {
                                     val allSelected = selectedHistoryKeys.size == state.items.size
                                     TextButton(
                                         onClick = {
@@ -844,13 +854,49 @@ fun CommonListScreen(
                                         Text("完成")
                                     }
                                 } else {
-                                    TextButton(
-                                        onClick = {
-                                            isHistoryBatchMode = true
-                                            selectedHistoryKeys = emptySet()
+                                    if (state.items.isNotEmpty()) {
+                                        TextButton(
+                                            enabled = !isHistoryManagementBusy,
+                                            onClick = {
+                                                isHistoryBatchMode = true
+                                                selectedHistoryKeys = emptySet()
+                                            }
+                                        ) {
+                                            Text("批量删除")
                                         }
-                                    ) {
-                                        Text("批量删除")
+                                    }
+
+                                    Box {
+                                        IconButton(
+                                            enabled = !isHistoryManagementBusy,
+                                            onClick = { showHistoryManagementMenu = true }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.MoreVert,
+                                                contentDescription = "更多管理"
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showHistoryManagementMenu,
+                                            onDismissRequest = { showHistoryManagementMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(resolveHistoryPauseActionLabel(isHistoryPaused)) },
+                                                enabled = !isHistoryManagementBusy,
+                                                onClick = {
+                                                    showHistoryManagementMenu = false
+                                                    historyViewModel.toggleHistoryPause()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("清空历史") },
+                                                enabled = state.items.isNotEmpty() && !isHistoryManagementBusy,
+                                                onClick = {
+                                                    showHistoryManagementMenu = false
+                                                    showHistoryClearConfirm = true
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -981,6 +1027,31 @@ fun CommonListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showHistoryBatchDeleteConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showHistoryClearConfirm && historyViewModel != null) {
+        AlertDialog(
+            onDismissRequest = { showHistoryClearConfirm = false },
+            title = { Text("清空历史") },
+            text = { Text(resolveHistoryClearConfirmText(state.items.size)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        historyViewModel.clearAllHistory()
+                        selectedHistoryKeys = emptySet()
+                        isHistoryBatchMode = false
+                        showHistoryClearConfirm = false
+                    }
+                ) {
+                    Text("清空")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHistoryClearConfirm = false }) {
                     Text("取消")
                 }
             }

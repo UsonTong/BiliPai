@@ -79,6 +79,22 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
 
     private val _deleteSession = MutableStateFlow<HistoryDeleteSession?>(null)
     internal val deleteSession = _deleteSession.asStateFlow()
+
+    private val _isHistoryPausedState = MutableStateFlow(false)
+    val isHistoryPausedState = _isHistoryPausedState.asStateFlow()
+
+    private val _isHistoryManagementBusyState = MutableStateFlow(false)
+    val isHistoryManagementBusyState = _isHistoryManagementBusyState.asStateFlow()
+
+    private data class HistoryClearSnapshot(
+        val items: List<VideoItem>,
+        val renderMap: Map<String, com.android.purebilibili.data.model.response.HistoryItem>,
+        val bvidMap: Map<String, com.android.purebilibili.data.model.response.HistoryItem>,
+        val cursorMax: Long,
+        val cursorViewAt: Long,
+        val cursorBusiness: String,
+        val hasMore: Boolean
+    )
     
     /**
      * 根据 bvid 获取历史记录项的导航信息
@@ -352,6 +368,113 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
         }
     }
 
+    fun clearAllHistory() {
+        if (_isHistoryManagementBusyState.value) return
+        val snapshot = captureHistoryClearSnapshot()
+        applyHistoryClearOptimisticState()
+
+        viewModelScope.launch {
+            val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache.orEmpty()
+            if (csrf.isBlank()) {
+                restoreHistoryClearSnapshot(snapshot)
+                _isHistoryManagementBusyState.value = false
+                android.widget.Toast.makeText(getApplication(), "请先登录", android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val result = com.android.purebilibili.data.repository.HistoryRepository.clearHistory(csrf)
+            if (result.isSuccess) {
+                android.widget.Toast.makeText(getApplication(), "已清空历史记录", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                restoreHistoryClearSnapshot(snapshot)
+                android.widget.Toast.makeText(
+                    getApplication(),
+                    "清空历史失败: ${result.exceptionOrNull()?.message ?: "请稍后重试"}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+            _isHistoryManagementBusyState.value = false
+        }
+    }
+
+    private fun captureHistoryClearSnapshot(): HistoryClearSnapshot {
+        return HistoryClearSnapshot(
+            items = _uiState.value.items,
+            renderMap = HashMap(_historyItemsByRenderKey),
+            bvidMap = HashMap(_historyItemsMap),
+            cursorMax = cursorMax,
+            cursorViewAt = cursorViewAt,
+            cursorBusiness = cursorBusiness,
+            hasMore = hasMore
+        )
+    }
+
+    private fun applyHistoryClearOptimisticState() {
+        _isHistoryManagementBusyState.value = true
+        _deleteSession.value = null
+        _uiState.value = _uiState.value.copy(items = emptyList(), error = null)
+        _historyItemsByRenderKey.clear()
+        _historyItemsMap.clear()
+        cursorMax = 0
+        cursorViewAt = 0
+        cursorBusiness = ""
+        hasMore = false
+        _hasMoreState.value = false
+    }
+
+    private fun restoreHistoryClearSnapshot(snapshot: HistoryClearSnapshot) {
+        restoreHistorySnapshot(snapshot.items, snapshot.renderMap, snapshot.bvidMap)
+        cursorMax = snapshot.cursorMax
+        cursorViewAt = snapshot.cursorViewAt
+        cursorBusiness = snapshot.cursorBusiness
+        hasMore = snapshot.hasMore
+        _hasMoreState.value = snapshot.hasMore
+    }
+
+    fun loadHistoryPauseState() {
+        viewModelScope.launch {
+            val result = com.android.purebilibili.data.repository.HistoryRepository.getHistoryPaused()
+            result.getOrNull()?.let { paused ->
+                _isHistoryPausedState.value = paused
+            }
+        }
+    }
+
+    fun toggleHistoryPause() {
+        if (_isHistoryManagementBusyState.value) return
+        val currentPaused = _isHistoryPausedState.value
+        val nextPaused = !currentPaused
+        val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache.orEmpty()
+        if (csrf.isBlank()) {
+            android.widget.Toast.makeText(getApplication(), "请先登录", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        _isHistoryPausedState.value = nextPaused
+        _isHistoryManagementBusyState.value = true
+        viewModelScope.launch {
+            val result = com.android.purebilibili.data.repository.HistoryRepository.setHistoryPaused(
+                paused = nextPaused,
+                csrf = csrf
+            )
+            if (result.isSuccess) {
+                android.widget.Toast.makeText(
+                    getApplication(),
+                    resolveHistoryPauseSuccessMessage(nextPaused),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                _isHistoryPausedState.value = currentPaused
+                android.widget.Toast.makeText(
+                    getApplication(),
+                    "设置历史记录失败: ${result.exceptionOrNull()?.message ?: "请稍后重试"}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+            _isHistoryManagementBusyState.value = false
+        }
+    }
+
     private suspend fun deleteHistoryItemsInBackground(
         targetEntries: List<Pair<String, com.android.purebilibili.data.model.response.HistoryItem>>,
         csrf: String
@@ -432,6 +555,7 @@ class HistoryViewModel(application: Application) : BaseListViewModel(application
 
     init {
         loadData()
+        loadHistoryPauseState()
     }
 }
 

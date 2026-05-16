@@ -162,6 +162,22 @@ interface BilibiliApi {
         @retrofit2.http.Field("csrf") csrf: String
     ): SimpleApiResponse
 
+    @retrofit2.http.FormUrlEncoded
+    @POST("x/v2/history/clear")
+    suspend fun clearHistory(
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @POST("x/v2/history/shadow/set")
+    suspend fun setHistoryShadow(
+        @retrofit2.http.Field("switch") shadowSwitch: Boolean,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+
+    @GET("x/v2/history/shadow")
+    suspend fun getHistoryShadow(): HistoryShadowResponse
+
     @GET("x/v3/fav/folder/created/list-all")
     suspend fun getFavFolders(
         @Query("up_mid") mid: Long,
@@ -891,7 +907,14 @@ interface BilibiliApi {
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("x/v2/history/toview/del")
     suspend fun deleteFromWatchLater(
-        @retrofit2.http.Field("aid") aid: Long,
+        @retrofit2.http.Field("aid") aid: Long? = null,
+        @retrofit2.http.Field("viewed") viewed: Boolean? = null,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v2/history/toview/clear")
+    suspend fun clearWatchLater(
         @retrofit2.http.Field("csrf") csrf: String
     ): SimpleApiResponse
 }
