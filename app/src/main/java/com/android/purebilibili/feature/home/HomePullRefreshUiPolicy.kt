@@ -158,14 +158,12 @@ internal fun resolveStablePullContentOffsetFraction(
 ): Float {
     if (indicatorStyle == HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE) {
         if (isRefreshing) return 0f
-        val currentOffset = resolvePullContentOffsetFraction(
+        return resolvePullContentOffsetFraction(
             distanceFraction = distanceFraction,
             isRefreshing = isRefreshing,
             motionStyle = motionStyle,
             indicatorStyle = indicatorStyle
         )
-        if (!isStateAnimating && distanceFraction <= 0f) return 0f
-        return max(previousOffsetFraction, currentOffset)
     }
     if (motionStyle == HomePullRefreshMotionStyle.MD3) return 0f
     val currentOffset = resolvePullContentOffsetFraction(

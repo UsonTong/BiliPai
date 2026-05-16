@@ -1186,7 +1186,7 @@ fun HomeScreen(
                         val isPageRefreshing = isRefreshing && state.currentCategory == category
                         var stablePullOffsetFraction by remember { mutableFloatStateOf(0f) }
 
-                        //  同一次下拉过程中只扩展顶部空间；手指回推时不立刻收缩，避免顶部区域抖动。
+                        //  下拉物理由策略区分：MD3 截图式跟随当前手指距离回收，旧 iOS 弹性保留防抖滞后。
                         val resolvedStablePullOffsetFraction = resolveStablePullContentOffsetFraction(
                             distanceFraction = pullDistanceFraction,
                             isRefreshing = isPageRefreshing,

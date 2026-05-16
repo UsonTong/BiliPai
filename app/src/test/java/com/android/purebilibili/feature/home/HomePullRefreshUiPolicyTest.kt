@@ -277,9 +277,9 @@ class HomePullRefreshUiPolicyTest {
     }
 
     @Test
-    fun `stable md3 screenshot pull offset keeps strongest drag while finger eases back`() {
+    fun `stable md3 screenshot pull offset follows finger back toward top`() {
         assertEquals(
-            0.9f,
+            0.41f,
             resolveStablePullContentOffsetFraction(
                 distanceFraction = 0.5f,
                 isRefreshing = false,
