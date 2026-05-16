@@ -110,3 +110,20 @@ internal fun resolvePullContentOffsetFraction(
     val clampedDistance = distanceFraction.coerceAtMost(2f).coerceAtLeast(0f)
     return clampedDistance * 0.5f
 }
+
+internal fun resolveStablePullContentOffsetFraction(
+    distanceFraction: Float,
+    isRefreshing: Boolean,
+    isStateAnimating: Boolean,
+    previousOffsetFraction: Float,
+    motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS
+): Float {
+    if (motionStyle == HomePullRefreshMotionStyle.MD3) return 0f
+    val currentOffset = resolvePullContentOffsetFraction(
+        distanceFraction = distanceFraction,
+        isRefreshing = isRefreshing,
+        motionStyle = motionStyle
+    )
+    if (!isRefreshing && !isStateAnimating && distanceFraction <= 0f) return 0f
+    return max(previousOffsetFraction, currentOffset)
+}

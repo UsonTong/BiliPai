@@ -214,4 +214,49 @@ class HomePullRefreshUiPolicyTest {
             0.001f
         )
     }
+
+    @Test
+    fun `stable pull content offset does not shrink while finger moves upward`() {
+        assertEquals(
+            0.8f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 0.6f,
+                isRefreshing = false,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.8f,
+                motionStyle = HomePullRefreshMotionStyle.IOS
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `stable pull content offset resets after pull returns to idle`() {
+        assertEquals(
+            0f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 0f,
+                isRefreshing = false,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.8f,
+                motionStyle = HomePullRefreshMotionStyle.IOS
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `stable pull content offset keeps md3 content pinned`() {
+        assertEquals(
+            0f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 1.2f,
+                isRefreshing = false,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.8f,
+                motionStyle = HomePullRefreshMotionStyle.MD3
+            ),
+            0.001f
+        )
+    }
 }

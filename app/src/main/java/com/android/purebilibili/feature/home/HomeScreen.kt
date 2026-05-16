@@ -26,6 +26,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -1176,17 +1177,23 @@ fun HomeScreen(
                         val pullRefreshState = rememberPullToRefreshState()
                         val pullDistanceFraction = pullRefreshState.distanceFraction
                         val isPageRefreshing = isRefreshing && state.currentCategory == category
+                        var stablePullOffsetFraction by remember { mutableFloatStateOf(0f) }
 
-                        //  [新增] 下拉回弹物理动画状态 (Moved from outer scope)
-                        val targetPullOffset = resolvePullContentOffsetFraction(
+                        //  同一次下拉过程中只扩展顶部空间；手指回推时不立刻收缩，避免顶部区域抖动。
+                        val resolvedStablePullOffsetFraction = resolveStablePullContentOffsetFraction(
                             distanceFraction = pullDistanceFraction,
                             isRefreshing = isPageRefreshing,
+                            isStateAnimating = pullRefreshState.isAnimating,
+                            previousOffsetFraction = stablePullOffsetFraction,
                             motionStyle = pullRefreshMotionStyle
                         )
+                        SideEffect {
+                            stablePullOffsetFraction = resolvedStablePullOffsetFraction
+                        }
                         
                         //  使用 animateFloatAsState 包装偏移量
                         val animatedDragOffsetFraction by androidx.compose.animation.core.animateFloatAsState(
-                            targetValue = targetPullOffset,
+                            targetValue = resolvedStablePullOffsetFraction,
                             animationSpec = androidx.compose.animation.core.spring(
                                 dampingRatio = 0.5f,  // 0.5 = 明显的弹性 (Bouncy)
                                 stiffness = 350f      // 350 = 中等刚度
