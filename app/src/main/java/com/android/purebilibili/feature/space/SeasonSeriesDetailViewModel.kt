@@ -21,6 +21,9 @@ class SeasonSeriesDetailViewModel(application: Application) : BaseListViewModel(
     private var ownerName: String = ""
     private var pageTitle: String = ""
 
+    val isFavoriteDetail: Boolean
+        get() = type == SpaceCollectionDetailType.FAVORITE.raw
+
     // Pagination
     private var currentPage = 1
     private var hasMore = true

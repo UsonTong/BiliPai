@@ -383,6 +383,15 @@ internal fun shouldShareAudioModeViewModelWithPreviousEntry(
         isVideoDetailRoute(previousRoute)
 }
 
+internal fun shouldNavigateAudioModeBackToCurrentVideo(
+    previousVideoBvid: String?,
+    currentVideoBvid: String
+): Boolean {
+    val normalizedCurrentBvid = currentVideoBvid.trim()
+    if (normalizedCurrentBvid.isEmpty()) return false
+    return previousVideoBvid?.trim() != normalizedCurrentBvid
+}
+
 internal fun shouldUseTabletSeamlessBackTransition(
     isTabletLayout: Boolean,
     cardTransitionEnabled: Boolean,

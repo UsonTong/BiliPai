@@ -1761,11 +1761,19 @@ fun AppNavigation(
             com.android.purebilibili.feature.video.screen.AudioModeScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-                onVideoModeClick = { _ ->
-                    //  [修复] 直接返回到 VideoDetailScreen
-                    // 由于 ViewModel 是共享的，VideoDetailScreen 会自动显示当前正在播放的视频
-                    // 不需要比较 bvid，因为播放器状态已同步
-                    navController.popBackStack()
+                onVideoModeClick = { currentBvid, currentCid ->
+                    val previousVideoBvid = parentEntry?.arguments?.getString("bvid")
+                    if (
+                        shouldNavigateAudioModeBackToCurrentVideo(
+                            previousVideoBvid = previousVideoBvid,
+                            currentVideoBvid = currentBvid
+                        )
+                    ) {
+                        navController.popBackStack()
+                        navigateToVideo(currentBvid, currentCid, "")
+                    } else {
+                        navController.popBackStack()
+                    }
                 },
                 isInPipMode = isInPipMode
             )

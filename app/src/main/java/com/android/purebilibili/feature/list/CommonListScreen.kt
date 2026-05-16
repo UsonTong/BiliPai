@@ -277,6 +277,10 @@ fun CommonListScreen(
         hasHistoryViewModel = historyViewModel != null,
         hasSeasonSeriesDetailViewModel = seasonSeriesDetailViewModel != null
     )
+    val shouldUseFavoritePlaybackQueue = shouldUseFavoriteExternalPlaylist(
+        hasFavoriteViewModel = favoriteViewModel != null,
+        isFavoriteDetail = seasonSeriesDetailViewModel?.isFavoriteDetail == true
+    )
     val favoriteContentMode = resolveFavoriteContentMode(
         isFavoritePage = favoriteViewModel != null && !isSubscribedBrowse,
         folderCount = foldersState.size
@@ -694,7 +698,7 @@ fun CommonListScreen(
                         showOnlineCount = showOnlineCount,
                         videoCardAppearance = videoCardAppearance,
                         onVideoClick = { bvid, cid, coverUrl ->
-                            if (favoriteViewModel != null) {
+                            if (shouldUseFavoritePlaybackQueue) {
                                 playFavoriteVideo(state.items, bvid, cid, coverUrl)
                             } else {
                                 onVideoClick(bvid, cid, coverUrl)

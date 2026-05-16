@@ -36,4 +36,34 @@ class AudioModeViewModelOwnerPolicyTest {
             )
         )
     }
+
+    @Test
+    fun `audio mode returns to previous video when current bvid is unchanged`() {
+        assertFalse(
+            shouldNavigateAudioModeBackToCurrentVideo(
+                previousVideoBvid = "BV1same",
+                currentVideoBvid = "BV1same"
+            )
+        )
+    }
+
+    @Test
+    fun `audio mode navigates to current video when queue advanced`() {
+        assertTrue(
+            shouldNavigateAudioModeBackToCurrentVideo(
+                previousVideoBvid = "BV1first",
+                currentVideoBvid = "BV2current"
+            )
+        )
+    }
+
+    @Test
+    fun `audio mode ignores blank current bvid`() {
+        assertFalse(
+            shouldNavigateAudioModeBackToCurrentVideo(
+                previousVideoBvid = "BV1first",
+                currentVideoBvid = ""
+            )
+        )
+    }
 }

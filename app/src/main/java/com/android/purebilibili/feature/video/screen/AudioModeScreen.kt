@@ -183,7 +183,7 @@ private fun enterAudioModePip(activity: Activity?) {
 fun AudioModeScreen(
     viewModel: PlayerViewModel,
     onBack: () -> Unit,
-    onVideoModeClick: (String) -> Unit,  //  传递当前视频的 bvid
+    onVideoModeClick: (String, Long) -> Unit,  //  传递当前视频的 bvid/cid
     isInPipMode: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -334,7 +334,7 @@ fun AudioModeScreen(
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
-                                        .clickable { onVideoModeClick(info.bvid) }
+                                        .clickable { onVideoModeClick(info.bvid, info.cid) }
                                         .padding(horizontal = 8.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
