@@ -133,6 +133,16 @@ internal fun resolveSubReplyDetailSectionTitle(replyCount: Int): String {
     return "相关回复共${replyCount.coerceAtLeast(0)}条"
 }
 
+internal fun resolveSubReplyDetailDisplayCount(
+    rootReply: ReplyItem,
+    loadedReplyCount: Int
+): Int {
+    return maxOf(
+        resolveReplyThreadCount(rootReply),
+        loadedReplyCount
+    ).coerceAtLeast(0)
+}
+
 internal fun resolveSubReplyConversationSectionTitle(replyCount: Int): String {
     return "对话共${replyCount.coerceAtLeast(0)}条"
 }
@@ -339,6 +349,12 @@ internal fun SubReplyDetailContent(
     }
     val localConversationMode = conversationAnchor != null
     val effectiveConversationMode = isConversationMode || localConversationMode
+    val detailReplyDisplayCount = remember(rootReply, subReplies.size) {
+        resolveSubReplyDetailDisplayCount(
+            rootReply = rootReply,
+            loadedReplyCount = subReplies.size
+        )
+    }
     val listScrollResetKey = remember(
         rootReply.rpid,
         effectiveConversationMode,
@@ -447,7 +463,7 @@ internal fun SubReplyDetailContent(
                         text = if (effectiveConversationMode) {
                             resolveSubReplyConversationSectionTitle(replyCount = visibleReplies.size)
                         } else {
-                            resolveSubReplyDetailSectionTitle(replyCount = subReplies.size)
+                            resolveSubReplyDetailSectionTitle(replyCount = detailReplyDisplayCount)
                         },
                         fontSize = 14.sp,
                         color = appearance.primaryTextColor,

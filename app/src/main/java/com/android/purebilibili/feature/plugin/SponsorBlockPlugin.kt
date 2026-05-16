@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.plugin
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,9 +12,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import io.github.alexzhirkevich.cupertino.icons.CupertinoIcons
 import io.github.alexzhirkevich.cupertino.icons.outlined.*
 import io.github.alexzhirkevich.cupertino.icons.filled.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +54,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.coroutines.flow.first
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private const val TAG = "SponsorBlockPlugin"
 const val SPONSOR_BLOCK_PLUGIN_ID = "sponsor_block"
+private val PLUGIN_EVENT_TIME_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 internal fun normalizeSponsorSegments(
     segments: List<SponsorSegment>
@@ -732,11 +740,22 @@ private fun SponsorBlockEmptyInsight() {
 @Composable
 private fun SponsorBlockRecordRow(record: SponsorBlockSkipRecord) {
     val context = LocalContext.current
+    var showDetailDialog by remember(record.timestampMs, record.segmentId) { mutableStateOf(false) }
+    if (showDetailDialog) {
+        SponsorBlockRecordDetailDialog(
+            record = record,
+            onDismiss = { showDetailDialog = false }
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { showDetailDialog = true }
+            )
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -807,6 +826,55 @@ private fun SponsorBlockRecordRow(record: SponsorBlockSkipRecord) {
 }
 
 @Composable
+private fun SponsorBlockRecordDetailDialog(
+    record: SponsorBlockSkipRecord,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("跳过详情") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SponsorBlockDetailLine("视频", record.videoTitle.ifBlank { "未知视频" })
+                SponsorBlockDetailLine("UP 主", record.upName.ifBlank { "未知 UP" })
+                SponsorBlockDetailLine("片段类型", record.segmentCategoryName)
+                SponsorBlockDetailLine("来源", record.triggerLabel)
+                SponsorBlockDetailLine("跳转区间", record.progressText)
+                SponsorBlockDetailLine("节省时间", record.savedText)
+                SponsorBlockDetailLine("跳过时间", formatPluginEventTime(record.timestampMs))
+                if (record.bvid.isNotBlank()) {
+                    SponsorBlockDetailLine("BVID", record.bvid)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("知道了")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SponsorBlockDetailLine(
+    label: String,
+    value: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
 private fun SponsorBlockChip(text: String) {
     Box(
         modifier = Modifier
@@ -856,3 +924,9 @@ private val SponsorBlockMarkerMode.label: String
         SponsorBlockMarkerMode.SPONSOR_ONLY -> "仅恰饭"
         SponsorBlockMarkerMode.ALL_SKIPPABLE -> "全部可跳过"
     }
+
+private fun formatPluginEventTime(timestampMs: Long): String {
+    return Instant.ofEpochMilli(timestampMs)
+        .atZone(ZoneId.systemDefault())
+        .format(PLUGIN_EVENT_TIME_FORMATTER)
+}

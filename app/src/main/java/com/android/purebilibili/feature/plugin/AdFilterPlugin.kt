@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.plugin
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -31,23 +32,32 @@ import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.plugin.PluginStore
+import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.data.model.response.VideoItem
+import com.android.purebilibili.data.repository.SearchRepository
 import com.android.purebilibili.core.ui.components.*
 import io.github.alexzhirkevich.cupertino.CupertinoSwitch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private const val TAG = "AdFilterPlugin"
 internal const val ADFILTER_PLUGIN_ID = "adfilter"
 private const val AD_FILTER_CUSTOM_LIST_PREVIEW_LIMIT = 3
+private const val AD_FILTER_PROFILE_REFRESH_LIMIT = 10
+private val AD_FILTER_EVENT_TIME_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 internal data class AdFilterCustomListSummary(
     val countText: String,
@@ -296,11 +306,27 @@ class AdFilterPlugin : FeedPlugin {
         )
         ioScope.launch {
             runCatching {
-                AdFilterInsightStore.appendRecord(PluginManager.getContext(), record)
+                AdFilterInsightStore.appendRecord(
+                    PluginManager.getContext(),
+                    enrichAdFilterRecordUpProfile(record)
+                )
             }.onFailure { error ->
                 Logger.w(TAG, "记录过滤历史失败: ${error.message}")
             }
         }
+    }
+
+    private suspend fun enrichAdFilterRecordUpProfile(record: AdFilterRecord): AdFilterRecord {
+        if (record.upFaceUrl.isNotBlank() || record.upMid <= 0L) return record
+        val profile = fetchAdFilterUpProfileByMid(
+            mid = record.upMid,
+            fallbackName = record.upName
+        ) ?: return record
+        return record.copy(
+            upName = record.upName.ifBlank { profile.name },
+            upFaceUrl = profile.faceUrl,
+            upMid = record.upMid.takeIf { it > 0L } ?: profile.mid
+        )
     }
     
     /**
@@ -414,6 +440,7 @@ class AdFilterPlugin : FeedPlugin {
         var upListExpanded by remember { mutableStateOf(false) }
         var keywordListExpanded by remember { mutableStateOf(false) }
         var insightRecords by remember { mutableStateOf<List<AdFilterRecord>>(emptyList()) }
+        var cachedUpProfiles by remember { mutableStateOf<List<AdFilterUpProfile>>(emptyList()) }
         
         // 输入对话框状态
         var showAddUpDialog by remember { mutableStateOf(false) }
@@ -433,11 +460,19 @@ class AdFilterPlugin : FeedPlugin {
             blockedUpNames = config.blockedUpNames
             blockedKeywords = config.blockedKeywords
             insightRecords = AdFilterInsightStore.readRecords(context)
+            cachedUpProfiles = AdFilterInsightStore.readUpProfiles(context)
+            cachedUpProfiles = refreshMissingAdFilterUpProfiles(
+                context = context,
+                records = insightRecords,
+                blockedUpNames = blockedUpNames,
+                cachedUpProfiles = cachedUpProfiles
+            )
         }
-        val insightSummary = remember(insightRecords, blockedUpNames) {
+        val insightSummary = remember(insightRecords, blockedUpNames, cachedUpProfiles) {
             resolveAdFilterInsightSummary(
                 records = insightRecords,
-                blockedUpNames = blockedUpNames
+                blockedUpNames = blockedUpNames,
+                cachedUpProfiles = cachedUpProfiles
             )
         }
         
@@ -560,6 +595,14 @@ class AdFilterPlugin : FeedPlugin {
                             if (inputText.isNotBlank()) {
                                 blockedUpNames = blockedUpNames + inputText.trim()
                                 persistConfig(config.copy(blockedUpNames = blockedUpNames))
+                                scope.launch {
+                                    cachedUpProfiles = refreshMissingAdFilterUpProfiles(
+                                        context = context,
+                                        records = insightRecords,
+                                        blockedUpNames = blockedUpNames,
+                                        cachedUpProfiles = cachedUpProfiles
+                                    )
+                                }
                             }
                             showAddUpDialog = false
                             inputText = ""
@@ -604,6 +647,102 @@ class AdFilterPlugin : FeedPlugin {
                 }
             )
         }
+    }
+}
+
+private suspend fun refreshMissingAdFilterUpProfiles(
+    context: Context,
+    records: List<AdFilterRecord>,
+    blockedUpNames: List<String>,
+    cachedUpProfiles: List<AdFilterUpProfile>
+): List<AdFilterUpProfile> = withContext(Dispatchers.IO) {
+    val knownProfiles = resolveAdFilterKnownUpProfiles(
+        records = records,
+        cachedUpProfiles = cachedUpProfiles
+    )
+    val recordCandidates = records
+        .sortedByDescending { it.timestampMs }
+        .filter { record ->
+            record.upName.isNotBlank() &&
+                resolveAdFilterRecordUpFaceUrl(record, knownProfiles).isBlank()
+        }
+        .map { record -> record.upName to record.upMid }
+    val blockedCandidates = blockedUpNames.map { name -> name to 0L }
+    val missingCandidates = (recordCandidates + blockedCandidates)
+        .distinctBy { (name, mid) ->
+            if (mid > 0L) "mid:$mid" else "name:${name.lowercase()}"
+        }
+        .filter { (name, mid) ->
+            findAdFilterProfileForRefresh(knownProfiles, name, mid)?.faceUrl.isNullOrBlank()
+        }
+        .take(AD_FILTER_PROFILE_REFRESH_LIMIT)
+
+    val refreshedProfiles = missingCandidates.mapNotNull { (name, mid) ->
+        when {
+            mid > 0L -> fetchAdFilterUpProfileByMid(mid = mid, fallbackName = name)
+            else -> fetchAdFilterUpProfileByName(name)
+        }
+    }
+    if (refreshedProfiles.isNotEmpty()) {
+        AdFilterInsightStore.upsertUpProfiles(context, refreshedProfiles)
+    }
+    AdFilterInsightStore.readUpProfiles(context)
+}
+
+private suspend fun fetchAdFilterUpProfileByMid(
+    mid: Long,
+    fallbackName: String
+): AdFilterUpProfile? {
+    if (mid <= 0L) return null
+    val response = runCatching {
+        NetworkModule.api.getUserCard(mid = mid, photo = true)
+    }.getOrNull()
+    val card = response?.data?.card
+    if (response?.code != 0 || card == null) return null
+    val name = card.name.ifBlank { fallbackName }
+    if (name.isBlank() && card.face.isBlank()) return null
+    return AdFilterUpProfile(
+        name = name,
+        faceUrl = card.face,
+        mid = card.mid.toLongOrNull() ?: mid,
+        updatedAtMs = System.currentTimeMillis()
+    )
+}
+
+private suspend fun fetchAdFilterUpProfileByName(name: String): AdFilterUpProfile? {
+    val trimmedName = name.trim()
+    if (trimmedName.isBlank()) return null
+    val result = SearchRepository.searchUp(keyword = trimmedName, page = 1).getOrNull()?.first.orEmpty()
+    val matched = result.firstOrNull { it.uname.equals(trimmedName, ignoreCase = true) }
+        ?: result.firstOrNull { item ->
+            item.uname.contains(trimmedName, ignoreCase = true) ||
+                trimmedName.contains(item.uname, ignoreCase = true)
+        }
+        ?: return null
+    val searchProfile = AdFilterUpProfile(
+        name = matched.uname.ifBlank { trimmedName },
+        faceUrl = matched.upic,
+        mid = matched.mid,
+        updatedAtMs = System.currentTimeMillis()
+    )
+    if (searchProfile.faceUrl.isNotBlank() || searchProfile.mid <= 0L) {
+        return searchProfile
+    }
+    return fetchAdFilterUpProfileByMid(
+        mid = searchProfile.mid,
+        fallbackName = searchProfile.name
+    ) ?: searchProfile
+}
+
+private fun findAdFilterProfileForRefresh(
+    profiles: List<AdFilterUpProfile>,
+    name: String,
+    mid: Long
+): AdFilterUpProfile? {
+    return profiles.firstOrNull { profile ->
+        mid > 0L && profile.mid == mid
+    } ?: profiles.firstOrNull { profile ->
+        profile.name.equals(name, ignoreCase = true)
     }
 }
 
@@ -675,22 +814,26 @@ private fun AdFilterInsightPanel(summary: AdFilterInsightSummary) {
         AdFilterRecordSection(
             title = "过滤广告推广",
             emptyText = "暂无广告推广过滤记录",
-            records = summary.sponsoredRecords
+            records = summary.sponsoredRecords,
+            upProfiles = summary.upProfiles
         )
         AdFilterRecordSection(
             title = "过滤标题党",
             emptyText = "暂无标题党过滤记录",
-            records = summary.clickbaitRecords
+            records = summary.clickbaitRecords,
+            upProfiles = summary.upProfiles
         )
         AdFilterRecordSection(
             title = "过滤低播放量",
             emptyText = "暂无低播放量过滤记录",
-            records = summary.lowViewRecords
+            records = summary.lowViewRecords,
+            upProfiles = summary.upProfiles
         )
         AdFilterRecordSection(
             title = "自定义关键词",
             emptyText = "暂无关键词过滤记录",
-            records = summary.customKeywordRecords
+            records = summary.customKeywordRecords,
+            upProfiles = summary.upProfiles
         )
     }
 }
@@ -730,7 +873,8 @@ private fun AdFilterStatTile(
 private fun AdFilterRecordSection(
     title: String,
     emptyText: String,
-    records: List<AdFilterRecord>
+    records: List<AdFilterRecord>,
+    upProfiles: List<AdFilterUpProfile>
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -757,7 +901,10 @@ private fun AdFilterRecordSection(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 records.take(3).forEach { record ->
-                    AdFilterRecordCard(record = record)
+                    AdFilterRecordCard(
+                        record = record,
+                        upFaceUrl = resolveAdFilterRecordUpFaceUrl(record, upProfiles)
+                    )
                 }
             }
         }
@@ -765,13 +912,29 @@ private fun AdFilterRecordSection(
 }
 
 @Composable
-private fun AdFilterRecordCard(record: AdFilterRecord) {
+private fun AdFilterRecordCard(
+    record: AdFilterRecord,
+    upFaceUrl: String
+) {
     val context = LocalContext.current
+    var showDetailDialog by remember(record.timestampMs, record.bvid, record.videoTitle) {
+        mutableStateOf(false)
+    }
+    if (showDetailDialog) {
+        AdFilterRecordDetailDialog(
+            record = record,
+            onDismiss = { showDetailDialog = false }
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { showDetailDialog = true }
+            )
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -806,7 +969,7 @@ private fun AdFilterRecordCard(record: AdFilterRecord) {
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data(FormatUtils.fixImageUrl(record.upFaceUrl))
+                        .data(FormatUtils.fixImageUrl(upFaceUrl))
                         .crossfade(true)
                         .build(),
                     contentDescription = null,
@@ -839,6 +1002,56 @@ private fun AdFilterRecordCard(record: AdFilterRecord) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun AdFilterRecordDetailDialog(
+    record: AdFilterRecord,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("过滤详情") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AdFilterDetailLine("视频", record.videoTitle.ifBlank { "未知视频" })
+                AdFilterDetailLine("UP 主", record.upName.ifBlank { "未知 UP" })
+                AdFilterDetailLine("过滤类型", record.reasonLabel)
+                if (record.matchedText.isNotBlank()) {
+                    AdFilterDetailLine("命中内容", record.matchedText)
+                }
+                AdFilterDetailLine("播放量", FormatUtils.formatStat(record.viewCount.toLong()))
+                AdFilterDetailLine("过滤时间", formatAdFilterEventTime(record.timestampMs))
+                if (record.bvid.isNotBlank()) {
+                    AdFilterDetailLine("BVID", record.bvid)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("知道了")
+            }
+        }
+    )
+}
+
+@Composable
+private fun AdFilterDetailLine(
+    label: String,
+    value: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -1048,3 +1261,9 @@ data class AdFilterConfig(
     // 自定义关键词
     val blockedKeywords: List<String> = emptyList()  // 自定义屏蔽词
 )
+
+private fun formatAdFilterEventTime(timestampMs: Long): String {
+    return Instant.ofEpochMilli(timestampMs)
+        .atZone(ZoneId.systemDefault())
+        .format(AD_FILTER_EVENT_TIME_FORMATTER)
+}

@@ -20,6 +20,24 @@ class SubReplyDetailPresentationPolicyTest {
     }
 
     @Test
+    fun `sub reply detail display count keeps root declared total when page only loaded partially`() {
+        assertEquals(
+            8,
+            resolveSubReplyDetailDisplayCount(
+                rootReply = ReplyItem(rcount = 8, replies = listOf(ReplyItem(rpid = 1))),
+                loadedReplyCount = 3
+            )
+        )
+        assertEquals(
+            5,
+            resolveSubReplyDetailDisplayCount(
+                rootReply = ReplyItem(rcount = 2),
+                loadedReplyCount = 5
+            )
+        )
+    }
+
+    @Test
     fun `conversation section title should include filtered reply count`() {
         assertEquals("对话共2条", resolveSubReplyConversationSectionTitle(replyCount = 2))
     }

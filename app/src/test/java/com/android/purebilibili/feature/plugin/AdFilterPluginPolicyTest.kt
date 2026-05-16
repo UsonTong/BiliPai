@@ -156,6 +156,64 @@ class AdFilterPluginPolicyTest {
         assertEquals(0, profiles[1].filteredCount)
     }
 
+    @Test
+    fun resolveAdFilterBlockedUpProfiles_usesCachedAvatarWhenRecordHasNoFace() {
+        val records = listOf(
+            adFilterRecord(
+                reasonType = AdFilterReasonType.BLOCKED_UP,
+                matchedText = "UP甲",
+                upName = "UP甲",
+                upFace = "",
+                upMid = 42L,
+                timestampMs = 10_000L
+            )
+        )
+
+        val profiles = resolveAdFilterBlockedUpProfiles(
+            records = records,
+            blockedUpNames = listOf("UP甲"),
+            cachedUpProfiles = listOf(
+                AdFilterUpProfile(
+                    name = "UP甲",
+                    faceUrl = "cached-face",
+                    mid = 42L,
+                    updatedAtMs = 12_000L
+                )
+            )
+        )
+
+        assertEquals("cached-face", profiles[0].faceUrl)
+        assertEquals(42L, profiles[0].mid)
+        assertEquals(1, profiles[0].filteredCount)
+    }
+
+    @Test
+    fun resolveAdFilterRecordUpFaceUrl_fallsBackToCachedProfile() {
+        val record = adFilterRecord(
+            reasonType = AdFilterReasonType.CUSTOM_KEYWORD,
+            matchedText = "华为",
+            upName = "数码UP",
+            upFace = "",
+            upMid = 88L,
+            timestampMs = 10_000L
+        )
+
+        assertEquals(
+            "cached-face",
+            resolveAdFilterRecordUpFaceUrl(
+                record = record,
+                upProfiles = listOf(
+                    AdFilterUpProfile(
+                        name = "数码UP",
+                        faceUrl = "cached-face",
+                        mid = 88L,
+                        updatedAtMs = 12_000L
+                    )
+                )
+            )
+        )
+    }
+
     private fun adFilterRecord(
         reasonType: AdFilterReasonType,
         matchedText: String,
