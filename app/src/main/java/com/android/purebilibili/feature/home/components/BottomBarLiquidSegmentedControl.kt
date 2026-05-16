@@ -594,6 +594,7 @@ fun BottomBarLiquidSegmentedControl(
                 .width(indicatorWidth)
                 .height(resolvedIndicatorHeight)
                 .align(Alignment.CenterStart)
+                .clip(indicatorShape)
                 .run {
                     if (shouldDrawSegmentedControlIndicatorBackdrop(
                             liquidGlassEnabled = liquidGlassEnabled,

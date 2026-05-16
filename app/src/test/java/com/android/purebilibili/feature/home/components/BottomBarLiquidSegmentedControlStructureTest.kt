@@ -258,6 +258,7 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertFalse(source.contains("backdrop = if (shouldRefractContent)"))
         assertFalse(source.contains("backdrop = shellBackdrop"))
         assertFalse(source.contains(".clip(containerShape)"))
+        assertTrue(source.contains(".clip(indicatorShape)"))
         assertTrue(source.contains("resolveSegmentedControlIndicatorWidthDp("))
         assertTrue(source.contains("resolveSegmentedControlIndicatorHeightDp("))
         assertTrue(source.contains("resolveSegmentedControlIndicatorOffsetDp("))

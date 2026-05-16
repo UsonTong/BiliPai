@@ -82,7 +82,7 @@ private fun SettingsCardGroup(
     val darkTintBase = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
     val baseCardContainer = AppSurfaceTokens.cardContainer()
     val containerColor = if (isDark) {
-        darkTintBase.compositeOver(baseCardContainer).copy(alpha = 0.96f)
+        darkTintBase.compositeOver(baseCardContainer)
     } else {
         baseCardContainer
     }
