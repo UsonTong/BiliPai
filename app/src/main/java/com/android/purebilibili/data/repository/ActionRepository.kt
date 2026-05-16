@@ -1,6 +1,7 @@
 package com.android.purebilibili.data.repository
 
 import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.core.refresh.WatchLaterRefreshBus
 import com.android.purebilibili.core.store.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -750,7 +751,10 @@ object ActionRepository {
                 com.android.purebilibili.core.util.Logger.d("ActionRepository", " toggleWatchLater: aid=$aid, add=$add, code=${response.code}")
                 
                 when (response.code) {
-                    0 -> Result.success(add)
+                    0 -> {
+                        WatchLaterRefreshBus.notifyChanged()
+                        Result.success(add)
+                    }
                     90001 -> Result.failure(Exception("稍后再看列表已满"))
                     90003 -> Result.failure(Exception("视频已被删除"))
                     else -> Result.failure(Exception(response.message.ifEmpty { "操作失败: ${response.code}" }))

@@ -46,6 +46,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.coroutines.AppScope
+import com.android.purebilibili.core.refresh.WatchLaterRefreshBus
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.ui.AdaptiveTopAppBar
@@ -156,6 +157,15 @@ class WatchLaterViewModel(application: Application) : AndroidViewModel(applicati
     
     init {
         loadData()
+        observeWatchLaterRefresh()
+    }
+
+    private fun observeWatchLaterRefresh() {
+        viewModelScope.launch {
+            WatchLaterRefreshBus.changes.collect {
+                loadData()
+            }
+        }
     }
     
     fun loadData() {
