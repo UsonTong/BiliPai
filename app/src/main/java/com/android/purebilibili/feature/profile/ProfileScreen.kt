@@ -508,6 +508,7 @@ fun ProfileScreen(
                             onFollowingClick = { onFollowingClick(currentUiState.user.mid) },
                             onDownloadClick = onDownloadClick,
                             onWatchLaterClick = onWatchLaterClick,
+                            onInboxClick = onInboxClick,
                             paddingValues = padding
                         )
                     } else {
@@ -800,6 +801,7 @@ fun TabletProfileContent(
     onFollowingClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
+    onInboxClick: () -> Unit = {},
     paddingValues: PaddingValues
 ) {
     AdaptiveSplitLayout(
@@ -839,6 +841,7 @@ fun TabletProfileContent(
                     .background(glassContainerColor)
                     .border(1.dp, glassBorderColor, RoundedCornerShape(32.dp))
                     .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -861,11 +864,12 @@ fun TabletProfileContent(
                         onFavoriteFolderClick = onFavoriteFolderClick,
                         onDownloadClick = onDownloadClick, 
                         onWatchLaterClick = onWatchLaterClick,
+                        onInboxClick = onInboxClick,
                         onAccountManageClick = onAccountManageClick,
                         isTablet = true, // Force tablet mode
                         containerColor = Color.Transparent, // Grid items handle bg
                         contentColor = contentColor,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
