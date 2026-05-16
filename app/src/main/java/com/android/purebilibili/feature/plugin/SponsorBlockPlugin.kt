@@ -4,9 +4,7 @@ package com.android.purebilibili.feature.plugin
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Cupertino Icons - iOS SF Symbols 风格图标
@@ -488,7 +486,6 @@ class SponsorBlockPlugin : PlayerPluginApi {
 
 @Composable
 private fun SponsorBlockInsightPanel(summary: SponsorBlockInsightSummary) {
-    val scrollState = rememberScrollState()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -496,24 +493,29 @@ private fun SponsorBlockInsightPanel(summary: SponsorBlockInsightSummary) {
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f))
             .padding(14.dp)
     ) {
-        val boardWidth = if (maxWidth < 760.dp) 760.dp else maxWidth
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState)
-        ) {
+        val useWideLayout = maxWidth >= 460.dp
+        if (useWideLayout) {
             Row(
-                modifier = Modifier.width(boardWidth),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SponsorBlockSummaryRail(
                     summary = summary,
-                    modifier = Modifier.width(188.dp)
+                    modifier = Modifier.widthIn(min = 156.dp, max = 190.dp)
                 )
-                SponsorBlockLandscapeRecords(
+                SponsorBlockRecentSection(
                     summary = summary,
                     modifier = Modifier.weight(1f)
                 )
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SponsorBlockSummaryHeader(summary = summary)
+                SponsorBlockCompactStats(summary = summary)
+                SponsorBlockRecentSection(summary = summary)
             }
         }
     }
@@ -596,7 +598,69 @@ private fun SponsorBlockSummaryHeader(summary: SponsorBlockInsightSummary) {
 }
 
 @Composable
-private fun SponsorBlockLandscapeRecords(
+private fun SponsorBlockCompactStats(summary: SponsorBlockInsightSummary) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SponsorBlockCompactStatItem(
+            title = "今日",
+            value = summary.todaySavedText,
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "累计",
+            value = summary.totalSavedText,
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "次数",
+            value = "${summary.totalSkipCount}",
+            modifier = Modifier.weight(1f)
+        )
+        SponsorBlockCompactStatItem(
+            title = "UP",
+            value = "${summary.uniqueUpCount}",
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SponsorBlockCompactStatItem(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SponsorBlockRecentSection(
     summary: SponsorBlockInsightSummary,
     modifier: Modifier = Modifier
 ) {
@@ -607,30 +671,14 @@ private fun SponsorBlockLandscapeRecords(
         if (summary.recentRecords.isEmpty()) {
             SponsorBlockEmptyInsight()
         } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "最近跳过",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "横向滑动查看更多",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                summary.recentRecords.forEach { record ->
-                    SponsorBlockRecordRow(
-                        record = record,
-                        modifier = Modifier.width(286.dp)
-                    )
-                }
+            Text(
+                text = "最近跳过",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            summary.recentRecords.forEach { record ->
+                SponsorBlockRecordRow(record = record)
             }
         }
     }
@@ -664,9 +712,9 @@ private fun SponsorBlockStatTile(
 }
 
 @Composable
-private fun SponsorBlockEmptyInsight(modifier: Modifier = Modifier) {
+private fun SponsorBlockEmptyInsight() {
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.62f))
@@ -682,13 +730,11 @@ private fun SponsorBlockEmptyInsight(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SponsorBlockRecordRow(
-    record: SponsorBlockSkipRecord,
-    modifier: Modifier = Modifier
-) {
+private fun SponsorBlockRecordRow(record: SponsorBlockSkipRecord) {
     val context = LocalContext.current
     Row(
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
             .padding(8.dp),
