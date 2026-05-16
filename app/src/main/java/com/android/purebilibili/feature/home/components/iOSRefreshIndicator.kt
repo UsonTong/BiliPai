@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -14,8 +16,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +54,85 @@ fun resolveRefreshIndicatorRenderer(
     PresetPrimitiveRenderer.IOS -> IOSRefreshIndicatorRenderer.CUPERTINO_IOS
     PresetPrimitiveRenderer.MATERIAL3 -> IOSRefreshIndicatorRenderer.MATERIAL3_CIRCULAR
     PresetPrimitiveRenderer.MIUIX_BRIDGED -> IOSRefreshIndicatorRenderer.MIUIX_BRIDGED
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun Md3ScreenshotRefreshIndicator(
+    state: PullToRefreshState,
+    isRefreshing: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val progress = state.distanceFraction
+    val hintText = resolvePullRefreshHintText(
+        progress = progress,
+        isRefreshing = isRefreshing,
+        isStateAnimating = state.isAnimating
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (progress > 0.08f || isRefreshing) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.82f),
+        label = "md3_screenshot_pull_alpha"
+    )
+    val indicatorScale by animateFloatAsState(
+        targetValue = when {
+            isRefreshing -> 1f
+            progress >= 1f && !state.isAnimating -> 1.04f
+            else -> (0.86f + progress.coerceIn(0f, 1f) * 0.14f)
+        },
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 360f),
+        label = "md3_screenshot_pull_scale"
+    )
+    val strokeColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.74f)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                this.alpha = alpha
+                scaleX = indicatorScale
+                scaleY = indicatorScale
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (isRefreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(42.dp),
+                    color = strokeColor,
+                    strokeWidth = 3.dp
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(width = 26.dp, height = 92.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(Color.Transparent)
+                        .border(
+                            width = 3.dp,
+                            color = strokeColor,
+                            shape = RoundedCornerShape(15.dp)
+                        )
+                )
+            }
+
+            if (hintText.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (hintText == "松手刷新") "松开刷新" else hintText,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textColor
+                )
+            }
+        }
+    }
 }
 
 /**

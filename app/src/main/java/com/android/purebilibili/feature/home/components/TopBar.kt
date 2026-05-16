@@ -138,6 +138,22 @@ internal fun resolveMd3SelectedVisibleIndex(
     return if (resolved >= 0) resolved else 0
 }
 
+internal fun resolveMiuixVisibleTabIndices(
+    totalCount: Int,
+    selectedIndex: Int,
+    maxVisibleCount: Int = 4
+): List<Int> {
+    if (totalCount <= 0 || maxVisibleCount <= 0) return emptyList()
+    val visibleCount = totalCount.coerceAtMost(maxVisibleCount)
+    val safeSelectedIndex = selectedIndex.coerceIn(0, totalCount - 1)
+    val startIndex = if (safeSelectedIndex < visibleCount) {
+        0
+    } else {
+        (safeSelectedIndex - visibleCount + 1).coerceAtMost(totalCount - visibleCount)
+    }
+    return (startIndex until startIndex + visibleCount).toList()
+}
+
 internal fun resolveTopTabMinItemWidthDp(isFloatingStyle: Boolean): Float {
     return if (isFloatingStyle) 72f else 64f
 }
@@ -868,7 +884,7 @@ private fun MiuixCategoryTabRow(
     scrollChannel: kotlinx.coroutines.channels.Channel<Unit>?,
     presetStyle: HomeTopPresetStyle
 ) {
-    val selectedTabIndex by remember(pagerState, selectedIndex, categories.size) {
+    val selectedCategoryIndex by remember(pagerState, selectedIndex, categories.size) {
         derivedStateOf {
             resolveTopTabIndicatorRenderPosition(
                 selectedIndex = selectedIndex,
@@ -879,6 +895,18 @@ private fun MiuixCategoryTabRow(
             ).roundToInt().coerceIn(0, (categories.size - 1).coerceAtLeast(0))
         }
     }
+    val visibleTabIndices = remember(categories.size, selectedIndex) {
+        resolveMiuixVisibleTabIndices(
+            totalCount = categories.size,
+            selectedIndex = selectedIndex
+        )
+    }
+    val visibleCategories = remember(categories, visibleTabIndices) {
+        visibleTabIndices.mapNotNull { index -> categories.getOrNull(index) }
+    }
+    val selectedTabIndex = visibleTabIndices.indexOf(selectedCategoryIndex)
+        .takeIf { it >= 0 }
+        ?: 0
     val topTabSpec = presetStyle.md3VisualSpec
     val actionButtonSize = presetStyle.actionButtonSizeDocked
     val actionButtonCorner = presetStyle.actionButtonCornerDocked
@@ -909,15 +937,17 @@ private fun MiuixCategoryTabRow(
             contentAlignment = Alignment.Center
         ) {
             MiuixTabRowWithContour(
-                tabs = categories,
+                tabs = visibleCategories,
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = { index ->
-                    performHomeTopBarTap(haptic = haptic, onClick = {
-                        when {
-                            index == selectedIndex -> scrollChannel?.trySend(Unit)
-                            else -> onCategorySelected(index)
-                        }
-                    })
+                    visibleTabIndices.getOrNull(index)?.let { categoryIndex ->
+                        performHomeTopBarTap(haptic = haptic, onClick = {
+                            when {
+                                categoryIndex == selectedIndex -> scrollChannel?.trySend(Unit)
+                                else -> onCategorySelected(categoryIndex)
+                            }
+                        })
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

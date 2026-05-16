@@ -86,4 +86,24 @@ class TopTabLayoutPolicyTest {
             )
         )
     }
+
+    @Test
+    fun `miuix top tabs render at most four complete labels`() {
+        assertEquals(
+            listOf(0, 1, 2, 3),
+            resolveMiuixVisibleTabIndices(totalCount = 5, selectedIndex = 0)
+        )
+        assertEquals(
+            listOf(0, 1, 2, 3),
+            resolveMiuixVisibleTabIndices(totalCount = 5, selectedIndex = 3)
+        )
+        assertEquals(
+            listOf(1, 2, 3, 4),
+            resolveMiuixVisibleTabIndices(totalCount = 5, selectedIndex = 4)
+        )
+        assertEquals(
+            listOf(0, 1, 2),
+            resolveMiuixVisibleTabIndices(totalCount = 3, selectedIndex = 2)
+        )
+    }
 }

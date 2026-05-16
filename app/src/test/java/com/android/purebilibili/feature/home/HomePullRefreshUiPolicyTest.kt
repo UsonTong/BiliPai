@@ -28,12 +28,37 @@ class HomePullRefreshUiPolicyTest {
     }
 
     @Test
-    fun `miuix variant does not use material native refresh indicator`() {
+    fun `miuix variant keeps material pull motion for previous md3 behavior`() {
         assertEquals(
-            HomePullRefreshMotionStyle.IOS,
+            HomePullRefreshMotionStyle.MD3,
             resolveHomePullRefreshMotionStyle(
                 uiPreset = UiPreset.MD3,
                 androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
+    }
+
+    @Test
+    fun `pull refresh indicator style routes md3 screenshot and miuix legacy material separately`() {
+        assertEquals(
+            HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE,
+            resolveHomePullRefreshIndicatorStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
+            )
+        )
+        assertEquals(
+            HomePullRefreshIndicatorStyle.MATERIAL_DEFAULT,
+            resolveHomePullRefreshIndicatorStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
+        assertEquals(
+            HomePullRefreshIndicatorStyle.IOS,
+            resolveHomePullRefreshIndicatorStyle(
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
             )
         )
     }

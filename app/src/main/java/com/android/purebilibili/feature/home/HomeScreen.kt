@@ -69,6 +69,7 @@ import com.android.purebilibili.feature.home.components.FrostedSideBar
 import com.android.purebilibili.feature.home.components.CategoryTabRow
 import com.android.purebilibili.feature.home.components.iOSHomeHeader  //  iOS 大标题头部
 import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  //  iOS 下拉刷新指示器
+import com.android.purebilibili.feature.home.components.Md3ScreenshotRefreshIndicator
 import com.android.purebilibili.feature.home.components.HomeInteractionMotionBudget
 import com.android.purebilibili.feature.home.components.resolveHomeInteractionMotionBudget
 import com.android.purebilibili.feature.home.components.resolveHomeDrawerScrimAlpha
@@ -431,6 +432,12 @@ fun HomeScreen(
     val androidNativeVariant = LocalAndroidNativeVariant.current
     val pullRefreshMotionStyle = remember(uiPreset, androidNativeVariant) {
         resolveHomePullRefreshMotionStyle(
+            uiPreset = uiPreset,
+            androidNativeVariant = androidNativeVariant
+        )
+    }
+    val pullRefreshIndicatorStyle = remember(uiPreset, androidNativeVariant) {
+        resolveHomePullRefreshIndicatorStyle(
             uiPreset = uiPreset,
             androidNativeVariant = androidNativeVariant
         )
@@ -1220,36 +1227,49 @@ fun HomeScreen(
                             onRefresh = { viewModel.refresh() },
                             state = pullRefreshState,
                             modifier = Modifier.fillMaxSize(),
-                             //  iOS 风格下拉刷新指示器 (位于内容上方)
+                             //  不同原生外观使用不同下拉刷新指示器，位移策略仍由 policy 统一控制。
                              indicator = {
-                                if (pullRefreshMotionStyle == HomePullRefreshMotionStyle.MD3) {
-                                    PullToRefreshDefaults.Indicator(
-                                        modifier = Modifier
-                                            .align(Alignment.TopCenter)
-                                            .padding(top = listTopPadding),
-                                        isRefreshing = isPageRefreshing,
-                                        state = pullRefreshState
-                                    )
-                                } else {
-                                    iOSRefreshIndicator(
-                                        state = pullRefreshState,
-                                        isRefreshing = isPageRefreshing,
-                                        modifier = Modifier
-                                            .align(Alignment.TopCenter)
-                                            .padding(top = listTopPadding)
-                                            .graphicsLayer {
-                                                val currentDragOffset = calculateDragOffset()
-                                                val indicatorHeight = 40.dp.toPx()
-                                                val minGap = 8.dp.toPx()
-                                                translationY = resolvePullIndicatorTranslationY(
-                                                    dragOffsetPx = currentDragOffset,
-                                                    indicatorHeightPx = indicatorHeight,
-                                                    minGapPx = minGap,
-                                                    isRefreshing = isPageRefreshing
-                                                )
-                                            }
-                                            .fillMaxWidth()
-                                    )
+                                when (pullRefreshIndicatorStyle) {
+                                    HomePullRefreshIndicatorStyle.MATERIAL_DEFAULT -> {
+                                        PullToRefreshDefaults.Indicator(
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                                .padding(top = listTopPadding),
+                                            isRefreshing = isPageRefreshing,
+                                            state = pullRefreshState
+                                        )
+                                    }
+                                    HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE -> {
+                                        Md3ScreenshotRefreshIndicator(
+                                            state = pullRefreshState,
+                                            isRefreshing = isPageRefreshing,
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                                .padding(top = listTopPadding)
+                                                .fillMaxWidth()
+                                        )
+                                    }
+                                    HomePullRefreshIndicatorStyle.IOS -> {
+                                        iOSRefreshIndicator(
+                                            state = pullRefreshState,
+                                            isRefreshing = isPageRefreshing,
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                                .padding(top = listTopPadding)
+                                                .graphicsLayer {
+                                                    val currentDragOffset = calculateDragOffset()
+                                                    val indicatorHeight = 40.dp.toPx()
+                                                    val minGap = 8.dp.toPx()
+                                                    translationY = resolvePullIndicatorTranslationY(
+                                                        dragOffsetPx = currentDragOffset,
+                                                        indicatorHeightPx = indicatorHeight,
+                                                        minGapPx = minGap,
+                                                        isRefreshing = isPageRefreshing
+                                                    )
+                                                }
+                                                .fillMaxWidth()
+                                        )
+                                    }
                                 }
                              }
                         ) {

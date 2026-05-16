@@ -12,6 +12,12 @@ enum class HomePullRefreshMotionStyle {
     MD3
 }
 
+enum class HomePullRefreshIndicatorStyle {
+    IOS,
+    MATERIAL_DEFAULT,
+    MD3_SCREENSHOT_HANDLE
+}
+
 internal fun resolveHomePullRefreshMotionStyle(uiPreset: UiPreset): HomePullRefreshMotionStyle {
     return resolveHomePullRefreshMotionStyle(
         uiPreset = uiPreset,
@@ -23,10 +29,26 @@ internal fun resolveHomePullRefreshMotionStyle(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant
 ): HomePullRefreshMotionStyle {
-    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MATERIAL3) {
-        HomePullRefreshMotionStyle.MD3
-    } else {
-        HomePullRefreshMotionStyle.IOS
+    return when {
+        uiPreset == UiPreset.MD3 -> HomePullRefreshMotionStyle.MD3
+        else -> HomePullRefreshMotionStyle.IOS
+    }
+}
+
+internal fun resolveHomePullRefreshIndicatorStyle(
+    uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant
+): HomePullRefreshIndicatorStyle {
+    return when {
+        uiPreset == UiPreset.MD3 &&
+            androidNativeVariant == AndroidNativeVariant.MATERIAL3 -> {
+            HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE
+        }
+        uiPreset == UiPreset.MD3 &&
+            androidNativeVariant == AndroidNativeVariant.MIUIX -> {
+            HomePullRefreshIndicatorStyle.MATERIAL_DEFAULT
+        }
+        else -> HomePullRefreshIndicatorStyle.IOS
     }
 }
 
