@@ -261,6 +261,32 @@ internal data class HomeHeaderScrollLayout(
     val tabAlpha: Float
 )
 
+internal data class HomeTopPinnedChromeLayout(
+    val tabTop: Dp,
+    val searchTop: Dp,
+    val blurHeight: Dp
+)
+
+internal fun resolveHomeTopPinnedChromeLayout(
+    statusBarHeight: Dp,
+    visibleSearchHeight: Dp,
+    tabRowHeight: Dp,
+    searchToTabsSpacing: Dp,
+    renderMode: HomeTopChromeRenderMode
+): HomeTopPinnedChromeLayout {
+    val visibleSearchBlockHeight = if (visibleSearchHeight > 0.dp) {
+        searchToTabsSpacing + visibleSearchHeight
+    } else {
+        0.dp
+    }
+    val visibleChromeHeight = statusBarHeight + tabRowHeight + visibleSearchBlockHeight
+    return HomeTopPinnedChromeLayout(
+        tabTop = statusBarHeight,
+        searchTop = statusBarHeight + tabRowHeight + if (visibleSearchHeight > 0.dp) searchToTabsSpacing else 0.dp,
+        blurHeight = if (renderMode == HomeTopChromeRenderMode.PLAIN) 0.dp else visibleChromeHeight
+    )
+}
+
 internal fun resolveHomeTopSearchRevealDeadZone(
     uiPreset: UiPreset = UiPreset.IOS,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
@@ -600,16 +626,13 @@ internal fun resolveHomeTopContinuousSlabHeight(
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3,
     hasVisibleTopContent: Boolean = true
 ): Dp {
-    if (renderMode != HomeTopChromeRenderMode.BLUR) return 0.dp
-    return if (uiPreset == UiPreset.MD3) {
-        statusBarHeight + if (hasVisibleTopContent) {
-            resolveHomeTopContinuousSlabOverlap(uiPreset, androidNativeVariant)
-        } else {
-            0.dp
-        }
-    } else {
-        statusBarHeight + searchBarHeight + tabRowHeight
-    }
+    return resolveHomeTopPinnedChromeLayout(
+        statusBarHeight = statusBarHeight,
+        visibleSearchHeight = if (hasVisibleTopContent) searchBarHeight else 0.dp,
+        tabRowHeight = if (hasVisibleTopContent) tabRowHeight else 0.dp,
+        searchToTabsSpacing = 0.dp,
+        renderMode = renderMode
+    ).blurHeight
 }
 
 internal fun resolveHomeTopContinuousSlabSurfaceColor(
@@ -1631,23 +1654,6 @@ fun iOSHomeHeader(
     } else {
         continuousSlabRenderMode
     }
-    val continuousSlabHeight = if (integratedCollapsedTopBar) {
-        statusBarHeight + currentTabHeight
-    } else {
-        resolveHomeTopContinuousSlabHeight(
-            statusBarHeight = statusBarHeight,
-            searchBarHeight = currentSearchHeight,
-            tabRowHeight = currentTabHeight,
-            renderMode = effectiveContinuousSlabRenderMode,
-            uiPreset = uiPreset,
-            androidNativeVariant = androidNativeVariant,
-            hasVisibleTopContent = shouldRenderHomeTopUnifiedPanelChrome(
-                searchHeightDp = currentSearchHeight.value,
-                tabHeightDp = currentTabHeight.value,
-                integratedCollapsedTopBar = integratedCollapsedTopBar
-            )
-        )
-    }
     val effectiveTopPanelChromeRenderMode = if (integratedCollapsedTopBar) {
         HomeTopChromeRenderMode.PLAIN
     } else {
@@ -1692,12 +1698,121 @@ fun iOSHomeHeader(
     )
     val drawUnifiedTopPanelChrome =
         renderUnifiedTopPanelChrome && effectiveTopPanelChromeRenderMode != HomeTopChromeRenderMode.PLAIN
+    val drawTopSearchDivider =
+        useUnifiedTopPanel &&
+            shouldShowUnifiedHomeTopPanelDivider(uiPreset, androidNativeVariant) &&
+            drawUnifiedTopPanelChrome &&
+            currentSearchHeight > 0.dp &&
+            searchRevealFraction > 0f
+    val currentTabToSearchSpacing = currentSearchToTabsSpacing + if (drawTopSearchDivider) {
+        1.dp + currentUnifiedDividerBottomSpacing
+    } else {
+        0.dp
+    }
+    val pinnedChromeLayout = resolveHomeTopPinnedChromeLayout(
+        statusBarHeight = statusBarHeight,
+        visibleSearchHeight = currentSearchHeight,
+        tabRowHeight = currentTabHeight,
+        searchToTabsSpacing = currentTabToSearchSpacing,
+        renderMode = effectiveContinuousSlabRenderMode
+    )
+    val continuousSlabHeight = pinnedChromeLayout.blurHeight
     val isTopTabViewportSyncEnabled = resolveHomeTopTabViewportSyncEnabled(
         currentTabHeightDp = currentTabHeight.value,
         tabAlpha = tabAlpha,
         tabContentAlpha = tabContentAlpha
     )
     val tabBorderAlpha = if (isTabFloating) tabChromeStyle.borderAlpha else 0f
+    val topTabsContent: @Composable () -> Unit = {
+        HomeTopTabChrome(
+            currentTabHeight = currentTabHeight,
+            tabAlpha = tabAlpha,
+            tabContentAlpha = tabContentAlpha,
+            containerZIndex = if (useUnifiedTopPanel) 0f else -1f,
+            tabHorizontalPadding = if (useUnifiedTopPanel) {
+                resolveHomeTopEmbeddedTabHorizontalPadding(uiPreset)
+            } else {
+                tabHorizontalPadding
+            },
+            tabVerticalPadding = if (useUnifiedTopPanel) 0.dp else tabVerticalPadding,
+            tabVerticalOffset = if (useUnifiedTopPanel) 0.dp else tabVerticalOffset,
+            isTabFloating = if (useUnifiedTopPanel) false else isTabFloating,
+            effectiveTabShadowElevation = if (useUnifiedTopPanel) 0.dp else effectiveTabShadowElevation,
+            tabShape = if (useUnifiedTopPanel) {
+                AppShapes.container(ContainerLevel.Pill)
+            } else {
+                tabShape
+            },
+            tabChromeRenderMode = effectiveTabChromeRenderMode,
+            tabSurfaceColor = effectiveTabSurfaceColor,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            liquidStyle = liquidStyle,
+            liquidGlassTuning = liquidGlassTuning,
+            motionTier = motionTier,
+            isScrolling = tabChromeMotionPolicy.isScrolling,
+            isTransitionRunning = tabChromeMotionPolicy.isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
+            preferFlatGlass = !useUnifiedTopPanel,
+            tabBorderAlpha = if (useUnifiedTopPanel) {
+                0f
+            } else {
+                tabBorderAlpha
+            },
+            tabHighlightColor = if (useUnifiedTopPanel) {
+                Color.Transparent
+            } else {
+                resolveHomeTopChromeHighlightOverlayColor(
+                    baseColor = tabChromeColors.highlightColor,
+                    renderMode = tabChromeRenderMode,
+                    softenWideChrome = true
+                )
+            },
+            tabContentUnderlayColor = if (useUnifiedTopPanel) {
+                Color.Transparent
+            } else {
+                resolveHomeTopInnerUnderlayColor(
+                    isLightMode = isLightMode,
+                    renderMode = tabChromeRenderMode,
+                    softenWideChrome = true
+                )
+            },
+            gestureEnabled = topTabsVisible && !isHeaderCollapseEnabled,
+            isTabsCollapsed = topTabsCollapsed,
+            onTabsCollapsedChange = onTopTabsCollapsedChange,
+            drawChromeSurface = drawTopTabOuterChromeSurface
+        ) {
+            CategoryTabRow(
+                categories = topCategories,
+                categoryKeys = topCategoryKeys,
+                selectedIndex = categoryIndex,
+                onCategorySelected = { index ->
+                    if (topTabsVisible) onCategorySelected(index)
+                },
+                onPartitionClick = {
+                    if (topTabsVisible) onPartitionClick()
+                },
+                pagerState = pagerState,
+                labelMode = homeSettings?.topTabLabelMode
+                    ?: com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY,
+                isLiquidGlassEnabled =
+                    effectiveTabMaterialMode == TopTabMaterialMode.LIQUID_GLASS &&
+                        isGlassSupported,
+                liquidGlassStyle = liquidStyle,
+                liquidGlassTuning = liquidGlassTuning,
+                hazeState = hazeState,
+                backdrop = backdrop,
+                isFloatingStyle = isTabFloating,
+                edgeToEdge = integratedCollapsedTopBar,
+                hasOuterChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface,
+                interactionBudget = interactionBudget,
+                motionTier = motionTier,
+                isTransitionRunning = isTransitionRunning,
+                forceLowBlurBudget = forceLowBlurBudget,
+                isViewportSyncEnabled = isTopTabViewportSyncEnabled
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -1832,6 +1947,22 @@ fun iOSHomeHeader(
                             }
                         )
                 ) {
+                    topTabsContent()
+
+                    if (drawTopSearchDivider) {
+                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = headerChromeColors.borderColor.copy(
+                                alpha = resolveHomeTopUnifiedPanelDividerAlpha(topChromeRenderMode) *
+                                    searchRevealFraction
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(currentUnifiedDividerBottomSpacing))
+                    } else {
+                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2233,115 +2364,6 @@ fun iOSHomeHeader(
                         }
                     }
 
-                    if (
-                        useUnifiedTopPanel &&
-                        shouldShowUnifiedHomeTopPanelDivider(uiPreset, androidNativeVariant) &&
-                        drawUnifiedTopPanelChrome &&
-                        currentTabHeight > 0.dp &&
-                        tabAlpha * tabContentAlpha > 0f &&
-                        searchRevealFraction > 0f
-                    ) {
-                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = headerChromeColors.borderColor.copy(
-                                alpha = resolveHomeTopUnifiedPanelDividerAlpha(topChromeRenderMode) *
-                                    searchRevealFraction
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(currentUnifiedDividerBottomSpacing))
-                    } else {
-                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
-                    }
-
-                    HomeTopTabChrome(
-                        currentTabHeight = currentTabHeight,
-                        tabAlpha = tabAlpha,
-                        tabContentAlpha = tabContentAlpha,
-                        containerZIndex = if (useUnifiedTopPanel) 0f else -1f,
-                        tabHorizontalPadding = if (useUnifiedTopPanel) {
-                            resolveHomeTopEmbeddedTabHorizontalPadding(uiPreset)
-                        } else {
-                            tabHorizontalPadding
-                        },
-                        tabVerticalPadding = if (useUnifiedTopPanel) 0.dp else tabVerticalPadding,
-                        tabVerticalOffset = if (useUnifiedTopPanel) 0.dp else tabVerticalOffset,
-                        isTabFloating = if (useUnifiedTopPanel) false else isTabFloating,
-                        effectiveTabShadowElevation = if (useUnifiedTopPanel) 0.dp else effectiveTabShadowElevation,
-                        tabShape = if (useUnifiedTopPanel) {
-                            AppShapes.container(ContainerLevel.Pill)
-                        } else {
-                            tabShape
-                        },
-                        tabChromeRenderMode = effectiveTabChromeRenderMode,
-                        tabSurfaceColor = effectiveTabSurfaceColor,
-                        hazeState = hazeState,
-                        backdrop = backdrop,
-                        liquidStyle = liquidStyle,
-                        liquidGlassTuning = liquidGlassTuning,
-                        motionTier = motionTier,
-                        isScrolling = tabChromeMotionPolicy.isScrolling,
-                        isTransitionRunning = tabChromeMotionPolicy.isTransitionRunning,
-                        forceLowBlurBudget = forceLowBlurBudget,
-                        preferFlatGlass = !useUnifiedTopPanel,
-                        tabBorderAlpha = if (useUnifiedTopPanel) {
-                            0f
-                        } else {
-                            tabBorderAlpha
-                        },
-                        tabHighlightColor = if (useUnifiedTopPanel) {
-                            Color.Transparent
-                        } else {
-                            resolveHomeTopChromeHighlightOverlayColor(
-                                baseColor = tabChromeColors.highlightColor,
-                                renderMode = tabChromeRenderMode,
-                                softenWideChrome = true
-                            )
-                        },
-                        tabContentUnderlayColor = if (useUnifiedTopPanel) {
-                            Color.Transparent
-                        } else {
-                            resolveHomeTopInnerUnderlayColor(
-                                isLightMode = isLightMode,
-                                renderMode = tabChromeRenderMode,
-                                softenWideChrome = true
-                            )
-                        },
-                        gestureEnabled = topTabsVisible && !isHeaderCollapseEnabled,
-                        isTabsCollapsed = topTabsCollapsed,
-                        onTabsCollapsedChange = onTopTabsCollapsedChange,
-                        drawChromeSurface = drawTopTabOuterChromeSurface
-                    ) {
-                        CategoryTabRow(
-                            categories = topCategories,
-                            categoryKeys = topCategoryKeys,
-                            selectedIndex = categoryIndex,
-                            onCategorySelected = { index ->
-                                if (topTabsVisible) onCategorySelected(index)
-                            },
-                            onPartitionClick = {
-                                if (topTabsVisible) onPartitionClick()
-                            },
-                            pagerState = pagerState,
-                            labelMode = homeSettings?.topTabLabelMode
-                                ?: com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY,
-                            isLiquidGlassEnabled =
-                                effectiveTabMaterialMode == TopTabMaterialMode.LIQUID_GLASS &&
-                                isGlassSupported,
-                            liquidGlassStyle = liquidStyle,
-                            liquidGlassTuning = liquidGlassTuning,
-                            hazeState = hazeState,
-                            backdrop = backdrop,
-                            isFloatingStyle = isTabFloating,
-                            edgeToEdge = integratedCollapsedTopBar,
-                            hasOuterChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface,
-                            interactionBudget = interactionBudget,
-                            motionTier = motionTier,
-                            isTransitionRunning = isTransitionRunning,
-                            forceLowBlurBudget = forceLowBlurBudget,
-                            isViewportSyncEnabled = isTopTabViewportSyncEnabled
-                        )
-                    }
                 }
             }
         }

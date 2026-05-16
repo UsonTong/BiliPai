@@ -253,6 +253,58 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `top tab pinned layout keeps tab directly below status bar regardless of search height`() {
+        val collapsed = resolveHomeTopPinnedChromeLayout(
+            statusBarHeight = 44.dp,
+            visibleSearchHeight = 0.dp,
+            tabRowHeight = 56.dp,
+            searchToTabsSpacing = 4.dp,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val expanded = resolveHomeTopPinnedChromeLayout(
+            statusBarHeight = 44.dp,
+            visibleSearchHeight = 48.dp,
+            tabRowHeight = 56.dp,
+            searchToTabsSpacing = 4.dp,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+
+        assertEquals(44.dp, collapsed.tabTop)
+        assertEquals(collapsed.tabTop, expanded.tabTop)
+        assertEquals(100.dp, collapsed.searchTop)
+        assertEquals(104.dp, expanded.searchTop)
+    }
+
+    @Test
+    fun `top blur height covers pinned tabs and only visible search area`() {
+        val collapsed = resolveHomeTopPinnedChromeLayout(
+            statusBarHeight = 44.dp,
+            visibleSearchHeight = 0.dp,
+            tabRowHeight = 56.dp,
+            searchToTabsSpacing = 4.dp,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val expanded = resolveHomeTopPinnedChromeLayout(
+            statusBarHeight = 44.dp,
+            visibleSearchHeight = 48.dp,
+            tabRowHeight = 56.dp,
+            searchToTabsSpacing = 4.dp,
+            renderMode = HomeTopChromeRenderMode.BLUR
+        )
+        val plain = resolveHomeTopPinnedChromeLayout(
+            statusBarHeight = 44.dp,
+            visibleSearchHeight = 48.dp,
+            tabRowHeight = 56.dp,
+            searchToTabsSpacing = 4.dp,
+            renderMode = HomeTopChromeRenderMode.PLAIN
+        )
+
+        assertEquals(100.dp, collapsed.blurHeight)
+        assertEquals(152.dp, expanded.blurHeight)
+        assertEquals(0.dp, plain.blurHeight)
+    }
+
+    @Test
     fun `tiny reverse scroll keeps collapsed search row hidden until reveal threshold is crossed`() {
         val layout = resolveHomeHeaderScrollLayout(
             headerOffsetPx = -44f,
@@ -853,9 +905,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `md3 continuous top slab is limited to the status bar height`() {
+    fun `continuous top slab covers pinned tab and visible search area`() {
         assertEquals(
-            48.dp,
+            120.dp,
             resolveHomeTopContinuousSlabHeight(
                 statusBarHeight = 24.dp,
                 searchBarHeight = 52.dp,
@@ -877,7 +929,7 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `md3 collapsed top slab keeps only status bar height when tabs are hidden`() {
+    fun `collapsed top slab keeps only status bar height when tabs are hidden`() {
         assertEquals(
             24.dp,
             resolveHomeTopContinuousSlabHeight(
