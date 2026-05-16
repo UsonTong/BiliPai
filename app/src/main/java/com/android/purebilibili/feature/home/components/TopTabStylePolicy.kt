@@ -686,7 +686,5 @@ internal fun shouldDrawHomeTopTabOuterChromeSurface(
     androidNativeVariant: AndroidNativeVariant,
     materialMode: TopTabMaterialMode
 ): Boolean {
-    return !(uiPreset == UiPreset.MD3 &&
-        androidNativeVariant == AndroidNativeVariant.MIUIX &&
-        materialMode == TopTabMaterialMode.LIQUID_GLASS)
+    return !(uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX)
 }

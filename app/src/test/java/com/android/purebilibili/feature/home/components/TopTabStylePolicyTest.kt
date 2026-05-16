@@ -384,7 +384,7 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `android native miuix liquid glass top tabs skip outer chrome surface`() {
+    fun `android native miuix top tabs skip outer chrome surface`() {
         assertFalse(
             shouldDrawHomeTopTabOuterChromeSurface(
                 uiPreset = UiPreset.MD3,
@@ -392,11 +392,18 @@ class TopTabStylePolicyTest {
                 materialMode = TopTabMaterialMode.LIQUID_GLASS
             )
         )
-        assertTrue(
+        assertFalse(
             shouldDrawHomeTopTabOuterChromeSurface(
                 uiPreset = UiPreset.MD3,
                 androidNativeVariant = AndroidNativeVariant.MIUIX,
                 materialMode = TopTabMaterialMode.BLUR
+            )
+        )
+        assertFalse(
+            shouldDrawHomeTopTabOuterChromeSurface(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                materialMode = TopTabMaterialMode.PLAIN
             )
         )
         assertTrue(
