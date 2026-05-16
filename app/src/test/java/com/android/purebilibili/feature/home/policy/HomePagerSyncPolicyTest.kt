@@ -140,8 +140,8 @@ class HomePagerSyncPolicyTest {
     }
 
     @Test
-    fun pagerAnimation_stillRunsForProgrammaticTopTabSelection() {
-        assertTrue(
+    fun pagerAnimation_skipsDuplicateStateSyncDuringProgrammaticTopTabSelection() {
+        assertFalse(
             shouldAnimateHomePagerToCategory(
                 hasSyncedPagerWithState = true,
                 targetPage = 3,

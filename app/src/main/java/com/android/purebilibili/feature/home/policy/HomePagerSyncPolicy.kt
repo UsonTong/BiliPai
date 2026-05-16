@@ -68,5 +68,6 @@ internal fun shouldAnimateHomePagerToCategory(
     if (targetPage < 0) return false
     if (targetPage == pagerCurrentPage) return false
     if (pagerScrolling) return false
+    if (programmaticPageSwitchInProgress) return false
     return true
 }

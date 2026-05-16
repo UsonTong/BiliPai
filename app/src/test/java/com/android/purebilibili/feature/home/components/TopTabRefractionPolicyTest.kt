@@ -305,6 +305,8 @@ class TopTabRefractionPolicyTest {
         assertTrue(source.contains("isInMotion = contentMotionInProgress"))
         assertTrue(source.contains("resolveTopTabIndicatorVisualPolicy("))
         assertTrue(source.contains("position = currentPosition"))
+        assertTrue(source.contains("resolveTopTabSweepSelectionIndex("))
+        assertTrue(source.contains("userScrollEnabled = false"))
     }
 
     @Test

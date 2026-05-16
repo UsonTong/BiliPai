@@ -1468,7 +1468,13 @@ fun HomeScreen(
                         programmaticPageSwitchInProgress = true
                         coroutineScope.launch {
                             try {
-                                pagerState.animateScrollToPage(index)
+                                pagerState.animateScrollToPage(
+                                    page = index,
+                                    animationSpec = tween(
+                                        durationMillis = 240,
+                                        easing = LinearOutSlowInEasing
+                                    )
+                                )
                             } finally {
                                 programmaticPageSwitchInProgress = false
                             }
