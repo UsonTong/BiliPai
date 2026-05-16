@@ -48,4 +48,25 @@ class BlockedUpImportPolicyTest {
 
         assertNull(tag)
     }
+
+    @Test
+    fun `blocked list write message keeps local success when remote is skipped`() {
+        val message = buildBlockedUpWriteMessage(
+            blocked = true,
+            remoteStatus = BilibiliBlockedListRemoteStatus.SKIPPED_NOT_LOGGED_IN
+        )
+
+        assertEquals("已屏蔽该 UP 主；未登录，未同步 B站黑名单", message)
+    }
+
+    @Test
+    fun `blocked list write message reports remote failure without rolling back local result`() {
+        val message = buildBlockedUpWriteMessage(
+            blocked = false,
+            remoteStatus = BilibiliBlockedListRemoteStatus.FAILED,
+            remoteMessage = "csrf 校验失败"
+        )
+
+        assertEquals("已解除屏蔽；B站黑名单同步失败：csrf 校验失败", message)
+    }
 }

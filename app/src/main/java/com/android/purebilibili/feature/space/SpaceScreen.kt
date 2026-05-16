@@ -422,17 +422,17 @@ fun SpaceScreen(
                     onClick = {
                         coroutineScope.launch {
                             if (isBlocked) {
-                                blockedUpRepository.unblockUp(mid)
+                                val result = blockedUpRepository.unblockUpWithBilibiliSync(mid)
                                 android.widget.Toast.makeText(
                                     context,
-                                    "已解除屏蔽",
+                                    result.message,
                                     android.widget.Toast.LENGTH_SHORT
                                 ).show()
                             } else {
-                                blockedUpRepository.blockUp(mid, userName, userFace)
+                                val result = blockedUpRepository.blockUpWithBilibiliSync(mid, userName, userFace)
                                 android.widget.Toast.makeText(
                                     context,
-                                    "已屏蔽该 UP 主",
+                                    result.message,
                                     android.widget.Toast.LENGTH_SHORT
                                 ).show()
                             }

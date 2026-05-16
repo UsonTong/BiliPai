@@ -778,6 +778,8 @@ object SettingsManager {
     private val KEY_LAST_PLAYBACK_SPEED = floatPreferencesKey("last_playback_speed")
     private val KEY_THEME_COLOR_INDEX = intPreferencesKey("theme_color_index")
     private val KEY_APP_FONT_SIZE_PRESET = intPreferencesKey("app_font_size_preset")
+    private val KEY_APP_FONT_FILE_NAME = stringPreferencesKey("app_font_file_name")
+    private val KEY_APP_FONT_DISPLAY_NAME = stringPreferencesKey("app_font_display_name")
     private val KEY_APP_UI_SCALE_PRESET = intPreferencesKey("app_ui_scale_preset")
     private val KEY_APP_DPI_OVERRIDE_PERCENT = intPreferencesKey("app_dpi_override_percent")
     //  [新增] 应用图标 Key (Blue, Red, Green...)
@@ -1339,6 +1341,30 @@ object SettingsManager {
     suspend fun setAppFontSizePreset(context: Context, preset: AppFontSizePreset) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_APP_FONT_SIZE_PRESET] = preset.value
+        }
+    }
+
+    fun getAppFontFileName(context: Context): Flow<String> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_APP_FONT_FILE_NAME].orEmpty() }
+
+    fun getAppFontDisplayName(context: Context): Flow<String> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_APP_FONT_DISPLAY_NAME].orEmpty() }
+
+    suspend fun setAppFontFile(
+        context: Context,
+        fileName: String,
+        displayName: String
+    ) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_FONT_FILE_NAME] = fileName
+            preferences[KEY_APP_FONT_DISPLAY_NAME] = displayName
+        }
+    }
+
+    suspend fun clearAppFontFile(context: Context) {
+        context.settingsDataStore.edit { preferences ->
+            preferences.remove(KEY_APP_FONT_FILE_NAME)
+            preferences.remove(KEY_APP_FONT_DISPLAY_NAME)
         }
     }
 

@@ -707,6 +707,7 @@ fun PureBiliBiliTheme(
     colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
     colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
     fontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
+    appFontFileName: String = "",
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -720,15 +721,21 @@ fun PureBiliBiliTheme(
         uiPreset = uiPreset
     ) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val shapes = resolveMaterialShapes(uiPreset, androidNativeVariant)
+    val appFontFamily = remember(context, appFontFileName) {
+        loadStoredAppFontFamily(context, appFontFileName)
+    }
     val materialTypography = resolveMaterialTypography(
         uiPreset = uiPreset,
         androidNativeVariant = androidNativeVariant
     ).scaled(fontSizePreset.multiplier)
+        .withFontFamily(appFontFamily)
     val materialMotionScheme = remember(uiPreset, androidNativeVariant) {
         MotionScheme.standard()
     }
-    val miuixTextStyles = remember(fontSizePreset) {
-        defaultTextStyles().scaled(fontSizePreset.multiplier)
+    val miuixTextStyles = remember(fontSizePreset, appFontFamily) {
+        defaultTextStyles()
+            .scaled(fontSizePreset.multiplier)
+            .withFontFamily(appFontFamily)
     }
     val systemWallpaperRefreshToken = rememberSystemWallpaperRefreshToken(isDynamicColorActive)
     val dynamicLightBaseScheme = if (isDynamicColorActive) {

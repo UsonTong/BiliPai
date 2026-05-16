@@ -4,6 +4,8 @@ package com.android.purebilibili.feature.settings
 
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +42,8 @@ import com.android.purebilibili.core.store.HomeWallpaperEffectMode
 import com.android.purebilibili.core.store.HomeWallpaperEffectScope
 import com.android.purebilibili.core.store.SettingsManager
 import coil.compose.AsyncImage
+import com.android.purebilibili.core.theme.deleteStoredAppFont
+import com.android.purebilibili.core.theme.importAppFontFromUri
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
@@ -432,6 +436,23 @@ fun AppearanceSettingsContent(
     val selectedColorSpecLabel = colorSpecOptions
         .firstOrNull { it.value == state.colorSpec }
         ?.label ?: state.colorSpec.name
+    val fontPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        importAppFontFromUri(context, uri)
+            .onSuccess { imported ->
+                viewModel.setAppFontFile(imported.fileName, imported.displayName)
+                Toast.makeText(context, "已导入字体：${imported.displayName}", Toast.LENGTH_SHORT).show()
+            }
+            .onFailure { error ->
+                Toast.makeText(
+                    context,
+                    error.message ?: "字体导入失败，请选择 .ttf / .otf / .ttc 文件",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
 
     LazyColumn(
         state = listState,
@@ -793,6 +814,45 @@ fun AppearanceSettingsContent(
                                 viewModel.setAppFontSizePreset(preset)
                             }
                         )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        IOSDivider()
+                        IOSClickableItem(
+                            icon = CupertinoIcons.Default.DocText,
+                            title = "应用字体",
+                            subtitle = if (state.appFontDisplayName.isBlank()) {
+                                "使用系统默认字体，或从本地导入 .ttf / .otf / .ttc"
+                            } else {
+                                "当前：${state.appFontDisplayName}"
+                            },
+                            value = if (state.appFontDisplayName.isBlank()) "默认" else "更换",
+                            onClick = {
+                                fontPickerLauncher.launch(arrayOf("*/*"))
+                            },
+                            iconTint = iOSPurple
+                        )
+
+                        AnimatedVisibility(
+                            visible = state.appFontFileName.isNotBlank(),
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                IOSDivider()
+                                IOSClickableItem(
+                                    icon = CupertinoIcons.Default.ArrowCounterclockwise,
+                                    title = "恢复默认字体",
+                                    subtitle = "移除已导入字体文件，立即回到系统字体",
+                                    onClick = {
+                                        deleteStoredAppFont(context, state.appFontFileName)
+                                        viewModel.clearAppFontFile()
+                                        Toast.makeText(context, "已恢复默认字体", Toast.LENGTH_SHORT).show()
+                                    },
+                                    iconTint = iOSOrange,
+                                    showChevron = false
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
                         IOSDivider()

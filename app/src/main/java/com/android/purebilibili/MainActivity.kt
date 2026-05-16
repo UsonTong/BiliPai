@@ -1075,6 +1075,7 @@ open class MainActivity : AppCompatActivity() {
             val appFontSizePreset by SettingsManager.getAppFontSizePreset(context).collectAsState(
                 initial = AppFontSizePreset.DEFAULT
             )
+            val appFontFileName by SettingsManager.getAppFontFileName(context).collectAsState(initial = "")
             val appUiScalePreset by SettingsManager.getAppUiScalePreset(context).collectAsState(
                 initial = AppUiScalePreset.STANDARD
             )
@@ -1165,6 +1166,7 @@ open class MainActivity : AppCompatActivity() {
                 colorStyle = colorStyle,
                 colorSpec = colorSpec,
                 fontSizePreset = appFontSizePreset,
+                appFontFileName = appFontFileName,
 
             ) {
                 ProvideUnifiedBlurIntensity {

@@ -564,11 +564,13 @@ class ReplyComponentsPolicyTest {
         val policy = resolveReplyItemLayoutPolicy()
 
         assertEquals(12, policy.horizontalPaddingDp)
-        assertEquals(10, policy.avatarContentSpacingDp)
+        assertEquals(38, policy.avatarSizeDp)
+        assertEquals(9, policy.avatarContentSpacingDp)
         assertEquals(40, policy.actionButtonSizeDp)
-        assertEquals(62, policy.dividerStartPaddingDp)
+        assertEquals(78, policy.decorationWidthReserveDp)
+        assertEquals(59, policy.dividerStartPaddingDp)
         assertEquals(
-            286,
+            289,
             resolveReplyItemTextColumnWidthDp(containerWidthDp = 360, policy = policy)
         )
         assertEquals(
@@ -576,7 +578,7 @@ class ReplyComponentsPolicyTest {
             resolveReplyItemHeaderEndPaddingDp(hasPiliPlusDecoration = false, policy = policy)
         )
         assertEquals(
-            128,
+            118,
             resolveReplyItemHeaderEndPaddingDp(hasPiliPlusDecoration = true, policy = policy)
         )
     }
@@ -806,7 +808,8 @@ class ReplyComponentsPolicyTest {
             .substringBefore("@Composable\nprivate fun PiliPlusGarbCardDecoration(")
 
         assertTrue(decorationSource.contains("contentScale = ContentScale.Crop"))
-        assertTrue(decorationSource.contains(".size(width = 72.dp, height = 52.dp)"))
+        assertTrue(decorationSource.contains("layoutPolicy.decorationImageWidthDp.dp"))
+        assertTrue(decorationSource.contains("layoutPolicy.decorationImageHeightDp.dp"))
     }
 
     @Test

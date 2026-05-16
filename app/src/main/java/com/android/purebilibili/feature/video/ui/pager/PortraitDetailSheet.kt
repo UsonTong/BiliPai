@@ -179,11 +179,11 @@ fun PortraitDetailSheet(
                                             onClick = {
                                                 scope.launch {
                                                     if (isBlocked) {
-                                                        blockedUpRepository.unblockUp(info.owner.mid)
-                                                        android.widget.Toast.makeText(context, "已解除屏蔽", android.widget.Toast.LENGTH_SHORT).show()
+                                                        val result = blockedUpRepository.unblockUpWithBilibiliSync(info.owner.mid)
+                                                        android.widget.Toast.makeText(context, result.message, android.widget.Toast.LENGTH_SHORT).show()
                                                     } else {
-                                                        blockedUpRepository.blockUp(info.owner.mid, info.owner.name, info.owner.face)
-                                                        android.widget.Toast.makeText(context, "已屏蔽该 UP 主", android.widget.Toast.LENGTH_SHORT).show()
+                                                        val result = blockedUpRepository.blockUpWithBilibiliSync(info.owner.mid, info.owner.name, info.owner.face)
+                                                        android.widget.Toast.makeText(context, result.message, android.widget.Toast.LENGTH_SHORT).show()
                                                     }
                                                     showBlockConfirmDialog = false
                                                 }

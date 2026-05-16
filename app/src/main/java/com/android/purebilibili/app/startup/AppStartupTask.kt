@@ -96,9 +96,9 @@ internal fun defaultAppStartupTasks(
         ),
         AppStartupTask(
             id = "notification_channel_init",
-            phase = StartupPhase.BEFORE_FIRST_INTERACTIVE,
-            criticality = StartupCriticality.REQUIRED,
-            thread = StartupThread.MAIN
+            phase = StartupPhase.AFTER_FIRST_INTERACTIVE,
+            criticality = StartupCriticality.DEFERRED,
+            thread = StartupThread.MAIN_IDLE
         ),
         AppStartupTask(
             id = "playlist_restore",

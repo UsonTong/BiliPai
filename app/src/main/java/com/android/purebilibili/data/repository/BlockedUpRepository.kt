@@ -3,7 +3,14 @@ package com.android.purebilibili.data.repository
 import android.content.Context
 import com.android.purebilibili.core.database.AppDatabase
 import com.android.purebilibili.core.database.entity.BlockedUp
+import com.android.purebilibili.core.network.BilibiliApi
+import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.core.store.TokenManager
 import kotlinx.coroutines.flow.Flow
+
+private const val BILIBILI_RELATION_ACT_BLOCK = 5
+private const val BILIBILI_RELATION_ACT_UNBLOCK = 6
+private const val BILIBILI_RELATION_BLOCK_RE_SRC = 11
 
 data class BlockedUpImportItem(
     val mid: Long,
@@ -15,6 +22,18 @@ data class BlockedUpImportResult(
     val importedCount: Int,
     val existingCount: Int,
     val failedCount: Int,
+    val message: String
+)
+
+enum class BilibiliBlockedListRemoteStatus {
+    SUCCESS,
+    SKIPPED_NOT_LOGGED_IN,
+    FAILED
+}
+
+data class BlockedUpWriteResult(
+    val localChanged: Boolean,
+    val remoteStatus: BilibiliBlockedListRemoteStatus,
     val message: String
 )
 
@@ -68,7 +87,29 @@ internal fun buildBlockedUpImportMessage(
     }
 }
 
-class BlockedUpRepository(context: Context) {
+internal fun buildBlockedUpWriteMessage(
+    blocked: Boolean,
+    remoteStatus: BilibiliBlockedListRemoteStatus,
+    remoteMessage: String? = null
+): String {
+    val localMessage = if (blocked) "已屏蔽该 UP 主" else "已解除屏蔽"
+    return when (remoteStatus) {
+        BilibiliBlockedListRemoteStatus.SUCCESS -> {
+            if (blocked) "$localMessage，并已写入 B站黑名单" else "$localMessage，并已同步 B站黑名单"
+        }
+        BilibiliBlockedListRemoteStatus.SKIPPED_NOT_LOGGED_IN -> {
+            "$localMessage；未登录，未同步 B站黑名单"
+        }
+        BilibiliBlockedListRemoteStatus.FAILED -> {
+            "$localMessage；B站黑名单同步失败：${remoteMessage.orEmpty().ifBlank { "未知错误" }}"
+        }
+    }
+}
+
+class BlockedUpRepository(
+    context: Context,
+    private val api: BilibiliApi = NetworkModule.api
+) {
     private val blockedUpDao = AppDatabase.getDatabase(context).blockedUpDao()
 
     fun getAllBlockedUps(): Flow<List<BlockedUp>> = blockedUpDao.getAllBlockedUps()
@@ -78,6 +119,20 @@ class BlockedUpRepository(context: Context) {
     suspend fun blockUp(mid: Long, name: String, face: String) {
         val entity = BlockedUp(mid = mid, name = name, face = face)
         blockedUpDao.insert(entity)
+    }
+
+    suspend fun blockUpWithBilibiliSync(mid: Long, name: String, face: String): BlockedUpWriteResult {
+        blockUp(mid = mid, name = name, face = face)
+        val remoteResult = modifyBilibiliBlockedList(mid = mid, blocked = true)
+        return BlockedUpWriteResult(
+            localChanged = true,
+            remoteStatus = remoteResult.first,
+            message = buildBlockedUpWriteMessage(
+                blocked = true,
+                remoteStatus = remoteResult.first,
+                remoteMessage = remoteResult.second
+            )
+        )
     }
 
     suspend fun importBlockedUps(items: List<BlockedUpImportItem>): BlockedUpImportResult {
@@ -112,5 +167,49 @@ class BlockedUpRepository(context: Context) {
 
     suspend fun unblockUp(mid: Long) {
         blockedUpDao.delete(mid)
+    }
+
+    suspend fun unblockUpWithBilibiliSync(mid: Long): BlockedUpWriteResult {
+        unblockUp(mid)
+        val remoteResult = modifyBilibiliBlockedList(mid = mid, blocked = false)
+        return BlockedUpWriteResult(
+            localChanged = true,
+            remoteStatus = remoteResult.first,
+            message = buildBlockedUpWriteMessage(
+                blocked = false,
+                remoteStatus = remoteResult.first,
+                remoteMessage = remoteResult.second
+            )
+        )
+    }
+
+    private suspend fun modifyBilibiliBlockedList(
+        mid: Long,
+        blocked: Boolean
+    ): Pair<BilibiliBlockedListRemoteStatus, String?> {
+        val csrf = TokenManager.csrfCache.orEmpty()
+        if (csrf.isBlank()) return BilibiliBlockedListRemoteStatus.SKIPPED_NOT_LOGGED_IN to null
+
+        return runCatching {
+            api.modifyRelation(
+                fid = mid,
+                act = if (blocked) BILIBILI_RELATION_ACT_BLOCK else BILIBILI_RELATION_ACT_UNBLOCK,
+                csrf = csrf,
+                reSrc = BILIBILI_RELATION_BLOCK_RE_SRC
+            )
+        }.fold(
+            onSuccess = { response ->
+                if (response.code == 0) {
+                    BilibiliBlockedListRemoteStatus.SUCCESS to null
+                } else {
+                    BilibiliBlockedListRemoteStatus.FAILED to response.message.ifBlank {
+                        "接口返回 ${response.code}"
+                    }
+                }
+            },
+            onFailure = { error ->
+                BilibiliBlockedListRemoteStatus.FAILED to error.message
+            }
+        )
     }
 }

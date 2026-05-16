@@ -782,8 +782,9 @@ interface BilibiliApi {
     @retrofit2.http.POST("x/relation/modify")
     suspend fun modifyRelation(
         @retrofit2.http.Field("fid") fid: Long,      // UP 主 mid
-        @retrofit2.http.Field("act") act: Int,        // 1=关注, 2=取关
-        @retrofit2.http.Field("csrf") csrf: String
+        @retrofit2.http.Field("act") act: Int,        // 1=关注, 2=取关, 5=拉黑, 6=解除拉黑
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("re_src") reSrc: Int? = null
     ): SimpleApiResponse
 
     @retrofit2.http.FormUrlEncoded

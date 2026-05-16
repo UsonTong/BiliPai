@@ -103,7 +103,11 @@ internal data class ReplyItemLayoutPolicy(
     val horizontalPaddingDp: Int,
     val avatarSizeDp: Int,
     val avatarContentSpacingDp: Int,
-    val actionButtonSizeDp: Int
+    val actionButtonSizeDp: Int,
+    val decorationWidthReserveDp: Int,
+    val decorationImageWidthDp: Int,
+    val decorationImageHeightDp: Int,
+    val decorationMinWidthDp: Int
 ) {
     val dividerStartPaddingDp: Int
         get() = horizontalPaddingDp + avatarSizeDp + avatarContentSpacingDp
@@ -112,9 +116,13 @@ internal data class ReplyItemLayoutPolicy(
 internal fun resolveReplyItemLayoutPolicy(): ReplyItemLayoutPolicy {
     return ReplyItemLayoutPolicy(
         horizontalPaddingDp = 12,
-        avatarSizeDp = 40,
-        avatarContentSpacingDp = 10,
-        actionButtonSizeDp = 40
+        avatarSizeDp = 38,
+        avatarContentSpacingDp = 9,
+        actionButtonSizeDp = 40,
+        decorationWidthReserveDp = 78,
+        decorationImageWidthDp = 64,
+        decorationImageHeightDp = 46,
+        decorationMinWidthDp = 78
     )
 }
 
@@ -122,7 +130,7 @@ internal fun resolveReplyItemHeaderEndPaddingDp(
     hasPiliPlusDecoration: Boolean,
     policy: ReplyItemLayoutPolicy = resolveReplyItemLayoutPolicy()
 ): Int {
-    return policy.actionButtonSizeDp + if (hasPiliPlusDecoration) 88 else 0
+    return policy.actionButtonSizeDp + if (hasPiliPlusDecoration) policy.decorationWidthReserveDp else 0
 }
 
 internal fun resolveReplyItemTextColumnWidthDp(
@@ -1920,6 +1928,7 @@ internal fun FanGroupDecorationBadge(
     visual: FanGroupTagVisual,
     modifier: Modifier = Modifier
 ) {
+    val layoutPolicy = remember { resolveReplyItemLayoutPolicy() }
     val fallbackImageUrl = normalizeHttpImageUrl(visual.cardBgImageUrl)
     val primaryImageUrl = resolveDecorationImageUrl(visual.cardBgImageUrl)
     var imageUrl by remember(primaryImageUrl, fallbackImageUrl) {
@@ -1934,7 +1943,7 @@ internal fun FanGroupDecorationBadge(
         fallbackColor = MaterialTheme.colorScheme.onSurface
     )
     Row(
-        modifier = modifier.widthIn(min = 86.dp),
+        modifier = modifier.widthIn(min = layoutPolicy.decorationMinWidthDp.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.End)
     ) {
@@ -1955,7 +1964,10 @@ internal fun FanGroupDecorationBadge(
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
                 modifier = Modifier
-                    .size(width = 72.dp, height = 52.dp)
+                    .size(
+                        width = layoutPolicy.decorationImageWidthDp.dp,
+                        height = layoutPolicy.decorationImageHeightDp.dp
+                    )
                     .clip(RoundedCornerShape(2.dp))
             )
         }

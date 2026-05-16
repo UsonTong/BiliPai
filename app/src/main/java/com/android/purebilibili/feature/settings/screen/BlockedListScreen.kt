@@ -80,7 +80,9 @@ fun BlockedListScreen(
                 }
             },
             onUnblock = { mid ->
-                scope.launch { repository.unblockUp(mid) }
+                scope.launch {
+                    blockedListSyncMessage = repository.unblockUpWithBilibiliSync(mid).message
+                }
             },
             modifier = Modifier.padding(padding)
         )

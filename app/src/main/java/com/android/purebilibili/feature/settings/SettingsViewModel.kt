@@ -43,6 +43,8 @@ data class SettingsUiState(
     val colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
+    val appFontFileName: String = "",
+    val appFontDisplayName: String = "",
     val appUiScalePreset: AppUiScalePreset = AppUiScalePreset.STANDARD,
     val appDpiOverridePercent: Int = 0,
     val bgPlay: Boolean = false,
@@ -112,6 +114,8 @@ data class ExtraSettings(
     val themeColorIndex: Int,
     val appIcon: String,
     val appFontSizePreset: AppFontSizePreset,
+    val appFontFileName: String,
+    val appFontDisplayName: String,
     val appUiScalePreset: AppUiScalePreset,
     val appDpiOverridePercent: Int,
     val isBottomBarFloating: Boolean,
@@ -165,6 +169,8 @@ private data class BaseSettings(
     val colorStyle: PaletteStyle,
     val colorSpec: ColorSpec.SpecVersion,
     val appFontSizePreset: AppFontSizePreset,
+    val appFontFileName: String,
+    val appFontDisplayName: String,
     val appUiScalePreset: AppUiScalePreset,
     val appDpiOverridePercent: Int,
     val bgPlay: Boolean,
@@ -209,6 +215,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val themeColorIndex: Int,
         val appIcon: String,
         val appFontSizePreset: AppFontSizePreset,
+        val appFontFileName: String,
+        val appFontDisplayName: String,
         val appUiScalePreset: AppUiScalePreset,
         val appDpiOverridePercent: Int
     )
@@ -251,6 +259,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getThemeColorIndex(context).asAnyFlow(),
         SettingsManager.getAppIcon(context).asAnyFlow(),
         SettingsManager.getAppFontSizePreset(context).asAnyFlow(),
+        SettingsManager.getAppFontFileName(context).asAnyFlow(),
+        SettingsManager.getAppFontDisplayName(context).asAnyFlow(),
         SettingsManager.getAppUiScalePreset(context).asAnyFlow(),
         SettingsManager.getAppDpiOverridePercent(context).asAnyFlow()
     ) { values ->
@@ -259,8 +269,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             themeColorIndex = values[1] as Int,
             appIcon = values[2] as String,
             appFontSizePreset = values[3] as AppFontSizePreset,
-            appUiScalePreset = values[4] as AppUiScalePreset,
-            appDpiOverridePercent = values[5] as Int
+            appFontFileName = values[4] as String,
+            appFontDisplayName = values[5] as String,
+            appUiScalePreset = values[6] as AppUiScalePreset,
+            appDpiOverridePercent = values[7] as Int
         )
     }
     
@@ -369,6 +381,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             themeColorIndex = ui1.themeColorIndex,
             appIcon = ui1.appIcon,
             appFontSizePreset = ui1.appFontSizePreset,
+            appFontFileName = ui1.appFontFileName,
+            appFontDisplayName = ui1.appFontDisplayName,
             appUiScalePreset = ui1.appUiScalePreset,
             appDpiOverridePercent = ui1.appDpiOverridePercent,
             isBottomBarFloating = ui2.f,
@@ -449,6 +463,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             colorStyle = core.colorStyle,
             colorSpec = core.colorSpec,
             appFontSizePreset = extra.appFontSizePreset,
+            appFontFileName = extra.appFontFileName,
+            appFontDisplayName = extra.appFontDisplayName,
             appUiScalePreset = extra.appUiScalePreset,
             appDpiOverridePercent = extra.appDpiOverridePercent,
             bgPlay = core.bgPlay,
@@ -505,6 +521,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             colorStyle = settings.colorStyle,
             colorSpec = settings.colorSpec,
             appFontSizePreset = settings.appFontSizePreset,
+            appFontFileName = settings.appFontFileName,
+            appFontDisplayName = settings.appFontDisplayName,
             appUiScalePreset = settings.appUiScalePreset,
             appDpiOverridePercent = settings.appDpiOverridePercent,
             bgPlay = settings.bgPlay,
@@ -616,6 +634,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
     fun setAppFontSizePreset(preset: AppFontSizePreset) {
         viewModelScope.launch { SettingsManager.setAppFontSizePreset(context, preset) }
+    }
+    fun setAppFontFile(fileName: String, displayName: String) {
+        viewModelScope.launch { SettingsManager.setAppFontFile(context, fileName, displayName) }
+    }
+    fun clearAppFontFile() {
+        viewModelScope.launch { SettingsManager.clearAppFontFile(context) }
     }
     fun setAppUiScalePreset(preset: AppUiScalePreset) {
         viewModelScope.launch { SettingsManager.setAppUiScalePreset(context, preset) }
