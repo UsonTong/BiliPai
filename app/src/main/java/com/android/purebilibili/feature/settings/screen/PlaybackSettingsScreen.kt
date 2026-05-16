@@ -134,16 +134,16 @@ fun PlaybackSettingsContent(
     LaunchedEffect(Unit) {
         isVisible = true
     }
-    
+
     var isStatsEnabled by remember { mutableStateOf(prefs.getBoolean("show_stats", false)) }
     var showPipPermissionDialog by remember { mutableStateOf(false) }
-    
+
     // 获取动态圆角用于统一风格
     // 注意：这里需要导入 LocalCornerRadiusScale，如果该文件没有导入，可能需要添加。
     // 假设 iOSCornerRadius 和 LocalCornerRadiusScale 未在此文件导入，先使用硬编码或尝试导入
     // 为了稳妥，这里先检查导入。原文件没有导入这些。
     // 但为了保持原样，我先不做动态圆角修改，或者之后再做。
-    
+
     val miniPlayerMode by com.android.purebilibili.core.store.SettingsManager
         .getMiniPlayerMode(context).collectAsState(
             initial = com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.OFF
@@ -173,9 +173,9 @@ fun PlaybackSettingsContent(
         .getVideoCodec(context).collectAsState(initial = "hev1")
     val videoSecondCodecPreference by com.android.purebilibili.core.store.SettingsManager
         .getVideoSecondCodec(context).collectAsState(initial = "avc1")
-    
+
     // ... [保留原有逻辑: checkPipPermission, gotoPipSettings] ...
-    
+
     // 检查画中画权限
     fun checkPipPermission(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -198,7 +198,7 @@ fun PlaybackSettingsContent(
         }
         return false
     }
-    
+
     // 跳转到系统设置
     fun gotoPipSettings() {
         try {
@@ -215,7 +215,7 @@ fun PlaybackSettingsContent(
             context.startActivity(intent)
         }
     }
-    
+
     // 权限弹窗逻辑
     if (showPipPermissionDialog) {
         com.android.purebilibili.core.ui.IOSAlertDialog(
@@ -243,7 +243,7 @@ fun PlaybackSettingsContent(
         modifier = modifier.fillMaxSize(),
         contentPadding = WindowInsets.navigationBars.asPaddingValues()
     ) {
-            
+
             //  解码设置
             //  解码设置
             item {
@@ -271,7 +271,7 @@ fun PlaybackSettingsContent(
                             title = "启用硬件解码",
                             subtitle = "减少发热和耗电 (推荐开启)",
                             checked = state.hwDecode,
-                            onCheckedChange = { 
+                            onCheckedChange = {
                                 viewModel.toggleHwDecode(it)
                                 //  [埋点] 设置变更追踪
                                 com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("hw_decode", it.toString())
@@ -357,7 +357,7 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             //  小窗播放
             item {
                 Box(modifier = Modifier.staggeredEntrance(4, isVisible, motionTier = effectiveMotionTier)) {
@@ -387,7 +387,7 @@ fun PlaybackSettingsContent(
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.SYSTEM_PIP, "画中画"),
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.MiniPlayerMode.IN_APP_AND_SYSTEM_PIP, "小窗+PiP")
                     )
-                    
+
                     IOSGroup {
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.Pip,
@@ -463,7 +463,7 @@ fun PlaybackSettingsContent(
                                 }
                             }
                         )
-                        
+
                         //  权限提示（仅当选择支持系统 PiP 的模式且无权限时显示）
                         if (modeControlsEnabled &&
                             miniPlayerMode.supportsSystemPip
@@ -554,7 +554,7 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             //  手势设置
             item {
                 Box(modifier = Modifier.staggeredEntrance(6, isVisible, motionTier = effectiveMotionTier)) {
@@ -593,7 +593,7 @@ fun PlaybackSettingsContent(
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            
+
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
@@ -621,7 +621,7 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             //  调试选项
             item {
                 Box(modifier = Modifier.staggeredEntrance(8, isVisible, motionTier = effectiveMotionTier)) {
@@ -689,7 +689,7 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             //  交互设置
             item {
                 Box(modifier = Modifier.staggeredEntrance(10, isVisible, motionTier = effectiveMotionTier)) {
@@ -698,271 +698,10 @@ fun PlaybackSettingsContent(
             }
             item {
                 Box(modifier = Modifier.staggeredEntrance(11, isVisible, motionTier = effectiveMotionTier)) {
-                    val scope = rememberCoroutineScope()
-                    //  [新增] 自动播放下一个
-                    val autoPlayEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getAutoPlay(context).collectAsState(initial = true)
-                    val externalPlaylistAutoContinueEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getExternalPlaylistAutoContinue(context).collectAsState(initial = true)
-                    val resumePlaybackPromptEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getResumePlaybackPromptEnabled(context).collectAsState(initial = true)
-                    val playbackCompletionBehavior by com.android.purebilibili.core.store.SettingsManager
-                        .getPlaybackCompletionBehavior(context)
-                        .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
-                    val subtitleFeatureEnabled = isSubtitleFeatureEnabledForUser()
-                    val subtitleAutoPreference by com.android.purebilibili.core.store.SettingsManager
-                        .getSubtitleAutoPreference(context)
-                        .collectAsState(initial = SubtitleAutoPreference.OFF)
-                    val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getVideoAiSummaryEntryEnabled(context)
-                        .collectAsState(initial = true)
-                    val videoInfoDefaultExpanded by com.android.purebilibili.core.store.SettingsManager
-                        .getVideoInfoDefaultExpanded(context)
-                        .collectAsState(initial = true)
-                    val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getCommentFraudDetectionEnabled(context)
-                        .collectAsState(initial = true)
-                    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
-                        .getCommentMemberDecorationsEnabled(context)
-                        .collectAsState(initial = false)
-                    val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
-                        .getCommentCollapsedReplyPreviewLimit(context)
-                        .collectAsState(
-                            initial = com.android.purebilibili.core.store.SettingsManager
-                                .DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
-                        )
-                    val subtitlePreferenceDescription = when (subtitleAutoPreference) {
-                        SubtitleAutoPreference.OFF -> "默认关闭字幕"
-                        SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
-                        SubtitleAutoPreference.WITHOUT_AI -> "仅自动启用非 AI 字幕"
-                        SubtitleAutoPreference.AUTO -> "静音时可自动启用 AI 字幕"
-                    }
-                    
                     PlaybackInteractionSettingsSection(
-                        content = {
-                        // --- Click to Play ---
-                        val clickToPlayEnabled by com.android.purebilibili.core.store.SettingsManager
-                            .getClickToPlay(context).collectAsState(initial = true)
-
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.PlayCircle,
-                            title = "进入视频自动播放",
-                            subtitle = if (clickToPlayEnabled) {
-                                "进入视频详情页时自动开始播放"
-                            } else {
-                                "关闭后进入视频详情页需手动播放"
-                            },
-                            checked = clickToPlayEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setClickToPlay(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ArrowTriangle2Circlepath,
-                            title = "续播弹窗提示",
-                            subtitle = if (resumePlaybackPromptEnabled) {
-                                "检测到历史进度时仅提醒一次"
-                            } else {
-                                "关闭后不再弹出“继续播放”提示"
-                            },
-                            checked = resumePlaybackPromptEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setResumePlaybackPromptEnabled(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        //  [新增] 自动播放下一个视频
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ForwardEnd,
-                            title = "自动播放下一个",
-                            subtitle = "普通视频结束后自动播放推荐视频",
-                            checked = autoPlayEnabled,
-                            onCheckedChange = { 
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setAutoPlay(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.ListBullet,
-                            title = "列表/收藏夹连续播放",
-                            subtitle = "控制收藏夹、稍后再看、合集等列表播放完后是否继续下一条",
-                            checked = externalPlaylistAutoContinueEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setExternalPlaylistAutoContinue(context, it)
-                                }
-                            },
-                            iconTint = iOSTeal
-                        )
-                        IOSDivider()
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val playbackOrderOptions = listOf(
-                                PlaybackSegmentOption(PlaybackCompletionBehavior.STOP_AFTER_CURRENT, "暂停"),
-                                PlaybackSegmentOption(PlaybackCompletionBehavior.PLAY_IN_ORDER, "顺序"),
-                                PlaybackSegmentOption(PlaybackCompletionBehavior.REPEAT_ONE, "单循"),
-                                PlaybackSegmentOption(PlaybackCompletionBehavior.LOOP_PLAYLIST, "列表循"),
-                                PlaybackSegmentOption(PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC, "自动")
-                            )
-                            IOSSlidingSegmentedSetting(
-                                title = "选择播放顺序：${playbackCompletionBehavior.label}",
-                                subtitle = "稍后再看推荐选择“顺序播放”",
-                                options = playbackOrderOptions,
-                                selectedValue = playbackCompletionBehavior,
-                                onSelectionChange = { behavior ->
-                                    scope.launch {
-                                        com.android.purebilibili.core.store.SettingsManager
-                                            .setPlaybackCompletionBehavior(context, behavior)
-                                    }
-                                }
-                            )
-                            Text(
-                                text = "稍后再看推荐选择“顺序播放”即可连续播放下一条，不需要退出重选。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (subtitleFeatureEnabled) {
-                            IOSDivider()
-                            IOSSlidingSegmentedSetting(
-                                title = "自动启用字幕：${
-                                    when (subtitleAutoPreference) {
-                                        SubtitleAutoPreference.OFF -> "关闭"
-                                        SubtitleAutoPreference.ON -> "开启"
-                                        SubtitleAutoPreference.WITHOUT_AI -> "无 AI"
-                                        SubtitleAutoPreference.AUTO -> "自动"
-                                    }
-                                }",
-                                subtitle = subtitlePreferenceDescription,
-                                options = listOf(
-                                    PlaybackSegmentOption(SubtitleAutoPreference.OFF, "关闭"),
-                                    PlaybackSegmentOption(SubtitleAutoPreference.ON, "开启"),
-                                    PlaybackSegmentOption(SubtitleAutoPreference.WITHOUT_AI, "无 AI"),
-                                    PlaybackSegmentOption(SubtitleAutoPreference.AUTO, "自动")
-                                ),
-                                selectedValue = subtitleAutoPreference,
-                                onSelectionChange = { preference ->
-                                    scope.launch {
-                                        com.android.purebilibili.core.store.SettingsManager
-                                            .setSubtitleAutoPreference(context, preference)
-                                    }
-                                }
-                            )
-                            IOSDivider()
-                        }
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.InfoCircle,
-                            title = "默认展开视频简介",
-                            subtitle = if (videoInfoDefaultExpanded) {
-                                "进入视频页时默认展开标题、简介和标签"
-                            } else {
-                                "进入视频页时默认收起简介，点击标题区域后展开"
-                            },
-                            checked = videoInfoDefaultExpanded,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setVideoInfoDefaultExpanded(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.Sparkles,
-                            title = "显示 AI 总结入口",
-                            subtitle = if (videoAiSummaryEntryEnabled) {
-                                "视频简介区展示 AI 总结按钮，点按后展开内容"
-                            } else {
-                                "关闭后隐藏视频简介区的 AI 总结入口"
-                            },
-                            checked = videoAiSummaryEntryEnabled,
-                            onCheckedChange = {
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setVideoAiSummaryEntryEnabled(context, it)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPurple
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.HandThumbsup,
-                            title = "双击点赞",
-                            subtitle = "双击视频画面快捷点赞",
-                            checked = state.doubleTapLike,
-                            onCheckedChange = { 
-                                viewModel.toggleDoubleTapLike(it)
-                                //  [埋点] 设置变更追踪
-                                com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("double_tap_like", it.toString())
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSPink
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "评论回复预览：${commentCollapsedReplyPreviewLimit}条",
-                            subtitle = "一级评论下默认展开的回复数量",
-                            options = listOf(
-                                PlaybackSegmentOption(3, "3条"),
-                                PlaybackSegmentOption(5, "5条"),
-                                PlaybackSegmentOption(8, "8条"),
-                                PlaybackSegmentOption(10, "10条")
-                            ),
-                            selectedValue = commentCollapsedReplyPreviewLimit,
-                            onSelectionChange = { limit ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentCollapsedReplyPreviewLimit(context, limit)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.TextBubble,
-                            title = "评论发送检测",
-                            subtitle = "发送成功后自动检查评论是否正常显示",
-                            checked = commentFraudDetectionEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentFraudDetectionEnabled(context, enabled)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.PaintbrushPointed,
-                            title = "评论区个性装扮",
-                            subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
-                            checked = commentMemberDecorationsEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentMemberDecorationsEnabled(context, enabled)
-                                }
-                            },
-                            iconTint = iOSOrange
-                        )
-                        }
+                        context = context,
+                        state = state,
+                        viewModel = viewModel
                     )
                 }
             }
@@ -976,7 +715,7 @@ fun PlaybackSettingsContent(
                     PlaybackFullscreenGestureSettingsSection(context = context)
                 }
             }
-            
+
             //  网络与画质
             item {
                 Box(modifier = Modifier.staggeredEntrance(14, isVisible, motionTier = effectiveMotionTier)) {
@@ -997,15 +736,15 @@ fun PlaybackSettingsContent(
                     val isLoggedIn = !TokenManager.sessDataCache.isNullOrEmpty() ||
                         !TokenManager.accessTokenCache.isNullOrEmpty()
                     val isVip = TokenManager.isVipCache
-                    
+
                     val qualityOptions = resolveDefaultPlaybackQualityOptions()
-                    
+
                     fun getQualityLabel(id: Int): String = resolveSelectionLabel(
                         options = qualityOptions,
                         selectedValue = id,
                         fallbackLabel = "720P"
                     )
-                    
+
                     IOSGroup {
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ChartBar,
@@ -1069,9 +808,9 @@ fun PlaybackSettingsContent(
                                 }
                             }
                         )
-                        
+
                         IOSDivider()
-                        
+
                         // 📉 读取省流量模式，用于显示提示
                         val dataSaverModeForHint by com.android.purebilibili.core.store.SettingsManager
                             .getDataSaverMode(context).collectAsState(
@@ -1083,7 +822,7 @@ fun PlaybackSettingsContent(
                             isDataSaverActive = isDataSaverActive
                         )
                         val effectiveQualityLabel = getQualityLabel(effectiveQuality)
-                        
+
                         IOSSlidingSegmentedSetting(
                             title = "流量默认画质：${getQualityLabel(mobileQuality)}",
                             subtitle = when {
@@ -1126,7 +865,7 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             // 📉 省流量模式
             item {
                 Box(modifier = Modifier.staggeredEntrance(16, isVisible, motionTier = effectiveMotionTier)) {
@@ -1149,7 +888,7 @@ fun PlaybackSettingsContent(
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.DataSaverMode.MOBILE_ONLY, "仅移动数据"),
                         PlaybackSegmentOption(com.android.purebilibili.core.store.SettingsManager.DataSaverMode.ALWAYS, "始终开启")
                     )
-                    
+
                     IOSGroup {
                         IOSSlidingSegmentedSetting(
                             title = "省流量模式：${dataSaverMode.label}",
@@ -1183,7 +922,7 @@ fun PlaybackSettingsContent(
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSBlue
                         )
-                        
+
                         //  功能说明
                         IOSDivider()
                         Row(
@@ -1209,16 +948,282 @@ fun PlaybackSettingsContent(
                     }
                 }
             }
-            
+
             item { Spacer(modifier = Modifier.height(32.dp)) }
 }
 }
 
 @Composable
 private fun PlaybackInteractionSettingsSection(
-    content: @Composable ColumnScope.() -> Unit
+    context: Context,
+    state: SettingsUiState,
+    viewModel: SettingsViewModel
 ) {
-    IOSGroup(content = content)
+    val scope = rememberCoroutineScope()
+    //  [新增] 自动播放下一个
+    val autoPlayEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getAutoPlay(context).collectAsState(initial = true)
+    val externalPlaylistAutoContinueEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getExternalPlaylistAutoContinue(context).collectAsState(initial = true)
+    val resumePlaybackPromptEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getResumePlaybackPromptEnabled(context).collectAsState(initial = true)
+    val playbackCompletionBehavior by com.android.purebilibili.core.store.SettingsManager
+        .getPlaybackCompletionBehavior(context)
+        .collectAsState(initial = PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC)
+    val subtitleFeatureEnabled = isSubtitleFeatureEnabledForUser()
+    val subtitleAutoPreference by com.android.purebilibili.core.store.SettingsManager
+        .getSubtitleAutoPreference(context)
+        .collectAsState(initial = SubtitleAutoPreference.OFF)
+    val videoAiSummaryEntryEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getVideoAiSummaryEntryEnabled(context)
+        .collectAsState(initial = true)
+    val videoInfoDefaultExpanded by com.android.purebilibili.core.store.SettingsManager
+        .getVideoInfoDefaultExpanded(context)
+        .collectAsState(initial = true)
+    val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentFraudDetectionEnabled(context)
+        .collectAsState(initial = true)
+    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getCommentMemberDecorationsEnabled(context)
+        .collectAsState(initial = false)
+    val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
+        .getCommentCollapsedReplyPreviewLimit(context)
+        .collectAsState(
+            initial = com.android.purebilibili.core.store.SettingsManager
+                .DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
+        )
+    val subtitlePreferenceDescription = when (subtitleAutoPreference) {
+        SubtitleAutoPreference.OFF -> "默认关闭字幕"
+        SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
+        SubtitleAutoPreference.WITHOUT_AI -> "仅自动启用非 AI 字幕"
+        SubtitleAutoPreference.AUTO -> "静音时可自动启用 AI 字幕"
+    }
+
+    IOSGroup {
+        // --- Click to Play ---
+        val clickToPlayEnabled by com.android.purebilibili.core.store.SettingsManager
+            .getClickToPlay(context).collectAsState(initial = true)
+
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.PlayCircle,
+            title = "进入视频自动播放",
+            subtitle = if (clickToPlayEnabled) {
+                "进入视频详情页时自动开始播放"
+            } else {
+                "关闭后进入视频详情页需手动播放"
+            },
+            checked = clickToPlayEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setClickToPlay(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ArrowTriangle2Circlepath,
+            title = "续播弹窗提示",
+            subtitle = if (resumePlaybackPromptEnabled) {
+                "检测到历史进度时仅提醒一次"
+            } else {
+                "关闭后不再弹出“继续播放”提示"
+            },
+            checked = resumePlaybackPromptEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setResumePlaybackPromptEnabled(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        //  [新增] 自动播放下一个视频
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ForwardEnd,
+            title = "自动播放下一个",
+            subtitle = "普通视频结束后自动播放推荐视频",
+            checked = autoPlayEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setAutoPlay(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPurple
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.ListBullet,
+            title = "列表/收藏夹连续播放",
+            subtitle = "控制收藏夹、稍后再看、合集等列表播放完后是否继续下一条",
+            checked = externalPlaylistAutoContinueEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setExternalPlaylistAutoContinue(context, it)
+                }
+            },
+            iconTint = iOSTeal
+        )
+        IOSDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val playbackOrderOptions = listOf(
+                PlaybackSegmentOption(PlaybackCompletionBehavior.STOP_AFTER_CURRENT, "暂停"),
+                PlaybackSegmentOption(PlaybackCompletionBehavior.PLAY_IN_ORDER, "顺序"),
+                PlaybackSegmentOption(PlaybackCompletionBehavior.REPEAT_ONE, "单循"),
+                PlaybackSegmentOption(PlaybackCompletionBehavior.LOOP_PLAYLIST, "列表循"),
+                PlaybackSegmentOption(PlaybackCompletionBehavior.CONTINUE_CURRENT_LOGIC, "自动")
+            )
+            IOSSlidingSegmentedSetting(
+                title = "选择播放顺序：${playbackCompletionBehavior.label}",
+                subtitle = "稍后再看推荐选择“顺序播放”",
+                options = playbackOrderOptions,
+                selectedValue = playbackCompletionBehavior,
+                onSelectionChange = { behavior ->
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setPlaybackCompletionBehavior(context, behavior)
+                    }
+                }
+            )
+            Text(
+                text = "稍后再看推荐选择“顺序播放”即可连续播放下一条，不需要退出重选。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (subtitleFeatureEnabled) {
+            IOSDivider()
+            IOSSlidingSegmentedSetting(
+                title = "自动启用字幕：${
+                    when (subtitleAutoPreference) {
+                        SubtitleAutoPreference.OFF -> "关闭"
+                        SubtitleAutoPreference.ON -> "开启"
+                        SubtitleAutoPreference.WITHOUT_AI -> "无 AI"
+                        SubtitleAutoPreference.AUTO -> "自动"
+                    }
+                }",
+                subtitle = subtitlePreferenceDescription,
+                options = listOf(
+                    PlaybackSegmentOption(SubtitleAutoPreference.OFF, "关闭"),
+                    PlaybackSegmentOption(SubtitleAutoPreference.ON, "开启"),
+                    PlaybackSegmentOption(SubtitleAutoPreference.WITHOUT_AI, "无 AI"),
+                    PlaybackSegmentOption(SubtitleAutoPreference.AUTO, "自动")
+                ),
+                selectedValue = subtitleAutoPreference,
+                onSelectionChange = { preference ->
+                    scope.launch {
+                        com.android.purebilibili.core.store.SettingsManager
+                            .setSubtitleAutoPreference(context, preference)
+                    }
+                }
+            )
+            IOSDivider()
+        }
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.InfoCircle,
+            title = "默认展开视频简介",
+            subtitle = if (videoInfoDefaultExpanded) {
+                "进入视频页时默认展开标题、简介和标签"
+            } else {
+                "进入视频页时默认收起简介，点击标题区域后展开"
+            },
+            checked = videoInfoDefaultExpanded,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setVideoInfoDefaultExpanded(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.Sparkles,
+            title = "显示 AI 总结入口",
+            subtitle = if (videoAiSummaryEntryEnabled) {
+                "视频简介区展示 AI 总结按钮，点按后展开内容"
+            } else {
+                "关闭后隐藏视频简介区的 AI 总结入口"
+            },
+            checked = videoAiSummaryEntryEnabled,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setVideoAiSummaryEntryEnabled(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPurple
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.HandThumbsup,
+            title = "双击点赞",
+            subtitle = "双击视频画面快捷点赞",
+            checked = state.doubleTapLike,
+            onCheckedChange = {
+                viewModel.toggleDoubleTapLike(it)
+                //  [埋点] 设置变更追踪
+                com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("double_tap_like", it.toString())
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSPink
+        )
+        IOSDivider()
+        IOSSlidingSegmentedSetting(
+            title = "评论回复预览：${commentCollapsedReplyPreviewLimit}条",
+            subtitle = "一级评论下默认展开的回复数量",
+            options = listOf(
+                PlaybackSegmentOption(3, "3条"),
+                PlaybackSegmentOption(5, "5条"),
+                PlaybackSegmentOption(8, "8条"),
+                PlaybackSegmentOption(10, "10条")
+            ),
+            selectedValue = commentCollapsedReplyPreviewLimit,
+            onSelectionChange = { limit ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setCommentCollapsedReplyPreviewLimit(context, limit)
+                }
+            }
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.TextBubble,
+            title = "评论发送检测",
+            subtitle = "发送成功后自动检查评论是否正常显示",
+            checked = commentFraudDetectionEnabled,
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setCommentFraudDetectionEnabled(context, enabled)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSBlue
+        )
+        IOSDivider()
+        IOSSwitchItem(
+            icon = CupertinoIcons.Default.PaintbrushPointed,
+            title = "评论区个性装扮",
+            subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
+            checked = commentMemberDecorationsEnabled,
+            onCheckedChange = { enabled ->
+                scope.launch {
+                    com.android.purebilibili.core.store.SettingsManager
+                        .setCommentMemberDecorationsEnabled(context, enabled)
+                }
+            },
+            iconTint = iOSOrange
+        )
+    }
+
 }
 
 @Composable

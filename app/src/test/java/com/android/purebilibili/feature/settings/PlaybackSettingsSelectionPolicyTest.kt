@@ -36,11 +36,10 @@ class PlaybackSettingsSelectionPolicyTest {
         )
 
         val interactionBlock = source
-            .substringAfter("PlaybackInteractionSettingsSection(")
+            .substringAfter("private fun PlaybackInteractionSettingsSection(")
             .substringBefore("PlaybackFullscreenGestureSettingsSection(")
         val fullscreenBlock = source
-            .substringAfter("PlaybackFullscreenGestureSettingsSection(")
-            .substringBefore("//  网络与画质")
+            .substringAfter("private fun PlaybackFullscreenGestureSettingsSection(")
 
         listOf("评论回复预览", "评论发送检测", "评论区个性装扮").forEach { title ->
             assertTrue(interactionBlock.contains(title))
@@ -63,6 +62,26 @@ class PlaybackSettingsSelectionPolicyTest {
         assertFalse(contentBlock.contains("getFullscreenMode(context)"))
         assertFalse(contentBlock.contains("getAppGestureScreenshotEnabled(context)"))
         assertFalse(contentBlock.contains("getPortraitPlayerCollapseMode(context)"))
+    }
+
+    @Test
+    fun `interaction section should own playback and comment setting state collection`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt"
+        )
+
+        val contentBlock = source
+            .substringAfter("fun PlaybackSettingsContent(")
+            .substringBefore("private fun PlaybackInteractionSettingsSection(")
+
+        assertTrue(source.contains("private fun PlaybackInteractionSettingsSection(\n    context: Context"))
+        assertTrue(contentBlock.contains("PlaybackInteractionSettingsSection("))
+        assertTrue(contentBlock.contains("context = context"))
+        assertTrue(contentBlock.contains("state = state"))
+        assertTrue(contentBlock.contains("viewModel = viewModel"))
+        assertFalse(contentBlock.contains("getAutoPlay(context)"))
+        assertFalse(contentBlock.contains("getSubtitleAutoPreference(context)"))
+        assertFalse(contentBlock.contains("getCommentFraudDetectionEnabled(context)"))
     }
 
     @Test
