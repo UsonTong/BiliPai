@@ -14,7 +14,7 @@ internal data class HomePerformanceConfig(
     val preloadAheadCount: Int
 ) {
     val isAnyLiquidGlassEnabled: Boolean
-        get() = topBarLiquidGlassEnabled || bottomBarLiquidGlassEnabled
+        get() = bottomBarLiquidGlassEnabled
 }
 
 internal fun resolveHomePreloadAheadCount(
@@ -63,11 +63,6 @@ internal fun resolveHomePerformanceConfig(
     // Feature retired: keep parameter for compatibility, but never apply runtime smoothness downgrade.
     val shouldPrioritizeSmoothness = false
     val effectiveDataSaver = isDataSaverActive
-    val effectiveTopBarLiquidGlass = resolveEffectiveLiquidGlassEnabled(
-        requestedEnabled = topBarLiquidGlassEnabled,
-        uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = androidNativeLiquidGlassEnabled
-    ) && !shouldPrioritizeSmoothness
     val effectiveBottomBarLiquidGlass = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = bottomBarLiquidGlassEnabled,
         uiPreset = uiPreset,
@@ -84,7 +79,7 @@ internal fun resolveHomePerformanceConfig(
     return HomePerformanceConfig(
         headerBlurEnabled = headerBlurEnabled,
         bottomBarBlurEnabled = bottomBarBlurEnabled,
-        topBarLiquidGlassEnabled = effectiveTopBarLiquidGlass,
+        topBarLiquidGlassEnabled = false,
         bottomBarLiquidGlassEnabled = effectiveBottomBarLiquidGlass,
         cardAnimationEnabled = cardAnimationEnabled,
         cardTransitionEnabled = cardTransitionEnabled,

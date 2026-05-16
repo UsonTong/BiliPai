@@ -15,24 +15,19 @@ internal fun resolveEffectiveHomeSettings(
     homeSettings: HomeSettings,
     uiPreset: UiPreset
 ): HomeSettings {
-    val effectiveTopBarLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
-        requestedEnabled = homeSettings.isTopBarLiquidGlassEnabled,
-        uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
-    )
     val effectiveBottomBarLiquidGlassEnabled = resolveEffectiveLiquidGlassEnabled(
         requestedEnabled = homeSettings.isBottomBarLiquidGlassEnabled,
         uiPreset = uiPreset,
         androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
     )
     return if (
-        effectiveTopBarLiquidGlassEnabled == homeSettings.isTopBarLiquidGlassEnabled &&
+        !homeSettings.isTopBarLiquidGlassEnabled &&
         effectiveBottomBarLiquidGlassEnabled == homeSettings.isBottomBarLiquidGlassEnabled
     ) {
         homeSettings
     } else {
         homeSettings.copy(
-            isTopBarLiquidGlassEnabled = effectiveTopBarLiquidGlassEnabled,
+            isTopBarLiquidGlassEnabled = false,
             isBottomBarLiquidGlassEnabled = effectiveBottomBarLiquidGlassEnabled
         )
     }

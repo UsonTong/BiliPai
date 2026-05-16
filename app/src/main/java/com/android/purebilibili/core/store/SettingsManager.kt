@@ -355,7 +355,7 @@ data class HomeSettings(
     val isHeaderBlurEnabled: Boolean = true,
     val headerBlurMode: HomeHeaderBlurMode = HomeHeaderBlurMode.FOLLOW_PRESET,
     val isBottomBarBlurEnabled: Boolean = true,
-    val isTopBarLiquidGlassEnabled: Boolean = true,
+    val isTopBarLiquidGlassEnabled: Boolean = false,
     val isBottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassPreset: BottomBarLiquidGlassPreset =
         BottomBarLiquidGlassPreset.BILIPAI_TUNED,
@@ -390,7 +390,7 @@ data class HomeSettings(
     val crashTrackingConsentShown: Boolean = true
 ) {
     val isLiquidGlassEnabled: Boolean
-        get() = isTopBarLiquidGlassEnabled || isBottomBarLiquidGlassEnabled
+        get() = isBottomBarLiquidGlassEnabled
 }
 
 enum class BottomBarSearchAutoExpandMode(val value: Int, val label: String) {
@@ -942,7 +942,7 @@ object SettingsManager {
             headerBlurMode = headerBlurMode,
             isHeaderCollapseEnabled = preferences[KEY_HEADER_COLLAPSE_ENABLED] ?: true,
             isBottomBarBlurEnabled = preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] ?: true,
-            isTopBarLiquidGlassEnabled = preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] ?: legacyLiquidGlassEnabled,
+            isTopBarLiquidGlassEnabled = false,
             isBottomBarLiquidGlassEnabled = preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] ?: legacyLiquidGlassEnabled,
             bottomBarLiquidGlassPreset = BottomBarLiquidGlassPreset.fromValue(
                 preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_PRESET]
@@ -2116,23 +2116,19 @@ object SettingsManager {
     fun getLiquidGlassEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences ->
             val legacy = preferences[KEY_LIQUID_GLASS_ENABLED] ?: true
-            val top = preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] ?: legacy
             val bottom = preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] ?: legacy
-            top || bottom
+            bottom
         }
 
     suspend fun setLiquidGlassEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_LIQUID_GLASS_ENABLED] = value
-            preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] = value
             preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] = value
         }
     }
 
     fun getTopBarLiquidGlassEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences ->
-            preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] ?: (preferences[KEY_LIQUID_GLASS_ENABLED] ?: true)
-        }
+        .map { false }
 
     suspend fun setTopBarLiquidGlassEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
@@ -3260,7 +3256,6 @@ object SettingsManager {
             if (currentVersion < HOME_VISUAL_DEFAULTS_VERSION) {
                 preferences[KEY_BOTTOM_BAR_FLOATING] = true
                 preferences[KEY_LIQUID_GLASS_ENABLED] = true
-                preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] = true
                 preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] = true
                 preferences[KEY_HEADER_BLUR_ENABLED] = true
                 preferences[KEY_HOME_VISUAL_DEFAULTS_VERSION] = HOME_VISUAL_DEFAULTS_VERSION
@@ -4823,7 +4818,6 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_HEADER_BLUR_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HEADER_COLLAPSE_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_BOTTOM_BAR_BLUR_ENABLED, SettingsShareSection.APPEARANCE),
-            BooleanShareablePreferenceDefinition(KEY_TOP_BAR_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_BOTTOM_BAR_LIQUID_GLASS_PRESET, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(

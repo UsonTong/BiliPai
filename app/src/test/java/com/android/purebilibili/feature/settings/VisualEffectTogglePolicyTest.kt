@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.settings
 
+import java.io.File
 import com.android.purebilibili.core.store.resolveEffectiveLiquidGlassEnabled
 import com.android.purebilibili.core.theme.UiPreset
 import kotlin.test.Test
@@ -10,25 +11,12 @@ import kotlin.test.assertTrue
 class VisualEffectTogglePolicyTest {
 
     @Test
-    fun `enabling top bar blur disables top liquid glass`() {
+    fun `top bar blur no longer coordinates with top liquid glass`() {
         val result = resolveTopBarBlurToggleState(
-            enableHeaderBlur = true,
-            currentLiquidGlassEnabled = true
+            enableHeaderBlur = true
         )
 
         assertTrue(result.headerBlurEnabled)
-        assertFalse(result.liquidGlassEnabled)
-    }
-
-    @Test
-    fun `enabling top liquid glass disables header blur`() {
-        val result = resolveTopBarLiquidGlassToggleState(
-            enableLiquidGlass = true,
-            currentHeaderBlurEnabled = true
-        )
-
-        assertTrue(result.liquidGlassEnabled)
-        assertFalse(result.headerBlurEnabled)
     }
 
     @Test
@@ -137,5 +125,20 @@ class VisualEffectTogglePolicyTest {
                 androidNativeLiquidGlassEnabled = true
             )
         )
+    }
+
+    @Test
+    fun `animation settings no longer exposes top bar liquid glass entry`() {
+        val sourceFile = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/screen/AnimationSettingsScreen.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/screen/AnimationSettingsScreen.kt")
+        ).firstOrNull { it.exists() }
+        requireNotNull(sourceFile)
+        val source = sourceFile.readText()
+
+        assertFalse(source.contains("顶部栏液态玻璃"))
+        assertFalse(source.contains("toggleTopBarLiquidGlass"))
+        assertTrue(source.contains("顶部栏磨砂"))
+        assertTrue(source.contains("底栏液态玻璃"))
     }
 }

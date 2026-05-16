@@ -75,7 +75,6 @@ data class SettingsUiState(
     val sponsorBlockAutoSkip: Boolean = true,
     // [新增] 触感反馈
     val hapticFeedbackEnabled: Boolean = true,
-    val topBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
@@ -92,7 +91,7 @@ data class SettingsUiState(
     val homeFeedCardWidthPreset: HomeFeedCardWidthPreset = HomeFeedCardWidthPreset.AUTO
 ) {
     val isLiquidGlassEnabled: Boolean
-        get() = topBarLiquidGlassEnabled || bottomBarLiquidGlassEnabled
+        get() = bottomBarLiquidGlassEnabled
 }
 
 // 内部数据类，用于分批合并流
@@ -130,7 +129,6 @@ data class ExtraSettings(
     val predictiveBackAnimationEnabled: Boolean,
     val smartVisualGuardEnabled: Boolean,
     val hapticFeedbackEnabled: Boolean, // [Restored]
-    val topBarLiquidGlassEnabled: Boolean = true,
     val bottomBarLiquidGlassEnabled: Boolean = true,
     val bottomBarSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
@@ -189,7 +187,6 @@ private data class BaseSettings(
     val predictiveBackAnimationEnabled: Boolean, // [New]
     val smartVisualGuardEnabled: Boolean, // [New]
     val hapticFeedbackEnabled: Boolean, // [新增]
-    val topBarLiquidGlassEnabled: Boolean,
     val bottomBarLiquidGlassEnabled: Boolean,
     val bottomBarSearchEnabled: Boolean,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode,
@@ -286,7 +283,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getPredictiveBackAnimationEnabled(context).asAnyFlow(), // [New]
         SettingsManager.getSmartVisualGuardEnabled(context).asAnyFlow(), // [New]
         SettingsManager.getHapticFeedbackEnabled(context).asAnyFlow(), // [新增]
-        SettingsManager.getTopBarLiquidGlassEnabled(context).asAnyFlow(),
         SettingsManager.getBottomBarLiquidGlassEnabled(context).asAnyFlow(),
         SettingsManager.getBottomBarSearchEnabled(context).asAnyFlow(),
         SettingsManager.getBottomBarSearchAutoExpandMode(context).asAnyFlow(),
@@ -309,19 +305,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val predictiveBackAnimation = values[6] as Boolean
         val smartVisualGuard = values[7] as Boolean
         val hapticFeedback = values[8] as Boolean
-        val topBarLiquidGlass = values[9] as Boolean
-        val bottomBarLiquidGlass = values[10] as Boolean
-        val bottomBarSearch = values[11] as Boolean
-        val bottomBarSearchAutoExpandMode = values[12] as BottomBarSearchAutoExpandMode
-        val androidNativeLiquidGlass = values[13] as Boolean
-        val liquidGlassStyle = values[14] as com.android.purebilibili.core.store.LiquidGlassStyle
-        val liquidGlassMode = values[15] as LiquidGlassMode
-        val liquidGlassStrength = values[16] as Float
-        val liquidGlassProgress = values[17] as Float
-        val tabletUseSidebar = values[18] as Boolean
-        val headerCollapse = values[19] as Boolean
-        val gridColumnCount = values[20] as Int
-        val homeFeedCardWidthPreset = values[21] as HomeFeedCardWidthPreset
+        val bottomBarLiquidGlass = values[9] as Boolean
+        val bottomBarSearch = values[10] as Boolean
+        val bottomBarSearchAutoExpandMode = values[11] as BottomBarSearchAutoExpandMode
+        val androidNativeLiquidGlass = values[12] as Boolean
+        val liquidGlassStyle = values[13] as com.android.purebilibili.core.store.LiquidGlassStyle
+        val liquidGlassMode = values[14] as LiquidGlassMode
+        val liquidGlassStrength = values[15] as Float
+        val liquidGlassProgress = values[16] as Float
+        val tabletUseSidebar = values[17] as Boolean
+        val headerCollapse = values[18] as Boolean
+        val gridColumnCount = values[19] as Int
+        val homeFeedCardWidthPreset = values[20] as HomeFeedCardWidthPreset
         
         data class Ui2(
             val f: Boolean,
@@ -333,7 +328,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val pba: Boolean,
             val svg: Boolean,
             val h: Boolean,
-            val tlg: Boolean,
             val blg: Boolean,
             val bbs: Boolean,
             val bbsam: BottomBarSearchAutoExpandMode,
@@ -357,7 +351,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             predictiveBackAnimation,
             smartVisualGuard,
             hapticFeedback,
-            topBarLiquidGlass,
             bottomBarLiquidGlass,
             bottomBarSearch,
             bottomBarSearchAutoExpandMode,
@@ -394,7 +387,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             predictiveBackAnimationEnabled = ui2.pba,
             smartVisualGuardEnabled = ui2.svg,
             hapticFeedbackEnabled = ui2.h, // [新增]
-            topBarLiquidGlassEnabled = ui2.tlg,
             bottomBarLiquidGlassEnabled = ui2.blg,
             bottomBarSearchEnabled = ui2.bbs,
             bottomBarSearchAutoExpandMode = ui2.bbsam,
@@ -483,7 +475,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             predictiveBackAnimationEnabled = extra.predictiveBackAnimationEnabled,
             smartVisualGuardEnabled = extra.smartVisualGuardEnabled,
             hapticFeedbackEnabled = extra.hapticFeedbackEnabled, // [新增]
-            topBarLiquidGlassEnabled = extra.topBarLiquidGlassEnabled,
             bottomBarLiquidGlassEnabled = extra.bottomBarLiquidGlassEnabled,
             bottomBarSearchEnabled = extra.bottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = extra.bottomBarSearchAutoExpandMode,
@@ -541,7 +532,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             predictiveBackAnimationEnabled = settings.predictiveBackAnimationEnabled,
             smartVisualGuardEnabled = settings.smartVisualGuardEnabled,
             hapticFeedbackEnabled = settings.hapticFeedbackEnabled, // [新增]
-            topBarLiquidGlassEnabled = settings.topBarLiquidGlassEnabled,
             bottomBarLiquidGlassEnabled = settings.bottomBarLiquidGlassEnabled,
             bottomBarSearchEnabled = settings.bottomBarSearchEnabled,
             bottomBarSearchAutoExpandMode = settings.bottomBarSearchAutoExpandMode,
@@ -729,11 +719,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleHeaderBlur(value: Boolean) {
         viewModelScope.launch {
             val resolved = resolveTopBarBlurToggleState(
-                enableHeaderBlur = value,
-                currentLiquidGlassEnabled = state.value.topBarLiquidGlassEnabled
+                enableHeaderBlur = value
             )
             SettingsManager.setHeaderBlurEnabled(context, resolved.headerBlurEnabled)
-            SettingsManager.setTopBarLiquidGlassEnabled(context, resolved.liquidGlassEnabled)
         }
     }
     fun toggleHeaderCollapse(value: Boolean) { viewModelScope.launch { SettingsManager.setHeaderCollapseEnabled(context, value) } }
@@ -818,17 +806,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleHapticFeedback(value: Boolean) { viewModelScope.launch { SettingsManager.setHapticFeedbackEnabled(context, value) } }
     
     // [New] Liquid Glass
-    fun toggleTopBarLiquidGlass(enabled: Boolean) {
-        viewModelScope.launch {
-            val resolved = resolveTopBarLiquidGlassToggleState(
-                enableLiquidGlass = enabled,
-                currentHeaderBlurEnabled = state.value.headerBlurEnabled
-            )
-            SettingsManager.setTopBarLiquidGlassEnabled(context, resolved.liquidGlassEnabled)
-            SettingsManager.setHeaderBlurEnabled(context, resolved.headerBlurEnabled)
-        }
-    }
-
     fun toggleBottomBarLiquidGlass(enabled: Boolean) {
         viewModelScope.launch {
             val resolved = resolveLiquidGlassToggleState(
@@ -856,16 +833,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             SettingsManager.setAndroidNativeLiquidGlassEnabled(context, enabled)
             if (enabled) {
-                val topBarResolved = resolveTopBarLiquidGlassToggleState(
-                    enableLiquidGlass = true,
-                    currentHeaderBlurEnabled = state.value.headerBlurEnabled
-                )
                 val bottomBarResolved = resolveLiquidGlassToggleState(
                     enableLiquidGlass = true,
                     currentBottomBarBlurEnabled = state.value.bottomBarBlurEnabled
                 )
-                SettingsManager.setTopBarLiquidGlassEnabled(context, topBarResolved.liquidGlassEnabled)
-                SettingsManager.setHeaderBlurEnabled(context, topBarResolved.headerBlurEnabled)
                 SettingsManager.setBottomBarLiquidGlassEnabled(context, bottomBarResolved.liquidGlassEnabled)
                 SettingsManager.setBottomBarBlurEnabled(context, bottomBarResolved.bottomBarBlurEnabled)
             }

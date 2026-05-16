@@ -1,8 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TopTabIndicatorGeometryTest {
@@ -137,36 +135,7 @@ class TopTabIndicatorGeometryTest {
     }
 
     @Test
-    fun `floating top tab uses dock surface spacing`() {
-        assertTrue(shouldUseTopTabDockSurface(isFloatingStyle = true))
-        assertEquals(10f, resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = true), 0.01f)
-        assertEquals(4f, resolveTopTabDockVerticalPaddingDp(isFloatingStyle = true), 0.01f)
-        assertEquals(4f, resolveTopTabDockContentPaddingDp(isFloatingStyle = true), 0.01f)
-        assertEquals(30f, resolveTopTabDockCornerRadiusDp(isFloatingStyle = true), 0.01f)
-    }
-
-    @Test
-    fun `floating top tab skips inner dock surface when outer chrome is present`() {
-        assertFalse(
-            shouldDrawTopTabInnerDockSurface(
-                isFloatingStyle = true,
-                hasOuterChromeSurface = true
-            )
-        )
-        assertTrue(
-            shouldDrawTopTabInnerDockSurface(
-                isFloatingStyle = true,
-                hasOuterChromeSurface = false
-            )
-        )
-    }
-
-    @Test
-    fun `non floating top tab does not reserve dock spacing`() {
-        assertFalse(shouldUseTopTabDockSurface(isFloatingStyle = false))
-        assertEquals(0f, resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = false), 0.01f)
-        assertEquals(0f, resolveTopTabDockVerticalPaddingDp(isFloatingStyle = false), 0.01f)
-        assertEquals(0f, resolveTopTabDockContentPaddingDp(isFloatingStyle = false), 0.01f)
-        assertEquals(0f, resolveTopTabDockCornerRadiusDp(isFloatingStyle = false), 0.01f)
+    fun `floating top tab no longer reserves inner dock spacing`() {
+        assertEquals(0f, resolveTopTabRowHorizontalPaddingDp(isFloatingStyle = true), 0.01f)
     }
 }

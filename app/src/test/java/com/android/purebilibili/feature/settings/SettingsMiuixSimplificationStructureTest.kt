@@ -26,7 +26,7 @@ class SettingsMiuixSimplificationStructureTest {
 
         assertFalse(source.contains("previewLiquidGlassProgress"))
         assertFalse(source.contains("通透到磨砂"))
-        assertTrue(source.contains("顶部栏液态玻璃"))
+        assertFalse(source.contains("顶部栏液态玻璃"))
         assertTrue(source.contains("底栏液态玻璃"))
         assertFalse(source.contains("安卓原生液态玻璃"))
         assertFalse(source.contains("toggleAndroidNativeLiquidGlass("))
@@ -37,15 +37,15 @@ class SettingsMiuixSimplificationStructureTest {
     }
 
     @Test
-    fun `animation liquid glass toggles use distinct icons`() {
+    fun `animation liquid glass section keeps only bottom bar toggle`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/settings/screen/AnimationSettingsScreen.kt")
 
-        assertTrue(
+        assertFalse(
             Regex("""icon = CupertinoIcons\.Default\.Drop,\s*title = "顶部栏液态玻璃"""")
                 .containsMatchIn(source)
         )
         assertTrue(
-            Regex("""icon = CupertinoIcons\.Default\.RectangleStack,\s*title = "底栏液态玻璃"""")
+            Regex("""icon = CupertinoIcons\.Default\.Drop,\s*title = "底栏液态玻璃"""")
                 .containsMatchIn(source)
         )
     }

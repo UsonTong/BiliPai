@@ -23,7 +23,7 @@ class TopTabStylePolicyTest {
         )
 
         assertEquals(true, state.floating)
-        assertEquals(TopTabMaterialMode.LIQUID_GLASS, state.materialMode)
+        assertEquals(TopTabMaterialMode.BLUR, state.materialMode)
     }
 
     @Test
@@ -105,12 +105,72 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `reduced interaction budget keeps top tab liquid glass enabled`() {
-        assertTrue(
+    fun `top tab liquid glass is disabled regardless of interaction budget`() {
+        assertFalse(
+            resolveEffectiveTopTabLiquidGlassEnabled(
+                isLiquidGlassEnabled = true,
+                interactionBudget = HomeInteractionMotionBudget.FULL
+            )
+        )
+        assertFalse(
             resolveEffectiveTopTabLiquidGlassEnabled(
                 isLiquidGlassEnabled = true,
                 interactionBudget = HomeInteractionMotionBudget.REDUCED
             )
+        )
+    }
+
+    @Test
+    fun `home top tab material mode only keeps blur or plain`() {
+        assertEquals(TopTabMaterialMode.BLUR, resolveHomeTopTabMaterialMode(headerBlurEnabled = true))
+        assertEquals(TopTabMaterialMode.PLAIN, resolveHomeTopTabMaterialMode(headerBlurEnabled = false))
+    }
+
+    @Test
+    fun `home top tab renderer routes by preset and native variant`() {
+        assertEquals(
+            HomeTopTabRenderer.IOS,
+            resolveHomeTopTabRenderer(
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                labelMode = 2
+            )
+        )
+        assertEquals(
+            HomeTopTabRenderer.MD3,
+            resolveHomeTopTabRenderer(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                labelMode = 2
+            )
+        )
+        assertEquals(
+            HomeTopTabRenderer.MIUIX,
+            resolveHomeTopTabRenderer(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                labelMode = 2
+            )
+        )
+        assertEquals(
+            HomeTopTabRenderer.MD3,
+            resolveHomeTopTabRenderer(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX,
+                labelMode = 0
+            )
+        )
+    }
+
+    @Test
+    fun `clicking selected top tab scrolls to top while other tabs select`() {
+        assertEquals(
+            TopTabClickAction.SCROLL_TO_TOP,
+            resolveTopTabClickAction(index = 2, selectedIndex = 2)
+        )
+        assertEquals(
+            TopTabClickAction.SELECT_TAB,
+            resolveTopTabClickAction(index = 3, selectedIndex = 2)
         )
     }
 
@@ -417,8 +477,8 @@ class TopTabStylePolicyTest {
     }
 
     @Test
-    fun `md3 liquid glass top tabs bypass material indicator`() {
-        assertFalse(
+    fun `md3 top tabs always use material indicator after removing top liquid glass`() {
+        assertTrue(
             shouldUseMd3TopTabMaterialIndicator(
                 uiPreset = UiPreset.MD3,
                 liquidGlassEnabled = true

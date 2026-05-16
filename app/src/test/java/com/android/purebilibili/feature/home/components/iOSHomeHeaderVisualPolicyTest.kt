@@ -631,9 +631,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `top chrome uses liquid glass when liquid glass is enabled`() {
+    fun `top chrome uses blur when liquid glass was enabled`() {
         assertEquals(
-            TopTabMaterialMode.LIQUID_GLASS,
+            TopTabMaterialMode.BLUR,
             resolveHomeTopChromeMaterialMode(
                 isHeaderBlurEnabled = true,
                 isBottomBarBlurEnabled = true,
@@ -667,9 +667,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `top chrome uses liquid glass when header blur is off but liquid glass remains enabled`() {
+    fun `top chrome uses blur from linked bottom bar when liquid glass was enabled`() {
         assertEquals(
-            TopTabMaterialMode.LIQUID_GLASS,
+            TopTabMaterialMode.BLUR,
             resolveHomeTopChromeMaterialMode(
                 isHeaderBlurEnabled = false,
                 isBottomBarBlurEnabled = true,
@@ -717,7 +717,7 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `top chrome liquid glass setting is independent from bottom bar liquid glass`() {
+    fun `top chrome liquid glass setting is ignored after top liquid removal`() {
         assertFalse(
             resolveHomeTopChromeLiquidGlassEnabled(
                 homeSettings = HomeSettings(
@@ -728,7 +728,7 @@ class iOSHomeHeaderVisualPolicyTest {
                 uiPreset = UiPreset.MD3
             )
         )
-        assertTrue(
+        assertFalse(
             resolveHomeTopChromeLiquidGlassEnabled(
                 homeSettings = HomeSettings(
                     isTopBarLiquidGlassEnabled = true,
@@ -973,9 +973,9 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `miuix top chrome keeps liquid glass when global liquid glass is enabled`() {
+    fun `miuix top chrome keeps blur when global liquid glass is enabled`() {
         assertEquals(
-            TopTabMaterialMode.LIQUID_GLASS,
+            TopTabMaterialMode.BLUR,
             resolveHomeTopChromeMaterialMode(
                 isHeaderBlurEnabled = true,
                 isBottomBarBlurEnabled = true,

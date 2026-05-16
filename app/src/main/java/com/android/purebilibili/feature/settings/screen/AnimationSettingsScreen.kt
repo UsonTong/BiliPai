@@ -149,7 +149,6 @@ fun AnimationSettingsContent(
         )
     }
     val isLiquidGlassAvailable = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT)
-    val topBarLiquidGlassEnabled = state.topBarLiquidGlassEnabled
     val bottomBarLiquidGlassEnabled = state.bottomBarLiquidGlassEnabled
     val bottomBarLiquidGlassPreset by SettingsManager.getBottomBarLiquidGlassPreset(context)
         .collectAsState(initial = BottomBarLiquidGlassPreset.BILIPAI_TUNED)
@@ -257,15 +256,6 @@ fun AnimationSettingsContent(
                         if (isLiquidGlassAvailable) {
                             IOSSwitchItem(
                                 icon = CupertinoIcons.Default.Drop,
-                                title = "顶部栏液态玻璃",
-                                subtitle = "首页顶部导航栏的液态玻璃折射效果",
-                                checked = topBarLiquidGlassEnabled,
-                                onCheckedChange = { viewModel.toggleTopBarLiquidGlass(it) },
-                                iconTint = iOSBlue
-                            )
-                            IOSDivider()
-                            IOSSwitchItem(
-                                icon = CupertinoIcons.Default.RectangleStack,
                                 title = "底栏液态玻璃",
                                 subtitle = "底部导航栏的液态玻璃折射效果",
                                 checked = bottomBarLiquidGlassEnabled,
@@ -343,7 +333,7 @@ fun AnimationSettingsContent(
                                 }
                             }
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = topBarLiquidGlassEnabled || bottomBarLiquidGlassEnabled,
+                                visible = bottomBarLiquidGlassEnabled,
                                 enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                                 exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                             ) {
@@ -356,7 +346,7 @@ fun AnimationSettingsContent(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "顶部与底栏共用同一套液态玻璃材质配方，但开关彼此独立。",
+                                            text = "底栏使用独立液态玻璃材质配方；顶部栏保留毛玻璃模糊。",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

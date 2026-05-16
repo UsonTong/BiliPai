@@ -567,17 +567,6 @@ fun HomeScreen(
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled &&
         !predictiveStableBackRouteMotionEnabled // 预测返回稳定路由模式下禁用首页共享元素，避免叠层滞留
-    val baseTopBarLiquidGlassEnabled = remember(
-        homeSettings.isTopBarLiquidGlassEnabled,
-        homeSettings.androidNativeLiquidGlassEnabled,
-        uiPreset
-    ) {
-        resolveEffectiveLiquidGlassEnabled(
-            requestedEnabled = homeSettings.isTopBarLiquidGlassEnabled,
-            uiPreset = uiPreset,
-            androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled
-        )
-    }
     val baseBottomBarLiquidGlassEnabled = remember(
         homeSettings.isBottomBarLiquidGlassEnabled,
         homeSettings.androidNativeLiquidGlassEnabled,
@@ -595,7 +584,6 @@ fun HomeScreen(
     val homePerformanceConfig = remember(
         baseIsHeaderBlurEnabled,
         baseIsBottomBarBlurEnabled,
-        baseTopBarLiquidGlassEnabled,
         baseBottomBarLiquidGlassEnabled,
         baseCardAnimationEnabled,
         baseCardTransitionEnabled,
@@ -606,7 +594,7 @@ fun HomeScreen(
             uiPreset = uiPreset,
             headerBlurEnabled = baseIsHeaderBlurEnabled,
             bottomBarBlurEnabled = baseIsBottomBarBlurEnabled,
-            topBarLiquidGlassEnabled = baseTopBarLiquidGlassEnabled,
+            topBarLiquidGlassEnabled = false,
             bottomBarLiquidGlassEnabled = baseBottomBarLiquidGlassEnabled,
             androidNativeLiquidGlassEnabled = homeSettings.androidNativeLiquidGlassEnabled,
             cardAnimationEnabled = baseCardAnimationEnabled,
@@ -619,7 +607,6 @@ fun HomeScreen(
     val isBottomBarBlurEnabled = homePerformanceConfig.bottomBarBlurEnabled
     val cardAnimationEnabled = homePerformanceConfig.cardAnimationEnabled
     val cardTransitionEnabled = homePerformanceConfig.cardTransitionEnabled
-    val isTopBarLiquidGlassEnabled = homePerformanceConfig.topBarLiquidGlassEnabled
     val isBottomBarLiquidGlassEnabled = homePerformanceConfig.bottomBarLiquidGlassEnabled
     val isLiquidGlassEnabled = homePerformanceConfig.isAnyLiquidGlassEnabled
     val isDataSaverActive = homePerformanceConfig.isDataSaverActive
@@ -961,18 +948,18 @@ fun HomeScreen(
     var areTopTabsManuallyCollapsed by rememberSaveable { mutableStateOf(false) }
     
     // Constants
-    val topTabStyle = remember(isBottomBarFloating, isHeaderBlurEnabled, isTopBarLiquidGlassEnabled) {
+    val topTabStyle = remember(isBottomBarFloating, isHeaderBlurEnabled) {
         resolveTopTabStyle(
             isBottomBarFloating = isBottomBarFloating,
             isBottomBarBlurEnabled = isHeaderBlurEnabled,
-            isLiquidGlassEnabled = isTopBarLiquidGlassEnabled
+            isLiquidGlassEnabled = false
         )
     }
-    val topChromeMaterialMode = remember(isHeaderBlurEnabled, isTopBarLiquidGlassEnabled) {
+    val topChromeMaterialMode = remember(isHeaderBlurEnabled) {
         resolveHomeTopChromeMaterialMode(
             isHeaderBlurEnabled = isHeaderBlurEnabled,
             isBottomBarBlurEnabled = false,
-            isLiquidGlassEnabled = isTopBarLiquidGlassEnabled
+            isLiquidGlassEnabled = false
         )
     }
     val searchBarHeightDp = resolveHomeTopSearchBarHeight(uiPreset)

@@ -146,12 +146,7 @@ internal fun resolveHomeTopChromeLiquidGlassEnabled(
     homeSettings: HomeSettings?,
     uiPreset: UiPreset
 ): Boolean {
-    val resolvedHomeSettings = homeSettings ?: HomeSettings()
-    return resolveEffectiveLiquidGlassEnabled(
-        requestedEnabled = resolvedHomeSettings.isTopBarLiquidGlassEnabled,
-        uiPreset = uiPreset,
-        androidNativeLiquidGlassEnabled = resolvedHomeSettings.androidNativeLiquidGlassEnabled
-    )
+    return false
 }
 
 internal fun resolveHomeTopChromeMaterialMode(
@@ -161,7 +156,6 @@ internal fun resolveHomeTopChromeMaterialMode(
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): TopTabMaterialMode {
     return when {
-        isLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
         !isHeaderBlurEnabled && !isBottomBarBlurEnabled -> TopTabMaterialMode.PLAIN
         else -> TopTabMaterialMode.BLUR
     }

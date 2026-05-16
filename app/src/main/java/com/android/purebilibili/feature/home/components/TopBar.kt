@@ -1,7 +1,6 @@
 // 文件路径: feature/home/components/TopBar.kt
 package com.android.purebilibili.feature.home.components
 
-import android.os.Build
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuOpen
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
@@ -76,16 +75,7 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.blur.currentUnifiedBlurIntensity
-import com.android.purebilibili.core.ui.blur.shouldAllowDirectHazeLiquidGlassFallback
-import com.android.purebilibili.core.ui.blur.shouldAllowHomeChromeLiquidGlass
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-import com.kyant.backdrop.shadow.Shadow
 import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -112,33 +102,6 @@ internal fun resolveTopTabRowHorizontalPaddingDp(
     return if (isFloatingStyle) 0f else 4f
 }
 
-internal fun shouldUseTopTabDockSurface(isFloatingStyle: Boolean): Boolean = isFloatingStyle
-
-internal fun shouldDrawTopTabInnerDockSurface(
-    isFloatingStyle: Boolean,
-    hasOuterChromeSurface: Boolean
-): Boolean = shouldUseTopTabDockSurface(isFloatingStyle) && !hasOuterChromeSurface
-
-internal fun resolveTopTabDockHorizontalPaddingDp(
-    isFloatingStyle: Boolean,
-    edgeToEdge: Boolean = false
-): Float {
-    if (!shouldUseTopTabDockSurface(isFloatingStyle) || edgeToEdge) return 0f
-    return 10f
-}
-
-internal fun resolveTopTabDockVerticalPaddingDp(isFloatingStyle: Boolean): Float {
-    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 4f else 0f
-}
-
-internal fun resolveTopTabDockContentPaddingDp(isFloatingStyle: Boolean): Float {
-    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 4f else 0f
-}
-
-internal fun resolveTopTabDockCornerRadiusDp(isFloatingStyle: Boolean): Float {
-    return if (shouldUseTopTabDockSurface(isFloatingStyle)) 30f else 0f
-}
-
 internal fun resolveTopTabVisibleSlots(
     categoryCount: Int,
     longestLabelLength: Int = 0
@@ -148,14 +111,14 @@ internal fun resolveTopTabVisibleSlots(
     return if (longestLabelLength >= 8) 4 else 5
 }
 
-internal fun resolveMd3TopTabVisibleSlots(): Int = 4
+internal fun resolveMd3TopTabVisibleSlots(): Int = 3
 
 internal fun resolveMd3TopTabItemWidthDp(
     containerWidthDp: Float,
     visibleSlots: Int = resolveMd3TopTabVisibleSlots()
 ): Float {
-    if (containerWidthDp <= 0f) return 80f
-    return containerWidthDp / visibleSlots.coerceAtLeast(1)
+    if (containerWidthDp <= 0f) return 96f
+    return (containerWidthDp * 0.3f).coerceIn(88f, 120f)
 }
 
 internal fun resolveMd3VisibleTabIndices(
@@ -164,16 +127,7 @@ internal fun resolveMd3VisibleTabIndices(
     visibleSlots: Int = resolveMd3TopTabVisibleSlots()
 ): List<Int> {
     if (totalCount <= 0) return emptyList()
-    if (totalCount <= visibleSlots) return List(totalCount) { it }
-    val safeSelected = selectedIndex.coerceIn(0, totalCount - 1)
-    if (safeSelected < visibleSlots) {
-        return List(visibleSlots) { it }
-    }
-    val pinnedPrefixCount = (visibleSlots - 1).coerceAtLeast(0)
-    return buildList {
-        repeat(pinnedPrefixCount) { add(it) }
-        add(safeSelected)
-    }
+    return List(totalCount) { it }
 }
 
 internal fun resolveMd3SelectedVisibleIndex(
@@ -508,17 +462,9 @@ fun FluidHomeTopBar(
 }
 
 /**
- *  [HIG] iOS 风格分类标签栏
- * - 限制可见标签为 4 个主要分类 (HIG 建议 3-5 个)
- * - 其余分类收入"更多"下拉菜单
- * - 圆角胶囊选中指示器
- * - 最小触摸目标 44pt
- */
-/**
- *  [HIG] iOS 风格可滑动分类标签栏 (Liquid Glass Style)
- * - 移除"更多"菜单，所有分类水平平铺
- * - 支持水平惯性滚动
- * - 液态玻璃选中指示器 (变长胶囊)
+ * [HIG] iOS 风格可滑动分类标签栏。
+ * - 所有分类水平平铺，支持系统惯性滚动。
+ * - 使用轻量胶囊和文字强调，不再绘制顶部液态玻璃指示器。
  */
 internal fun resolveTopTabUnselectedAlpha(): Float = 0.78f
 
@@ -571,71 +517,262 @@ internal fun Modifier.homeTopBottomBarMatchedSurface(
 }
 
 @Composable
-private fun TopTabDockSurface(
-    enabled: Boolean,
-    materialMode: TopTabMaterialMode,
-    shape: Shape,
-    hazeState: HazeState?,
-    backdrop: LayerBackdrop?,
-    motionTier: MotionTier,
-    isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean,
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
+private fun LightweightHomeTopTabs(
+    renderer: HomeTopTabRenderer,
+    categories: List<String>,
+    categoryKeys: List<String>,
+    selectedIndex: Int,
+    onCategorySelected: (Int) -> Unit,
+    onPartitionClick: () -> Unit,
+    pagerState: androidx.compose.foundation.pager.PagerState?,
+    labelMode: Int,
+    isFloatingStyle: Boolean,
+    edgeToEdge: Boolean
 ) {
-    if (!enabled) {
-        Box(modifier = modifier, content = content)
-        return
+    val uiPreset = LocalUiPreset.current
+    val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
+    val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
+    val normalizedLabelMode = normalizeTopTabLabelMode(labelMode)
+    val showIcon = shouldShowTopTabIcon(normalizedLabelMode)
+    val showText = shouldShowTopTabText(normalizedLabelMode)
+    val rowHeight = when (renderer) {
+        HomeTopTabRenderer.IOS -> resolveIosTopTabRowHeight(isFloatingStyle, normalizedLabelMode)
+        HomeTopTabRenderer.MD3 -> resolveMd3TopTabVisualSpec(
+            isFloatingStyle = isFloatingStyle,
+            labelMode = normalizedLabelMode
+        ).rowHeight
+        HomeTopTabRenderer.MIUIX -> resolveMd3TopTabVisualSpec(
+            isFloatingStyle = false,
+            androidNativeVariant = AndroidNativeVariant.MIUIX,
+            labelMode = normalizedLabelMode
+        ).rowHeight
     }
-
-    val effectiveMaterialMode = when {
-        materialMode == TopTabMaterialMode.LIQUID_GLASS -> TopTabMaterialMode.LIQUID_GLASS
-        hazeState != null -> TopTabMaterialMode.BLUR
-        else -> TopTabMaterialMode.PLAIN
-    }
-    val dockRenderMode = remember(effectiveMaterialMode, backdrop, hazeState) {
-        resolveHomeTopChromeRenderMode(
-            materialMode = effectiveMaterialMode,
-            isGlassSupported = shouldAllowHomeChromeLiquidGlass(Build.VERSION.SDK_INT),
-            hasBackdrop = backdrop != null,
-            hasHazeState = hazeState != null,
-            allowHazeLiquidGlassFallback = shouldAllowDirectHazeLiquidGlassFallback(Build.VERSION.SDK_INT)
+    val actionButtonSize = when (renderer) {
+        HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonSize(isFloatingStyle)
+        HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonSize(isFloatingStyle)
+        HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonSize(
+            isFloatingStyle = false,
+            androidNativeVariant = AndroidNativeVariant.MIUIX
         )
     }
-    val isGlassEnabled = dockRenderMode == HomeTopChromeRenderMode.LIQUID_GLASS_BACKDROP ||
-        dockRenderMode == HomeTopChromeRenderMode.LIQUID_GLASS_HAZE
-    val isBlurEnabled = dockRenderMode != HomeTopChromeRenderMode.PLAIN
-    val tuning = resolveAndroidNativeBottomBarTuning(
-        blurEnabled = isGlassEnabled || isBlurEnabled,
-        darkTheme = isSystemInDarkTheme()
-    )
-    val containerColor = resolveAndroidNativeFloatingBottomBarContainerColor(
-        surfaceColor = MaterialTheme.colorScheme.surfaceContainer,
-        tuning = tuning,
-        glassEnabled = isGlassEnabled,
-        blurEnabled = isBlurEnabled,
-        blurIntensity = currentUnifiedBlurIntensity()
-    )
+    val actionButtonCorner = when (renderer) {
+        HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonCorner(isFloatingStyle)
+        HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonCorner(isFloatingStyle)
+        HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonCorner(
+            isFloatingStyle = false,
+            androidNativeVariant = AndroidNativeVariant.MIUIX
+        )
+    }
+    val actionIconSize = when (renderer) {
+        HomeTopTabRenderer.IOS -> resolveIosTopTabActionIconSize(isFloatingStyle)
+        HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionIconSize(isFloatingStyle)
+        HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionIconSize(
+            isFloatingStyle = false,
+            androidNativeVariant = AndroidNativeVariant.MIUIX
+        )
+    }
+    val listState = rememberLazyListState()
+    val currentPosition by remember(pagerState, selectedIndex) {
+        derivedStateOf {
+            resolveTopTabIndicatorRenderPosition(
+                selectedIndex = selectedIndex,
+                pagerCurrentPage = pagerState?.currentPage,
+                pagerTargetPage = pagerState?.targetPage,
+                pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction,
+                pagerIsScrolling = pagerState?.isScrollInProgress == true
+            )
+        }
+    }
 
-    Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .kernelSuFloatingDockSurface(
-                    shape = shape,
-                    backdrop = backdrop,
-                    containerColor = containerColor,
-                    blurEnabled = isBlurEnabled,
-                    glassEnabled = isGlassEnabled,
-                    drawShellLens = false,
-                    blurRadius = tuning.shellBlurRadiusDp.dp,
-                    hazeState = hazeState,
-                    motionTier = motionTier,
-                    isTransitionRunning = isTransitionRunning,
-                    forceLowBlurBudget = forceLowBlurBudget
+    LaunchedEffect(selectedIndex, categories.size) {
+        if (categories.isNotEmpty()) {
+            listState.animateScrollToItem(selectedIndex.coerceIn(0, categories.lastIndex))
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rowHeight)
+            .padding(
+                horizontal = resolveTopTabRowHorizontalPaddingDp(
+                    isFloatingStyle = isFloatingStyle,
+                    edgeToEdge = edgeToEdge
+                ).dp
+            )
+    ) {
+        val itemWidth = when (renderer) {
+            HomeTopTabRenderer.IOS -> resolveTopTabItemWidthDp(
+                containerWidthDp = maxWidth.value,
+                categoryCount = categories.size,
+                isFloatingStyle = isFloatingStyle,
+                longestLabelLength = categories.maxOfOrNull { it.length } ?: 0
+            ).dp
+            HomeTopTabRenderer.MD3,
+            HomeTopTabRenderer.MIUIX -> resolveMd3TopTabItemWidthDp(maxWidth.value).dp
+        }
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LazyRow(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                contentPadding = PaddingValues(horizontal = if (renderer == HomeTopTabRenderer.IOS) 2.dp else 0.dp)
+            ) {
+                itemsIndexed(
+                    items = categories,
+                    key = { index, category -> categoryKeys.getOrNull(index) ?: category }
+                ) { index, category ->
+                    val categoryKey = categoryKeys.getOrNull(index) ?: category
+                    val selectionFraction = (1f - abs(currentPosition - index.toFloat())).coerceIn(0f, 1f)
+                    LightweightTopTabItem(
+                        renderer = renderer,
+                        category = category,
+                        categoryKey = categoryKey,
+                        index = index,
+                        selectionFraction = selectionFraction,
+                        selectedIndex = selectedIndex,
+                        showIcon = showIcon,
+                        showText = showText,
+                        itemWidth = itemWidth,
+                        onClick = {
+                            performHomeTopBarTap(haptic = haptic, onClick = {
+                                when (resolveTopTabClickAction(index, selectedIndex)) {
+                                    TopTabClickAction.SELECT_TAB -> onCategorySelected(index)
+                                    TopTabClickAction.SCROLL_TO_TOP -> scrollChannel?.trySend(Unit)
+                                }
+                            })
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(actionButtonSize)
+                    .clip(RoundedCornerShape(actionButtonCorner))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = LocalIndication.current
+                    ) {
+                        performHomeTopBarTap(haptic = haptic, onClick = onPartitionClick)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    resolveTopTabPartitionIcon(uiPreset),
+                    contentDescription = "浏览全部分区",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(actionIconSize)
                 )
-        )
-        Box(modifier = Modifier.fillMaxSize(), content = content)
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+    }
+}
+
+@Composable
+private fun LightweightTopTabItem(
+    renderer: HomeTopTabRenderer,
+    category: String,
+    categoryKey: String,
+    index: Int,
+    selectionFraction: Float,
+    selectedIndex: Int,
+    showIcon: Boolean,
+    showText: Boolean,
+    itemWidth: Dp,
+    onClick: () -> Unit
+) {
+    val uiPreset = LocalUiPreset.current
+    val colorScheme = MaterialTheme.colorScheme
+    val icon = resolveTopTabCategoryIcon(categoryKey, uiPreset)
+    val selected = selectionFraction > 0.5f || index == selectedIndex
+    val selectedColor = when (renderer) {
+        HomeTopTabRenderer.IOS -> colorScheme.primary
+        HomeTopTabRenderer.MD3 -> colorScheme.primary
+        HomeTopTabRenderer.MIUIX -> colorScheme.onSecondaryContainer
+    }
+    val unselectedColor = colorScheme.onSurfaceVariant
+    val contentColor = androidx.compose.ui.graphics.lerp(
+        unselectedColor,
+        selectedColor,
+        selectionFraction
+    )
+    val containerColor = when (renderer) {
+        HomeTopTabRenderer.IOS -> colorScheme.primary.copy(alpha = 0.10f * selectionFraction)
+        HomeTopTabRenderer.MD3 -> Color.Transparent
+        HomeTopTabRenderer.MIUIX -> colorScheme.secondaryContainer.copy(alpha = 0.70f * selectionFraction)
+    }
+    val itemShape = when (renderer) {
+        HomeTopTabRenderer.IOS -> AppShapes.container(ContainerLevel.Pill)
+        HomeTopTabRenderer.MD3 -> RoundedCornerShape(0.dp)
+        HomeTopTabRenderer.MIUIX -> RoundedCornerShape(14.dp)
+    }
+
+    Box(
+        modifier = Modifier
+            .width(itemWidth)
+            .fillMaxHeight()
+            .padding(horizontal = 3.dp, vertical = 4.dp)
+            .clip(itemShape)
+            .background(containerColor, itemShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = LocalIndication.current,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (showIcon) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(resolveTopTabIconSizeDp(if (showText) 0 else 1).dp)
+                )
+            }
+            if (showIcon && showText) {
+                Spacer(modifier = Modifier.height(resolveTopTabIconTextSpacingDp(0).dp))
+            }
+            if (showText) {
+                Text(
+                    text = category,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = if (renderer == HomeTopTabRenderer.IOS) 13.sp else 15.sp,
+                    lineHeight = if (renderer == HomeTopTabRenderer.IOS) 17.sp else 20.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = contentColor
+                )
+            }
+        }
+
+        if (renderer == HomeTopTabRenderer.MD3) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .width(28.dp)
+                    .height(2.dp)
+                    .clip(AppShapes.container(ContainerLevel.Pill))
+                    .background(colorScheme.primary.copy(alpha = selectionFraction))
+            )
+        }
     }
 }
 
@@ -663,585 +800,14 @@ fun CategoryTabRow(
     forceLowBlurBudget: Boolean = false,
     isViewportSyncEnabled: Boolean = true
 ) {
-    val uiPreset = LocalUiPreset.current
-    val visualTuning = remember(uiPreset) { resolveTopTabVisualTuning(uiPreset) }
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val effectiveLiquidGlassEnabled = resolveEffectiveTopTabLiquidGlassEnabled(
-        isLiquidGlassEnabled = isLiquidGlassEnabled,
-        interactionBudget = interactionBudget
-    )
-
-    //  [交互优化] 触觉反馈
-    val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
-    val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
-    val tabRowHeight = resolveIosTopTabRowHeight(
-        isFloatingStyle = isFloatingStyle,
+    val renderer = resolveHomeTopTabRenderer(
+        uiPreset = LocalUiPreset.current,
+        androidNativeVariant = LocalAndroidNativeVariant.current,
         labelMode = labelMode
     )
-    val actionButtonSize = resolveIosTopTabActionButtonSize(isFloatingStyle)
-    val actionButtonCorner = resolveIosTopTabActionButtonCorner(isFloatingStyle)
-    val actionIconSize = resolveIosTopTabActionIconSize(isFloatingStyle)
-    val topIndicatorHeight = visualTuning.nonFloatingIndicatorHeightDp.dp
-    val topIndicatorCorner = visualTuning.nonFloatingIndicatorCornerDp.dp
-    val topIndicatorWidthRatio = visualTuning.nonFloatingIndicatorWidthRatio
-    val topIndicatorMinWidth = visualTuning.nonFloatingIndicatorMinWidthDp.dp
-    val topIndicatorHorizontalInset = visualTuning.nonFloatingIndicatorHorizontalInsetDp.dp
-    val floatingLiquidHeight = visualTuning.floatingIndicatorHeightDp.dp
-    val floatingIndicatorEdgeInset = 0.dp
-
-    if (
-        shouldUseMd3TopTabMaterialIndicator(
-            uiPreset = uiPreset,
-            liquidGlassEnabled = effectiveLiquidGlassEnabled
-        )
-    ) {
-        Md3CategoryTabRow(
-            categories = categories,
-            categoryKeys = categoryKeys,
-            selectedIndex = selectedIndex,
-            onCategorySelected = onCategorySelected,
-            onPartitionClick = onPartitionClick,
-            pagerState = pagerState,
-            labelMode = labelMode,
-            isFloatingStyle = isFloatingStyle,
-            isLiquidGlassEnabled = effectiveLiquidGlassEnabled,
-            hazeState = hazeState,
-            backdrop = backdrop,
-            motionTier = motionTier,
-            isTransitionRunning = isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget,
-            hasOuterChromeSurface = hasOuterChromeSurface
-        )
-        return
-    }
-
-    val dockEnabled = shouldDrawTopTabInnerDockSurface(
-        isFloatingStyle = isFloatingStyle,
-        hasOuterChromeSurface = hasOuterChromeSurface
-    )
-    val dockMaterialMode = resolveTopTabRenderMaterialMode(
-        liquidGlassEnabled = effectiveLiquidGlassEnabled,
-        hasHazeState = hazeState != null
-    )
-    val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(tabRowHeight)
-            .padding(
-                horizontal = resolveTopTabRowHorizontalPaddingDp(
-                    isFloatingStyle = isFloatingStyle,
-                    edgeToEdge = edgeToEdge
-                ).dp
-            )
-            .padding(
-                horizontal = resolveTopTabDockHorizontalPaddingDp(
-                    isFloatingStyle = isFloatingStyle,
-                    edgeToEdge = edgeToEdge
-                ).dp,
-                vertical = resolveTopTabDockVerticalPaddingDp(isFloatingStyle).dp
-            )
-    ) {
-        val longestLabelLength = categories.maxOfOrNull { it.length } ?: 0
-        val dockContentPadding = resolveTopTabDockContentPaddingDp(isFloatingStyle).dp
-        val dockContentWidthDp = (maxWidth - dockContentPadding * 2)
-            .coerceAtLeast(0.dp)
-            .value
-        val visibleCategorySlots = resolveTopTabVisibleCategorySlots(
-            categoryCount = categories.size,
-            longestLabelLength = longestLabelLength
-        )
-        val actionSlotWidth = resolveTopTabActionSlotWidthDp(
-            containerWidthDp = dockContentWidthDp,
-            categoryCount = categories.size,
-            longestLabelLength = longestLabelLength
-        ).dp
-        val tabViewportWidth = actionSlotWidth * visibleCategorySlots
-
-        TopTabDockSurface(
-            enabled = dockEnabled,
-            materialMode = dockMaterialMode,
-            shape = dockShape,
-            hazeState = hazeState,
-            backdrop = backdrop,
-            motionTier = motionTier,
-            isTransitionRunning = isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget,
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(dockContentPadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-            // [Refactor] 使用 BoxWithConstraints 动态计算宽度
-            BoxWithConstraints(
-                modifier = Modifier
-                    .width(tabViewportWidth)
-                    .fillMaxHeight()
-            ) {
-            val tabWidth = resolveTopTabItemWidthDp(
-                containerWidthDp = maxWidth.value,
-                categoryCount = categories.size,
-                isFloatingStyle = isFloatingStyle,
-                longestLabelLength = longestLabelLength
-            ).dp
-            val localDensity = LocalDensity.current
-            val tabListState = rememberLazyListState()
-            
-            // 指示器跟随 Pager 的连续位置；选中强调和内容态也从同一位置派生，避免快速滑动时错位。
-            val currentPosition by remember(pagerState, selectedIndex) {
-                derivedStateOf {
-                    resolveTopTabIndicatorRenderPosition(
-                        selectedIndex = selectedIndex,
-                        pagerCurrentPage = pagerState?.currentPage,
-                        pagerTargetPage = pagerState?.targetPage,
-                        pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction,
-                        pagerIsScrolling = pagerState?.isScrollInProgress == true
-                    )
-                }
-            }
-            val viewportAnchorIndex by remember(pagerState, selectedIndex, categories.size) {
-                derivedStateOf {
-                    resolveTopTabViewportAnchorIndex(
-                        selectedIndex = selectedIndex,
-                        pagerCurrentPage = pagerState?.currentPage,
-                        pagerTargetPage = pagerState?.targetPage,
-                        pagerIsScrolling = pagerState?.isScrollInProgress == true
-                    ).coerceIn(0, (categories.size - 1).coerceAtLeast(0))
-                }
-            }
-            val indicatorVelocityPxPerSecond = 0f
-            val pagerDragHeld = rememberTopTabPagerDragHeld(pagerState)
-            val rawIndicatorInteracting by remember(pagerState, pagerDragHeld, effectiveLiquidGlassEnabled) {
-                derivedStateOf {
-                    shouldTopTabIndicatorBeInteracting(
-                        pagerIsDragging = pagerDragHeld,
-                        pagerIsScrolling = pagerState?.isScrollInProgress == true,
-                        combinedVelocityPxPerSecond = indicatorVelocityPxPerSecond,
-                        liquidGlassEnabled = effectiveLiquidGlassEnabled
-                    )
-                }
-            }
-            var isInteracting by remember { mutableStateOf(false) }
-            LaunchedEffect(rawIndicatorInteracting, effectiveLiquidGlassEnabled) {
-                if (rawIndicatorInteracting) {
-                    isInteracting = true
-                } else {
-                    val releaseDelayMillis = resolveTopTabIndicatorInteractionReleaseDelayMillis(
-                        liquidGlassEnabled = effectiveLiquidGlassEnabled
-                    )
-                    if (releaseDelayMillis > 0L) delay(releaseDelayMillis)
-                    isInteracting = false
-                }
-            }
-            val contentMotionInProgress = isInteracting
-            
-            // 同步滚动位置：跟随指示器位置保持当前滑动方向上的 Tab 可见
-            val firstVisibleIndex by remember {
-                derivedStateOf {
-                    tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
-                }
-            }
-            val lastVisibleIndex by remember {
-                derivedStateOf {
-                    tabListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: firstVisibleIndex
-                }
-            }
-            val firstVisibleScrollOffsetPx by remember {
-                derivedStateOf { tabListState.firstVisibleItemScrollOffset }
-            }
-            val tabViewportWidthPx by remember {
-                derivedStateOf { tabListState.layoutInfo.viewportSize.width.toFloat() }
-            }
-            // [修复] 从 layoutInfo 中获取第一个 Tab 的实际物理宽度
-            val actualTabWidthPx by remember {
-                derivedStateOf {
-                    tabListState.layoutInfo.visibleItemsInfo.firstOrNull()?.size?.toFloat()
-                        ?: with(localDensity) { tabWidth.toPx() }
-                }
-            }
-
-            LaunchedEffect(
-                currentPosition,
-                categories.size,
-                actualTabWidthPx,
-                tabViewportWidthPx,
-                firstVisibleIndex,
-                lastVisibleIndex,
-                firstVisibleScrollOffsetPx,
-                viewportAnchorIndex
-            ) {
-                if (!isViewportSyncEnabled) {
-                    return@LaunchedEffect
-                }
-                if (actualTabWidthPx <= 0f || tabViewportWidthPx <= 0f || categories.isEmpty()) {
-                    return@LaunchedEffect
-                }
-                val maxScrollPx = (actualTabWidthPx * categories.size - tabViewportWidthPx).coerceAtLeast(0f)
-                val target = resolveTopTabFollowScrollTarget(
-                    indicatorPosition = currentPosition,
-                    itemWidthPx = actualTabWidthPx,
-                    itemCount = categories.size,
-                    viewportWidthPx = tabViewportWidthPx,
-                    currentFirstVisibleItemIndex = firstVisibleIndex,
-                    currentFirstVisibleItemScrollOffsetPx = firstVisibleScrollOffsetPx,
-                    maxScrollPx = maxScrollPx,
-                    edgeBufferPx = with(localDensity) { 20.dp.toPx() }
-                )
-                val targetIndex = viewportAnchorIndex
-                val targetIsOutsideViewport = targetIndex < firstVisibleIndex ||
-                    targetIndex > lastVisibleIndex
-                if (!shouldSyncHomeTopTabViewport(
-                        pagerIsScrolling = pagerState?.isScrollInProgress == true,
-                        targetIsOutsideViewport = targetIsOutsideViewport
-                    )
-                ) {
-                    return@LaunchedEffect
-                }
-                if (
-                    target.firstVisibleItemIndex != firstVisibleIndex ||
-                    abs(target.firstVisibleItemScrollOffsetPx - firstVisibleScrollOffsetPx) > 1
-                ) {
-                    tabListState.scrollToItem(
-                        index = target.firstVisibleItemIndex,
-                        scrollOffset = target.firstVisibleItemScrollOffsetPx
-                    )
-                }
-            }
-
-            val floatingAdjustedInsetDp = 0.dp
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                val tabsBackdrop = rememberLayerBackdrop()
-                val topIndicatorVisualPolicy = resolveTopTabIndicatorVisualPolicy(
-                    position = currentPosition,
-                    interacting = isInteracting,
-                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
-                    useNeutralIndicatorTint = true
-                )
-                val shouldRefract = topIndicatorVisualPolicy.shouldRefract
-                val topTabRefractionProfile = resolveTopTabRefractionMotionProfile(
-                    position = currentPosition,
-                    shouldRefract = shouldRefract,
-                    velocityPxPerSecond = indicatorVelocityPxPerSecond,
-                    liquidGlassEnabled = effectiveLiquidGlassEnabled
-                )
-                val bottomBarMotionSpec = remember {
-                    resolveBottomBarMotionSpec(BottomBarMotionProfile.IOS_FLOATING)
-                }
-                val topTabPanelOffsetPx = with(localDensity) {
-                    bottomBarMotionSpec.refraction.panelOffsetMaxDp.dp.toPx()
-                }
-                val indicatorPanelOffsetPx = topTabPanelOffsetPx *
-                    topTabRefractionProfile.indicatorPanelOffsetFraction
-                val exportPanelOffsetPx = topTabPanelOffsetPx *
-                    topTabRefractionProfile.exportPanelOffsetFraction
-                val visiblePanelOffsetPx = topTabPanelOffsetPx *
-                    topTabRefractionProfile.visiblePanelOffsetFraction
-                val topTabIndicatorGlassProgress = if (
-                    effectiveLiquidGlassEnabled &&
-                    backdrop != null &&
-                    shouldRefract
-                ) {
-                    1f
-                } else {
-                    0f
-                }
-                val topTabIndicatorDeformationProgress = if (
-                    shouldDeformTopTabIndicator(
-                        position = currentPosition,
-                        isInMotion = topIndicatorVisualPolicy.isInMotion
-                    )
-                ) {
-                    1f
-                } else {
-                    0f
-                }
-
-                // 1. [Layer] Background Liquid Indicator
-                // [修复] 使用 layoutInfo 动态计算滚动偏移
-                val scrollOffset by remember {
-                    derivedStateOf {
-                        resolveTopTabIndicatorViewportShiftPx(
-                            firstVisibleItemIndex = tabListState.firstVisibleItemIndex,
-                            firstVisibleItemScrollOffsetPx = tabListState.firstVisibleItemScrollOffset,
-                            tabWidthPx = actualTabWidthPx
-                        )
-                    }
-                }
-
-                if (
-                    effectiveLiquidGlassEnabled &&
-                    backdrop != null &&
-                    topTabIndicatorGlassProgress > 0f
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clearAndSetSemantics {}
-                            .alpha(0f)
-                            .layerBackdrop(tabsBackdrop)
-                            .graphicsLayer { translationX = -scrollOffset + exportPanelOffsetPx }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .padding(
-                                    start = if (isFloatingStyle) floatingAdjustedInsetDp else 0.dp
-                                ),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            categories.forEachIndexed { index, category ->
-                                val categoryKey = categoryKeys.getOrNull(index) ?: category
-                                Box(
-                                    modifier = Modifier.width(tabWidth),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CategoryTabItem(
-                                        category = category,
-                                        categoryKey = categoryKey,
-                                        index = index,
-                                        selectedIndex = selectedIndex,
-                                        currentPosition = currentPosition,
-                                        primaryColor = primaryColor,
-                                        unselectedColor = unselectedColor,
-                                        labelMode = labelMode,
-                                        isInMotion = contentMotionInProgress,
-                                        selectionEmphasis = topTabRefractionProfile.exportSelectionEmphasis,
-                                        isInteractive = false,
-                                        onClick = {},
-                                        onDoubleTap = {}
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Box(modifier = Modifier.fillMaxSize()) {
-                    val isDarkTheme = isSystemInDarkTheme()
-                    val indicatorLayerTransform = resolveTopTabIndicatorLayerTransform(
-                        motionProgress = topTabIndicatorDeformationProgress,
-                        velocityItemsPerSecond = 0f,
-                        motionSpec = bottomBarMotionSpec
-                    )
-                    val indicatorVerticalScale = if (isFloatingStyle) {
-                        indicatorLayerTransform.scaleY
-                    } else {
-                        1f
-                    }
-                    val selectedIndicatorHeight = if (isFloatingStyle) {
-                        (floatingLiquidHeight.value * indicatorVerticalScale).dp
-                    } else {
-                        topIndicatorHeight
-                    }
-                    val selectedIndicatorWidthPx = if (isFloatingStyle) {
-                        actualTabWidthPx
-                    } else {
-                        resolveTopTabIndicatorWidthPx(
-                            itemWidthPx = actualTabWidthPx,
-                            widthRatio = topIndicatorWidthRatio,
-                            minWidthPx = with(localDensity) { topIndicatorMinWidth.toPx() },
-                            horizontalInsetPx = with(localDensity) { topIndicatorHorizontalInset.toPx() }
-                        )
-                    }
-                    val selectedIndicatorWidth = with(localDensity) {
-                        selectedIndicatorWidthPx.toDp()
-                    }
-                    val selectedIndicatorShape: Shape = if (isFloatingStyle) {
-                        RoundedCornerShape(selectedIndicatorHeight / 2)
-                    } else {
-                        RoundedCornerShape(topIndicatorCorner)
-                    }
-                    val selectedIndicatorStartPx = if (isFloatingStyle) {
-                        resolveIndicatorTranslationXPx(
-                            position = currentPosition,
-                            itemWidthPx = actualTabWidthPx,
-                            indicatorWidthPx = selectedIndicatorWidthPx,
-                            startPaddingPx = with(localDensity) { floatingAdjustedInsetDp.toPx() },
-                            containerWidthPx = tabViewportWidthPx.coerceAtLeast(actualTabWidthPx),
-                            clampToBounds = false,
-                            edgeInsetPx = with(localDensity) { floatingIndicatorEdgeInset.toPx() }
-                        )
-                    } else {
-                        currentPosition * actualTabWidthPx +
-                            (actualTabWidthPx - selectedIndicatorWidthPx) / 2f
-                    }
-                    val indicatorLensSpec = resolveBottomBarBackdropPresetIndicatorLens(
-                        progress = topTabIndicatorGlassProgress
-                    )
-                    val indicatorHighlightAlpha = resolveBottomBarLiquidGlassHighlightAlpha(
-                        topTabIndicatorGlassProgress
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                translationX = -scrollOffset + indicatorPanelOffsetPx +
-                                    selectedIndicatorStartPx
-                            }
-                            .width(selectedIndicatorWidth)
-                            .height(selectedIndicatorHeight)
-                            .align(Alignment.CenterStart)
-                            .run {
-                                if (
-                                    effectiveLiquidGlassEnabled &&
-                                    topTabIndicatorGlassProgress > 0f
-                                ) {
-                                    drawBackdrop(
-                                        backdrop = tabsBackdrop,
-                                        shape = { selectedIndicatorShape },
-                                        effects = {
-                                            lens(
-                                                refractionHeight = indicatorLensSpec.refractionHeightDp.dp.toPx(),
-                                                refractionAmount = indicatorLensSpec.refractionAmountDp.dp.toPx(),
-                                                depthEffect = true,
-                                                chromaticAberration = true
-                                            )
-                                        },
-                                        highlight = {
-                                            Highlight.Default.copy(alpha = indicatorHighlightAlpha)
-                                        },
-                                        shadow = {
-                                            Shadow(alpha = if (effectiveLiquidGlassEnabled) indicatorHighlightAlpha else 0f)
-                                        },
-                                        innerShadow = {
-                                            InnerShadow(
-                                                radius = 8.dp * topTabIndicatorGlassProgress,
-                                                alpha = if (effectiveLiquidGlassEnabled) indicatorHighlightAlpha else 0f
-                                            )
-                                        },
-                                        layerBlock = {
-                                            if (effectiveLiquidGlassEnabled) {
-                                                scaleX = indicatorLayerTransform.scaleX
-                                                scaleY = indicatorLayerTransform.scaleY
-                                            }
-                                        }
-                                    )
-                                } else {
-                                    background(
-                                        resolveAndroidNativeIdleIndicatorSurfaceColor(
-                                            darkTheme = isDarkTheme
-                                        ),
-                                        selectedIndicatorShape
-                                    )
-                                }
-                            }
-                    )
-                }
-
-                // 2. [Layer] Content Tabs
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { translationX = visiblePanelOffsetPx }
-                ) {
-                    LazyRow(
-                        state = tabListState,
-                        modifier = Modifier.fillMaxHeight(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,
-                        contentPadding = PaddingValues(
-                            horizontal = if (isFloatingStyle) floatingAdjustedInsetDp else 0.dp
-                        )
-                    ) {
-                        itemsIndexed(categories) { index, category ->
-                            val categoryKey = categoryKeys.getOrNull(index) ?: category
-                            Box(
-                                modifier = Modifier.width(tabWidth),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CategoryTabItem(
-                                    category = category,
-                                    categoryKey = categoryKey,
-                                    index = index,
-                                    selectedIndex = selectedIndex,
-                                    currentPosition = currentPosition,
-                                    primaryColor = primaryColor,
-                                    unselectedColor = unselectedColor,
-                                    labelMode = labelMode,
-                                    isInMotion = contentMotionInProgress,
-                                    selectionEmphasis = topTabRefractionProfile.visibleSelectionEmphasis,
-                                    onClick = {
-                                        performHomeTopBarTap(haptic = haptic, onClick = {
-                                            onCategorySelected(index)
-                                        })
-                                    },
-                                    onDoubleTap = {
-                                        if (selectedIndex == index) {
-                                            scrollChannel?.trySend(Unit)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        //  分区按钮
-        Box(
-            modifier = Modifier
-                .width(actionSlotWidth)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(actionButtonSize)
-                    .clip(RoundedCornerShape(actionButtonCorner))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        performHomeTopBarTap(haptic = haptic, onClick = onPartitionClick)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    resolveTopTabPartitionIcon(uiPreset),
-                    contentDescription = "浏览全部分区",
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.size(actionIconSize)
-                )
-            }
-        }
-    }
-    }
-}
-}
-
-@Composable
-private fun Md3CategoryTabRow(
-    categories: List<String>,
-    categoryKeys: List<String>,
-    selectedIndex: Int,
-    onCategorySelected: (Int) -> Unit,
-    onPartitionClick: () -> Unit,
-    pagerState: androidx.compose.foundation.pager.PagerState?,
-    labelMode: Int,
-    isFloatingStyle: Boolean,
-    isLiquidGlassEnabled: Boolean,
-    hazeState: HazeState?,
-    backdrop: LayerBackdrop?,
-    motionTier: MotionTier,
-    isTransitionRunning: Boolean,
-    forceLowBlurBudget: Boolean,
-    hasOuterChromeSurface: Boolean
-) {
-    val uiPreset = LocalUiPreset.current
-    val androidNativeVariant = LocalAndroidNativeVariant.current
-    val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
-    val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
-    val normalizedLabelMode = resolveMd3TopTabLabelMode(labelMode)
-
-    if (shouldUseNativeMiuixTopTabRow(androidNativeVariant, normalizedLabelMode)) {
+    if (renderer == HomeTopTabRenderer.MIUIX) {
+        val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
+        val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
         MiuixCategoryTabRow(
             categories = categories,
             selectedIndex = selectedIndex,
@@ -1253,244 +819,18 @@ private fun Md3CategoryTabRow(
         )
         return
     }
-
-    val visualSpec = remember(isFloatingStyle, androidNativeVariant, normalizedLabelMode) {
-        resolveMd3TopTabVisualSpec(
-            isFloatingStyle = isFloatingStyle,
-            androidNativeVariant = androidNativeVariant,
-            labelMode = normalizedLabelMode
-        )
-    }
-    val isMiuixChrome = androidNativeVariant == AndroidNativeVariant.MIUIX
-    val tabRowHeight = visualSpec.rowHeight
-    val actionButtonSize = resolveMd3TopTabActionButtonSize(isFloatingStyle, androidNativeVariant)
-    val actionButtonCorner = resolveMd3TopTabActionButtonCorner(isFloatingStyle, androidNativeVariant)
-    val actionIconSize = resolveMd3TopTabActionIconSize(isFloatingStyle, androidNativeVariant)
-    val actionContentBottomPadding = resolveMd3TopTabActionContentBottomPadding()
-    val dockEnabled = shouldDrawTopTabInnerDockSurface(
+    LightweightHomeTopTabs(
+        renderer = renderer,
+        categories = categories,
+        categoryKeys = categoryKeys,
+        selectedIndex = selectedIndex,
+        onCategorySelected = onCategorySelected,
+        onPartitionClick = onPartitionClick,
+        pagerState = pagerState,
+        labelMode = labelMode,
         isFloatingStyle = isFloatingStyle,
-        hasOuterChromeSurface = hasOuterChromeSurface
+        edgeToEdge = edgeToEdge
     )
-    val dockMaterialMode = when {
-        isLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
-        hazeState != null -> TopTabMaterialMode.BLUR
-        else -> TopTabMaterialMode.PLAIN
-    }
-    val dockShape = RoundedCornerShape(resolveTopTabDockCornerRadiusDp(isFloatingStyle).dp)
-    val viewportAnchorIndex by remember(pagerState, selectedIndex, categories.size) {
-        derivedStateOf {
-            resolveTopTabViewportAnchorIndex(
-                selectedIndex = selectedIndex,
-                pagerCurrentPage = pagerState?.currentPage,
-                pagerTargetPage = pagerState?.targetPage,
-                pagerIsScrolling = pagerState?.isScrollInProgress == true
-            ).coerceIn(0, (categories.size - 1).coerceAtLeast(0))
-        }
-    }
-    val visibleIndices = remember(categories, viewportAnchorIndex) {
-        resolveMd3VisibleTabIndices(
-            totalCount = categories.size,
-            selectedIndex = viewportAnchorIndex
-        )
-    }
-    val selectedVisibleIndex = remember(visibleIndices, selectedIndex) {
-        resolveMd3SelectedVisibleIndex(
-            visibleIndices = visibleIndices,
-            selectedIndex = selectedIndex
-        )
-    }
-    val currentPagerPosition by remember(pagerState, selectedIndex) {
-        derivedStateOf {
-            resolveTopTabIndicatorRenderPosition(
-                selectedIndex = selectedIndex,
-                pagerCurrentPage = pagerState?.currentPage,
-                pagerTargetPage = pagerState?.targetPage,
-                pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction,
-                pagerIsScrolling = pagerState?.isScrollInProgress == true
-            )
-        }
-    }
-    val currentVisiblePosition by remember(visibleIndices, currentPagerPosition) {
-        derivedStateOf {
-            resolveMd3TopTabViewportPosition(
-                visibleIndices = visibleIndices,
-                absolutePagerPosition = currentPagerPosition
-            )
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(tabRowHeight)
-            .padding(horizontal = 4.dp)
-            .padding(
-                horizontal = resolveTopTabDockHorizontalPaddingDp(isFloatingStyle = isFloatingStyle).dp,
-                vertical = resolveTopTabDockVerticalPaddingDp(isFloatingStyle).dp
-            )
-    ) {
-        TopTabDockSurface(
-            enabled = dockEnabled,
-            materialMode = dockMaterialMode,
-            shape = dockShape,
-            hazeState = hazeState,
-            backdrop = backdrop,
-            motionTier = motionTier,
-            isTransitionRunning = isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-        ) {
-            val slotCount = visibleIndices.size.coerceAtLeast(1)
-            val slotWidth = maxWidth / slotCount
-            val indicatorWidth = if (isMiuixChrome) {
-                (slotWidth * 0.56f).coerceIn(50.dp, 74.dp)
-            } else {
-                (slotWidth * 0.34f).coerceIn(24.dp, 32.dp)
-            }
-            val indicatorOffset = slotWidth * currentVisiblePosition + ((slotWidth - indicatorWidth) / 2f)
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                val selectedContainerColor = resolveMd3TopTabSelectedContainerColor(
-                    colorScheme = MaterialTheme.colorScheme,
-                    androidNativeVariant = androidNativeVariant
-                )
-                Surface(
-                    modifier = Modifier
-                        .offset(x = indicatorOffset)
-                        .width(indicatorWidth)
-                        .height(visualSpec.selectedCapsuleHeight)
-                        .padding(bottom = if (isMiuixChrome) 0.dp else 2.dp)
-                        .align(if (isMiuixChrome) Alignment.CenterStart else Alignment.BottomStart),
-                    shape = RoundedCornerShape(visualSpec.selectedCapsuleCornerRadius),
-                    color = selectedContainerColor,
-                    tonalElevation = visualSpec.selectedCapsuleTonalElevation,
-                    shadowElevation = visualSpec.selectedCapsuleShadowElevation
-                ) {}
-
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    visibleIndices.forEachIndexed { visibleIndex, originalIndex ->
-                        val category = categories[originalIndex]
-                        val categoryKey = categoryKeys.getOrNull(originalIndex) ?: category
-                        val showIcon = shouldShowTopTabIcon(normalizedLabelMode)
-                        val showText = shouldShowTopTabText(normalizedLabelMode)
-                        val icon = resolveTopTabCategoryIcon(categoryKey, uiPreset)
-                        val selectionFraction =
-                            (1f - abs(currentVisiblePosition - visibleIndex.toFloat())).coerceIn(0f, 1f)
-                        val onTabClick = {
-                            performHomeTopBarTap(haptic = haptic, onClick = {
-                                onCategorySelected(originalIndex)
-                            })
-                        }
-
-                        val iconColor = resolveMd3TopTabIconTint(
-                            selectionFraction = selectionFraction,
-                            colorScheme = MaterialTheme.colorScheme,
-                            androidNativeVariant = androidNativeVariant
-                        )
-                        val labelColor = resolveMd3TopTabLabelTint(
-                            selectionFraction = selectionFraction,
-                            colorScheme = MaterialTheme.colorScheme,
-                            androidNativeVariant = androidNativeVariant
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .width(slotWidth)
-                                .fillMaxHeight()
-                                .padding(vertical = 2.dp)
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = LocalIndication.current,
-                                    onClick = onTabClick,
-                                    onDoubleClick = {
-                                        if (selectedVisibleIndex == visibleIndex) {
-                                            scrollChannel?.trySend(Unit)
-                                        }
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = visualSpec.itemHorizontalPadding,
-                                        end = visualSpec.itemHorizontalPadding,
-                                        top = if (showIcon && showText) 0.dp else if (isMiuixChrome) 0.dp else 2.dp,
-                                        bottom = if (showIcon && showText) 2.dp else if (isMiuixChrome) 0.dp else 8.dp
-                                    ),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                if (showIcon) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = null,
-                                        tint = iconColor,
-                                        modifier = Modifier.size(visualSpec.iconSize)
-                                    )
-                                }
-                                if (showIcon && showText) {
-                                    Spacer(modifier = Modifier.height(visualSpec.iconLabelSpacing))
-                                }
-                                if (showText) {
-                                    Text(
-                                        text = category,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontSize = visualSpec.labelTextSize,
-                                        lineHeight = visualSpec.labelLineHeight,
-                                        fontWeight = if (selectionFraction > 0.6f) FontWeight.SemiBold else FontWeight.Medium,
-                                        color = labelColor
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Box(
-            modifier = Modifier
-                .width(actionButtonSize)
-                .fillMaxHeight()
-                .padding(bottom = if (isMiuixChrome) 0.dp else actionContentBottomPadding)
-                .clip(RoundedCornerShape(actionButtonCorner))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = LocalIndication.current
-                ) {
-                    performHomeTopBarTap(haptic = haptic, onClick = onPartitionClick)
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                resolveTopTabPartitionIcon(uiPreset),
-                contentDescription = "浏览全部分区",
-                tint = if (isMiuixChrome) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(actionIconSize)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-    }
-        }
-    }
 }
 
 @Composable

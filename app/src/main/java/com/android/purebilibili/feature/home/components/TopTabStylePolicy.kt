@@ -15,6 +15,50 @@ enum class TopTabMaterialMode {
     LIQUID_GLASS
 }
 
+enum class HomeTopTabRenderer {
+    IOS,
+    MD3,
+    MIUIX
+}
+
+enum class TopTabClickAction {
+    SELECT_TAB,
+    SCROLL_TO_TOP
+}
+
+internal fun resolveHomeTopTabRenderer(
+    uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant,
+    labelMode: Int
+): HomeTopTabRenderer {
+    if (
+        uiPreset == UiPreset.MD3 &&
+        androidNativeVariant == AndroidNativeVariant.MIUIX &&
+        shouldUseNativeMiuixTopTabRow(androidNativeVariant, labelMode)
+    ) {
+        return HomeTopTabRenderer.MIUIX
+    }
+    return when (uiPreset) {
+        UiPreset.IOS -> HomeTopTabRenderer.IOS
+        UiPreset.MD3 -> HomeTopTabRenderer.MD3
+    }
+}
+
+internal fun resolveHomeTopTabMaterialMode(headerBlurEnabled: Boolean): TopTabMaterialMode {
+    return if (headerBlurEnabled) TopTabMaterialMode.BLUR else TopTabMaterialMode.PLAIN
+}
+
+internal fun resolveTopTabClickAction(
+    index: Int,
+    selectedIndex: Int
+): TopTabClickAction {
+    return if (index == selectedIndex) {
+        TopTabClickAction.SCROLL_TO_TOP
+    } else {
+        TopTabClickAction.SELECT_TAB
+    }
+}
+
 internal fun resolveTopTabRenderMaterialMode(
     liquidGlassEnabled: Boolean,
     hasHazeState: Boolean
@@ -282,8 +326,7 @@ internal fun shouldUseMd3TopTabMaterialIndicator(
     uiPreset: UiPreset,
     liquidGlassEnabled: Boolean
 ): Boolean {
-    return resolveTopTabIndicatorStyle(uiPreset) == TopTabIndicatorStyle.MATERIAL &&
-        !liquidGlassEnabled
+    return resolveTopTabIndicatorStyle(uiPreset) == TopTabIndicatorStyle.MATERIAL
 }
 
 fun resolveTopTabLabelTextSizeSp(labelMode: Int): Float {
@@ -343,7 +386,6 @@ fun resolveTopTabStyle(
     isLiquidGlassEnabled: Boolean
 ): TopTabVisualState {
     val materialMode = when {
-        isBottomBarFloating && isLiquidGlassEnabled -> TopTabMaterialMode.LIQUID_GLASS
         isBottomBarBlurEnabled -> TopTabMaterialMode.BLUR
         else -> TopTabMaterialMode.PLAIN
     }
@@ -365,7 +407,7 @@ internal fun resolveEffectiveTopTabLiquidGlassEnabled(
     isLiquidGlassEnabled: Boolean,
     interactionBudget: HomeInteractionMotionBudget
 ): Boolean {
-    return isLiquidGlassEnabled
+    return false
 }
 
 internal fun shouldDrawHomeTopTabOuterChromeSurface(

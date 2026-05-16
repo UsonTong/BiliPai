@@ -286,104 +286,21 @@ class TopTabRefractionPolicyTest {
     }
 
     @Test
-    fun `home top tab row derives item color motion from live pager drag`() {
+    fun `home top tab row uses lightweight pager aware tabs without liquid renderer`() {
         val source = loadSource(
             "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
         )
 
-        assertFalse(source.contains("val isInteracting = false"))
-        assertFalse(source.contains("resolveTopTabStaticIndicatorVisualPolicy(\n                    useNeutralIndicatorTint = true"))
-        assertTrue(source.contains("val pagerDragHeld = rememberTopTabPagerDragHeld(pagerState)"))
-        assertTrue(source.contains("val isDragged by pagerState.interactionSource.collectIsDraggedAsState()"))
-        assertTrue(source.contains("val rawIndicatorInteracting by remember(pagerState, pagerDragHeld, effectiveLiquidGlassEnabled)"))
-        assertTrue(source.contains("pagerIsDragging = pagerDragHeld"))
-        assertTrue(source.contains("var isInteracting by remember { mutableStateOf(false) }"))
-        assertTrue(source.contains("LaunchedEffect(rawIndicatorInteracting, effectiveLiquidGlassEnabled)"))
-        assertTrue(source.contains("resolveTopTabIndicatorInteractionReleaseDelayMillis("))
-        assertTrue(source.contains("pagerIsScrolling = pagerState?.isScrollInProgress == true"))
-        assertTrue(source.contains("val contentMotionInProgress = isInteracting"))
-        assertTrue(source.contains("isInMotion = contentMotionInProgress"))
-        assertTrue(source.contains("resolveTopTabIndicatorVisualPolicy("))
-        assertTrue(source.contains("position = currentPosition"))
-        assertFalse(source.contains("resolveTopTabSweepSelectionIndex("))
-        assertFalse(source.contains("userScrollEnabled = false"))
-    }
-
-    @Test
-    fun `home top tab row keeps render effects while tracking pager motion`() {
-        val source = loadSource(
-            "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
-        )
-
-        assertFalse(source.contains("suppressTopTabRenderEffects"))
-        assertFalse(source.contains("renderLiquidGlassEnabled"))
-        assertFalse(source.contains("renderHazeState"))
-        assertFalse(source.contains("renderBackdrop"))
-        assertTrue(source.contains("val contentMotionInProgress = isInteracting"))
-        assertTrue(source.contains("hazeState = hazeState"))
-        assertTrue(source.contains("backdrop = backdrop"))
-        assertTrue(source.contains("isLiquidGlassEnabled = effectiveLiquidGlassEnabled"))
-        assertTrue(source.contains("isInMotion = contentMotionInProgress"))
-        assertTrue(source.contains("shouldDeformTopTabIndicator("))
-    }
-
-    @Test
-    fun `home top tab indicator inlines bottom bar indicator renderer block`() {
-        val source = loadSource(
-            "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
-        )
-
+        assertTrue(source.contains("LightweightHomeTopTabs("))
+        assertTrue(source.contains("resolveTopTabIndicatorRenderPosition("))
+        assertTrue(source.contains("pagerCurrentPageOffsetFraction = pagerState?.currentPageOffsetFraction"))
+        assertTrue(source.contains("resolveTopTabClickAction(index, selectedIndex)"))
         assertFalse(source.contains("LiquidIndicator("))
         assertFalse(source.contains("SimpleLiquidIndicator("))
         assertFalse(source.contains("BottomBarStyleIndicatorSurface("))
+        assertFalse(source.contains("drawBackdrop("))
+        assertFalse(source.contains(".layerBackdrop(tabsBackdrop)"))
         assertFalse(source.contains("rememberCombinedBackdrop(backdrop, tabsBackdrop)"))
-        assertTrue(source.contains(".layerBackdrop(tabsBackdrop)"))
-        assertTrue(source.contains("drawBackdrop("))
-        assertTrue(source.contains("backdrop = tabsBackdrop"))
-        assertTrue(source.contains("shape = { selectedIndicatorShape }"))
-        assertTrue(source.contains("resolveBottomBarBackdropPresetIndicatorLens("))
-        assertTrue(source.contains("resolveAndroidNativeIdleIndicatorSurfaceColor("))
-        assertTrue(source.contains("resolveBottomBarIndicatorLayerTransform("))
-        assertTrue(source.contains("resolveTopTabIndicatorLayerTransform("))
-        assertTrue(source.contains("val floatingAdjustedInsetDp = 0.dp"))
-        assertTrue(source.contains("val dockContentPadding = resolveTopTabDockContentPaddingDp(isFloatingStyle).dp"))
-        assertTrue(source.contains("containerWidthDp = dockContentWidthDp"))
-        assertTrue(source.contains(".padding(dockContentPadding)"))
-        assertTrue(
-            source.contains(
-                "val selectedIndicatorHeight = if (isFloatingStyle) {\n" +
-                    "                        (floatingLiquidHeight.value * indicatorVerticalScale).dp"
-            )
-        )
-        assertTrue(
-            source.contains(
-                "val selectedIndicatorWidthPx = if (isFloatingStyle) {\n" +
-                    "                        actualTabWidthPx"
-            )
-        )
-        assertFalse(source.contains("resolveLiquidIndicatorWidthPx("))
-        val indicatorGlassProgressSource = source
-            .substringAfter("val topTabIndicatorGlassProgress = if (")
-            .substringBefore("val scrollOffset by remember")
-        assertTrue(indicatorGlassProgressSource.contains("shouldRefract"))
-        assertTrue(source.contains("shouldDeformTopTabIndicator("))
-        assertTrue(source.contains("1f\n                } else {\n                    0f"))
-        assertTrue(source.contains("motionProgress = topTabIndicatorDeformationProgress"))
-        assertFalse(source.contains("scaleY = if (isFloatingStyle)"))
-        assertTrue(source.contains("scaleY = indicatorLayerTransform.scaleY"))
-    }
-
-    @Test
-    fun `home top tab indicator keeps bottom bar glass drawing primitives inline`() {
-        val source = loadSource(
-            "app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt"
-        )
-
-        assertTrue(source.contains("Highlight.Default.copy(alpha = indicatorHighlightAlpha)"))
-        assertTrue(source.contains("InnerShadow("))
-        assertTrue(source.contains("Shadow(alpha = if (effectiveLiquidGlassEnabled) indicatorHighlightAlpha else 0f)"))
-        assertTrue(source.contains("background(\n                                        resolveAndroidNativeIdleIndicatorSurfaceColor("))
-        assertFalse(source.contains("internal fun BottomBarStyleIndicatorSurface("))
     }
 
     private fun loadSource(path: String): String {

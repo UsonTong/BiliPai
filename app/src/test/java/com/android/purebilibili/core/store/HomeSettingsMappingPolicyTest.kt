@@ -25,7 +25,7 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.isHeaderBlurEnabled)
         assertEquals(HomeHeaderBlurMode.FOLLOW_PRESET, result.headerBlurMode)
         assertTrue(result.isBottomBarBlurEnabled)
-        assertTrue(result.isTopBarLiquidGlassEnabled)
+        assertFalse(result.isTopBarLiquidGlassEnabled)
         assertTrue(result.isBottomBarLiquidGlassEnabled)
         assertFalse(result.bottomBarInteractiveHighlightEnabled)
         assertFalse(result.isBottomBarSearchEnabled)
@@ -195,7 +195,7 @@ class HomeSettingsMappingPolicyTest {
     }
 
     @Test
-    fun legacySharedLiquidGlassToggle_backfillsTopAndBottomSwitches() {
+    fun legacySharedLiquidGlassToggle_backfillsBottomSwitchOnly() {
         val prefs = mutablePreferencesOf(
             booleanPreferencesKey("liquid_glass_enabled") to false
         )
