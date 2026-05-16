@@ -40,8 +40,8 @@ class LiveHomeCategoryIndicatorPolicyTest {
         val spec = resolveLiveHomeCategorySegmentedControlSpec()
 
         assertEquals(82, spec.itemWidthDp)
-        assertEquals(58, spec.heightDp)
-        assertEquals(56, spec.indicatorHeightDp)
+        assertEquals(44, spec.heightDp)
+        assertEquals(30, spec.indicatorHeightDp)
         assertEquals(14, spec.labelFontSizeSp)
         assertEquals(4, spec.containerHorizontalPaddingDp)
         assertEquals(4, spec.containerVerticalPaddingDp)
@@ -52,8 +52,8 @@ class LiveHomeCategoryIndicatorPolicyTest {
         val spec = resolveLiveAreaParentSegmentedControlSpec()
 
         assertEquals(112, spec.itemWidthDp)
-        assertEquals(58, spec.heightDp)
-        assertEquals(56, spec.indicatorHeightDp)
+        assertEquals(44, spec.heightDp)
+        assertEquals(30, spec.indicatorHeightDp)
         assertEquals(16, spec.labelFontSizeSp)
         assertEquals(4, spec.containerHorizontalPaddingDp)
         assertEquals(4, spec.containerVerticalPaddingDp)

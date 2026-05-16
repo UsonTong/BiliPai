@@ -88,8 +88,8 @@ class CommonListAppearancePolicyTest {
             uiPreset = UiPreset.IOS
         )
 
-        assertEquals(36, layout.searchBarHeightDp)
-        assertEquals(34, layout.browseToggleHeightDp)
+        assertEquals(44, layout.searchBarHeightDp)
+        assertEquals(44, layout.browseToggleHeightDp)
         assertEquals(30, layout.browseToggleIndicatorHeightDp)
         assertEquals(14, layout.browseToggleLabelFontSizeSp)
         assertEquals(32, layout.folderChipMinHeightDp)
@@ -103,8 +103,8 @@ class CommonListAppearancePolicyTest {
             androidNativeVariant = AndroidNativeVariant.MATERIAL3
         )
 
-        assertEquals(48, layout.searchBarHeightDp)
-        assertEquals(34, layout.browseToggleIndicatorHeightDp)
+        assertEquals(44, layout.searchBarHeightDp)
+        assertEquals(30, layout.browseToggleIndicatorHeightDp)
         assertEquals(14, layout.browseToggleLabelFontSizeSp)
         assertEquals(36, layout.folderChipMinHeightDp)
         assertTrue(layout.headerBackgroundAlphaMultiplier < 1f)

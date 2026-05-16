@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 
@@ -124,6 +125,7 @@ internal fun resolveHomeTopPresetStyle(
 ): HomeTopPresetStyle {
     val normalizedLabelMode = normalizeTopTabLabelMode(labelMode)
     val isIconAndText = normalizedLabelMode == 0
+    val compactChrome = resolveCompactCapsuleChromeSpec(uiPreset, androidNativeVariant)
     return when {
         uiPreset == UiPreset.IOS -> {
             HomeTopPresetStyle(
@@ -134,10 +136,10 @@ internal fun resolveHomeTopPresetStyle(
                     barHeight = 48.dp,
                     revealDeadZone = 8.dp,
                     rowHorizontalPadding = 14.dp,
-                    pillHeight = 34.dp,
+                    pillHeight = compactChrome.primaryHeightDp.dp,
                     content = HomeTopSearchContentStyle(
-                        horizontalPadding = 12.dp,
-                        iconTextGap = 8.dp
+                        horizontalPadding = compactChrome.inputHorizontalPaddingDp.dp,
+                        iconTextGap = compactChrome.standardGapDp.dp
                     )
                 ),
                 panel = HomeTopPanelStyle(
@@ -199,10 +201,10 @@ internal fun resolveHomeTopPresetStyle(
                     barHeight = 50.dp,
                     revealDeadZone = 0.dp,
                     rowHorizontalPadding = 14.dp,
-                    pillHeight = 46.dp,
+                    pillHeight = compactChrome.primaryHeightDp.dp,
                     content = HomeTopSearchContentStyle(
-                        horizontalPadding = 14.dp,
-                        iconTextGap = 8.dp
+                        horizontalPadding = compactChrome.inputHorizontalPaddingDp.dp,
+                        iconTextGap = compactChrome.standardGapDp.dp
                     )
                 ),
                 panel = HomeTopPanelStyle(
@@ -256,10 +258,10 @@ internal fun resolveHomeTopPresetStyle(
                     barHeight = 52.dp,
                     revealDeadZone = 0.dp,
                     rowHorizontalPadding = 16.dp,
-                    pillHeight = 48.dp,
+                    pillHeight = compactChrome.primaryHeightDp.dp,
                     content = HomeTopSearchContentStyle(
-                        horizontalPadding = 16.dp,
-                        iconTextGap = 10.dp
+                        horizontalPadding = compactChrome.inputHorizontalPaddingDp.dp,
+                        iconTextGap = compactChrome.standardGapDp.dp
                     )
                 ),
                 panel = HomeTopPanelStyle(

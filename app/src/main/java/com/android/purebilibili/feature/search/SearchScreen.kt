@@ -76,6 +76,7 @@ import com.android.purebilibili.core.ui.LoadingAnimation
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppChevronDownIcon
 import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
@@ -165,36 +166,73 @@ internal data class SearchChromeVisualSpec(
     val inputCornerRadiusDp: Int,
     val actionContainerCornerRadiusDp: Int,
     val useFilledSearchAction: Boolean,
-    val suggestionContainerCornerRadiusDp: Int
+    val suggestionContainerCornerRadiusDp: Int,
+    val clearActionSizeDp: Int,
+    val submitActionSizeDp: Int,
+    val actionIconSizeDp: Int,
+    val horizontalGapDp: Int,
+    val inputHorizontalPaddingDp: Int,
+    val chipHeightDp: Int,
+    val compactChipHeightDp: Int,
+    val chipCornerRadiusDp: Int,
+    val chipHorizontalPaddingDp: Int
 )
 
 internal fun resolveSearchChromeVisualSpec(
     uiPreset: UiPreset,
     androidNativeVariant: AndroidNativeVariant = AndroidNativeVariant.MATERIAL3
 ): SearchChromeVisualSpec {
+    val compactChrome = resolveCompactCapsuleChromeSpec(uiPreset, androidNativeVariant)
     return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MIUIX) {
         SearchChromeVisualSpec(
-            inputHeightDp = 46,
-            inputCornerRadiusDp = 23,
-            actionContainerCornerRadiusDp = 18,
+            inputHeightDp = compactChrome.primaryHeightDp,
+            inputCornerRadiusDp = compactChrome.primaryCornerRadiusDp,
+            actionContainerCornerRadiusDp = compactChrome.secondaryButtonCornerRadiusDp,
             useFilledSearchAction = true,
-            suggestionContainerCornerRadiusDp = 18
+            suggestionContainerCornerRadiusDp = 18,
+            clearActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            submitActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            actionIconSizeDp = compactChrome.iconSizeDp,
+            horizontalGapDp = compactChrome.standardGapDp,
+            inputHorizontalPaddingDp = compactChrome.inputHorizontalPaddingDp,
+            chipHeightDp = compactChrome.chipHeightDp,
+            compactChipHeightDp = compactChrome.compactChipHeightDp,
+            chipCornerRadiusDp = compactChrome.chipCornerRadiusDp,
+            chipHorizontalPaddingDp = compactChrome.chipHorizontalPaddingDp
         )
     } else if (uiPreset == UiPreset.MD3) {
         SearchChromeVisualSpec(
-            inputHeightDp = 48,
-            inputCornerRadiusDp = 28,
-            actionContainerCornerRadiusDp = 18,
+            inputHeightDp = compactChrome.primaryHeightDp,
+            inputCornerRadiusDp = compactChrome.primaryCornerRadiusDp,
+            actionContainerCornerRadiusDp = compactChrome.secondaryButtonCornerRadiusDp,
             useFilledSearchAction = true,
-            suggestionContainerCornerRadiusDp = 20
+            suggestionContainerCornerRadiusDp = 20,
+            clearActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            submitActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            actionIconSizeDp = compactChrome.iconSizeDp,
+            horizontalGapDp = compactChrome.standardGapDp,
+            inputHorizontalPaddingDp = compactChrome.inputHorizontalPaddingDp,
+            chipHeightDp = compactChrome.chipHeightDp,
+            compactChipHeightDp = compactChrome.compactChipHeightDp,
+            chipCornerRadiusDp = compactChrome.chipCornerRadiusDp,
+            chipHorizontalPaddingDp = compactChrome.chipHorizontalPaddingDp
         )
     } else {
         SearchChromeVisualSpec(
-            inputHeightDp = 42,
-            inputCornerRadiusDp = 50,
-            actionContainerCornerRadiusDp = 18,
+            inputHeightDp = compactChrome.primaryHeightDp,
+            inputCornerRadiusDp = compactChrome.primaryCornerRadiusDp,
+            actionContainerCornerRadiusDp = compactChrome.secondaryButtonCornerRadiusDp,
             useFilledSearchAction = false,
-            suggestionContainerCornerRadiusDp = 12
+            suggestionContainerCornerRadiusDp = 12,
+            clearActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            submitActionSizeDp = compactChrome.secondaryButtonSizeDp,
+            actionIconSizeDp = compactChrome.iconSizeDp,
+            horizontalGapDp = compactChrome.standardGapDp,
+            inputHorizontalPaddingDp = compactChrome.inputHorizontalPaddingDp,
+            chipHeightDp = compactChrome.chipHeightDp,
+            compactChipHeightDp = compactChrome.compactChipHeightDp,
+            chipCornerRadiusDp = compactChrome.chipCornerRadiusDp,
+            chipHorizontalPaddingDp = compactChrome.chipHorizontalPaddingDp
         )
     }
 }
@@ -1593,7 +1631,7 @@ fun SearchTopBar(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                             }
                         )
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = chromeSpec.inputHorizontalPaddingDp.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BasicTextField(
@@ -1636,12 +1674,12 @@ fun SearchTopBar(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
 
                 IconButton(
                     onClick = onClearQuery,
                     enabled = query.isNotEmpty(),
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(chromeSpec.clearActionSizeDp.dp)
                 ) {
                     Icon(
                         clearIcon,
@@ -1650,7 +1688,8 @@ fun SearchTopBar(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        }
+                        },
+                        modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
                     )
                 }
 
@@ -1658,7 +1697,7 @@ fun SearchTopBar(
                     onClick = { onSearch(resolvedSubmitKeyword) },
                     enabled = canSubmit,
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(chromeSpec.submitActionSizeDp.dp)
                         .clip(RoundedCornerShape(chromeSpec.actionContainerCornerRadiusDp.dp))
                         .background(
                             if (canSubmit) {
@@ -1675,7 +1714,8 @@ fun SearchTopBar(
                             searchIconColor
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        }
+                        },
+                        modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
                     )
                 }
             }
@@ -1707,13 +1747,13 @@ fun HistoryChip(
         } else {
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         },
-        shape = RoundedCornerShape(chromeSpec.actionContainerCornerRadiusDp.dp),
+        shape = RoundedCornerShape(chromeSpec.chipCornerRadiusDp.dp),
         tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
-                .height(36.dp)
-                .padding(start = 12.dp, end = 4.dp),
+                .height(chromeSpec.chipHeightDp.dp)
+                .padding(start = chromeSpec.chipHorizontalPaddingDp.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -2108,7 +2148,7 @@ fun SearchFilterBar(
                 Surface(
                     onClick = { onTypeChange(type) },
                     color = chipColors.backgroundColor,
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(typeTabLayoutSpec.minHeightDp.dp / 2)
                 ) {
                     Box(
                         modifier = Modifier
@@ -2313,6 +2353,10 @@ private fun FilterMenuChip(
     onClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val chromeSpec = remember(uiPreset, androidNativeVariant) {
+        resolveSearchChromeVisualSpec(uiPreset, androidNativeVariant)
+    }
     val chevronIcon = rememberAppChevronDownIcon()
     Surface(
         onClick = onClick,
@@ -2325,10 +2369,12 @@ private fun FilterMenuChip(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             }
         },
-        shape = RoundedCornerShape(if (uiPreset == UiPreset.MD3) 14.dp else 8.dp)
+        shape = RoundedCornerShape(chromeSpec.chipCornerRadiusDp.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier
+                .height(chromeSpec.chipHeightDp.dp)
+                .padding(horizontal = chromeSpec.chipHorizontalPaddingDp.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(

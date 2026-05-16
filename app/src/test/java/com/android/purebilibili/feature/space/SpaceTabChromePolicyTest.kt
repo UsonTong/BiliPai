@@ -22,7 +22,7 @@ class SpaceTabChromePolicyTest {
 
         assertEquals(1, spec.selectedIndex)
         assertFalse(spec.scrollable)
-        assertTrue(spec.heightDp >= 48)
+        assertEquals(44, spec.heightDp)
         assertTrue(spec.indicatorHeightDp < spec.heightDp)
         assertTrue(spec.liquidGlassEffectsEnabled)
     }
@@ -81,9 +81,8 @@ class SpaceTabChromePolicyTest {
         assertEquals(2, spec.selectedIndex)
         assertTrue(spec.scrollable)
         assertTrue((spec.itemWidthDp ?: 0) > 104)
-        assertTrue(spec.heightDp < mainSpec.heightDp)
-        assertTrue(spec.heightDp >= 48)
-        assertTrue(spec.indicatorHeightDp < mainSpec.indicatorHeightDp)
+        assertEquals(mainSpec.heightDp, spec.heightDp)
+        assertEquals(mainSpec.indicatorHeightDp, spec.indicatorHeightDp)
         assertTrue(spec.indicatorHeightDp < spec.heightDp)
         assertEquals(mainSpec.horizontalPaddingDp, spec.horizontalPaddingDp)
         assertTrue(spec.liquidGlassEffectsEnabled)

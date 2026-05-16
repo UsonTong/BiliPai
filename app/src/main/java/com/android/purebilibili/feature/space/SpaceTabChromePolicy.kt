@@ -1,5 +1,8 @@
 package com.android.purebilibili.feature.space
 
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
 import kotlin.math.roundToInt
 
 internal data class SpaceSegmentedTabChromeSpec(
@@ -13,10 +16,6 @@ internal data class SpaceSegmentedTabChromeSpec(
     val dragSelectionEnabled: Boolean
 )
 
-private const val SPACE_SEGMENTED_TAB_HEIGHT_DP = 58
-private const val SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP = 56
-private const val SPACE_CONTRIBUTION_TAB_HEIGHT_DP = 48
-private const val SPACE_CONTRIBUTION_TAB_INDICATOR_HEIGHT_DP = 38
 private const val SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP = 16
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_MIN_WIDTH_DP = 104
 private const val SPACE_SCROLLABLE_CONTRIBUTION_ITEM_TEXT_PADDING_DP = 44
@@ -28,10 +27,11 @@ internal fun resolveSpaceMainTabChromeSpec(
     selectedTab: SpaceMainTab
 ): SpaceSegmentedTabChromeSpec {
     val selectedIndex = tabs.indexOfFirst { it.tab == selectedTab }.coerceAtLeast(0)
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return SpaceSegmentedTabChromeSpec(
         selectedIndex = selectedIndex,
-        heightDp = SPACE_SEGMENTED_TAB_HEIGHT_DP,
-        indicatorHeightDp = SPACE_SEGMENTED_TAB_INDICATOR_HEIGHT_DP,
+        heightDp = compactChrome.primaryHeightDp,
+        indicatorHeightDp = 30,
         horizontalPaddingDp = SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP,
         itemWidthDp = null,
         scrollable = false,
@@ -49,10 +49,11 @@ internal fun resolveSpaceContributionTabChromeSpec(
         .takeIf { it >= 0 }
         ?: tabs.indexOfFirst { it.subTab == selectedSubTab }.coerceAtLeast(0)
     val scrollable = shouldScrollSpaceContributionTabs(tabs)
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return SpaceSegmentedTabChromeSpec(
         selectedIndex = selectedIndex,
-        heightDp = SPACE_CONTRIBUTION_TAB_HEIGHT_DP,
-        indicatorHeightDp = SPACE_CONTRIBUTION_TAB_INDICATOR_HEIGHT_DP,
+        heightDp = compactChrome.primaryHeightDp,
+        indicatorHeightDp = 30,
         horizontalPaddingDp = SPACE_SEGMENTED_TAB_HORIZONTAL_PADDING_DP,
         itemWidthDp = resolveSpaceContributionTabItemWidthDp(tabs),
         scrollable = scrollable,

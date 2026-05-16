@@ -17,7 +17,7 @@ class VideoContentTabBarPolicyTest {
         assertTrue(spec.tabsRowScrollable)
         assertEquals(12, spec.containerHorizontalPaddingDp)
         assertEquals(12, spec.tabHorizontalPaddingDp)
-        assertEquals(48, spec.segmentedControlHeightDp)
+        assertEquals(44, spec.segmentedControlHeightDp)
         assertEquals(30, spec.segmentedControlIndicatorHeightDp)
         assertTrue(
             hasVideoContentTabBarIndicatorScaleClearance(
@@ -49,7 +49,9 @@ class VideoContentTabBarPolicyTest {
     fun `danmaku action layout keeps settings target comfortably tappable`() {
         val policy = resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp = 412)
 
-        assertEquals("点我发弹幕", policy.sendLabel)
+        assertEquals("发弹幕", policy.sendLabel)
+        assertEquals(40, policy.secondaryControlHeightDp)
+        assertEquals(20, policy.secondaryControlCornerRadiusDp)
         assertEquals(40, policy.settingsButtonSizeDp)
         assertEquals(20, policy.settingsIconSizeDp)
     }
@@ -63,6 +65,7 @@ class VideoContentTabBarPolicyTest {
         assertEquals(8, spec.tabHorizontalPaddingDp)
         assertEquals(10, spec.tabSpacingDp)
         assertEquals(16, spec.selectedTabFontSizeSp)
+        assertEquals(44, spec.segmentedControlHeightDp)
         assertTrue(
             hasVideoContentTabBarIndicatorScaleClearance(
                 containerHeightDp = spec.segmentedControlHeightDp,
@@ -70,8 +73,10 @@ class VideoContentTabBarPolicyTest {
             )
         )
         assertEquals("发弹幕", policy.sendLabel)
-        assertEquals(36, policy.settingsButtonSizeDp)
-        assertEquals(18, policy.settingsIconSizeDp)
+        assertEquals(40, policy.secondaryControlHeightDp)
+        assertEquals(20, policy.secondaryControlCornerRadiusDp)
+        assertEquals(40, policy.settingsButtonSizeDp)
+        assertEquals(20, policy.settingsIconSizeDp)
     }
 
     @Test

@@ -1,6 +1,9 @@
 package com.android.purebilibili.feature.live
 
 import androidx.compose.ui.graphics.Color
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
 
 internal data class LivePiliPlusHomeMetrics(
     val safeSpaceDp: Int,
@@ -110,11 +113,12 @@ internal fun shouldStopLivePlaybackOnRouteDispose(isChangingConfigurations: Bool
 }
 
 internal fun resolveLiveInteractionSegmentedControlSpec(): LiveInteractionSegmentedControlSpec {
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return LiveInteractionSegmentedControlSpec(
         horizontalPaddingDp = 14,
         verticalPaddingDp = 8,
-        heightDp = 58,
-        indicatorHeightDp = 56,
+        heightDp = compactChrome.primaryHeightDp,
+        indicatorHeightDp = 30,
         labelFontSizeSp = 14
     )
 }

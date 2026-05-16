@@ -1,5 +1,9 @@
 package com.android.purebilibili.feature.live
 
+import com.android.purebilibili.core.theme.AndroidNativeVariant
+import com.android.purebilibili.core.theme.UiPreset
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
+
 internal data class LiveCategorySegmentedControlSpec(
     val itemWidthDp: Int?,
     val heightDp: Int,
@@ -19,10 +23,11 @@ internal fun resolveLiveHomeCategorySelectedIndex(
 }
 
 internal fun resolveLiveHomeCategorySegmentedControlSpec(): LiveCategorySegmentedControlSpec {
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return LiveCategorySegmentedControlSpec(
         itemWidthDp = 82,
-        heightDp = 58,
-        indicatorHeightDp = 56,
+        heightDp = compactChrome.primaryHeightDp,
+        indicatorHeightDp = 30,
         labelFontSizeSp = 14,
         containerHorizontalPaddingDp = 4,
         containerVerticalPaddingDp = 4
@@ -56,10 +61,11 @@ internal fun resolveLiveHomeCategoryFollowScrollTarget(
 }
 
 internal fun resolveLiveAreaParentSegmentedControlSpec(): LiveCategorySegmentedControlSpec {
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return LiveCategorySegmentedControlSpec(
         itemWidthDp = 112,
-        heightDp = 58,
-        indicatorHeightDp = 56,
+        heightDp = compactChrome.primaryHeightDp,
+        indicatorHeightDp = 30,
         labelFontSizeSp = 16,
         containerHorizontalPaddingDp = 4,
         containerVerticalPaddingDp = 4

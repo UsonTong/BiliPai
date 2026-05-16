@@ -49,10 +49,12 @@ import com.android.purebilibili.core.ui.rememberAppCommentIcon
 import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
 import com.android.purebilibili.core.ui.rememberAppPlayIcon
 import com.android.purebilibili.core.ui.rememberAppSettingsIcon
+import com.android.purebilibili.core.ui.resolveCompactCapsuleChromeSpec
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.data.model.response.RelatedVideo
@@ -116,6 +118,7 @@ internal fun hasVideoContentTabBarIndicatorScaleClearance(
 }
 
 internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabBarLayoutSpec {
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return if (widthDp < 400) {
         VideoContentTabBarLayoutSpec(
             tabsRowWeight = 1f,
@@ -127,8 +130,8 @@ internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabB
             selectedTabFontSizeSp = 16,
             unselectedTabFontSizeSp = 15,
             indicatorWidthDp = 28,
-            segmentedControlHeightDp = 46,
-            segmentedControlIndicatorHeightDp = 29
+            segmentedControlHeightDp = compactChrome.primaryHeightDp,
+            segmentedControlIndicatorHeightDp = 30
         )
     } else {
         VideoContentTabBarLayoutSpec(
@@ -141,7 +144,7 @@ internal fun resolveVideoContentTabBarLayoutSpec(widthDp: Int): VideoContentTabB
             selectedTabFontSizeSp = 17,
             unselectedTabFontSizeSp = 16,
             indicatorWidthDp = 32,
-            segmentedControlHeightDp = 48,
+            segmentedControlHeightDp = compactChrome.primaryHeightDp,
             segmentedControlIndicatorHeightDp = 30
         )
     }
@@ -157,12 +160,15 @@ internal data class VideoContentTabBarDanmakuActionLayoutPolicy(
     val sendVerticalPaddingDp: Int,
     val sendTextSizeSp: Int,
     val sendLabel: String,
+    val secondaryControlHeightDp: Int,
+    val secondaryControlCornerRadiusDp: Int,
     val settingsButtonSizeDp: Int,
     val settingsIconSizeDp: Int,
     val settingsLeadingPaddingDp: Int
 )
 
 internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): VideoContentTabBarDanmakuActionLayoutPolicy {
+    val compactChrome = resolveCompactCapsuleChromeSpec(UiPreset.IOS, AndroidNativeVariant.MATERIAL3)
     return if (widthDp < 400) {
         VideoContentTabBarDanmakuActionLayoutPolicy(
             toggleIconSizeDp = 14,
@@ -174,8 +180,10 @@ internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): V
             sendVerticalPaddingDp = 7,
             sendTextSizeSp = 11,
             sendLabel = "发弹幕",
-            settingsButtonSizeDp = 36,
-            settingsIconSizeDp = 18,
+            secondaryControlHeightDp = compactChrome.secondaryButtonSizeDp,
+            secondaryControlCornerRadiusDp = compactChrome.secondaryButtonCornerRadiusDp,
+            settingsButtonSizeDp = compactChrome.secondaryButtonSizeDp,
+            settingsIconSizeDp = compactChrome.iconSizeDp,
             settingsLeadingPaddingDp = 4
         )
     } else {
@@ -188,9 +196,11 @@ internal fun resolveVideoContentTabBarDanmakuActionLayoutPolicy(widthDp: Int): V
             sendHorizontalPaddingDp = 12,
             sendVerticalPaddingDp = 8,
             sendTextSizeSp = 12,
-            sendLabel = "点我发弹幕",
-            settingsButtonSizeDp = 40,
-            settingsIconSizeDp = 20,
+            sendLabel = "发弹幕",
+            secondaryControlHeightDp = compactChrome.secondaryButtonSizeDp,
+            secondaryControlCornerRadiusDp = compactChrome.secondaryButtonCornerRadiusDp,
+            settingsButtonSizeDp = compactChrome.secondaryButtonSizeDp,
+            settingsIconSizeDp = compactChrome.iconSizeDp,
             settingsLeadingPaddingDp = 6
         )
     }
@@ -1216,7 +1226,8 @@ private fun VideoContentTabBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(end = danmakuActionLayoutPolicy.toggleTrailingPaddingDp.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .height(danmakuActionLayoutPolicy.secondaryControlHeightDp.dp)
+                    .clip(RoundedCornerShape(danmakuActionLayoutPolicy.secondaryControlCornerRadiusDp.dp))
                     .background(
                         if (danmakuEnabled) {
                             danmakuActiveColor.copy(alpha = 0.16f)
@@ -1257,7 +1268,8 @@ private fun VideoContentTabBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
+                        .height(danmakuActionLayoutPolicy.secondaryControlHeightDp.dp)
+                        .clip(RoundedCornerShape(danmakuActionLayoutPolicy.secondaryControlCornerRadiusDp.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .clickable(onClick = onDanmakuSendClick)
                         .padding(
@@ -1278,7 +1290,7 @@ private fun VideoContentTabBar(
                     .padding(start = danmakuActionLayoutPolicy.settingsLeadingPaddingDp.dp)
                     .size(danmakuActionLayoutPolicy.settingsButtonSizeDp.dp)
                     .clickable(onClick = onDanmakuSettingsClick),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(danmakuActionLayoutPolicy.secondaryControlCornerRadiusDp.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
