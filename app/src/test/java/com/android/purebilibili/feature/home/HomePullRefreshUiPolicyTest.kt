@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home
 
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
@@ -9,14 +10,31 @@ import org.junit.Test
 class HomePullRefreshUiPolicyTest {
 
     @Test
-    fun `md3 preset uses material refresh motion style`() {
+    fun `material md3 preset uses native refresh motion style`() {
         assertEquals(
             HomePullRefreshMotionStyle.MD3,
-            resolveHomePullRefreshMotionStyle(UiPreset.MD3)
+            resolveHomePullRefreshMotionStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
+            )
         )
         assertEquals(
             HomePullRefreshMotionStyle.IOS,
-            resolveHomePullRefreshMotionStyle(UiPreset.IOS)
+            resolveHomePullRefreshMotionStyle(
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
+            )
+        )
+    }
+
+    @Test
+    fun `miuix variant does not use material native refresh indicator`() {
+        assertEquals(
+            HomePullRefreshMotionStyle.IOS,
+            resolveHomePullRefreshMotionStyle(
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
         )
     }
 

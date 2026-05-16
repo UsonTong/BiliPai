@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.core.ui.ComfortablePullToRefreshBox
 import com.android.purebilibili.core.ui.AdaptiveScaffold
+import com.android.purebilibili.core.theme.LocalAndroidNativeVariant
 import com.android.purebilibili.core.theme.LocalUiPreset
 import com.android.purebilibili.core.theme.BiliPink
 import com.android.purebilibili.feature.settings.GITHUB_URL
@@ -426,8 +427,12 @@ fun HomeScreen(
         context = kotlin.coroutines.EmptyCoroutineContext
     )
     val uiPreset = LocalUiPreset.current
-    val pullRefreshMotionStyle = remember(uiPreset) {
-        resolveHomePullRefreshMotionStyle(uiPreset)
+    val androidNativeVariant = LocalAndroidNativeVariant.current
+    val pullRefreshMotionStyle = remember(uiPreset, androidNativeVariant) {
+        resolveHomePullRefreshMotionStyle(
+            uiPreset = uiPreset,
+            androidNativeVariant = androidNativeVariant
+        )
     }
 
     

@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home
 
+import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
 import kotlin.math.min
 import kotlin.math.max
@@ -12,7 +13,17 @@ enum class HomePullRefreshMotionStyle {
 }
 
 internal fun resolveHomePullRefreshMotionStyle(uiPreset: UiPreset): HomePullRefreshMotionStyle {
-    return if (uiPreset == UiPreset.MD3) {
+    return resolveHomePullRefreshMotionStyle(
+        uiPreset = uiPreset,
+        androidNativeVariant = AndroidNativeVariant.MATERIAL3
+    )
+}
+
+internal fun resolveHomePullRefreshMotionStyle(
+    uiPreset: UiPreset,
+    androidNativeVariant: AndroidNativeVariant
+): HomePullRefreshMotionStyle {
+    return if (uiPreset == UiPreset.MD3 && androidNativeVariant == AndroidNativeVariant.MATERIAL3) {
         HomePullRefreshMotionStyle.MD3
     } else {
         HomePullRefreshMotionStyle.IOS
