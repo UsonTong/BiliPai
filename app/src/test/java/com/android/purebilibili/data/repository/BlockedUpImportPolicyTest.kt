@@ -166,6 +166,43 @@ class BlockedUpImportPolicyTest {
     }
 
     @Test
+    fun `blocked up share json can be parsed back for file import`() {
+        val json = buildBlockedUpShareJson(
+            listOf(
+                BlockedUp(
+                    mid = 123L,
+                    name = "测试UP",
+                    face = "https://i0.hdslb.com/test.jpg",
+                    level = 5,
+                    sign = "不要推荐",
+                    vipLabel = "年度大会员",
+                    officialTitle = "认证用户",
+                    follower = 99L,
+                    archiveCount = 3
+                )
+            )
+        )
+
+        assertTrue(json.trim().startsWith("{"))
+        assertEquals(
+            listOf(
+                BlockedUpImportItem(
+                    mid = 123L,
+                    name = "测试UP",
+                    face = "https://i0.hdslb.com/test.jpg",
+                    sign = "不要推荐",
+                    level = 5,
+                    vipLabel = "年度大会员",
+                    officialTitle = "认证用户",
+                    follower = 99L,
+                    archiveCount = 3
+                )
+            ),
+            parseBlockedUpShareText(json)
+        )
+    }
+
+    @Test
     fun `blocked up share parser accepts old readable text`() {
         val items = parseBlockedUpShareText(
             """

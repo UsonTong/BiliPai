@@ -168,7 +168,7 @@ internal fun buildBlockedUpMetadataRefreshMessage(
 
 fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
     if (blockedUps.isEmpty()) {
-        return "BiliPai 黑名单导出\n暂无黑名单用户\n\n$BLOCKED_UP_SHARE_MARKER\n{\"version\":1,\"items\":[]}"
+        return "BiliPai 黑名单导出\n暂无黑名单用户\n\n$BLOCKED_UP_SHARE_MARKER\n${buildBlockedUpShareJson(blockedUps)}"
     }
 
     val body = blockedUps.mapIndexed { index, up ->
@@ -190,7 +190,40 @@ fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
         }
     }.joinToString(separator = "\n\n")
 
-    val payload = BlockedUpSharePayload(
+    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body\n\n$BLOCKED_UP_SHARE_MARKER\n" +
+        buildBlockedUpShareJson(blockedUps)
+}
+
+fun buildBlockedUpShareJson(blockedUps: List<BlockedUp>): String {
+    return blockedUpShareJson.encodeToString(buildBlockedUpSharePayload(blockedUps))
+}
+
+fun parseBlockedUpShareText(text: String): List<BlockedUpImportItem> {
+    parseBlockedUpSharePayload(text.trim())?.let { payload ->
+        return payload.toImportItems()
+    }
+
+    val markerIndex = text.indexOf(BLOCKED_UP_SHARE_MARKER)
+    if (markerIndex >= 0) {
+        val payloadText = text
+            .substring(markerIndex + BLOCKED_UP_SHARE_MARKER.length)
+            .trim()
+        parseBlockedUpSharePayload(payloadText)?.let { payload ->
+            return payload.toImportItems()
+        }
+    }
+
+    return Regex("""(?m)^\s*UID:\s*(\d+)\s*$""")
+        .findAll(text)
+        .mapNotNull { match ->
+            val mid = match.groupValues.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+            BlockedUpImportItem(mid = mid)
+        }
+        .toList()
+}
+
+private fun buildBlockedUpSharePayload(blockedUps: List<BlockedUp>): BlockedUpSharePayload {
+    return BlockedUpSharePayload(
         items = blockedUps.map { up ->
             BlockedUpShareItem(
                 mid = up.mid,
@@ -206,45 +239,30 @@ fun buildBlockedUpShareText(blockedUps: List<BlockedUp>): String {
             )
         }
     )
-
-    return "BiliPai 黑名单导出（${blockedUps.size} 个用户）\n\n$body\n\n$BLOCKED_UP_SHARE_MARKER\n" +
-        blockedUpShareJson.encodeToString(payload)
 }
 
-fun parseBlockedUpShareText(text: String): List<BlockedUpImportItem> {
-    val markerIndex = text.indexOf(BLOCKED_UP_SHARE_MARKER)
-    if (markerIndex >= 0) {
-        val payloadText = text
-            .substring(markerIndex + BLOCKED_UP_SHARE_MARKER.length)
-            .trim()
-        val payload = runCatching {
-            blockedUpShareJson.decodeFromString<BlockedUpSharePayload>(payloadText)
-        }.getOrNull()
-        if (payload != null) {
-            return payload.items.map { item ->
-                BlockedUpImportItem(
-                    mid = item.mid,
-                    name = item.name,
-                    face = item.face,
-                    sign = item.sign,
-                    level = item.level,
-                    vipLabel = item.vipLabel,
-                    officialTitle = item.officialTitle,
-                    follower = item.follower,
-                    archiveCount = item.archiveCount,
-                    isDeleted = item.isDeleted
-                )
-            }
-        }
-    }
+private fun parseBlockedUpSharePayload(text: String): BlockedUpSharePayload? {
+    if (!text.startsWith("{")) return null
+    return runCatching {
+        blockedUpShareJson.decodeFromString<BlockedUpSharePayload>(text)
+    }.getOrNull()
+}
 
-    return Regex("""(?m)^\s*UID:\s*(\d+)\s*$""")
-        .findAll(text)
-        .mapNotNull { match ->
-            val mid = match.groupValues.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
-            BlockedUpImportItem(mid = mid)
-        }
-        .toList()
+private fun BlockedUpSharePayload.toImportItems(): List<BlockedUpImportItem> {
+    return items.map { item ->
+        BlockedUpImportItem(
+            mid = item.mid,
+            name = item.name,
+            face = item.face,
+            sign = item.sign,
+            level = item.level,
+            vipLabel = item.vipLabel,
+            officialTitle = item.officialTitle,
+            follower = item.follower,
+            archiveCount = item.archiveCount,
+            isDeleted = item.isDeleted
+        )
+    }
 }
 
 class BlockedUpRepository(

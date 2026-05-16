@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -412,13 +414,43 @@ fun TabletSettingsLayout(
                             SettingsDetail.BLOCKED_LIST -> {
                                 // [New] Blocked List Content for Tablet
                                 val repository = remember { com.android.purebilibili.data.repository.BlockedUpRepository(context) }
+                                val fileService = remember { BlockedListFileService(context.applicationContext) }
                                 val syncRepository = remember { com.android.purebilibili.data.repository.BilibiliBlockedListSyncRepository(repository) }
                                 val blockedUps by repository.getAllBlockedUps().collectAsState(initial = emptyList())
+                                val latestBlockedUps by rememberUpdatedState(blockedUps)
                                 // Pass scope for unblocking
                                 val scope = rememberCoroutineScope()
                                 var syncingBlockedList by remember { mutableStateOf(false) }
                                 var refreshingProfiles by remember { mutableStateOf(false) }
                                 var blockedListSyncMessage by remember { mutableStateOf<String?>(null) }
+                                val exportJsonLauncher = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.CreateDocument("application/json")
+                                ) { uri ->
+                                    if (uri != null) {
+                                        scope.launch {
+                                            blockedListSyncMessage = "正在导出黑名单 JSON..."
+                                            blockedListSyncMessage = fileService.exportJsonToUri(uri, latestBlockedUps).fold(
+                                                onSuccess = { "已导出 ${latestBlockedUps.size} 个黑名单用户到 JSON 文件" },
+                                                onFailure = { it.message ?: "导出黑名单 JSON 失败" }
+                                            )
+                                        }
+                                    }
+                                }
+                                val importJsonLauncher = rememberLauncherForActivityResult(
+                                    contract = ActivityResultContracts.OpenDocument()
+                                ) { uri ->
+                                    if (uri != null) {
+                                        scope.launch {
+                                            blockedListSyncMessage = "正在导入黑名单 JSON..."
+                                            val text = fileService.readImportText(uri).getOrElse {
+                                                blockedListSyncMessage = it.message ?: "读取黑名单 JSON 失败"
+                                                return@launch
+                                            }
+                                            val items = com.android.purebilibili.data.repository.parseBlockedUpShareText(text)
+                                            blockedListSyncMessage = repository.importBlockedUps(items).message
+                                        }
+                                    }
+                                }
                                 BlockedListContent(
                                     blockedUps = blockedUps,
                                     syncingBlockedList = syncingBlockedList,
@@ -455,6 +487,12 @@ fun TabletSettingsLayout(
                                             text = com.android.purebilibili.data.repository.buildBlockedUpShareText(blockedUps),
                                             chooserTitle = "分享黑名单"
                                         )
+                                    },
+                                    onExportBlockedListJson = {
+                                        exportJsonLauncher.launch(buildBlockedListJsonFileName())
+                                    },
+                                    onImportBlockedListJsonRequest = {
+                                        importJsonLauncher.launch(arrayOf("application/json", "text/plain", "text/*", "application/octet-stream"))
                                     },
                                     onImportBlockedList = { text ->
                                         scope.launch {

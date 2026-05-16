@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,12 +41,42 @@ fun BlockedListScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { BlockedUpRepository(context) }
+    val fileService = remember { BlockedListFileService(context.applicationContext) }
     val syncRepository = remember { BilibiliBlockedListSyncRepository(repository) }
     val blockedUps by repository.getAllBlockedUps().collectAsState(initial = emptyList())
+    val latestBlockedUps by rememberUpdatedState(blockedUps)
     val scope = rememberCoroutineScope()
     var syncingBlockedList by remember { mutableStateOf(false) }
     var refreshingProfiles by remember { mutableStateOf(false) }
     var blockedListSyncMessage by remember { mutableStateOf<String?>(null) }
+    val exportJsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                blockedListSyncMessage = "正在导出黑名单 JSON..."
+                blockedListSyncMessage = fileService.exportJsonToUri(uri, latestBlockedUps).fold(
+                    onSuccess = { "已导出 ${latestBlockedUps.size} 个黑名单用户到 JSON 文件" },
+                    onFailure = { it.message ?: "导出黑名单 JSON 失败" }
+                )
+            }
+        }
+    }
+    val importJsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                blockedListSyncMessage = "正在导入黑名单 JSON..."
+                val text = fileService.readImportText(uri).getOrElse {
+                    blockedListSyncMessage = it.message ?: "读取黑名单 JSON 失败"
+                    return@launch
+                }
+                val items = parseBlockedUpShareText(text)
+                blockedListSyncMessage = repository.importBlockedUps(items).message
+            }
+        }
+    }
 
     AdaptiveScaffold(
         topBar = {
@@ -101,6 +133,12 @@ fun BlockedListScreen(
                     chooserTitle = "分享黑名单"
                 )
             },
+            onExportBlockedListJson = {
+                exportJsonLauncher.launch(buildBlockedListJsonFileName())
+            },
+            onImportBlockedListJsonRequest = {
+                importJsonLauncher.launch(arrayOf("application/json", "text/plain", "text/*", "application/octet-stream"))
+            },
             onImportBlockedList = { text ->
                 scope.launch {
                     val items = parseBlockedUpShareText(text)
@@ -126,6 +164,8 @@ fun BlockedListContent(
     onSyncBlockedList: (() -> Unit)? = null,
     onRefreshProfiles: (() -> Unit)? = null,
     onShareBlockedList: (() -> Unit)? = null,
+    onExportBlockedListJson: (() -> Unit)? = null,
+    onImportBlockedListJsonRequest: (() -> Unit)? = null,
     onImportBlockedList: ((String) -> Unit)? = null,
     onUnblock: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -185,6 +225,8 @@ fun BlockedListContent(
                     onSync = onSyncBlockedList,
                     onRefreshProfiles = onRefreshProfiles,
                     onShareBlockedList = onShareBlockedList,
+                    onExportBlockedListJson = onExportBlockedListJson,
+                    onImportBlockedListJsonRequest = onImportBlockedListJsonRequest,
                     onImportBlockedListRequest = if (onImportBlockedList != null) {
                         { showImportDialog = true }
                     } else {
@@ -209,6 +251,8 @@ fun BlockedListContent(
                         onSync = onSyncBlockedList,
                         onRefreshProfiles = onRefreshProfiles,
                         onShareBlockedList = onShareBlockedList,
+                        onExportBlockedListJson = onExportBlockedListJson,
+                        onImportBlockedListJsonRequest = onImportBlockedListJsonRequest,
                         onImportBlockedListRequest = if (onImportBlockedList != null) {
                             { showImportDialog = true }
                         } else {
@@ -248,6 +292,8 @@ private fun BlockedListSyncAction(
     onSync: () -> Unit,
     onRefreshProfiles: (() -> Unit)?,
     onShareBlockedList: (() -> Unit)?,
+    onExportBlockedListJson: (() -> Unit)?,
+    onImportBlockedListJsonRequest: (() -> Unit)?,
     onImportBlockedListRequest: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -275,7 +321,13 @@ private fun BlockedListSyncAction(
             }
             Text(if (syncing) "同步中" else "同步 B站黑名单")
         }
-        if (onRefreshProfiles != null || onShareBlockedList != null || onImportBlockedListRequest != null) {
+        if (
+            onRefreshProfiles != null ||
+            onExportBlockedListJson != null ||
+            onImportBlockedListJsonRequest != null ||
+            onShareBlockedList != null ||
+            onImportBlockedListRequest != null
+        ) {
             Spacer(modifier = Modifier.height(8.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onRefreshProfiles != null) {
@@ -294,13 +346,31 @@ private fun BlockedListSyncAction(
                         Text(if (refreshingProfiles) "刷新中" else "刷新资料")
                     }
                 }
+                if (onExportBlockedListJson != null) {
+                    OutlinedButton(
+                        onClick = onExportBlockedListJson,
+                        enabled = !syncing && !refreshingProfiles,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("导出 JSON 文件")
+                    }
+                }
+                if (onImportBlockedListJsonRequest != null) {
+                    OutlinedButton(
+                        onClick = onImportBlockedListJsonRequest,
+                        enabled = !syncing && !refreshingProfiles,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("导入 JSON 文件")
+                    }
+                }
                 if (onImportBlockedListRequest != null) {
                     OutlinedButton(
                         onClick = onImportBlockedListRequest,
                         enabled = !syncing && !refreshingProfiles,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("导入黑名单")
+                        Text("粘贴导入")
                     }
                 }
                 if (onShareBlockedList != null) {
@@ -309,7 +379,7 @@ private fun BlockedListSyncAction(
                         enabled = !syncing && !refreshingProfiles,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("分享黑名单")
+                        Text("分享文本")
                     }
                 }
             }
