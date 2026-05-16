@@ -248,6 +248,13 @@ class SettingsSearchPolicyTest {
     }
 
     @Test
+    fun queryByQualityDowngradeDialog_hitsPlaybackEntry() {
+        val results = resolveSettingsSearchResults("仅弹窗一次")
+
+        assertTrue(results.any { it.target == SettingsSearchTarget.PLAYBACK })
+    }
+
+    @Test
     fun queryByAutoCheckUpdate_hitsCheckUpdateEntry() {
         val results = resolveSettingsSearchResults("自动检查更新")
 

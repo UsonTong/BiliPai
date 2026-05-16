@@ -262,6 +262,19 @@ class PlaybackSettingsSelectionPolicyTest {
         assertTrue(source.contains("setSeekBackwardSeconds"))
     }
 
+    @Test
+    fun `playback settings exposes quality downgrade dialog switches`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
+            .readText()
+
+        assertTrue(source.contains("画质降档诊断弹窗"))
+        assertTrue(source.contains("降档弹窗仅提示一次"))
+        assertTrue(source.contains("getQualitySwitchFailureDialogEnabled"))
+        assertTrue(source.contains("setQualitySwitchFailureDialogEnabled"))
+        assertTrue(source.contains("getQualitySwitchFailureDialogOnceEnabled"))
+        assertTrue(source.contains("setQualitySwitchFailureDialogOnceEnabled"))
+    }
+
     private fun loadSource(path: String): String {
         val candidates = listOf(
             File(path),

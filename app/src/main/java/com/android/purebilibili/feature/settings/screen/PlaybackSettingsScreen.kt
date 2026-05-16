@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.purebilibili.R
 import com.android.purebilibili.core.store.DEFAULT_PLAYER_DIAGNOSTIC_LOGGING_ENABLED
+import com.android.purebilibili.core.store.DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED
+import com.android.purebilibili.core.store.DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.store.BottomProgressBehavior
@@ -157,6 +159,12 @@ fun PlaybackSettingsContent(
     val playerDiagnosticLoggingEnabled by com.android.purebilibili.core.store.SettingsManager
         .getPlayerDiagnosticLoggingEnabled(context)
         .collectAsState(initial = DEFAULT_PLAYER_DIAGNOSTIC_LOGGING_ENABLED)
+    val qualitySwitchFailureDialogEnabled by SettingsManager
+        .getQualitySwitchFailureDialogEnabled(context)
+        .collectAsState(initial = DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED)
+    val qualitySwitchFailureDialogOnceEnabled by SettingsManager
+        .getQualitySwitchFailureDialogOnceEnabled(context)
+        .collectAsState(initial = DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED)
     val defaultPlaybackSpeed by com.android.purebilibili.core.store.SettingsManager
         .getDefaultPlaybackSpeed(context).collectAsState(initial = 1.0f)
     val rememberLastPlaybackSpeed by com.android.purebilibili.core.store.SettingsManager
@@ -647,6 +655,36 @@ fun PlaybackSettingsContent(
                                 }
                             },
                             iconTint = iOSOrange
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.ExclamationmarkTriangle,
+                            title = "画质降档诊断弹窗",
+                            subtitle = "高画质不可用时弹窗说明原因，并保留导出日志入口",
+                            checked = qualitySwitchFailureDialogEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    SettingsManager.setQualitySwitchFailureDialogEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = iOSOrange
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.Clock,
+                            title = "降档弹窗仅提示一次",
+                            subtitle = if (qualitySwitchFailureDialogEnabled) {
+                                "首次弹出后不再重复打断播放；关闭本项会重置提示记录"
+                            } else {
+                                "开启画质降档诊断弹窗后生效"
+                            },
+                            checked = qualitySwitchFailureDialogOnceEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    SettingsManager.setQualitySwitchFailureDialogOnceEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = iOSTeal
                         )
                     }
                 }

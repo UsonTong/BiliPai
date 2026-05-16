@@ -65,6 +65,8 @@ internal val Context.settingsDataStore by preferencesDataStore(name = "settings_
 internal const val DEFAULT_CRASH_TRACKING_ENABLED = true
 internal const val DEFAULT_ANALYTICS_ENABLED = true
 internal const val DEFAULT_PLAYER_DIAGNOSTIC_LOGGING_ENABLED = true
+internal const val DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED = true
+internal const val DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED = false
 
 /**
  *  首页设置合并类 - 减少 HomeScreen 重组次数
@@ -4218,6 +4220,12 @@ object SettingsManager {
         intPreferencesKey("comment_collapsed_reply_preview_limit")
     private val KEY_PLAYER_DIAGNOSTIC_LOGGING_ENABLED =
         booleanPreferencesKey("player_diagnostic_logging_enabled")
+    private val KEY_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED =
+        booleanPreferencesKey("quality_switch_failure_dialog_enabled")
+    private val KEY_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED =
+        booleanPreferencesKey("quality_switch_failure_dialog_once_enabled")
+    private val KEY_QUALITY_SWITCH_FAILURE_DIALOG_SHOWN =
+        booleanPreferencesKey("quality_switch_failure_dialog_shown")
     private val KEY_SUBTITLE_AUTO_PREFERENCE = intPreferencesKey("subtitle_auto_preference")
     private val KEY_BOTTOM_PROGRESS_BEHAVIOR = intPreferencesKey("bottom_progress_behavior")
     private val KEY_HORIZONTAL_ADAPTATION = booleanPreferencesKey("horizontal_adaptation_enabled")
@@ -4525,6 +4533,44 @@ object SettingsManager {
             preferences[KEY_PLAYER_DIAGNOSTIC_LOGGING_ENABLED] = enabled
         }
         PlayerSettingsCache.setPlayerDiagnosticLoggingEnabled(context, enabled)
+    }
+
+    fun getQualitySwitchFailureDialogEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED]
+                ?: DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED
+        }
+
+    suspend fun setQualitySwitchFailureDialogEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_ENABLED] = enabled
+        }
+    }
+
+    fun getQualitySwitchFailureDialogOnceEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED]
+                ?: DEFAULT_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED
+        }
+
+    suspend fun setQualitySwitchFailureDialogOnceEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_ONCE_ENABLED] = enabled
+            if (!enabled) {
+                preferences.remove(KEY_QUALITY_SWITCH_FAILURE_DIALOG_SHOWN)
+            }
+        }
+    }
+
+    fun getQualitySwitchFailureDialogShown(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_SHOWN] ?: false
+        }
+
+    suspend fun markQualitySwitchFailureDialogShown(context: Context) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_QUALITY_SWITCH_FAILURE_DIALOG_SHOWN] = true
+        }
     }
 
     fun getSubtitleAutoPreference(context: Context): Flow<SubtitleAutoPreference> =
