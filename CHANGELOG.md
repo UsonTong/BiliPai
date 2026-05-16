@@ -1,5 +1,34 @@
 # Changelog
 
+## v8.3.0 (2026-05-17)
+
+### 版本信息
+- 版本号升级到 `8.3.0`，`versionCode` 升级到 `194`。
+- 本次为“插件可视化、首页交互、黑名单导入导出、评论子回复统计、图片预览与返回动效”的主线更新，汇总 8.2.4 到 8.3.0 的累计改动。
+
+### 更新内容
+- **插件可视化与统计**：空降助手新增可视化统计、横向仪表盘尝试与回滚后的稳定布局，补齐日汇总 Worker 与通知通道；去广告插件新增过滤命中洞察、自定义规则列表管理、详情页可视化和头像补全，规则匹配与展示更容易排查。
+- **黑名单导入导出**：支持黑名单 JSON 文件导入、导出与分享，导入时会隐藏未知等级并补齐用户信息、同步数据结构、数据库字段和策略测试，减少跨设备迁移时的数据丢失。
+- **首页下拉刷新与顶部标签**：区分 Material 3 与 MIUIX 下拉刷新样式，优化顶部空间、物理反馈和回收手感；恢复首页顶部搜索与标签顺序，固定顶部标签位置，修正 MD3 顶部标签指示器跟手、iOS 指示器圆角、MIUIX 标签展示和外层阴影。
+- **分段控件与胶囊尺寸**：统一常用胶囊控件尺寸、分段控件外层圆角和设置分段控件透字问题；恢复分段指示器放大折射，让首页、搜索和设置类控件的触感更一致。
+- **搜索与列表体验**：搜索页的分类左右滑动方向改为符合直觉，搜索栏和结果区布局继续收敛；视频预览缩略图比例修复，列表/直播/空间等入口补充更稳定的外观策略。
+- **动态与图片预览**：图片预览长按保存新增合适的触发震感，并提供“图片长按保存”开关；动态和转发内容已有真实图片时不再额外显示 `[图片]` / `【图片】` 占位文字，图片预览文字也会使用过滤后的正文；视频预览缩略图比例和搜索分类滑动方向同步修正。
+- **首页底栏液态玻璃**：底栏动态红点不再被 item 胶囊裁切；滑动时折射捕获增加横向余量，减少快速拖动时折射不全；底栏前景、红点和搜索胶囊保持同一捕获层。
+- **评论子回复统计**：子回复详情页按 `x/v2/reply/reply` 文档优先使用 `data.page.count`，再用 `root.rcount`、游标数量和已加载数量兜底，避免根评论旧 `count` 覆盖详情接口真实二级评论数；新增回复后也会同步更新当前子回复总数。
+- **返回动效开关**：预测性返回设置不再依赖 Manifest 全局 opt-in，关闭后不会继续触发系统预测性返回手势效果；设置项文案改为应用内预测式返回动画，避免把运行时开关误写成系统级开关。
+- **番剧与追番稳定性**：修复追番列表重复 Key 闪退，补齐追番列表策略；追番、番剧和空间相关标签继续收敛到统一控件尺寸与视觉策略。
+- **设置与长文案布局**：修复 iOS 设置页长文案布局，新增图片长按保存设置搜索命中；平板设置布局和设置首页结构继续按真实场景整理。
+- **版本与文档同步**：版本号升级到 `8.3.0` / `versionCode 194`，README、README_EN 和更新日志同步到 8.3.0。
+- **回归覆盖**：新增或更新插件统计、去广告规则、黑名单导入导出、首页下拉刷新、顶部标签、分段控件、搜索滑动、图片预览、动态富文本、底栏红点/折射、子回复统计、预测性返回关闭、追番重复 Key 和设置搜索等策略测试。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.search.SearchScreenPolicyTest' --tests 'com.android.purebilibili.feature.dynamic.components.ImagePreviewFeedbackPolicyTest' --tests 'com.android.purebilibili.feature.dynamic.components.DynamicRichTextPolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarDynamicReminderBadgePolicyTest' --tests 'com.android.purebilibili.feature.home.components.BottomBarMiuixStructureTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.dynamic.components.ImagePreviewTransitionPolicyTest' --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsSearchPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.video.ui.components.SubReplyDetailPresentationPolicyTest'`
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.AndroidApiCompatibilityPolicyTest' --tests 'com.android.purebilibili.feature.settings.AnimationSettingsPolicyTest' --tests 'com.android.purebilibili.navigation.AppNavigationTransitionPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.2.3 (2026-05-16)
 
 ### 版本信息

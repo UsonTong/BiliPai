@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-16 · Synced to v8.2.3 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-17 · Synced to v8.3.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.2.3-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.3.0-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,16 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.2.3 · 2026-05-16)
+### Latest (v8.3.0 · 2026-05-17)
 
-- Auto-highest quality now resolves to the highest playable quality of each video before showing downgrade diagnostics, so videos without 4K/HDR no longer trigger false warning dialogs.
-- Playback settings now explain that default Wi-Fi/mobile quality is preserved as the fallback preference after auto-highest is disabled.
-- The Fullscreen & Gestures settings entry now uses gesture/touch icons instead of a warning icon.
-- Settings were regrouped by real usage scenes, with search results able to focus the matching settings section.
-- The home top tab area now adapts separately to iOS, native Material 3, and MIUIX presets, including the blur coverage behind the tab row.
-- Bottom-bar glass sampling and tab-switch rendering budgets were tightened to reduce extra work during home scrolling.
-- Added focused regression coverage for quality target resolution, playback copy, settings icons, settings grouping, home top presets, blur coverage, and bottom-bar rendering policy.
-- Bumped the app to `8.2.3` with `versionCode` `193`.
+- SponsorBlock and ad-filter plugins now include richer visual statistics, insight panels, custom rule management, and clearer details for troubleshooting.
+- Blocked users can be imported, exported, and shared through JSON files, with better profile metadata and sync handling.
+- Home pull refresh, top tabs, segmented controls, and shared capsule sizing were refined across MD3, MIUIX, and iOS-style presets.
+- Image preview long-press save now gives haptic feedback and has a dedicated setting; dynamic posts with real images no longer show the standalone `[图片]` placeholder, and video preview thumbnails keep the correct aspect ratio.
+- Search category swipes, the dynamic bottom-bar badge, bottom-bar refraction capture, sub-reply total counts, and the predictive-back off state were fixed.
+- Bumped the app to `8.3.0` with `versionCode` `194`.
 
 ---
 

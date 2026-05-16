@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.2.3-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.2.3" />
+  <img src="https://img.shields.io/badge/Version-8.3.0-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.3.0" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -37,7 +37,7 @@
   </a>
 </p>
 
-<sub>README 更新：2026-05-16 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
+<sub>README 更新：2026-05-17 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
 
 </div>
 
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.2.3 / versionCode 193`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.2.3`：
+当前仓库版本号已更新到 `8.3.0 / versionCode 194`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.3.0`：
 
-- 自动最高画质按每个视频实际最高可播档选择，视频本身没有 4K/HDR 时不再误弹降档提示。
-- 播放设置文案明确自动最高与默认画质偏好的关系，全屏与手势入口改为手势语义图标。
-- 设置首页和播放设置按真实场景重组，搜索结果可定位到对应设置区块。
-- 首页顶部标签补齐 iOS、安卓原生 Material 3、MIUIX 三预设适配，并修正标签行模糊区域。
-- 底栏液态玻璃采样和切页渲染预算继续收敛，减少首页滚动期额外压力。
+- 空降助手和去广告插件补齐可视化统计、过滤命中洞察、自定义规则管理和详情展示，插件状态更容易排查。
+- 黑名单支持 JSON 导入、导出和分享，并补齐用户信息与同步策略。
+- 首页下拉刷新、顶部标签、分段控件和胶囊尺寸继续收敛，MD3 / MIUIX / iOS 预设下的滑动与折射更稳定。
+- 图片预览长按保存新增震感与开关，动态已有真实图片时不再显示 `[图片]` / `【图片】` 占位文字，视频预览缩略图比例同步修复。
+- 搜索分类滑动方向、首页底栏动态红点、底栏滑动折射、评论子回复总数和预测性返回关闭失效完成修复。
 
 ## 路线图
 
