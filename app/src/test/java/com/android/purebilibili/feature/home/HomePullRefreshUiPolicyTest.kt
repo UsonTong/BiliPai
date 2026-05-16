@@ -241,6 +241,96 @@ class HomePullRefreshUiPolicyTest {
     }
 
     @Test
+    fun `md3 screenshot pull indicator pushes cards down with pull strength`() {
+        val lightPull = resolvePullContentOffsetFraction(
+            distanceFraction = 0.4f,
+            isRefreshing = false,
+            motionStyle = HomePullRefreshMotionStyle.MD3,
+            indicatorStyle = HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE
+        )
+        val heavyPull = resolvePullContentOffsetFraction(
+            distanceFraction = 1.2f,
+            isRefreshing = false,
+            motionStyle = HomePullRefreshMotionStyle.MD3,
+            indicatorStyle = HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE
+        )
+
+        assertTrue(lightPull > 0f)
+        assertTrue(heavyPull > lightPull)
+        assertTrue(heavyPull <= 1.08f)
+    }
+
+    @Test
+    fun `md3 screenshot pull indicator releases cards back to neutral when refreshing`() {
+        assertEquals(
+            0f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 1.15f,
+                isRefreshing = true,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.9f,
+                motionStyle = HomePullRefreshMotionStyle.MD3,
+                indicatorStyle = HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `stable md3 screenshot pull offset keeps strongest drag while finger eases back`() {
+        assertEquals(
+            0.9f,
+            resolveStablePullContentOffsetFraction(
+                distanceFraction = 0.5f,
+                isRefreshing = false,
+                isStateAnimating = false,
+                previousOffsetFraction = 0.9f,
+                motionStyle = HomePullRefreshMotionStyle.MD3,
+                indicatorStyle = HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun `md3 screenshot pull indicator stretches with pull distance`() {
+        val initialHeight = resolveMd3ScreenshotRefreshIndicatorHeightDp(
+            progress = 0f,
+            isRefreshing = false
+        )
+        val releaseHeight = resolveMd3ScreenshotRefreshIndicatorHeightDp(
+            progress = 1f,
+            isRefreshing = false
+        )
+
+        assertEquals(44f, initialHeight, 0.001f)
+        assertTrue(releaseHeight > initialHeight)
+        assertEquals(42f, resolveMd3ScreenshotRefreshIndicatorHeightDp(progress = 1f, isRefreshing = true), 0.001f)
+    }
+
+    @Test
+    fun `md3 screenshot pull indicator stays centered between tabs and pushed cards`() {
+        assertEquals(
+            10f,
+            resolveMd3ScreenshotRefreshIndicatorTranslationY(
+                dragOffsetPx = 140f,
+                indicatorTotalHeightPx = 120f,
+                minGapPx = 8f
+            ),
+            0.001f
+        )
+        assertEquals(
+            0f,
+            resolveMd3ScreenshotRefreshIndicatorTranslationY(
+                dragOffsetPx = 80f,
+                indicatorTotalHeightPx = 120f,
+                minGapPx = 8f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
     fun `stable pull content offset does not shrink while finger moves upward`() {
         assertEquals(
             0.8f,

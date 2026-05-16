@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.theme.AndroidNativeVariant
@@ -61,6 +62,7 @@ fun resolveRefreshIndicatorRenderer(
 fun Md3ScreenshotRefreshIndicator(
     state: PullToRefreshState,
     isRefreshing: Boolean,
+    indicatorHeight: Dp,
     modifier: Modifier = Modifier
 ) {
     val progress = state.distanceFraction
@@ -110,7 +112,7 @@ fun Md3ScreenshotRefreshIndicator(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(width = 26.dp, height = 92.dp)
+                        .size(width = 26.dp, height = indicatorHeight)
                         .clip(RoundedCornerShape(15.dp))
                         .background(Color.Transparent)
                         .border(

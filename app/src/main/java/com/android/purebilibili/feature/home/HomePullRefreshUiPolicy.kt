@@ -123,11 +123,26 @@ internal fun resolvePullIndicatorTranslationY(
     return min(centeredY, maxAllowedY)
 }
 
+internal fun resolvePullContentMaxOffsetDp(
+    indicatorStyle: HomePullRefreshIndicatorStyle
+): Float {
+    return when (indicatorStyle) {
+        HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE -> 168f
+        else -> 140f
+    }
+}
+
 internal fun resolvePullContentOffsetFraction(
     distanceFraction: Float,
     isRefreshing: Boolean,
-    motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS
+    motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS,
+    indicatorStyle: HomePullRefreshIndicatorStyle = HomePullRefreshIndicatorStyle.IOS
 ): Float {
+    if (indicatorStyle == HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE) {
+        if (isRefreshing) return 0f
+        val clampedDistance = distanceFraction.coerceIn(0f, 1.32f)
+        return (clampedDistance * 0.82f).coerceAtMost(1.08f)
+    }
     if (motionStyle == HomePullRefreshMotionStyle.MD3) return 0f
     val clampedDistance = distanceFraction.coerceAtMost(2f).coerceAtLeast(0f)
     return clampedDistance * 0.5f
@@ -138,14 +153,47 @@ internal fun resolveStablePullContentOffsetFraction(
     isRefreshing: Boolean,
     isStateAnimating: Boolean,
     previousOffsetFraction: Float,
-    motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS
+    motionStyle: HomePullRefreshMotionStyle = HomePullRefreshMotionStyle.IOS,
+    indicatorStyle: HomePullRefreshIndicatorStyle = HomePullRefreshIndicatorStyle.IOS
 ): Float {
+    if (indicatorStyle == HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE) {
+        if (isRefreshing) return 0f
+        val currentOffset = resolvePullContentOffsetFraction(
+            distanceFraction = distanceFraction,
+            isRefreshing = isRefreshing,
+            motionStyle = motionStyle,
+            indicatorStyle = indicatorStyle
+        )
+        if (!isStateAnimating && distanceFraction <= 0f) return 0f
+        return max(previousOffsetFraction, currentOffset)
+    }
     if (motionStyle == HomePullRefreshMotionStyle.MD3) return 0f
     val currentOffset = resolvePullContentOffsetFraction(
         distanceFraction = distanceFraction,
         isRefreshing = isRefreshing,
-        motionStyle = motionStyle
+        motionStyle = motionStyle,
+        indicatorStyle = indicatorStyle
     )
     if (!isRefreshing && !isStateAnimating && distanceFraction <= 0f) return 0f
     return max(previousOffsetFraction, currentOffset)
+}
+
+internal fun resolveMd3ScreenshotRefreshIndicatorHeightDp(
+    progress: Float,
+    isRefreshing: Boolean
+): Float {
+    if (isRefreshing) return 42f
+    val clampedProgress = progress.coerceIn(0f, 1.35f)
+    return 44f + (clampedProgress * 42f)
+}
+
+internal fun resolveMd3ScreenshotRefreshIndicatorTranslationY(
+    dragOffsetPx: Float,
+    indicatorTotalHeightPx: Float,
+    minGapPx: Float
+): Float {
+    if (dragOffsetPx <= 0f || indicatorTotalHeightPx <= 0f) return 0f
+    val centeredInGap = (dragOffsetPx - indicatorTotalHeightPx) / 2f
+    val maxTop = (dragOffsetPx - indicatorTotalHeightPx - minGapPx).coerceAtLeast(0f)
+    return centeredInGap.coerceIn(0f, maxTop)
 }

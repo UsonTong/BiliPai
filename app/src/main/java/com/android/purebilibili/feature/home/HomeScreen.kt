@@ -1192,7 +1192,8 @@ fun HomeScreen(
                             isRefreshing = isPageRefreshing,
                             isStateAnimating = pullRefreshState.isAnimating,
                             previousOffsetFraction = stablePullOffsetFraction,
-                            motionStyle = pullRefreshMotionStyle
+                            motionStyle = pullRefreshMotionStyle,
+                            indicatorStyle = pullRefreshIndicatorStyle
                         )
                         SideEffect {
                             stablePullOffsetFraction = resolvedStablePullOffsetFraction
@@ -1209,9 +1210,12 @@ fun HomeScreen(
                         )
 
                         //  Defers calculation to graphicsLayer
-                        val calculateDragOffset: androidx.compose.ui.unit.Density.() -> Float = remember(animatedDragOffsetFraction) {
+                        val calculateDragOffset: androidx.compose.ui.unit.Density.() -> Float = remember(
+                            animatedDragOffsetFraction,
+                            pullRefreshIndicatorStyle
+                        ) {
                             {
-                                val maxPx = 140.dp.toPx()
+                                val maxPx = resolvePullContentMaxOffsetDp(pullRefreshIndicatorStyle).dp.toPx()
                                 maxPx * animatedDragOffsetFraction
                             }
                         }
@@ -1240,12 +1244,26 @@ fun HomeScreen(
                                         )
                                     }
                                     HomePullRefreshIndicatorStyle.MD3_SCREENSHOT_HANDLE -> {
+                                        val indicatorHeight = resolveMd3ScreenshotRefreshIndicatorHeightDp(
+                                            progress = pullDistanceFraction,
+                                            isRefreshing = isPageRefreshing
+                                        ).dp
                                         Md3ScreenshotRefreshIndicator(
                                             state = pullRefreshState,
                                             isRefreshing = isPageRefreshing,
+                                            indicatorHeight = indicatorHeight,
                                             modifier = Modifier
                                                 .align(Alignment.TopCenter)
                                                 .padding(top = listTopPadding)
+                                                .graphicsLayer {
+                                                    val currentDragOffset = calculateDragOffset()
+                                                    val totalHeight = indicatorHeight.toPx() + 36.dp.toPx()
+                                                    translationY = resolveMd3ScreenshotRefreshIndicatorTranslationY(
+                                                        dragOffsetPx = currentDragOffset,
+                                                        indicatorTotalHeightPx = totalHeight,
+                                                        minGapPx = 8.dp.toPx()
+                                                    )
+                                                }
                                                 .fillMaxWidth()
                                         )
                                     }
