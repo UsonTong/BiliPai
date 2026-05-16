@@ -109,6 +109,13 @@ internal fun shouldShowDynamicNoMoreFooter(
     return !hasMore && activeItemsCount > 0
 }
 
+internal fun shouldRevealDynamicBottomBarForStaticContent(
+    activeItemsCount: Int,
+    isLoading: Boolean
+): Boolean {
+    return activeItemsCount == 0 && !isLoading
+}
+
 internal fun shouldShowDynamicCommentSheet(selectedDynamicId: String?): Boolean {
     return !selectedDynamicId.isNullOrBlank()
 }

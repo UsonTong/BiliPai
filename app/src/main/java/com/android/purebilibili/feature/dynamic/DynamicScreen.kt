@@ -402,6 +402,19 @@ fun DynamicScreen(
     var lastFirstVisibleItem by remember { mutableIntStateOf(0) }
     var lastScrollOffset by remember { mutableIntStateOf(0) }
 
+    LaunchedEffect(filteredItems.size, activeLoading, activeSelectedTab, isSelectedUserTabActive) {
+        if (shouldRevealDynamicBottomBarForStaticContent(
+                activeItemsCount = filteredItems.size,
+                isLoading = activeLoading
+            )
+        ) {
+            setBottomBarVisible(true)
+            bottomBarChromeScrollOffset.value = 0f
+            lastFirstVisibleItem = 0
+            lastScrollOffset = 0
+        }
+    }
+
     LaunchedEffect(listState) {
         snapshotFlow {
             Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)

@@ -98,6 +98,28 @@ class DynamicScreenStatePolicyTest {
     }
 
     @Test
+    fun `static empty dynamic content should reveal bottom bar`() {
+        assertTrue(
+            shouldRevealDynamicBottomBarForStaticContent(
+                activeItemsCount = 0,
+                isLoading = false
+            )
+        )
+        assertFalse(
+            shouldRevealDynamicBottomBarForStaticContent(
+                activeItemsCount = 0,
+                isLoading = true
+            )
+        )
+        assertFalse(
+            shouldRevealDynamicBottomBarForStaticContent(
+                activeItemsCount = 1,
+                isLoading = false
+            )
+        )
+    }
+
+    @Test
     fun `comment sheet should only show when a dynamic is selected`() {
         assertTrue(shouldShowDynamicCommentSheet("dyn:123"))
         assertFalse(shouldShowDynamicCommentSheet(null))
