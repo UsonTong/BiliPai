@@ -274,7 +274,12 @@ internal fun SettingsSceneShortcutSection(
                 iconPainter = visual.iconResId?.let { painterResource(id = it) },
                 title = shortcut.title,
                 value = shortcut.value,
-                onClick = shortcut.onClick,
+                onClick = {
+                    resolveSettingsSceneDetailFocus(shortcut.target)?.let { detailFocus ->
+                        SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)
+                    }
+                    shortcut.onClick()
+                },
                 iconTint = visual.iconTint
             )
             if (index != shortcuts.lastIndex) {

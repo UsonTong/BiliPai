@@ -27,4 +27,20 @@ class SettingsRootCategoryContentStructureTest {
             )
         )
     }
+
+    @Test
+    fun sceneShortcutSection_submitsDetailFocusBeforeOpeningShortcut() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt")
+        ).first { it.exists() }.readText()
+
+        val sectionBlock = source
+            .substringAfter("internal fun SettingsSceneShortcutSection(")
+            .substringBefore("internal fun SettingsRootCategoryContent(")
+
+        assertTrue(sectionBlock.contains("resolveSettingsSceneDetailFocus(shortcut.target)?.let"))
+        assertTrue(sectionBlock.contains("SettingsSearchFocusController.submit(detailFocus.target, detailFocus.focusId)"))
+        assertTrue(sectionBlock.contains("shortcut.onClick()"))
+    }
 }
