@@ -1686,6 +1686,10 @@ fun HomeScreen(
                     viewModel.markNotInterested(item.bvid)
                     targetVideoItemState.value = null
                 },
+                onBlockCreator = {
+                    viewModel.blockCreator(item)
+                    targetVideoItemState.value = null
+                },
                 onGetPreviewUrl = { bvid, cid ->
                     viewModel.getPreviewVideoUrl(bvid, cid)
                 },

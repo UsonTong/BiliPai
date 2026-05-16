@@ -37,4 +37,57 @@ class HomeNotInterestedPolicyTest {
         assertFalse(action.shouldBlockCreator)
         assertEquals(0L, action.creatorMid)
     }
+
+    @Test
+    fun `feedback filter hides disliked bvid creator and similar titles`() {
+        val videos = listOf(
+            VideoItem(
+                bvid = "BV_DISLIKED",
+                title = "已经点过不感兴趣",
+                owner = Owner(mid = 1L, name = "UP-A")
+            ),
+            VideoItem(
+                bvid = "BV_CREATOR",
+                title = "其他标题",
+                owner = Owner(mid = 2L, name = "UP-B")
+            ),
+            VideoItem(
+                bvid = "BV_SIMILAR",
+                title = "猫咪搞笑合集第二期",
+                owner = Owner(mid = 3L, name = "UP-C")
+            ),
+            VideoItem(
+                bvid = "BV_KEEP",
+                title = "Android 架构实践",
+                owner = Owner(mid = 4L, name = "UP-D")
+            )
+        )
+
+        val filtered = filterHomeVideosByNotInterestedFeedback(
+            videos = videos,
+            dislikedBvids = setOf("BV_DISLIKED"),
+            dislikedCreatorMids = setOf(2L),
+            dislikedKeywords = setOf("猫咪搞笑")
+        )
+
+        assertEquals(listOf("BV_KEEP"), filtered.map { it.bvid })
+    }
+
+    @Test
+    fun `keyword feedback ignores broad single short keyword`() {
+        val videos = listOf(
+            VideoItem(
+                bvid = "BV_KEEP",
+                title = "日常开发记录",
+                owner = Owner(mid = 1L, name = "UP-A")
+            )
+        )
+
+        val filtered = filterHomeVideosByNotInterestedFeedback(
+            videos = videos,
+            dislikedKeywords = setOf("日常")
+        )
+
+        assertEquals(listOf("BV_KEEP"), filtered.map { it.bvid })
+    }
 }

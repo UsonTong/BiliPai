@@ -260,7 +260,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val oldState = _uiState.value
         val newCategoryStates = oldState.categoryStates.mapValues { (_, content) ->
             content.copy(
-                videos = content.videos.filter { it.owner.mid !in blockedMids },
+                videos = filterHomeFeedbackVideos(content.videos.filter { it.owner.mid !in blockedMids }),
                 // Filter live rooms if possible (assuming uid matches mid)
                 liveRooms = content.liveRooms.filter { it.uid !in blockedMids },
                 followedLiveRooms = content.followedLiveRooms.filter { it.uid !in blockedMids }
@@ -714,6 +714,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun blockCreator(video: VideoItem) {
+        val action = resolveHomeNotInterestedAction(video)
+        if (!action.shouldBlockCreator) {
+            android.widget.Toast.makeText(getApplication(), "无法获取 UP 主信息", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewModelScope.launch {
+            blockedUpRepository.blockUp(
+                mid = action.creatorMid,
+                name = action.creatorName,
+                face = action.creatorFace
+            )
+            blockedMids = blockedMids + action.creatorMid
+            reFilterAllContent()
+            android.widget.Toast.makeText(getApplication(), "已屏蔽 ${action.creatorName}", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun recordTodayWatchNegativeFeedback(video: VideoItem) {
         val keywords = extractFeedbackKeywords(video.title)
         val snapshot = TodayWatchFeedbackStore.getSnapshot(getApplication()).withDislikedVideoFeedback(
@@ -764,6 +782,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         todayDislikedCreatorMids.addAll(snapshot.dislikedCreatorMids)
         todayDislikedKeywords.clear()
         todayDislikedKeywords.addAll(snapshot.dislikedKeywords)
+    }
+
+    private fun filterHomeFeedbackVideos(videos: List<VideoItem>): List<VideoItem> {
+        return filterHomeVideosByNotInterestedFeedback(
+            videos = videos,
+            dislikedBvids = todayDislikedBvids,
+            dislikedCreatorMids = todayDislikedCreatorMids,
+            dislikedKeywords = todayDislikedKeywords
+        )
     }
 
     private fun persistTodayWatchFeedback() {
@@ -981,7 +1008,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             
             //  [Feature] 应用屏蔽 + 原生插件 + JSON 规则插件过滤器
             val blockedFiltered = validVideos.filter { video -> video.owner.mid !in blockedMids }
-            val builtinFiltered = PluginManager.filterFeedItems(blockedFiltered)
+            val feedbackFiltered = filterHomeFeedbackVideos(blockedFiltered)
+            val builtinFiltered = PluginManager.filterFeedItems(feedbackFiltered)
             val filteredVideos = com.android.purebilibili.core.plugin.json.JsonPluginManager
                 .filterVideos(builtinFiltered)
             

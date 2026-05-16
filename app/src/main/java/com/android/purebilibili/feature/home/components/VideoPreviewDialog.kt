@@ -26,6 +26,7 @@ import com.android.purebilibili.core.ui.rememberAppClearIcon
 import com.android.purebilibili.core.ui.rememberAppPhotoIcon
 import com.android.purebilibili.core.ui.rememberAppPlayIcon
 import com.android.purebilibili.core.ui.rememberAppShareIcon
+import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.core.ui.rememberAppWatchLaterIcon
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
@@ -54,6 +55,8 @@ import androidx.compose.ui.zIndex
 
 internal fun shouldEnableSaveCoverAction(coverUrl: String): Boolean = coverUrl.isNotBlank()
 
+internal fun shouldShowBlockCreatorAction(creatorMid: Long): Boolean = creatorMid > 0L
+
 /**
  * iOS 3D Touch style Preview Dialog
  */
@@ -66,6 +69,7 @@ fun VideoPreviewDialog(
     onSaveCover: (() -> Unit)? = null,
     onPlay: () -> Unit, // Navigate to Full Screen
     onNotInterested: (() -> Unit)? = null,
+    onBlockCreator: (() -> Unit)? = null,
     onGetPreviewUrl: suspend (String, Long) -> String? = { _, _ -> null }, // [New] Fetch Url
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
@@ -75,6 +79,7 @@ fun VideoPreviewDialog(
     val photoIcon = rememberAppPhotoIcon()
     val playIcon = rememberAppPlayIcon()
     val shareIcon = rememberAppShareIcon()
+    val blockCreatorIcon = rememberAppVisibilityOffIcon()
     val watchLaterIcon = rememberAppWatchLaterIcon()
     
     // Dissolve Animation State
@@ -241,6 +246,20 @@ fun VideoPreviewDialog(
                                 onDismiss()
                             }
                         )
+
+                        if (onBlockCreator != null && shouldShowBlockCreatorAction(video.owner.mid)) {
+                            MenuDivider()
+                            PreviewMenuItem(
+                                text = "屏蔽 UP 主",
+                                icon = blockCreatorIcon,
+                                isDestructive = true,
+                                onClick = {
+                                    haptic(HapticType.HEAVY)
+                                    onBlockCreator()
+                                    onDismiss()
+                                }
+                            )
+                        }
                         
                         if (onSaveCover != null && shouldEnableSaveCoverAction(video.pic)) {
                             MenuDivider()
