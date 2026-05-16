@@ -719,6 +719,18 @@ fun PlaybackSettingsContent(
                     val videoInfoDefaultExpanded by com.android.purebilibili.core.store.SettingsManager
                         .getVideoInfoDefaultExpanded(context)
                         .collectAsState(initial = true)
+                    val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getCommentFraudDetectionEnabled(context)
+                        .collectAsState(initial = true)
+                    val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
+                        .getCommentMemberDecorationsEnabled(context)
+                        .collectAsState(initial = false)
+                    val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
+                        .getCommentCollapsedReplyPreviewLimit(context)
+                        .collectAsState(
+                            initial = com.android.purebilibili.core.store.SettingsManager
+                                .DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
+                        )
                     val subtitlePreferenceDescription = when (subtitleAutoPreference) {
                         SubtitleAutoPreference.OFF -> "默认关闭字幕"
                         SubtitleAutoPreference.ON -> "默认开启（优先当前可用轨道）"
@@ -903,6 +915,52 @@ fun PlaybackSettingsContent(
                                 com.android.purebilibili.core.util.AnalyticsHelper.logSettingChange("double_tap_like", it.toString())
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSPink
+                        )
+                        IOSDivider()
+                        IOSSlidingSegmentedSetting(
+                            title = "评论回复预览：${commentCollapsedReplyPreviewLimit}条",
+                            subtitle = "一级评论下默认展开的回复数量",
+                            options = listOf(
+                                PlaybackSegmentOption(3, "3条"),
+                                PlaybackSegmentOption(5, "5条"),
+                                PlaybackSegmentOption(8, "8条"),
+                                PlaybackSegmentOption(10, "10条")
+                            ),
+                            selectedValue = commentCollapsedReplyPreviewLimit,
+                            onSelectionChange = { limit ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentCollapsedReplyPreviewLimit(context, limit)
+                                }
+                            }
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.TextBubble,
+                            title = "评论发送检测",
+                            subtitle = "发送成功后自动检查评论是否正常显示",
+                            checked = commentFraudDetectionEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentFraudDetectionEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+                        IOSDivider()
+                        IOSSwitchItem(
+                            icon = CupertinoIcons.Default.PaintbrushPointed,
+                            title = "评论区个性装扮",
+                            subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
+                            checked = commentMemberDecorationsEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setCommentMemberDecorationsEnabled(context, enabled)
+                                }
+                            },
+                            iconTint = iOSOrange
                         )
                         }
                     )
@@ -1263,17 +1321,6 @@ fun PlaybackSettingsContent(
                         val tabletCommentPanelWidthPreset by com.android.purebilibili.core.store.SettingsManager
                             .getTabletCommentPanelWidthPreset(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.TabletCommentPanelWidthPreset.STANDARD)
-                        val commentFraudDetectionEnabled by com.android.purebilibili.core.store.SettingsManager
-                            .getCommentFraudDetectionEnabled(context)
-                            .collectAsState(initial = true)
-                        val commentMemberDecorationsEnabled by com.android.purebilibili.core.store.SettingsManager
-                            .getCommentMemberDecorationsEnabled(context)
-                            .collectAsState(initial = false)
-                        val commentCollapsedReplyPreviewLimit by com.android.purebilibili.core.store.SettingsManager
-                            .getCommentCollapsedReplyPreviewLimit(context)
-                            .collectAsState(
-                                initial = com.android.purebilibili.core.store.SettingsManager.DEFAULT_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT
-                            )
                         val fullscreenMode by com.android.purebilibili.core.store.SettingsManager
                             .getFullscreenMode(context)
                             .collectAsState(initial = com.android.purebilibili.core.store.FullscreenMode.AUTO)
@@ -1334,52 +1381,6 @@ fun PlaybackSettingsContent(
                                         .setTabletCommentPanelWidthPreset(context, preset)
                                 }
                             }
-                        )
-                        IOSDivider()
-                        IOSSlidingSegmentedSetting(
-                            title = "评论回复预览：${commentCollapsedReplyPreviewLimit}条",
-                            subtitle = "一级评论下默认展开的回复数量",
-                            options = listOf(
-                                PlaybackSegmentOption(3, "3条"),
-                                PlaybackSegmentOption(5, "5条"),
-                                PlaybackSegmentOption(8, "8条"),
-                                PlaybackSegmentOption(10, "10条")
-                            ),
-                            selectedValue = commentCollapsedReplyPreviewLimit,
-                            onSelectionChange = { limit ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentCollapsedReplyPreviewLimit(context, limit)
-                                }
-                            }
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.TextBubble,
-                            title = "评论发送检测",
-                            subtitle = "发送成功后自动检查评论是否正常显示",
-                            checked = commentFraudDetectionEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentFraudDetectionEnabled(context, enabled)
-                                }
-                            },
-                            iconTint = com.android.purebilibili.core.theme.iOSBlue
-                        )
-                        IOSDivider()
-                        IOSSwitchItem(
-                            icon = CupertinoIcons.Default.PaintbrushPointed,
-                            title = "评论区个性装扮",
-                            subtitle = "显示粉丝牌、铭牌和装扮卡片；关闭后评论区更清爽",
-                            checked = commentMemberDecorationsEnabled,
-                            onCheckedChange = { enabled ->
-                                scope.launch {
-                                    com.android.purebilibili.core.store.SettingsManager
-                                        .setCommentMemberDecorationsEnabled(context, enabled)
-                                }
-                            },
-                            iconTint = iOSOrange
                         )
                         IOSDivider()
                         IOSSlidingSegmentedSetting(

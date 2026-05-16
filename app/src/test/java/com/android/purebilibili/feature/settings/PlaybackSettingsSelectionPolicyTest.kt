@@ -30,6 +30,25 @@ class PlaybackSettingsSelectionPolicyTest {
     }
 
     @Test
+    fun `comment controls should stay in interaction section instead of fullscreen gesture section`() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt"
+        )
+
+        val interactionBlock = source
+            .substringAfter("PlaybackInteractionSettingsSection(")
+            .substringBefore("PlaybackFullscreenGestureSettingsSection(")
+        val fullscreenBlock = source
+            .substringAfter("PlaybackFullscreenGestureSettingsSection(")
+            .substringBefore("//  网络与画质")
+
+        listOf("评论回复预览", "评论发送检测", "评论区个性装扮").forEach { title ->
+            assertTrue(interactionBlock.contains(title))
+            assertFalse(fullscreenBlock.contains(title))
+        }
+    }
+
+    @Test
     fun `resolveSelectionIndex should return matched option index`() {
         val options = listOf(
             PlaybackSegmentOption("avc1", "AVC"),
