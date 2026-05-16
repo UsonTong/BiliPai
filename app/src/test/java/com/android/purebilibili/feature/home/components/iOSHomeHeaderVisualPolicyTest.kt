@@ -344,6 +344,62 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
+    fun `unified top tabs keep blur area for all presets`() {
+        assertEquals(
+            HomeTopChromeRenderMode.BLUR,
+            resolveHomeTopUnifiedLocalTabChromeRenderMode(
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
+            )
+        )
+        assertEquals(
+            HomeTopChromeRenderMode.BLUR,
+            resolveHomeTopUnifiedLocalTabChromeRenderMode(
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3
+            )
+        )
+        assertEquals(
+            HomeTopChromeRenderMode.BLUR,
+            resolveHomeTopUnifiedLocalTabChromeRenderMode(
+                renderMode = HomeTopChromeRenderMode.BLUR,
+                uiPreset = UiPreset.MD3,
+                androidNativeVariant = AndroidNativeVariant.MIUIX
+            )
+        )
+    }
+
+    @Test
+    fun `unified top tab blur surface keeps visible backdrop fill`() {
+        val tabColor = Color.Black.copy(alpha = 0.38f)
+
+        assertEquals(
+            tabColor.copy(alpha = 0.38f),
+            resolveHomeTopUnifiedTabSurfaceColor(
+                tabContainerColor = tabColor,
+                tabOverlayAlpha = 0.38f,
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                useUnifiedLiquidChrome = false,
+                tabChromeRenderMode = HomeTopChromeRenderMode.BLUR
+            )
+        )
+        assertEquals(
+            Color.Transparent,
+            resolveHomeTopUnifiedTabSurfaceColor(
+                tabContainerColor = tabColor,
+                tabOverlayAlpha = 0.38f,
+                uiPreset = UiPreset.IOS,
+                androidNativeVariant = AndroidNativeVariant.MATERIAL3,
+                useUnifiedLiquidChrome = false,
+                tabChromeRenderMode = HomeTopChromeRenderMode.PLAIN
+            )
+        )
+    }
+
+    @Test
     fun `md3 partial collapse softens search content alpha instead of using linear fade`() {
         val layout = resolveHomeHeaderScrollLayout(
             headerOffsetPx = -26f,
