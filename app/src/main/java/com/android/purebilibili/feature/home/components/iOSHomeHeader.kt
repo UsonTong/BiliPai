@@ -281,8 +281,8 @@ internal fun resolveHomeTopPinnedChromeLayout(
     }
     val visibleChromeHeight = statusBarHeight + tabRowHeight + visibleSearchBlockHeight
     return HomeTopPinnedChromeLayout(
-        tabTop = statusBarHeight,
-        searchTop = statusBarHeight + tabRowHeight + if (visibleSearchHeight > 0.dp) searchToTabsSpacing else 0.dp,
+        tabTop = statusBarHeight + visibleSearchBlockHeight,
+        searchTop = statusBarHeight,
         blurHeight = if (renderMode == HomeTopChromeRenderMode.PLAIN) 0.dp else visibleChromeHeight
     )
 }
@@ -1947,22 +1947,6 @@ fun iOSHomeHeader(
                             }
                         )
                 ) {
-                    topTabsContent()
-
-                    if (drawTopSearchDivider) {
-                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = headerChromeColors.borderColor.copy(
-                                alpha = resolveHomeTopUnifiedPanelDividerAlpha(topChromeRenderMode) *
-                                    searchRevealFraction
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(currentUnifiedDividerBottomSpacing))
-                    } else {
-                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
-                    }
-
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2364,6 +2348,21 @@ fun iOSHomeHeader(
                         }
                     }
 
+                    if (drawTopSearchDivider) {
+                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = headerChromeColors.borderColor.copy(
+                                alpha = resolveHomeTopUnifiedPanelDividerAlpha(topChromeRenderMode) *
+                                    searchRevealFraction
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(currentUnifiedDividerBottomSpacing))
+                    } else {
+                        Spacer(modifier = Modifier.height(currentSearchToTabsSpacing))
+                    }
+
+                    topTabsContent()
                 }
             }
         }

@@ -253,7 +253,7 @@ class iOSHomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `top tab pinned layout keeps tab directly below status bar regardless of search height`() {
+    fun `top tab layout keeps screenshot order and pins tabs after search disappears`() {
         val collapsed = resolveHomeTopPinnedChromeLayout(
             statusBarHeight = 44.dp,
             visibleSearchHeight = 0.dp,
@@ -270,9 +270,9 @@ class iOSHomeHeaderVisualPolicyTest {
         )
 
         assertEquals(44.dp, collapsed.tabTop)
-        assertEquals(collapsed.tabTop, expanded.tabTop)
-        assertEquals(100.dp, collapsed.searchTop)
-        assertEquals(104.dp, expanded.searchTop)
+        assertEquals(96.dp, expanded.tabTop)
+        assertEquals(44.dp, collapsed.searchTop)
+        assertEquals(collapsed.searchTop, expanded.searchTop)
     }
 
     @Test

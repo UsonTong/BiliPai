@@ -66,12 +66,12 @@ class HomeChromeLiquidSurfaceStructureTest {
                 topTabChrome.readText().contains("drawChromeSurface: Boolean = true")
         )
         assertTrue(
-            "top tabs should render before the search layer so search height never pushes them downward",
-            topHeaderSource.indexOf("topTabsContent()") in 0 until topHeaderSource.indexOf(".height(currentSearchHeight)")
+            "top tabs should render after the search layer so expanded state matches the reference screenshot",
+            topHeaderSource.indexOf(".height(currentSearchHeight)") in 0 until topHeaderSource.indexOf("topTabsContent()")
         )
         assertFalse(
-            "top tabs should not be declared after the search height block",
-            topHeaderSource.substringAfter(".height(currentSearchHeight)").contains("HomeTopTabChrome(")
+            "top tabs should be called after search height instead of swapping search below tabs",
+            topHeaderSource.substringBefore(".height(currentSearchHeight)").contains("topTabsContent()")
         )
         assertTrue(
             "top tab row should use the lightweight native tab implementation",
