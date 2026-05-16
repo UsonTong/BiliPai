@@ -278,6 +278,21 @@ class VideoPlaybackUseCaseQualitySwitchTest {
     }
 
     @Test
+    fun `resolveAutoHighestTargetQuality treats video highest as normal target`() {
+        val useCase = VideoPlaybackUseCase()
+
+        val result = useCase.resolveAutoHighestTargetQuality(
+            acceptQualities = listOf(116, 80, 64),
+            isLoggedIn = true,
+            isVip = true,
+            isHdrSupported = true,
+            isDolbyVisionSupported = false
+        )
+
+        assertEquals(116, result)
+    }
+
+    @Test
     fun `resolveAutoHighestTargetQuality caps vip auto highest at hdr before 8k`() {
         val useCase = VideoPlaybackUseCase()
 

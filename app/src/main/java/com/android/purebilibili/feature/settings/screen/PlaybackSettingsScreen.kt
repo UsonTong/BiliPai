@@ -660,7 +660,7 @@ fun PlaybackSettingsContent(
                         IOSSwitchItem(
                             icon = CupertinoIcons.Default.ExclamationmarkTriangle,
                             title = "画质降档诊断弹窗",
-                            subtitle = "高画质不可用时弹窗说明原因，并保留导出日志入口",
+                            subtitle = "仅在明确切换失败、权限或接口异常时提示；视频本身无更高档不打断播放",
                             checked = qualitySwitchFailureDialogEnabled,
                             onCheckedChange = { enabled ->
                                 scope.launch {
@@ -770,9 +770,9 @@ fun PlaybackSettingsContent(
                             icon = CupertinoIcons.Default.Sparkles,
                             title = "自动最高画质",
                             subtitle = if (autoHighestQualityEnabled) {
-                                "已开启，优先请求账号与设备可稳播的最高画质（最高到 4K HDR）"
+                                "已开启，按每个视频实际最高可播档自动选择；没有 4K/HDR 时不会当作异常"
                             } else {
-                                "全局开关，开启后覆盖下方无线网络和流量默认画质"
+                                "全局开关，开启后覆盖下方默认画质；默认画质会作为关闭后的偏好保留"
                             },
                             checked = autoHighestQualityEnabled,
                             onCheckedChange = {
@@ -789,7 +789,7 @@ fun PlaybackSettingsContent(
                         IOSSlidingSegmentedSetting(
                             title = "无线网络默认画质：${getQualityLabel(wifiQuality)}",
                             subtitle = if (autoHighestQualityEnabled) {
-                                "已被自动最高画质覆盖，当前仅保留你的无线网络偏好"
+                                "已被自动最高画质覆盖；仅作为关闭自动最高后的无线网络偏好保留"
                             } else {
                                 resolveDefaultQualitySubtitle(
                                     rawQuality = wifiQuality,
@@ -827,7 +827,7 @@ fun PlaybackSettingsContent(
                             title = "流量默认画质：${getQualityLabel(mobileQuality)}",
                             subtitle = when {
                                 autoHighestQualityEnabled ->
-                                    "已被自动最高画质覆盖，当前仅保留你的流量偏好"
+                                    "已被自动最高画质覆盖；仅作为关闭自动最高后的流量偏好保留"
                                 isDataSaverActive && mobileQuality > effectiveQuality ->
                                     "省流量模式当前实际最高为 $effectiveQualityLabel"
                                 else -> resolveDefaultQualitySubtitle(

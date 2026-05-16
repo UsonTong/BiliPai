@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Widgets
@@ -56,6 +57,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.EyeSlash
 import io.github.alexzhirkevich.cupertino.icons.outlined.ExclamationmarkTriangle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Folder
 import io.github.alexzhirkevich.cupertino.icons.outlined.Gift
+import io.github.alexzhirkevich.cupertino.icons.outlined.HandTap
 import io.github.alexzhirkevich.cupertino.icons.outlined.InfoCircle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Lightbulb
 import io.github.alexzhirkevich.cupertino.icons.outlined.Link
@@ -221,7 +223,7 @@ internal fun resolveSettingsEntryVisual(
                 iconTint = iconTint
             )
             SettingsSearchTarget.FULLSCREEN_GESTURE -> SettingsEntryVisual(
-                icon = Icons.Outlined.WarningAmber,
+                icon = Icons.Outlined.TouchApp,
                 iconTint = iconTint
             )
             SettingsSearchTarget.INTERACTION_COMMENT -> SettingsEntryVisual(
@@ -357,7 +359,7 @@ internal fun resolveSettingsEntryVisual(
             iconTint = iOSGreen
         )
         SettingsSearchTarget.FULLSCREEN_GESTURE -> SettingsEntryVisual(
-            icon = CupertinoIcons.Default.Camera,
+            icon = CupertinoIcons.Default.HandTap,
             iconTint = iOSPurple
         )
         SettingsSearchTarget.INTERACTION_COMMENT -> SettingsEntryVisual(

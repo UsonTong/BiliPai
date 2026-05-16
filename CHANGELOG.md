@@ -1,5 +1,33 @@
 # Changelog
 
+## v8.2.3 (2026-05-16)
+
+### 版本信息
+- 版本号从 `8.2.2` 升级到 `8.2.3`，`versionCode` 升级到 `193`。
+- 本次为“播放画质弹窗修复 + 设置场景重组 + 首页顶部预设适配”的维护更新。
+
+### 更新内容
+- **播放画质弹窗**：自动最高画质会先解析为当前视频实际可播最高档，再和首播实际画质比较；视频本身最高只有 1080P60/1080P 时不再误弹“未能使用 HDR/4K”，真实的权限、设备能力、接口风控、省流量或手动切换失败仍会提示。
+- **播放设置文案**：重写自动最高画质、无线网络默认画质、流量默认画质和画质降档诊断弹窗说明，明确默认画质只是关闭自动最高后的保留偏好，视频本身无更高档不作为异常打断播放。
+- **全屏与手势入口**：修正设置入口图标，Material 3 使用触控语义图标，iOS/MIUIX 使用手势语义图标，不再显示警告图标。
+- **设置场景重组**：设置首页按账号与数据、播放体验、弹幕与互动、外观与界面、下载与网络、实验与扩展重新分组；手机与平板入口共用分类策略，搜索结果可定位到对应设置区块。
+- **播放、评论与互动设置**：播放设置拆分为画质与解码、播放行为、全屏与手势、弹幕与互动等场景小节；评论、互动提示、全屏手势等入口收敛到同一组设置组件。
+- **首页顶部标签**：保留新版顶部结构，同时补齐 iOS、安卓原生 Material 3、MIUIX 三种界面预设的搜索栏、统一面板、标签页、指示器和分区按钮策略；MIUIX 文本标签优先走原生分类行。
+- **顶部模糊区域**：重新调整首页顶部搜索与标签区域的毛玻璃覆盖，标签页一排纳入模糊背景，滚动内容不再直接穿透到标签文字下方。
+- **首页顶栏交互**：重写顶部标签滚动与分页同步，修复指示器跟随、拖拽保持、点击切换和横向滚动之间的边界，减少重复动画和视觉错位。
+- **底栏渲染预算**：收敛首页滚动期底栏液态玻璃采样、指示器光晕和切页动画预算，降低列表滚动时的额外渲染压力。
+- **视觉效果入口**：视觉效果相关开关继续收敛到预设感知策略，首页、底栏、顶部标签和设置入口共享更一致的渲染决策。
+- **个人页壁纸**：补充个人页壁纸展示策略测试，稳定沉浸背景和本地壁纸展示边界。
+- **版本与文档同步**：版本号升级到 `8.2.3` / `versionCode 193`，README、README_EN 和更新日志同步到 8.2.3。
+- **回归覆盖**：新增或更新播放画质首播目标、自动最高画质解析、播放设置文案、全屏手势图标、设置分组、设置搜索定位、首页顶部三预设、顶部模糊、底栏渲染预算和个人页壁纸等策略测试。
+
+### 验证
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.video.viewmodel.VideoLoadRequestPolicyTest'`
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.video.usecase.VideoPlaybackUseCaseQualitySwitchTest'`
+- `./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.android.purebilibili.feature.settings.PlaybackSettingsSelectionPolicyTest' --tests 'com.android.purebilibili.feature.settings.SettingsEntryVisualPolicyTest'`
+- `./gradlew --no-daemon :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.2.2 (2026-05-16)
 
 ### 版本信息

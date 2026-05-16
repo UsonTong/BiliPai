@@ -411,8 +411,13 @@ internal fun resolveInitialQualityUnavailableReason(
 internal fun resolveInitialQualityWarningTarget(
     requestedQualityId: Int,
     isLoggedIn: Boolean,
-    isVip: Boolean
+    isVip: Boolean,
+    resolvedTargetQuality: Int? = null,
+    dataSaverLimited: Boolean = false
 ): Int {
+    if (!dataSaverLimited) {
+        resolvedTargetQuality?.takeIf { it > 0 }?.let { return it }
+    }
     if (requestedQualityId < 127) return requestedQualityId
     return when {
         isVip -> 120
@@ -2523,7 +2528,9 @@ class PlayerViewModel : ViewModel() {
                         val initialQualityWarningTarget = resolveInitialQualityWarningTarget(
                             requestedQualityId = requestedQualityForWarning,
                             isLoggedIn = result.isLoggedIn,
-                            isVip = result.isVip
+                            isVip = result.isVip,
+                            resolvedTargetQuality = result.resolvedTargetQuality,
+                            dataSaverLimited = dataSaverLimitedQuality
                         )
                         val initialQualityUnavailableReason = resolveInitialQualityUnavailableReason(
                             requestedQualityId = initialQualityWarningTarget,

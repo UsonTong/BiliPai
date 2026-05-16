@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-15 · Synced to v8.2.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-16 · Synced to v8.2.3 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.2.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.2.3-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,16 +432,16 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.2.0 · 2026-05-15)
+### Latest (v8.2.3 · 2026-05-16)
 
-- Routed player volume gestures to the system media stream and removed the in-app playback volume cap.
-- Improved video loading feedback, landscape orientation handling, and watch-later progress handoff.
-- Moved double-tap seek into playback settings and kept it off by default for new users.
-- Refined bottom-bar tap transitions, drag deformation, and settle rebound; the experimental follow highlight is off by default and hidden from settings.
-- Reduced bottom-bar glass sampling during home scrolling to lower rendering pressure.
-- Continued migrating home, bottom bar, top bar, sidebar, cards, and settings surfaces to shared motion / shape / surface tokens.
-- Added focused regression coverage for system volume, bottom-bar interaction, navigation timing, settings mapping, and token adoption.
-- Bumped the app to `8.2.0` with `versionCode` `190`.
+- Auto-highest quality now resolves to the highest playable quality of each video before showing downgrade diagnostics, so videos without 4K/HDR no longer trigger false warning dialogs.
+- Playback settings now explain that default Wi-Fi/mobile quality is preserved as the fallback preference after auto-highest is disabled.
+- The Fullscreen & Gestures settings entry now uses gesture/touch icons instead of a warning icon.
+- Settings were regrouped by real usage scenes, with search results able to focus the matching settings section.
+- The home top tab area now adapts separately to iOS, native Material 3, and MIUIX presets, including the blur coverage behind the tab row.
+- Bottom-bar glass sampling and tab-switch rendering budgets were tightened to reduce extra work during home scrolling.
+- Added focused regression coverage for quality target resolution, playback copy, settings icons, settings grouping, home top presets, blur coverage, and bottom-bar rendering policy.
+- Bumped the app to `8.2.3` with `versionCode` `193`.
 
 ---
 

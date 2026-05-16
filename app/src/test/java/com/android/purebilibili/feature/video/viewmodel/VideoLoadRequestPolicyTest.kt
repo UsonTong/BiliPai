@@ -251,6 +251,52 @@ class VideoLoadRequestPolicyTest {
     }
 
     @Test
+    fun `auto highest resolved to video highest does not show initial downgrade dialog`() {
+        val target = resolveInitialQualityWarningTarget(
+            requestedQualityId = 127,
+            isLoggedIn = true,
+            isVip = true,
+            resolvedTargetQuality = 116,
+            dataSaverLimited = false
+        )
+
+        assertEquals(116, target)
+        assertEquals(
+            null,
+            resolveInitialQualityUnavailableReason(
+                requestedQualityId = target,
+                actualQualityId = 116,
+                isLoggedIn = true,
+                isVip = true,
+                dataSaverLimited = false
+            )
+        )
+    }
+
+    @Test
+    fun `auto highest still reports real downgrade below resolved target`() {
+        val target = resolveInitialQualityWarningTarget(
+            requestedQualityId = 127,
+            isLoggedIn = true,
+            isVip = true,
+            resolvedTargetQuality = 120,
+            dataSaverLimited = false
+        )
+
+        assertEquals(120, target)
+        assertEquals(
+            InitialQualityUnavailableReason.SERVER_DOWNGRADED,
+            resolveInitialQualityUnavailableReason(
+                requestedQualityId = target,
+                actualQualityId = 116,
+                isLoggedIn = true,
+                isVip = true,
+                dataSaverLimited = false
+            )
+        )
+    }
+
+    @Test
     fun `initial quality warning target normalizes auto highest by entitlement`() {
         assertEquals(
             80,
@@ -266,6 +312,20 @@ class VideoLoadRequestPolicyTest {
                 requestedQualityId = 127,
                 isLoggedIn = true,
                 isVip = true
+            )
+        )
+    }
+
+    @Test
+    fun `data saver keeps original auto highest warning target`() {
+        assertEquals(
+            120,
+            resolveInitialQualityWarningTarget(
+                requestedQualityId = 127,
+                isLoggedIn = true,
+                isVip = true,
+                resolvedTargetQuality = 116,
+                dataSaverLimited = true
             )
         )
     }

@@ -3,6 +3,7 @@ package com.android.purebilibili.feature.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.theme.UiPreset
 import org.junit.Assert.assertEquals
@@ -18,6 +19,7 @@ import io.github.alexzhirkevich.cupertino.icons.outlined.ChartBar
 import io.github.alexzhirkevich.cupertino.icons.outlined.EyeSlash
 import io.github.alexzhirkevich.cupertino.icons.outlined.ExclamationmarkTriangle
 import io.github.alexzhirkevich.cupertino.icons.outlined.Gift
+import io.github.alexzhirkevich.cupertino.icons.outlined.HandTap
 import io.github.alexzhirkevich.cupertino.icons.outlined.Sparkles
 import io.github.alexzhirkevich.cupertino.icons.outlined.Tag
 import io.github.alexzhirkevich.cupertino.icons.outlined.XmarkCircle
@@ -74,6 +76,26 @@ class SettingsEntryVisualPolicyTest {
                 UiPreset.MD3,
                 md3Palette
             ).icon
+        )
+        assertEquals(
+            Icons.Outlined.TouchApp,
+            resolveSettingsEntryVisual(
+                SettingsSearchTarget.FULLSCREEN_GESTURE,
+                UiPreset.MD3,
+                md3Palette
+            ).icon
+        )
+    }
+
+    @Test
+    fun `fullscreen gesture entry should use gesture semantic icon`() {
+        assertEquals(
+            CupertinoIcons.Default.HandTap,
+            resolveSettingsEntryVisual(SettingsSearchTarget.FULLSCREEN_GESTURE).icon
+        )
+        assertEquals(
+            Icons.Outlined.TouchApp,
+            resolveSettingsEntryVisual(SettingsSearchTarget.FULLSCREEN_GESTURE, UiPreset.MD3).icon
         )
     }
 

@@ -347,6 +347,16 @@ class PlaybackSettingsSelectionPolicyTest {
         assertTrue(source.contains("setQualitySwitchFailureDialogOnceEnabled"))
     }
 
+    @Test
+    fun `playback settings clarifies auto highest does not treat video cap as failure`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/settings/screen/PlaybackSettingsScreen.kt")
+            .readText()
+
+        assertTrue(source.contains("视频实际最高可播"))
+        assertTrue(source.contains("视频本身无更高档不打断播放"))
+        assertTrue(source.contains("默认画质会作为关闭后的偏好保留"))
+    }
+
     private fun loadSource(path: String): String {
         val candidates = listOf(
             File(path),

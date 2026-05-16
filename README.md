@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.2.2-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.2.2" />
+  <img src="https://img.shields.io/badge/Version-8.2.3-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.2.3" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -37,7 +37,7 @@
   </a>
 </p>
 
-<sub>README 更新：2026-05-15 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
+<sub>README 更新：2026-05-16 · 当前构建版本以 app/build.gradle.kts 为准 · 发布记录以 <a href="CHANGELOG.md">CHANGELOG.md</a> 为准</sub>
 
 </div>
 
@@ -179,12 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.2.2 / versionCode 192`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.2.2`：
+当前仓库版本号已更新到 `8.2.3 / versionCode 193`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.2.3`：
 
-- Firebase 使用情况统计默认开启，新增每日活跃心跳，便于确认真实用户正在使用。
-- 使用情况统计仍保留设置页开关，用户关闭后停止 Firebase Analytics 收集。
-- 顶部导航栏恢复横向滚动，游戏、科技等隐藏标签可再次滑出。
-- 顶栏点击切换保留短动画与重复分页防护，降低体感延迟。
+- 自动最高画质按每个视频实际最高可播档选择，视频本身没有 4K/HDR 时不再误弹降档提示。
+- 播放设置文案明确自动最高与默认画质偏好的关系，全屏与手势入口改为手势语义图标。
+- 设置首页和播放设置按真实场景重组，搜索结果可定位到对应设置区块。
+- 首页顶部标签补齐 iOS、安卓原生 Material 3、MIUIX 三预设适配，并修正标签行模糊区域。
+- 底栏液态玻璃采样和切页渲染预算继续收敛，减少首页滚动期额外压力。
 
 ## 路线图
 
