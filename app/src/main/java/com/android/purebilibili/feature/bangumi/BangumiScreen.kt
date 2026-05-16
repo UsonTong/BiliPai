@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -496,10 +497,10 @@ private fun BangumiFollowPreviewSection(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(end = 4.dp)
                 ) {
-                    items(
+                    itemsIndexed(
                         items = state.items.take(12),
-                        key = { it.seasonId }
-                    ) { item ->
+                        key = { index, item -> resolveMyFollowItemLazyKey(index, item) }
+                    ) { _, item ->
                         FollowBangumiHomeCard(
                             item = item,
                             onClick = { onItemClick(item.seasonId) }
