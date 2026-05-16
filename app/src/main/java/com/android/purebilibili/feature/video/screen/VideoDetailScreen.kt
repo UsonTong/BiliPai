@@ -2397,6 +2397,9 @@ fun VideoDetailScreen(
                         isInPipMode = isPipMode,
                         onPipClick = handlePipClick,
                         isPortraitFullscreen = isPortraitFullscreen,
+                        onHomeClick = {
+                            handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
+                        },
 
                         transitionEnabled = transitionEnabled,  //  传递过渡动画开关
                         // [New] Codec & Audio

@@ -85,6 +85,7 @@ fun TabletVideoLayout(
     isInPipMode: Boolean,
     onPipClick: () -> Unit,
     isPortraitFullscreen: Boolean = false,
+    onHomeClick: () -> Unit,
 
     // [New] Codec & Audio Params
     currentCodec: String = "hev1", 
@@ -191,6 +192,7 @@ fun TabletVideoLayout(
                             onToggleFullscreen = onToggleFullscreen,
                             onQualityChange = { qid -> viewModel.changeQuality(qid) },
                             onBack = onBack,
+                            onHomeClick = onHomeClick,
                             bvid = bvid,
                             coverUrl = coverUrl,
                             onDoubleTapLike = { viewModel.toggleLike() },
