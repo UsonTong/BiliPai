@@ -120,11 +120,24 @@ object BangumiRepository {
         pageSize: Int = 20
     ): Result<BangumiIndexData> = withContext(Dispatchers.IO) {
         try {
+            val requestFilter = buildBangumiIndexRequestFilter(
+                filter = BangumiFilter(),
+                seasonType = seasonType
+            )
             val response = api.getBangumiIndex(
                 seasonType = seasonType,
                 st = seasonType,  //  [修复] st 必须与 seasonType 相同
                 page = page,
-                pageSize = pageSize
+                pageSize = pageSize,
+                order = requestFilter.order,
+                sort = requestFilter.sortDirection,
+                area = requestFilter.area,
+                isFinish = requestFilter.isFinish,
+                year = requestFilter.year,
+                releaseDate = requestFilter.releaseDate,
+                styleId = requestFilter.styleId,
+                producerId = requestFilter.producerId,
+                seasonStatus = requestFilter.seasonStatus
             )
             if (response.code == 0 && response.data != null) {
                 Result.success(response.data)
@@ -325,20 +338,24 @@ object BangumiRepository {
         filter: BangumiFilter = BangumiFilter()
     ): Result<BangumiIndexData> = withContext(Dispatchers.IO) {
         try {
-            val year = filter.toApiYear(seasonType)
-            val releaseDate = filter.toApiReleaseDate(seasonType)
+            val requestFilter = buildBangumiIndexRequestFilter(
+                filter = filter,
+                seasonType = seasonType
+            )
             val response = api.getBangumiIndex(
                 seasonType = seasonType,
                 st = seasonType,
                 page = page,
                 pageSize = pageSize,
-                order = filter.order,
-                area = filter.area,
-                isFinish = filter.isFinish,
-                year = year,
-                releaseDate = releaseDate,
-                styleId = filter.styleId,
-                seasonStatus = filter.seasonStatus
+                order = requestFilter.order,
+                sort = requestFilter.sortDirection,
+                area = requestFilter.area,
+                isFinish = requestFilter.isFinish,
+                year = requestFilter.year,
+                releaseDate = requestFilter.releaseDate,
+                styleId = requestFilter.styleId,
+                producerId = requestFilter.producerId,
+                seasonStatus = requestFilter.seasonStatus
             )
             if (response.code == 0 && response.data != null) {
                 Result.success(response.data)

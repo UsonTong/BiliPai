@@ -1290,17 +1290,18 @@ interface BangumiApi {
         @Query("st") st: Int,                    //  [修复] 必需参数，与 season_type 相同
         @Query("page") page: Int = 1,
         @Query("pagesize") pageSize: Int = 20,
-        @Query("order") order: Int = 2,          // 2=播放量排序（默认更热门）
+        @Query("order") order: Int = 3,          // 3=综合排序，2=播放量
         @Query("season_version") seasonVersion: Int = -1,  // -1=全部
         @Query("spoken_language_type") spokenLanguageType: Int = -1,  // -1=全部
         @Query("area") area: Int = -1,           // -1=全部地区
         @Query("is_finish") isFinish: Int = -1,  // -1=全部
         @Query("copyright") copyright: Int = -1, // -1=全部
-        @Query("season_status") seasonStatus: Int = -1,  // -1=全部
+        @Query("season_status") seasonStatus: String = "-1",  // -1=全部，1=免费，4,6=大会员
         @Query("season_month") seasonMonth: Int = -1,    // -1=全部
         @Query("year") year: String = "-1",      // -1=全部
         @Query("release_date") releaseDate: String = "-1", // -1=全部
         @Query("style_id") styleId: Int = -1,    // -1=全部
+        @Query("producer_id") producerId: Int = -1, // -1=全部
         @Query("sort") sort: Int = 0,
         @Query("type") type: Int = 1
     ): com.android.purebilibili.data.model.response.BangumiIndexResponse

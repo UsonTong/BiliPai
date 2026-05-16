@@ -457,8 +457,10 @@ data class BangumiFilter(
     val area: Int = -1,                  // 地区，-1=全部
     val styleId: Int = -1,               // 风格，-1=全部
     val isFinish: Int = -1,              // 状态，-1=全部, 0=连载, 1=完结
-    val seasonStatus: Int = -1,          // 付费类型，-1=全部
-    val order: Int = 2                   // 排序，2=播放量, 0=更新时间
+    val seasonStatus: String = "-1",     // 付费类型，-1=全部, 1=免费, 4,6=大会员
+    val producerId: Int = -1,             // 出品方，-1=全部
+    val order: Int = 3,                  // 排序指标，3=综合/追剧人数, 2=播放量
+    val sortDirection: Int = 0           // 排序方向，0=降序, 1=升序
 ) {
     fun toApiYear(seasonType: Int): String {
         return if (seasonType == BangumiType.ANIME.value || seasonType == BangumiType.GUOCHUANG.value) {
@@ -484,9 +486,9 @@ data class BangumiFilter(
 
     companion object {
         val ORDER_OPTIONS = listOf(
-            0 to "更新时间",
-            2 to "播放数量",
-            3 to "追番人数",
+            3 to "综合排序",
+            2 to "最多播放",
+            0 to "最近更新",
             4 to "最高评分"
         )
         

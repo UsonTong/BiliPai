@@ -1,6 +1,16 @@
 // 文件路径: feature/bangumi/BangumiScreen.kt
 package com.android.purebilibili.feature.bangumi
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -43,26 +53,26 @@ import com.android.purebilibili.core.ui.AdaptiveScaffold
 import com.android.purebilibili.core.theme.iOSYellow
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.responsiveContentWidth
-import com.android.purebilibili.data.model.response.BangumiFilter
 import com.android.purebilibili.data.model.response.BangumiItem
 import com.android.purebilibili.data.model.response.BangumiSearchItem
 import com.android.purebilibili.data.model.response.BangumiType
 import com.android.purebilibili.data.model.response.FollowBangumiItem
 import com.android.purebilibili.data.model.response.TimelineDay
 import com.android.purebilibili.data.model.response.TimelineEpisode
+import com.android.purebilibili.data.model.response.resolveBangumiIndexFilterGroups
+import com.android.purebilibili.data.model.response.resolveBangumiIndexFilterKey
 // [重构] 使用提取的可复用组件
 import com.android.purebilibili.feature.bangumi.ui.components.BangumiModeTabs
-import com.android.purebilibili.feature.bangumi.ui.components.BangumiFilterPanel
+import com.android.purebilibili.feature.bangumi.ui.components.BangumiIndexFilterRows
 import com.android.purebilibili.feature.bangumi.ui.list.BangumiCard
 import com.android.purebilibili.feature.bangumi.ui.list.BangumiGrid
-import com.android.purebilibili.feature.bangumi.ui.list.BangumiSearchCard
 import com.android.purebilibili.feature.bangumi.ui.list.BangumiSearchCardGrid
-import com.android.purebilibili.feature.bangumi.ui.components.FilterChip
+import java.util.Calendar
 
 /**
  * 番剧主页面
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun BangumiScreen(
     onBack: () -> Unit,
@@ -86,9 +96,6 @@ fun BangumiScreen(
     var searchQuery by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
     
-    // 筛选器展开状态
-    var showFilter by remember { mutableStateOf(false) }
-    
     // 初始类型切换
     LaunchedEffect(initialType) {
         if (initialType != 1) {
@@ -105,6 +112,18 @@ fun BangumiScreen(
         BangumiType.DOCUMENTARY,
         BangumiType.VARIETY
     )
+    val currentYear = remember {
+        Calendar.getInstance().get(Calendar.YEAR)
+    }
+    val filterGroups = remember(selectedType, currentYear) {
+        resolveBangumiIndexFilterGroups(
+            seasonType = selectedType,
+            currentYear = currentYear
+        )
+    }
+    val listTransitionKey = remember(selectedType, filter) {
+        resolveBangumiIndexFilterKey(selectedType, filter)
+    }
     
     //  [修复] 设置导航栏透明，确保底部手势栏沉浸式效果
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -146,7 +165,6 @@ fun BangumiScreen(
             } else {
                 BangumiNavigationBar(
                     title = if (displayMode == BangumiDisplayMode.MY_FOLLOW) "我的追番/追剧" else "番剧影视",
-                    filterActive = filter != BangumiFilter(),
                     isMyFollowMode = displayMode == BangumiDisplayMode.MY_FOLLOW,
                     onBack = {
                         if (displayMode == BangumiDisplayMode.MY_FOLLOW) {
@@ -156,8 +174,7 @@ fun BangumiScreen(
                         }
                     },
                     onSearch = { showSearchBar = true },
-                    onOpenMyFollow = { viewModel.openMyFollowEntry() },
-                    onToggleFilter = { showFilter = !showFilter }
+                    onOpenMyFollow = { viewModel.openMyFollowEntry() }
                 )
             }
         },
@@ -194,33 +211,41 @@ fun BangumiScreen(
                     selectedType = selectedType,
                     onTypeSelected = { viewModel.selectType(it) }
                 )
-                
-                // 筛选器
-                if (showFilter) {
-                    BangumiFilterPanel(
-                        filter = filter,
-                        onFilterChange = { viewModel.updateFilter(it) },
-                        onDismiss = { showFilter = false }
-                    )
-                }
+                BangumiIndexFilterRows(
+                    groups = filterGroups,
+                    filter = filter,
+                    onFilterChange = { viewModel.updateFilter(it) }
+                )
             }
             
             // 内容区域
             when (displayMode) {
                 BangumiDisplayMode.LIST -> {
-                    BangumiPiliPlusHomeContent(
-                        listState = listState,
-                        timelineState = timelineState,
-                        myFollowState = myFollowState,
-                        selectedType = selectedType,
-                        myFollowType = myFollowType,
-                        onRetry = { viewModel.loadBangumiList() },
-                        onRetryTimeline = { viewModel.loadTimeline() },
-                        onRetryMyFollow = { viewModel.loadMyFollowBangumi(myFollowType) },
-                        onLoadMore = { viewModel.loadMore() },
-                        onOpenMyFollow = { viewModel.openMyFollowEntry() },
-                        onItemClick = onBangumiClick
-                    )
+                    AnimatedContent(
+                        targetState = listTransitionKey,
+                        transitionSpec = {
+                            (slideInHorizontally(animationSpec = tween(180)) { it / 12 } +
+                                fadeIn(animationSpec = tween(150))) togetherWith
+                                (slideOutHorizontally(animationSpec = tween(160)) { -it / 12 } +
+                                    fadeOut(animationSpec = tween(120))) using
+                                SizeTransform(clip = false)
+                        },
+                        label = "bangumiIndexListTransition"
+                    ) {
+                        BangumiPiliPlusHomeContent(
+                            listState = listState,
+                            timelineState = timelineState,
+                            myFollowState = myFollowState,
+                            selectedType = selectedType,
+                            myFollowType = myFollowType,
+                            onRetry = { viewModel.loadBangumiList() },
+                            onRetryTimeline = { viewModel.loadTimeline() },
+                            onRetryMyFollow = { viewModel.loadMyFollowBangumi(myFollowType) },
+                            onLoadMore = { viewModel.loadMore() },
+                            onOpenMyFollow = { viewModel.openMyFollowEntry() },
+                            onItemClick = onBangumiClick
+                        )
+                    }
                 }
                 BangumiDisplayMode.TIMELINE -> {
                     BangumiTimelineContent(
@@ -256,6 +281,7 @@ fun BangumiScreen(
 /**
  * PiliPlus 风格番剧首页：最近追番/追剧、时间表、推荐索引在同一信息流中展示。
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BangumiPiliPlusHomeContent(
     listState: BangumiListState,
@@ -353,6 +379,19 @@ private fun BangumiPiliPlusHomeContent(
                 }
             }
             is BangumiListState.Success -> {
+                if (listState.isRefreshing) {
+                    item(
+                        key = "refreshing-indicator",
+                        span = { GridItemSpan(maxLineSpan) }
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 2.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 if (listState.items.isEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
@@ -371,6 +410,7 @@ private fun BangumiPiliPlusHomeContent(
                     ) { item ->
                         BangumiCard(
                             item = item,
+                            modifier = Modifier.animateItem(),
                             onClick = { onItemClick(item.seasonId) }
                         )
                     }
@@ -876,12 +916,10 @@ private fun BangumiSearchBar(
 @Composable
 private fun BangumiNavigationBar(
     title: String,
-    filterActive: Boolean,
     isMyFollowMode: Boolean,
     onBack: () -> Unit,
     onSearch: () -> Unit,
-    onOpenMyFollow: () -> Unit,
-    onToggleFilter: () -> Unit
+    onOpenMyFollow: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val titleFontSize = resolveBangumiNavigationTitleFontSizeSp(configuration.screenWidthDp).sp
@@ -920,13 +958,7 @@ private fun BangumiNavigationBar(
                     )
                 }
                 if (!isMyFollowMode) {
-                    IconButton(onClick = onToggleFilter) {
-                        Icon(
-                            CupertinoIcons.Default.ListBullet,
-                            contentDescription = "筛选",
-                            tint = if (filterActive) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(48.dp))
                 } else {
                     Spacer(modifier = Modifier.width(48.dp))
                 }

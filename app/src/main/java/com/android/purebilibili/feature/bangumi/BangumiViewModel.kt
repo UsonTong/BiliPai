@@ -17,7 +17,8 @@ sealed class BangumiListState {
     object Loading : BangumiListState()
     data class Success(
         val items: List<BangumiItem>,
-        val hasMore: Boolean = true
+        val hasMore: Boolean = true,
+        val isRefreshing: Boolean = false
     ) : BangumiListState()
     data class Error(val message: String) : BangumiListState()
 }
@@ -231,6 +232,7 @@ class BangumiViewModel : ViewModel() {
     fun selectType(type: Int) {
         if (_selectedType.value != type) {
             _selectedType.value = type
+            _filter.value = BangumiFilter()
             _myFollowType.value = defaultMyFollowTypeForSeasonType(type)
             currentPage = 1
             loadBangumiList()
@@ -274,12 +276,18 @@ class BangumiViewModel : ViewModel() {
      */
     fun loadBangumiList() {
         viewModelScope.launch {
-            _listState.value = BangumiListState.Loading
+            val previousState = _listState.value
+            _listState.value = if (previousState is BangumiListState.Success) {
+                previousState.copy(isRefreshing = true)
+            } else {
+                BangumiListState.Loading
+            }
             currentPage = 1
             
-            BangumiRepository.getBangumiIndex(
+            BangumiRepository.getBangumiIndexWithFilter(
                 seasonType = _selectedType.value,
-                page = currentPage
+                page = currentPage,
+                filter = _filter.value
             ).fold(
                 onSuccess = { data ->
                     _listState.value = BangumiListState.Success(
@@ -299,7 +307,12 @@ class BangumiViewModel : ViewModel() {
      */
     private fun loadBangumiListWithFilter() {
         viewModelScope.launch {
-            _listState.value = BangumiListState.Loading
+            val previousState = _listState.value
+            _listState.value = if (previousState is BangumiListState.Success) {
+                previousState.copy(isRefreshing = true)
+            } else {
+                BangumiListState.Loading
+            }
             
             BangumiRepository.getBangumiIndexWithFilter(
                 seasonType = _selectedType.value,

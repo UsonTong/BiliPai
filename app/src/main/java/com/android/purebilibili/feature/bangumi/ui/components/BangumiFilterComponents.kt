@@ -1,6 +1,9 @@
 // 文件路径: feature/bangumi/ui/components/BangumiFilterComponents.kt
 package com.android.purebilibili.feature.bangumi.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,6 +21,10 @@ import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.data.model.response.BangumiFilter
+import com.android.purebilibili.data.model.response.BangumiIndexFilterGroup
+import com.android.purebilibili.data.model.response.BangumiIndexFilterOption
+import com.android.purebilibili.data.model.response.applyBangumiIndexFilterOption
+import com.android.purebilibili.data.model.response.resolveBangumiIndexSelectedOption
 import com.android.purebilibili.feature.bangumi.BangumiDisplayMode
 import com.android.purebilibili.feature.bangumi.resolveBangumiTopModes
 import androidx.compose.ui.text.font.FontWeight
@@ -167,6 +174,110 @@ fun BangumiFilterPanel(
                 ) {
                     Text("重置筛选", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun BangumiIndexFilterRows(
+    groups: List<BangumiIndexFilterGroup>,
+    filter: BangumiFilter,
+    onFilterChange: (BangumiFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (groups.isEmpty()) return
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            groups.forEach { group ->
+                val selectedOption = resolveBangumiIndexSelectedOption(filter, group)
+                BangumiIndexFilterRow(
+                    title = selectedOption.label,
+                    options = group.options,
+                    selectedOption = selectedOption,
+                    onOptionSelected = { option ->
+                        onFilterChange(applyBangumiIndexFilterOption(filter, option))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BangumiIndexFilterRow(
+    title: String,
+    options: List<BangumiIndexFilterOption>,
+    selectedOption: BangumiIndexFilterOption,
+    onOptionSelected: (BangumiIndexFilterOption) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        item(key = "title") {
+            Surface(
+                shape = AppShapes.container(ContainerLevel.Chip),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+            ) {
+                Text(
+                    text = title,
+                    modifier = Modifier
+                        .widthIn(min = 72.dp)
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+        items(
+            items = options,
+            key = { option ->
+                "${option.label}:${option.order}:${option.styleId}:${option.producerId}:${option.year}:${option.seasonStatus}"
+            }
+        ) { option ->
+            val selected = option == selectedOption
+            val backgroundColor by animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                } else {
+                    Color.Transparent
+                },
+                label = "bangumiFilterChipBackground"
+            )
+            val horizontalPadding by animateDpAsState(
+                targetValue = if (selected) 11.dp else 4.dp,
+                label = "bangumiFilterChipPadding"
+            )
+            Surface(
+                onClick = { onOptionSelected(option) },
+                shape = AppShapes.container(ContainerLevel.Chip),
+                color = backgroundColor
+            ) {
+                Text(
+                    text = option.label,
+                    modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 7.dp),
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1
+                )
             }
         }
     }

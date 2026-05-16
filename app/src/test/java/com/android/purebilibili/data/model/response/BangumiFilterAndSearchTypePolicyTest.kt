@@ -8,7 +8,7 @@ class BangumiFilterAndSearchTypePolicyTest {
 
     @Test
     fun `order options should match documented api ids`() {
-        assertTrue(BangumiFilter.ORDER_OPTIONS.contains(3 to "追番人数"))
+        assertTrue(BangumiFilter.ORDER_OPTIONS.contains(3 to "综合排序"))
         assertTrue(BangumiFilter.ORDER_OPTIONS.contains(4 to "最高评分"))
     }
 
@@ -39,5 +39,44 @@ class BangumiFilterAndSearchTypePolicyTest {
             filter.toApiReleaseDate(BangumiType.MOVIE.value)
         )
         assertEquals("-1", filter.toApiReleaseDate(BangumiType.ANIME.value))
+    }
+
+    @Test
+    fun `index request filter should include producer payment and sort direction`() {
+        val filter = BangumiFilter(
+            producerId = 4,
+            seasonStatus = "4,6",
+            order = 4,
+            sortDirection = 0
+        )
+
+        val requestFilter = buildBangumiIndexRequestFilter(
+            filter = filter,
+            seasonType = BangumiType.DOCUMENTARY.value
+        )
+
+        assertEquals(4, requestFilter.producerId)
+        assertEquals("4,6", requestFilter.seasonStatus)
+        assertEquals(4, requestFilter.order)
+        assertEquals(0, requestFilter.sortDirection)
+    }
+
+    @Test
+    fun `index request filter should use release date for documentary tv and movie`() {
+        val filter = BangumiFilter(year = "[2026,2027)")
+
+        assertEquals(
+            "[2026-01-01 00:00:00,2027-01-01 00:00:00)",
+            buildBangumiIndexRequestFilter(filter, BangumiType.DOCUMENTARY.value).releaseDate
+        )
+        assertEquals(
+            "[2026-01-01 00:00:00,2027-01-01 00:00:00)",
+            buildBangumiIndexRequestFilter(filter, BangumiType.TV_SHOW.value).releaseDate
+        )
+        assertEquals(
+            "[2026-01-01 00:00:00,2027-01-01 00:00:00)",
+            buildBangumiIndexRequestFilter(filter, BangumiType.MOVIE.value).releaseDate
+        )
+        assertEquals("-1", buildBangumiIndexRequestFilter(filter, BangumiType.ANIME.value).releaseDate)
     }
 }
