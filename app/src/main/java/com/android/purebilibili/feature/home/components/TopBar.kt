@@ -1065,12 +1065,8 @@ fun CategoryTabRow(
                             indicatorWidthPx = selectedIndicatorWidthPx,
                             startPaddingPx = with(localDensity) { floatingAdjustedInsetDp.toPx() },
                             containerWidthPx = tabViewportWidthPx.coerceAtLeast(actualTabWidthPx),
-                            clampToBounds = true,
-                            edgeInsetPx = with(localDensity) { floatingIndicatorEdgeInset.toPx() },
-                            viewportShiftPx = resolveTopTabIndicatorViewportClampShiftPx(
-                                rowScrollOffsetPx = scrollOffset,
-                                indicatorPanelOffsetPx = indicatorPanelOffsetPx
-                            )
+                            clampToBounds = false,
+                            edgeInsetPx = with(localDensity) { floatingIndicatorEdgeInset.toPx() }
                         )
                     } else {
                         currentPosition * actualTabWidthPx +
@@ -1867,7 +1863,8 @@ internal fun resolveTopTabIndicatorViewportClampShiftPx(
     rowScrollOffsetPx: Float,
     indicatorPanelOffsetPx: Float
 ): Float {
-    return rowScrollOffsetPx - indicatorPanelOffsetPx
+    // 手动横向滚动顶栏只改变标签列表视口，不应把选中指示器夹到当前视口里。
+    return 0f
 }
 
 @Composable

@@ -122,13 +122,13 @@ class TopTabMotionVelocityTest {
     }
 
     @Test
-    fun `indicator clamp shift follows manual top tab row scroll`() {
+    fun `indicator clamp shift ignores manual top tab row scroll`() {
         val shift = resolveTopTabIndicatorViewportClampShiftPx(
             rowScrollOffsetPx = 240f,
             indicatorPanelOffsetPx = 8f
         )
 
-        assertEquals(232f, shift, 0.0001f)
+        assertEquals(0f, shift, 0.0001f)
     }
 
     @Test
