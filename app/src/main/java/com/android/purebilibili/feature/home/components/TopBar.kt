@@ -19,7 +19,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.BorderStroke
@@ -52,7 +51,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -1145,36 +1143,6 @@ fun CategoryTabRow(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(
-                            categories.size,
-                            selectedIndex,
-                            actualTabWidthPx,
-                            scrollOffset,
-                            floatingAdjustedInsetDp
-                        ) {
-                            var latestPointerX = 0f
-                            detectHorizontalDragGestures(
-                                onDragStart = { offset ->
-                                    latestPointerX = offset.x
-                                },
-                                onHorizontalDrag = { change, _ ->
-                                    latestPointerX = change.position.x
-                                    change.consume()
-                                },
-                                onDragEnd = {
-                                    val releaseIndex = resolveTopTabSweepSelectionIndex(
-                                        pointerX = latestPointerX,
-                                        rowScrollOffsetPx = scrollOffset,
-                                        itemWidthPx = actualTabWidthPx,
-                                        itemCount = categories.size,
-                                        startPaddingPx = floatingAdjustedInsetDp.toPx()
-                                    )
-                                    if (releaseIndex != selectedIndex) {
-                                        onCategorySelected(releaseIndex)
-                                    }
-                                }
-                            )
-                        }
                         .graphicsLayer { translationX = visiblePanelOffsetPx }
                 ) {
                     LazyRow(
@@ -1182,7 +1150,6 @@ fun CategoryTabRow(
                         modifier = Modifier.fillMaxHeight(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start,
-                        userScrollEnabled = false,
                         contentPadding = PaddingValues(
                             horizontal = if (isFloatingStyle) floatingAdjustedInsetDp else 0.dp
                         )

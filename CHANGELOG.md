@@ -1,5 +1,23 @@
 # Changelog
 
+## v8.2.2 (2026-05-16)
+
+### 版本信息
+- 版本号从 `8.2.1` 升级到 `8.2.2`，`versionCode` 升级到 `192`。
+- 本次为“Firebase 日活统计 + 顶部导航回归修复”的维护更新。
+
+### 更新内容
+- **Firebase 日活统计**：使用情况统计默认开启，并新增 `daily_active` 每日活跃心跳事件，便于在 Firebase 后台确认真实用户正在使用。
+- **匿名统计边界**：日活事件仅携带应用版本、构建类型、本地日期和触发来源；不上传 B 站账号 ID、视频 ID、房间号或可识别用户身份的信息。
+- **设置页开关保留**：使用情况统计仍可在设置页关闭；关闭后停止 Firebase Analytics 收集，已主动关闭的用户不会被默认值覆盖。
+- **顶部导航栏修复**：恢复顶部标签栏横向滚动能力，游戏、科技等隐藏标签可再次滑出；横向滚动顶栏只移动标签栏，不切换页面。
+- **顶栏点击切换**：保留点击顶部标签时的短分页动画和重复分页防护，减少直接点按切换的体感延迟。
+
+### 验证
+- `./gradlew :app:testDebugUnitTest --tests 'com.android.purebilibili.core.store.TelemetryDefaultsPolicyTest' --tests 'com.android.purebilibili.core.util.AnalyticsTrackingPolicyTest' --tests 'com.android.purebilibili.feature.home.components.TopTabRefractionPolicyTest' --tests 'com.android.purebilibili.feature.home.policy.HomePagerSyncPolicyTest'`
+- `./gradlew :app:compileDebugKotlin`
+- `git diff --check`
+
 ## v8.2.1 (2026-05-15)
 
 ### 版本信息

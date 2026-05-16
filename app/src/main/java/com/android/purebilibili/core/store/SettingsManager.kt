@@ -63,7 +63,7 @@ import kotlin.math.abs
 internal val Context.settingsDataStore by preferencesDataStore(name = "settings_prefs")
 
 internal const val DEFAULT_CRASH_TRACKING_ENABLED = true
-internal const val DEFAULT_ANALYTICS_ENABLED = false
+internal const val DEFAULT_ANALYTICS_ENABLED = true
 internal const val DEFAULT_PLAYER_DIAGNOSTIC_LOGGING_ENABLED = true
 
 /**

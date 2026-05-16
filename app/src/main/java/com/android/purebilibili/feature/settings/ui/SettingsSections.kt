@@ -750,7 +750,7 @@ fun DeveloperSection(
         SettingSwitchItem(
             icon = analyticsIcon,
             title = "使用情况统计",
-            subtitle = "默认关闭，开启后用于匿名统计功能使用情况",
+            subtitle = "默认开启，开启后用于匿名统计每日活跃与基础使用情况",
             checked = analyticsEnabled,
             onCheckedChange = onAnalyticsChange,
             iconTint = analyticsTint

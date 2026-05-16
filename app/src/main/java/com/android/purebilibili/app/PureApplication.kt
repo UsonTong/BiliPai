@@ -248,6 +248,7 @@ class PureApplication : Application(), ImageLoaderFactory, ComponentCallbacks2 {
                 )
                 // 记录应用打开事件
                 AnalyticsHelper.logAppOpen()
+                AnalyticsHelper.logDailyActive(source = "app_start")
             }
             
             Logger.d(PureApplicationRuntimeConfig.TAG, " Firebase Analytics initialized (enabled=$enabled)")

@@ -107,20 +107,6 @@ internal fun resolveTopTabIndicatorRenderPosition(
     )
 }
 
-internal fun resolveTopTabSweepSelectionIndex(
-    pointerX: Float,
-    rowScrollOffsetPx: Float,
-    itemWidthPx: Float,
-    itemCount: Int,
-    startPaddingPx: Float = 0f
-): Int {
-    if (itemWidthPx <= 0f || itemCount <= 0) return 0
-    val contentX = (pointerX + rowScrollOffsetPx - startPaddingPx).coerceAtLeast(0f)
-    return (contentX / itemWidthPx)
-        .toInt()
-        .coerceIn(0, itemCount - 1)
-}
-
 internal fun resolveTopTabFollowScrollTarget(
     indicatorPosition: Float,
     itemWidthPx: Float,

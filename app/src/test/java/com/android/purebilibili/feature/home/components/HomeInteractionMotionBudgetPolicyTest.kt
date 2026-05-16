@@ -275,37 +275,6 @@ class HomeInteractionMotionBudgetPolicyTest {
     }
 
     @Test
-    fun topTabSweepSelection_usesReleasePositionWithoutMovingIndicatorLive() {
-        assertEquals(
-            2,
-            resolveTopTabSweepSelectionIndex(
-                pointerX = 132f,
-                rowScrollOffsetPx = 0f,
-                itemWidthPx = 64f,
-                itemCount = 5
-            )
-        )
-        assertEquals(
-            4,
-            resolveTopTabSweepSelectionIndex(
-                pointerX = 196f,
-                rowScrollOffsetPx = 96f,
-                itemWidthPx = 64f,
-                itemCount = 5
-            )
-        )
-        assertEquals(
-            0,
-            resolveTopTabSweepSelectionIndex(
-                pointerX = -16f,
-                rowScrollOffsetPx = 0f,
-                itemWidthPx = 64f,
-                itemCount = 5
-            )
-        )
-    }
-
-    @Test
     fun md3TopTabViewportPosition_matchesPagerProgressWithinVisibleSlots() {
         assertEquals(
             1.35f,
