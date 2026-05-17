@@ -442,6 +442,8 @@ ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPl
 
 `.bpskin` 是 ZIP 资源包，用于数据型 UI 美化。它和 `.bpplugin` 分离，不包含 Dex、Jar 或 Compose 入口，宿主只解析、校验、保存资源和启用记录。
 
+仓库内置了一个可打包样例：[`plugins/samples/winter-cloud-skin`](../plugins/samples/winter-cloud-skin)。它演示了截图风格的浅色冬季氛围、云朵底栏饰边、搜索胶囊和底栏图标贴纸声明。
+
 版本 1 的包根目录必须包含 `skin-manifest.json`，其他资源必须位于 `assets/` 下：
 
 ```text
@@ -483,6 +485,7 @@ my-skin.bpskin
 
 - 包内只能包含 `skin-manifest.json` 和 `assets/` 下的 PNG、WebP、JPEG 资源。
 - 宿主会拒绝路径穿越、未知界面、未声明资源、重复声明资源、超大 manifest 和超大解压内容。
+- 用户导入后，宿主会把已声明资源解压到应用私有目录，并把资源路径作为受控装饰输入传给对应 UI。
 - 皮肤只作为装饰输入传给宿主。底栏的 `FrostedBottomBar`、`KernelSuAlignedBottomBar`、`drawBackdrop`、指示器折射、滑动色散和输入层不会被皮肤包替换或重算。
 
 ---

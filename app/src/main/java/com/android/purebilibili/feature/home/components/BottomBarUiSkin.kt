@@ -4,40 +4,50 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import coil.compose.AsyncImage
 import com.android.purebilibili.core.plugin.skin.UiSkinState
+import java.io.File
 
 data class BottomBarUiSkinDecoration(
     val skinId: String,
     val bottomTrimTint: Color,
-    val bottomTrimAccent: Color
+    val bottomTrimAccent: Color,
+    val bottomTrimImagePath: String? = null
 )
 
 @Composable
 fun rememberBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinDecoration? {
+    return remember(uiSkinState) {
+        resolveBottomBarUiSkinDecoration(uiSkinState)
+    }
+}
+
+fun resolveBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinDecoration? {
     val activeSkin = uiSkinState.activeSkin
-    return remember(uiSkinState.enabled, activeSkin?.manifest) {
-        if (!uiSkinState.enabled || activeSkin == null) {
-            null
-        } else {
-            BottomBarUiSkinDecoration(
-                skinId = activeSkin.manifest.skinId,
-                bottomTrimTint = parseUiSkinColor(
-                    value = activeSkin.manifest.colors.bottomBarTrimTint,
-                    fallback = Color(0xFFEAF8FF)
-                ),
-                bottomTrimAccent = parseUiSkinColor(
-                    value = activeSkin.manifest.colors.topAtmosphereTint,
-                    fallback = Color(0xFFDFF5FF)
-                )
-            )
-        }
+    return if (!uiSkinState.enabled || activeSkin == null) {
+        null
+    } else {
+        BottomBarUiSkinDecoration(
+            skinId = activeSkin.manifest.skinId,
+            bottomTrimTint = parseUiSkinColor(
+                value = activeSkin.manifest.colors.bottomBarTrimTint,
+                fallback = Color(0xFFEAF8FF)
+            ),
+            bottomTrimAccent = parseUiSkinColor(
+                value = activeSkin.manifest.colors.topAtmosphereTint,
+                fallback = Color(0xFFDFF5FF)
+            ),
+            bottomTrimImagePath = activeSkin.assetFilePath(activeSkin.manifest.assets.bottomBarTrim)
+        )
     }
 }
 
@@ -78,7 +88,20 @@ internal fun BottomBarSkinDecorativeTrim(
                     )
                 }
             }
-    )
+    ) {
+        val imagePath = decoration.bottomTrimImagePath
+        if (!imagePath.isNullOrBlank()) {
+            AsyncImage(
+                model = File(imagePath),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(0.82f)
+                    .clearAndSetSemantics {}
+            )
+        }
+    }
 }
 
 private fun parseUiSkinColor(

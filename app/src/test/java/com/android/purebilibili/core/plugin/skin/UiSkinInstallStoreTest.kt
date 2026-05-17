@@ -3,12 +3,14 @@ package com.android.purebilibili.core.plugin.skin
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class UiSkinInstallStoreTest {
@@ -42,6 +44,9 @@ class UiSkinInstallStoreTest {
         assertFalse(installed.enabled)
         assertEquals(42L, installed.installedAtMillis)
         assertTrue(installed.packagePath.endsWith(".bpskin"))
+        val bottomTrimPath = assertNotNull(installed.assetFiles["assets/bottom_trim.png"])
+        assertTrue(File(bottomTrimPath).exists())
+        assertEquals(pngBytes().toList(), File(bottomTrimPath).readBytes().toList())
         assertTrue(installedPackages.any { it.skinId == BuiltInUiSkins.winterCloud.skinId })
         assertTrue(installedPackages.any { it.skinId == manifest.skinId && !it.enabled })
     }

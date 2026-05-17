@@ -68,13 +68,18 @@ data class InstalledUiSkinPackage(
     val packageSha256: String,
     val packagePath: String,
     val installedAtMillis: Long,
-    val enabled: Boolean = false
+    val enabled: Boolean = false,
+    val assetFiles: Map<String, String> = emptyMap()
 ) {
     val skinId: String
         get() = manifest.skinId
 
     val displayName: String
         get() = manifest.displayName
+
+    fun assetFilePath(assetPath: String?): String? {
+        return assetPath?.let(assetFiles::get)
+    }
 }
 
 data class UiSkinSelection(

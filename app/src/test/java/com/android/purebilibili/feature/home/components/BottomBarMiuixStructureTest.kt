@@ -147,6 +147,7 @@ class BottomBarMiuixStructureTest {
     @Test
     fun `skin decoration stays outside refraction indicator and input layers`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val skinDecorationSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
         val kernelSuRendererSource = source
             .substringAfter("private fun KernelSuAlignedBottomBar(")
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
@@ -166,6 +167,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(captureIndex > visibleContentIndex)
         assertTrue(indicatorIndex > captureIndex)
         assertTrue(inputIndex > indicatorIndex)
+        assertTrue(skinDecorationSource.contains("AsyncImage("))
+        assertTrue(skinDecorationSource.contains("model = File(imagePath)"))
+        assertFalse(skinDecorationSource.contains("ColorFilter.tint"))
     }
 
     @Test
