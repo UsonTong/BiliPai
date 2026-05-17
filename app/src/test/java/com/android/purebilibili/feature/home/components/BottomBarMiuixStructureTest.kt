@@ -359,6 +359,24 @@ class BottomBarMiuixStructureTest {
         assertFalse(miuixRendererSource.contains("MiuixFloatingNavigationBarItem("))
     }
 
+    @Test
+    fun `docked bottom bars render skin trim behind navigation items`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val materialRendererSource = source
+            .substringAfter("private fun MaterialBottomBar(")
+            .substringBefore("@Composable\nprivate fun MiuixBottomBar(")
+        val miuixRendererSource = source
+            .substringAfter("private fun MiuixBottomBar(")
+            .substringBefore("@Composable\nprivate fun RowScope.MiuixDockedBottomBarItem(")
+
+        assertTrue(materialRendererSource.contains("DockedBottomBarSkinContainer("))
+        assertTrue(materialRendererSource.contains("decoration = uiSkinDecoration"))
+        assertTrue(materialRendererSource.indexOf("DockedBottomBarSkinContainer(") < materialRendererSource.indexOf("NavigationBar("))
+        assertTrue(miuixRendererSource.contains("DockedBottomBarSkinContainer("))
+        assertTrue(miuixRendererSource.contains("decoration = uiSkinDecoration"))
+        assertTrue(miuixRendererSource.indexOf("DockedBottomBarSkinContainer(") < miuixRendererSource.indexOf("MiuixNavigationBar("))
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

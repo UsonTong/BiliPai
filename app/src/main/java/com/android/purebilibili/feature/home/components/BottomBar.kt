@@ -1949,87 +1949,91 @@ private fun MaterialBottomBar(
         shadowElevation = 0.dp,
         color = containerColor
     ) {
-        NavigationBar(
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+        DockedBottomBarSkinContainer(
+            decoration = uiSkinDecoration
         ) {
-            visibleItems.forEach { item ->
-                val itemLabel = resolveBottomNavItemLabel(item)
-                val itemContentDescription = resolveBottomNavItemContentDescription(item)
-                NavigationBarItem(
-                    selected = currentItem == item,
-                    onClick = {
-                        performMaterialBottomBarTap(
-                            haptic = haptic,
-                            onClick = { onItemClick(item) }
-                        )
-                    },
-                    icon = {
-                        if (showIcon) {
-                            BottomBarReminderBadgeAnchor(
-                                item = item,
-                                unreadCount = dynamicUnreadCount
-                            ) {
-                                Icon(
-                                    imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
-                                    contentDescription = itemContentDescription
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.size(0.dp))
-                        }
-                    },
-                    label = if (showText) {
-                        { Text(itemLabel) }
-                    } else {
-                        null
-                    },
-                    alwaysShowLabel = showText,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = dockedItemColors.selectedIconColor,
-                        selectedTextColor = dockedItemColors.selectedTextColor,
-                        indicatorColor = dockedItemColors.indicatorColor,
-                        unselectedIconColor = dockedItemColors.unselectedIconColor,
-                        unselectedTextColor = dockedItemColors.unselectedTextColor
-                    )
-                )
-            }
-
-            if (isTablet && onToggleSidebar != null) {
-                val sidebarLabel = stringResource(R.string.sidebar_toggle)
-                NavigationBarItem(
-                    selected = false,
-                    onClick = {
-                        performMaterialBottomBarTap(
-                            haptic = haptic,
-                            onClick = onToggleSidebar
-                        )
-                    },
-                    icon = {
-                        if (showIcon) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.MenuOpen,
-                                contentDescription = sidebarLabel
+            NavigationBar(
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp,
+                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+            ) {
+                visibleItems.forEach { item ->
+                    val itemLabel = resolveBottomNavItemLabel(item)
+                    val itemContentDescription = resolveBottomNavItemContentDescription(item)
+                    NavigationBarItem(
+                        selected = currentItem == item,
+                        onClick = {
+                            performMaterialBottomBarTap(
+                                haptic = haptic,
+                                onClick = { onItemClick(item) }
                             )
+                        },
+                        icon = {
+                            if (showIcon) {
+                                BottomBarReminderBadgeAnchor(
+                                    item = item,
+                                    unreadCount = dynamicUnreadCount
+                                ) {
+                                    Icon(
+                                        imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
+                                        contentDescription = itemContentDescription
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.size(0.dp))
+                            }
+                        },
+                        label = if (showText) {
+                            { Text(itemLabel) }
                         } else {
-                            Spacer(modifier = Modifier.size(0.dp))
-                        }
-                    },
-                    label = if (showText) {
-                        { Text(sidebarLabel) }
-                    } else {
-                        null
-                    },
-                    alwaysShowLabel = showText,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = dockedItemColors.selectedIconColor,
-                        selectedTextColor = dockedItemColors.selectedTextColor,
-                        indicatorColor = dockedItemColors.indicatorColor,
-                        unselectedIconColor = dockedItemColors.unselectedIconColor,
-                        unselectedTextColor = dockedItemColors.unselectedTextColor
+                            null
+                        },
+                        alwaysShowLabel = showText,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = dockedItemColors.selectedIconColor,
+                            selectedTextColor = dockedItemColors.selectedTextColor,
+                            indicatorColor = dockedItemColors.indicatorColor,
+                            unselectedIconColor = dockedItemColors.unselectedIconColor,
+                            unselectedTextColor = dockedItemColors.unselectedTextColor
+                        )
                     )
-                )
+                }
+
+                if (isTablet && onToggleSidebar != null) {
+                    val sidebarLabel = stringResource(R.string.sidebar_toggle)
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = {
+                            performMaterialBottomBarTap(
+                                haptic = haptic,
+                                onClick = onToggleSidebar
+                            )
+                        },
+                        icon = {
+                            if (showIcon) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.MenuOpen,
+                                    contentDescription = sidebarLabel
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.size(0.dp))
+                            }
+                        },
+                        label = if (showText) {
+                            { Text(sidebarLabel) }
+                        } else {
+                            null
+                        },
+                        alwaysShowLabel = showText,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = dockedItemColors.selectedIconColor,
+                            selectedTextColor = dockedItemColors.selectedTextColor,
+                            indicatorColor = dockedItemColors.indicatorColor,
+                            unselectedIconColor = dockedItemColors.unselectedIconColor,
+                            unselectedTextColor = dockedItemColors.unselectedTextColor
+                        )
+                    )
+                }
             }
         }
     }
@@ -2150,60 +2154,80 @@ private fun MiuixBottomBar(
             }
         )
 
-    MiuixNavigationBar(
-        modifier = barModifier,
-        color = containerColor,
-        showDivider = false,
-        defaultWindowInsetsPadding = true,
-        mode = displayMode
+    DockedBottomBarSkinContainer(
+        decoration = uiSkinDecoration,
+        modifier = barModifier.background(containerColor)
     ) {
-        val selectedItemColor = MaterialTheme.colorScheme.primary
-        val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
+        MiuixNavigationBar(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Transparent,
+            showDivider = false,
+            defaultWindowInsetsPadding = true,
+            mode = displayMode
+        ) {
+            val selectedItemColor = MaterialTheme.colorScheme.primary
+            val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-        visibleItems.forEach { item ->
-            val itemLabel = resolveBottomNavItemLabel(item)
-            MiuixDockedBottomBarItem(
-                selected = currentItem == item,
-                onClick = {
-                    performMaterialBottomBarTap(
-                        haptic = haptic,
-                        onClick = { onItemClick(item) }
+            visibleItems.forEach { item ->
+                val itemLabel = resolveBottomNavItemLabel(item)
+                MiuixDockedBottomBarItem(
+                    selected = currentItem == item,
+                    onClick = {
+                        performMaterialBottomBarTap(
+                            haptic = haptic,
+                            onClick = { onItemClick(item) }
+                        )
+                    },
+                    icon = resolveMaterialBottomBarIcon(item, currentItem == item),
+                    label = itemLabel,
+                    showIcon = showIcon,
+                    showText = showText,
+                    selectedColor = selectedItemColor,
+                    unselectedColor = unselectedItemColor,
+                    reminderBadgeText = formatBottomBarDynamicReminderBadge(
+                        if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
+                            dynamicUnreadCount
+                        } else {
+                            0
+                        }
                     )
-                },
-                icon = resolveMaterialBottomBarIcon(item, currentItem == item),
-                label = itemLabel,
-                showIcon = showIcon,
-                showText = showText,
-                selectedColor = selectedItemColor,
-                unselectedColor = unselectedItemColor,
-                reminderBadgeText = formatBottomBarDynamicReminderBadge(
-                    if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
-                        dynamicUnreadCount
-                    } else {
-                        0
-                    }
                 )
-            )
-        }
+            }
 
-        if (isTablet && onToggleSidebar != null) {
-            val sidebarLabel = stringResource(R.string.sidebar_toggle)
-            MiuixDockedBottomBarItem(
-                selected = false,
-                onClick = {
-                    performMaterialBottomBarTap(
-                        haptic = haptic,
-                        onClick = onToggleSidebar
-                    )
-                },
-                icon = Icons.AutoMirrored.Outlined.MenuOpen,
-                label = sidebarLabel,
-                showIcon = showIcon,
-                showText = showText,
-                selectedColor = selectedItemColor,
-                unselectedColor = unselectedItemColor
-            )
+            if (isTablet && onToggleSidebar != null) {
+                val sidebarLabel = stringResource(R.string.sidebar_toggle)
+                MiuixDockedBottomBarItem(
+                    selected = false,
+                    onClick = {
+                        performMaterialBottomBarTap(
+                            haptic = haptic,
+                            onClick = onToggleSidebar
+                        )
+                    },
+                    icon = Icons.AutoMirrored.Outlined.MenuOpen,
+                    label = sidebarLabel,
+                    showIcon = showIcon,
+                    showText = showText,
+                    selectedColor = selectedItemColor,
+                    unselectedColor = unselectedItemColor
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun DockedBottomBarSkinContainer(
+    decoration: BottomBarUiSkinDecoration?,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(modifier = modifier) {
+        BottomBarSkinDecorativeTrim(
+            decoration = decoration,
+            modifier = Modifier.matchParentSize()
+        )
+        content()
     }
 }
 
