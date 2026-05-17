@@ -2378,7 +2378,7 @@ fun VideoDetailScreen(
                 onRelatedVideoClick = navigateToRelatedVideo,
                 onPageSelect = { viewModel.switchPage(it) },
                 forceCoverOnly = forceCoverOnlyForReturn,
-                allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
+                allowLivePlayerSharedElement = true,
                 suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
                 subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
                 onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it }
@@ -2739,7 +2739,7 @@ fun VideoDetailScreen(
                                 onNavigateToAudioMode()
                             },
                             forceCoverOnly = forceCoverOnlyForReturn,
-                            allowLivePlayerSharedElement = !predictiveBackAnimationEnabled,
+                            allowLivePlayerSharedElement = true,
                             suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
                             subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
                             onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it }

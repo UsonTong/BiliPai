@@ -1798,7 +1798,10 @@ fun AppNavigation(
                     autoEnterPortraitFromRoute = autoPortraitFromRoute,
                     resumePositionMsFromRoute = resumePositionMsFromRoute,
                     openCommentRootRpidFromRoute = commentRootRpidFromRoute,
-                    transitionEnabled = shouldUseClassicBackRouteMotion(backRouteMotionMode),  // 预测返回优先稳定路由动画
+                    transitionEnabled = shouldEnableVideoDetailSharedTransition(
+                        cardTransitionEnabled = cardTransitionEnabled,
+                        predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
+                    ),
                     predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
                     transitionEnterDurationMillis = navMotionSpec.slowFadeDurationMillis,
                     transitionMaxBlurRadiusPx = navMotionSpec.maxBackdropBlurRadius,

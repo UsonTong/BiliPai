@@ -497,6 +497,22 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
+    fun videoDetailSharedTransition_keepsCardTransitionEnabledWhenPredictiveBackEnabled() {
+        assertTrue(
+            shouldEnableVideoDetailSharedTransition(
+                cardTransitionEnabled = true,
+                predictiveBackAnimationEnabled = true
+            )
+        )
+        assertFalse(
+            shouldEnableVideoDetailSharedTransition(
+                cardTransitionEnabled = false,
+                predictiveBackAnimationEnabled = true
+            )
+        )
+    }
+
+    @Test
     fun predictiveBack_disabled_orCardTransitionDisabled_doesNotUsePredictiveStableBackRouteMotion() {
         assertFalse(
             shouldUsePredictiveStableBackRouteMotion(
@@ -616,8 +632,8 @@ class AppNavigationTransitionPolicyTest {
     }
 
     @Test
-    fun noOpSharedElement_disabled_whenPredictiveBackEnabled() {
-        assertFalse(
+    fun noOpSharedElement_keepsSharedMotionVisible_whenPredictiveBackEnabled() {
+        assertTrue(
             shouldUseNoOpSharedElementRouteTransition(
                 cardTransitionEnabled = true,
                 sharedTransitionReady = true,

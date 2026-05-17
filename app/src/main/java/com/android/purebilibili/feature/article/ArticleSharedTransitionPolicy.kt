@@ -30,6 +30,5 @@ internal fun shouldUseArticleNoOpRouteTransition(
     sharedTransitionReady: Boolean
 ): Boolean {
     return cardTransitionEnabled &&
-        sharedTransitionReady &&
-        !predictiveBackAnimationEnabled
+        sharedTransitionReady
 }

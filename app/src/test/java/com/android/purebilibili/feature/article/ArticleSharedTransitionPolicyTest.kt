@@ -44,7 +44,7 @@ class ArticleSharedTransitionPolicyTest {
                 sharedTransitionReady = true
             )
         )
-        assertFalse(
+        assertTrue(
             shouldUseArticleNoOpRouteTransition(
                 cardTransitionEnabled = true,
                 predictiveBackAnimationEnabled = true,

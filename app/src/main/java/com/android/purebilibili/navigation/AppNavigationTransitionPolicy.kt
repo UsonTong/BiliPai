@@ -450,7 +450,8 @@ private fun isVideoDetailRoute(route: String?): Boolean {
  * 统一判断：当共享元素过渡就绪时，路由级转场应使用 NoOp（None），
  * 让 sharedBounds 成为唯一的视觉过渡驱动。
  *
- * 条件：卡片过渡已启用 + 共享元素已就绪 + 非 predictive back 模式。
+ * 条件：卡片过渡已启用 + 共享元素已就绪。
+ * 预测性返回只控制返回进度回调与路由稳定策略，不应反向关闭用户可见的共享元素动效。
  */
 internal fun shouldUseNoOpSharedElementRouteTransition(
     cardTransitionEnabled: Boolean,
@@ -458,6 +459,13 @@ internal fun shouldUseNoOpSharedElementRouteTransition(
     predictiveBackAnimationEnabled: Boolean
 ): Boolean {
     return cardTransitionEnabled &&
-        sharedTransitionReady &&
-        !predictiveBackAnimationEnabled
+        sharedTransitionReady
+}
+
+internal fun shouldEnableVideoDetailSharedTransition(
+    cardTransitionEnabled: Boolean,
+    predictiveBackAnimationEnabled: Boolean
+): Boolean {
+    // predictiveBackAnimationEnabled 保留在签名中，明确它不再反向决定共享元素可见性。
+    return cardTransitionEnabled
 }
