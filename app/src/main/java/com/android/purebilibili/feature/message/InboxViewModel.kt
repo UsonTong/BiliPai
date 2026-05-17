@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -60,6 +61,8 @@ private fun resolveSessionEndTs(sessionTs: Long): Long {
         else -> sessionTs * 1_000_000L
     }
 }
+
+private const val USER_INFO_FETCH_BATCH_SIZE = 12
 
 class InboxViewModel : ViewModel() {
     
@@ -156,25 +159,27 @@ class InboxViewModel : ViewModel() {
     private fun loadUserInfos(mids: List<Long>) {
         viewModelScope.launch {
             // 仅拉取缺失或缓存不完整的用户，避免空值缓存导致后续页面显示缺失
-            val toFetch = mids
-                .distinct()
-                .filter { InboxUserInfoResolver.shouldFetchUserInfo(it, userCache) }
-            
-            toFetch.take(24).forEach { mid ->
-                launch {
-                    val merged = InboxUserInfoResolver.mergeFetchedUserInfo(
-                        existing = userCache[mid],
-                        fetched = fetchUserInfo(mid)
-                    ) ?: return@launch
+            val toFetch = InboxUserInfoResolver.selectMissingUserInfoMids(mids, userCache)
 
-                    userCache[mid] = merged
-                    // 更新UI状态
-                    _uiState.value = _uiState.value.copy(
-                        userInfoMap = userCache.toMap()
-                    )
-                }
+            toFetch.chunked(USER_INFO_FETCH_BATCH_SIZE).forEach { batch ->
+                batch.map { mid ->
+                    launch { fetchAndPublishUserInfo(mid) }
+                }.joinAll()
             }
         }
+    }
+
+    private suspend fun fetchAndPublishUserInfo(mid: Long) {
+        val merged = InboxUserInfoResolver.mergeFetchedUserInfo(
+            existing = userCache[mid],
+            fetched = fetchUserInfo(mid)
+        ) ?: return
+
+        userCache[mid] = merged
+        // 更新UI状态
+        _uiState.value = _uiState.value.copy(
+            userInfoMap = userCache.toMap()
+        )
     }
     
     /**

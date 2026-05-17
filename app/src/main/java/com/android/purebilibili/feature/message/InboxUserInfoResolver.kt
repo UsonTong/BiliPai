@@ -26,6 +26,15 @@ internal object InboxUserInfoResolver {
         return !hasCompleteUserInfo(cached)
     }
 
+    fun selectMissingUserInfoMids(
+        mids: List<Long>,
+        cache: Map<Long, UserBasicInfo>
+    ): List<Long> {
+        return mids
+            .distinct()
+            .filter { shouldFetchUserInfo(it, cache) }
+    }
+
     fun shouldFetchSessionUserInfo(session: SessionItem, cache: Map<Long, UserBasicInfo>): Boolean {
         if (session.session_type != 1 || session.talker_id <= 0L) return false
         if (hasCompleteSessionAccountInfo(session)) return false

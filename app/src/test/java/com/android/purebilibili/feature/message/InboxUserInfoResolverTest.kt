@@ -94,6 +94,15 @@ class InboxUserInfoResolverTest {
     }
 
     @Test
+    fun selectMissingUserInfoMids_keepsAllMissingUsersBeyondFirstBatch() {
+        val mids = (1L..30L).toList()
+
+        val selected = InboxUserInfoResolver.selectMissingUserInfoMids(mids, emptyMap())
+
+        assertEquals(mids, selected)
+    }
+
+    @Test
     fun mergeFetchedUserInfo_keepsExistingFieldsWhenIncomingIsBlank() {
         val existing = UserBasicInfo(
             mid = 1005L,
