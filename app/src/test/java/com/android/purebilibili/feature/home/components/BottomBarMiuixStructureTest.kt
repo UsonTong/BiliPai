@@ -21,6 +21,10 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("AndroidNativeBottomBarTuning"))
         assertTrue(source.contains("resolveKernelSuFloatingBottomBarWidth("))
         assertTrue(kernelSuRendererSource.contains("resolveKernelSuBottomBarSearchLayout("))
+        assertTrue(kernelSuRendererSource.contains("val dockContentPadding = if (uiSkinDecoration != null)"))
+        assertTrue(kernelSuRendererSource.contains("resolveBottomBarSkinDockContentPadding()"))
+        assertTrue(kernelSuRendererSource.contains("hasUiSkinDecoration = uiSkinDecoration != null"))
+        assertTrue(kernelSuRendererSource.contains("val shellHeight = if (dockHeight > searchHeight) dockHeight else searchHeight"))
         assertTrue(kernelSuRendererSource.contains("KernelSuBottomBarSearchCapsule("))
         assertTrue(source.contains("val collapsedSearchWidth = searchCircleSize"))
         assertTrue(kernelSuRendererSource.contains("label = \"bottomBarDockWidth\""))
@@ -69,11 +73,11 @@ class BottomBarMiuixStructureTest {
         assertTrue(kernelSuRendererSource.contains("dampedDragState.settledReleaseCount"))
         assertTrue(kernelSuRendererSource.contains("indicatorSettleReboundTransform.scaleX"))
         assertTrue(kernelSuRendererSource.contains("indicatorSettleReboundTransform.scaleY"))
-        assertFalse(kernelSuRendererSource.contains(".offset(x = contentPadding + indicatorWidth * dampedDragState.value)"))
+        assertFalse(kernelSuRendererSource.contains(".offset(x = dockHorizontalPadding + indicatorWidth * dampedDragState.value)"))
         assertTrue(kernelSuRendererSource.contains("val visualIndicatorPosition by remember"))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarVisualIndicatorPosition("))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarEdgeStrain("))
-        assertTrue(kernelSuRendererSource.contains("val indicatorTranslationXPx by remember(density, contentPadding, indicatorWidth, visualIndicatorPosition)"))
+        assertTrue(kernelSuRendererSource.contains("dockHorizontalPadding"))
         assertTrue(kernelSuRendererSource.contains("translationX = indicatorTranslationXPx + panelOffsetPx"))
         assertTrue(kernelSuRendererSource.contains("val interactiveHighlightCenterXPx by remember(indicatorTranslationXPx, itemWidthPx, panelOffsetPx)"))
         assertTrue(kernelSuRendererSource.contains("resolveBottomBarInteractiveHighlightCenterX("))
@@ -200,6 +204,12 @@ class BottomBarMiuixStructureTest {
         assertTrue(itemRendererSource.contains("skinIconPath: String? = null"))
         assertTrue(itemRendererSource.contains("BottomBarSkinIcon("))
         assertTrue(itemRendererSource.contains("skinIconPath != null ->"))
+        assertTrue(itemRendererSource.contains("val shouldUseSkinItemLayout = skinIconPath != null && showIcon && showText"))
+        assertTrue(itemRendererSource.contains("resolveBottomBarSkinIconLabelGap()"))
+        assertTrue(itemRendererSource.contains("modifier = if (shouldUseSkinItemLayout) Modifier.fillMaxHeight() else Modifier"))
+        assertTrue(itemRendererSource.contains("verticalArrangement = if (shouldUseSkinItemLayout) Arrangement.Top else Arrangement.Center"))
+        assertFalse(itemRendererSource.contains("readabilityBackdropColor"))
+        assertFalse(itemRendererSource.contains("translationY = -3.dp"))
         assertFalse(inputTargetSource.contains("skinIconPath"))
     }
 
@@ -283,7 +293,7 @@ class BottomBarMiuixStructureTest {
         val tintCaptureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
         val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = indicatorBackdrop")
         val hitOverlayIndex = kernelSuRendererSource.indexOf(
-            "if (!effectiveSearchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(contentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
+            "if (!effectiveSearchExpanded) {\n                    Row(\n                        modifier = Modifier\n                            .fillMaxSize()\n                            .padding(dockContentPadding)\n                            .alpha(0f)\n                            .graphicsLayer { translationX = panelOffsetPx }\n                            .horizontalDragGesture",
             startIndex = indicatorIndex
         )
 

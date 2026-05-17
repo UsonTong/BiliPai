@@ -132,6 +132,14 @@ internal fun resolveHomeSkinTopTabContentColor(
     }
 }
 
+internal fun shouldUseHomeSkinPlainTopTabs(uiSkinDecoration: HomeUiSkinDecoration?): Boolean =
+    uiSkinDecoration != null
+
+internal fun resolveHomeSkinTopTabIndicatorColor(contentColor: Color): Color =
+    contentColor.copy(alpha = maxOf(contentColor.alpha, 0.92f))
+
+internal fun resolveHomeSkinTopTabRowHeight(): Dp = 46.dp
+
 internal enum class HomeTopChromeRenderMode {
     PLAIN,
     BLUR,
@@ -1267,6 +1275,7 @@ fun iOSHomeHeader(
 ) {
     val uiPreset = LocalUiPreset.current
     val androidNativeVariant = LocalAndroidNativeVariant.current
+    val shouldUseSkinPlainTopTabs = shouldUseHomeSkinPlainTopTabs(uiSkinDecoration)
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
     val resolvedHeaderBlurMode = homeSettings?.headerBlurMode ?: HomeHeaderBlurMode.FOLLOW_PRESET
@@ -1527,13 +1536,17 @@ fun iOSHomeHeader(
     val headerOffset by remember { derivedStateOf(headerOffsetProvider) }
     
     val searchBarHeightDp = resolveHomeTopSearchBarHeight(uiPreset, androidNativeVariant)
-    val tabRowHeightDp = resolveHomeTopTabRowHeight(
-        isTabFloating = isTabFloating,
-        uiPreset = uiPreset,
-        androidNativeVariant = androidNativeVariant,
-        labelMode = homeSettings?.topTabLabelMode
-            ?: com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
-    )
+    val tabRowHeightDp = if (shouldUseSkinPlainTopTabs) {
+        resolveHomeSkinTopTabRowHeight()
+    } else {
+        resolveHomeTopTabRowHeight(
+            isTabFloating = isTabFloating,
+            uiPreset = uiPreset,
+            androidNativeVariant = androidNativeVariant,
+            labelMode = homeSettings?.topTabLabelMode
+                ?: com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
+        )
+    }
     val searchCollapseDistanceDp = resolveHomeTopSearchCollapseDistance(
         searchBarHeight = searchBarHeightDp,
         uiPreset = uiPreset,
@@ -1675,12 +1688,14 @@ fun iOSHomeHeader(
         animationSpec = AppMotionTokens.standardSpec(),
         label = "tabContentAlpha"
     )
-    val effectiveContinuousSlabRenderMode = if (integratedCollapsedTopBar) {
+    val effectiveContinuousSlabRenderMode = if (shouldUseSkinPlainTopTabs) {
+        HomeTopChromeRenderMode.PLAIN
+    } else if (integratedCollapsedTopBar) {
         topPanelChromeRenderMode
     } else {
         continuousSlabRenderMode
     }
-    val effectiveTopPanelChromeRenderMode = if (integratedCollapsedTopBar) {
+    val effectiveTopPanelChromeRenderMode = if (shouldUseSkinPlainTopTabs || integratedCollapsedTopBar) {
         HomeTopChromeRenderMode.PLAIN
     } else {
         topPanelChromeRenderMode
@@ -1752,7 +1767,6 @@ fun iOSHomeHeader(
         tabContentAlpha = tabContentAlpha
     )
     val tabBorderAlpha = if (isTabFloating) tabChromeStyle.borderAlpha else 0f
-    val shouldUseSkinPlainTopTabs = uiSkinDecoration != null
     val skinPlainTopTabContentColor = uiSkinDecoration?.let {
         resolveHomeSkinTopTabContentColor(it.topAtmosphereTint)
     }

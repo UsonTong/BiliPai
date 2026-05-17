@@ -10,6 +10,7 @@ import com.android.purebilibili.core.plugin.skin.UiSkinSurface
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BottomBarUiSkinDecorationTest {
 
@@ -18,6 +19,18 @@ class BottomBarUiSkinDecorationTest {
         assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
         assertEquals(34.dp, resolveBottomBarMiuixSkinDockIconSize())
         assertEquals(36.dp, resolveBottomBarCompactSkinHomeIconSize())
+    }
+
+    @Test
+    fun bottomSkinDockLayoutKeepsLargeIconsAndLabelVisible() {
+        val padding = resolveBottomBarSkinDockContentPadding()
+
+        assertEquals(76.dp, resolveBottomBarSkinDockHeight())
+        assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
+        assertEquals(6.dp, padding.calculateTopPadding())
+        assertEquals(2.dp, padding.calculateBottomPadding())
+        assertTrue(padding.calculateBottomPadding() < padding.calculateTopPadding())
+        assertEquals(0.dp, resolveBottomBarSkinIconLabelGap())
     }
 
     @Test

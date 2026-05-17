@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -54,6 +55,17 @@ data class HomeUiSkinDecoration(
 )
 
 internal fun resolveBottomBarSkinDockIconSize(): Dp = 36.dp
+
+internal fun resolveBottomBarSkinDockHeight(): Dp = 76.dp
+
+internal fun resolveBottomBarSkinDockContentPadding(): PaddingValues = PaddingValues(
+    start = 4.dp,
+    end = 4.dp,
+    top = 6.dp,
+    bottom = 2.dp
+)
+
+internal fun resolveBottomBarSkinIconLabelGap(): Dp = 0.dp
 
 internal fun resolveBottomBarMiuixSkinDockIconSize(): Dp = 34.dp
 

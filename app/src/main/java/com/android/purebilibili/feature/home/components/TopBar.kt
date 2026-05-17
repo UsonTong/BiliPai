@@ -315,6 +315,12 @@ internal fun resolveMd3TopTabVerticalLiftDp(): Float = 4f
 
 internal fun resolveMd3TopTabIndicatorBottomPadding(): Dp = 8.dp
 
+internal fun resolveHomeSkinTopTabActionButtonSize(): Dp = 44.dp
+
+internal fun resolveHomeSkinTopTabActionIconSize(): Dp = 24.dp
+
+internal fun resolveHomeSkinTopTabIndicatorBottomPadding(): Dp = 4.dp
+
 internal fun resolveIosTopTabRowHeight(
     isFloatingStyle: Boolean,
     labelMode: Int = com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
@@ -558,7 +564,9 @@ private fun LightweightHomeTopTabs(
     val showIcon = shouldShowTopTabIcon(normalizedLabelMode)
     val showText = shouldShowTopTabText(normalizedLabelMode)
     val effectiveRenderer = if (skinPlainStyle) HomeTopTabRenderer.MD3 else renderer
-    val rowHeight = when (effectiveRenderer) {
+    val rowHeight = if (skinPlainStyle) {
+        resolveHomeSkinTopTabRowHeight()
+    } else when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabRowHeight(isFloatingStyle, normalizedLabelMode)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabVisualSpec(
             isFloatingStyle = isFloatingStyle,
@@ -570,7 +578,9 @@ private fun LightweightHomeTopTabs(
             labelMode = normalizedLabelMode
         ).rowHeight
     }
-    val actionButtonSize = when (effectiveRenderer) {
+    val actionButtonSize = if (skinPlainStyle) {
+        resolveHomeSkinTopTabActionButtonSize()
+    } else when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonSize(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonSize(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonSize(
@@ -578,7 +588,9 @@ private fun LightweightHomeTopTabs(
             androidNativeVariant = AndroidNativeVariant.MIUIX
         )
     }
-    val actionButtonCorner = when (effectiveRenderer) {
+    val actionButtonCorner = if (skinPlainStyle) {
+        0.dp
+    } else when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonCorner(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonCorner(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonCorner(
@@ -586,7 +598,9 @@ private fun LightweightHomeTopTabs(
             androidNativeVariant = AndroidNativeVariant.MIUIX
         )
     }
-    val actionIconSize = when (effectiveRenderer) {
+    val actionIconSize = if (skinPlainStyle) {
+        resolveHomeSkinTopTabActionIconSize()
+    } else when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionIconSize(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionIconSize(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionIconSize(
@@ -635,8 +649,12 @@ private fun LightweightHomeTopTabs(
             HomeTopTabRenderer.MIUIX -> resolveMd3TopTabItemWidthDp(maxWidth.value).dp
         }
         val density = LocalDensity.current
-        val md3IndicatorWidth = 28.dp
-        val md3TopTabVerticalLiftPx = with(density) { resolveMd3TopTabVerticalLiftDp().dp.toPx() }
+        val md3IndicatorWidth = if (skinPlainStyle) 30.dp else 28.dp
+        val md3TopTabVerticalLiftPx = if (skinPlainStyle) {
+            0f
+        } else {
+            with(density) { resolveMd3TopTabVerticalLiftDp().dp.toPx() }
+        }
         val md3IndicatorTranslationXPx by remember(currentPosition, itemWidth, md3IndicatorWidth, density, listState) {
             derivedStateOf {
                 with(density) {
@@ -704,17 +722,28 @@ private fun LightweightHomeTopTabs(
                     }
                 }
                 if (effectiveRenderer == HomeTopTabRenderer.MD3) {
+                    val indicatorColor = if (skinPlainStyle && skinPlainContentColor != null) {
+                        resolveHomeSkinTopTabIndicatorColor(skinPlainContentColor)
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(bottom = resolveMd3TopTabIndicatorBottomPadding())
+                            .padding(
+                                bottom = if (skinPlainStyle) {
+                                    resolveHomeSkinTopTabIndicatorBottomPadding()
+                                } else {
+                                    resolveMd3TopTabIndicatorBottomPadding()
+                                }
+                            )
                             .graphicsLayer {
                                 translationX = md3IndicatorTranslationXPx
                             }
                             .width(md3IndicatorWidth)
                             .height(2.dp)
                             .clip(AppShapes.container(ContainerLevel.Pill))
-                            .background(skinPlainContentColor ?: MaterialTheme.colorScheme.primary)
+                            .background(indicatorColor)
                     )
                 }
             }
@@ -724,7 +753,13 @@ private fun LightweightHomeTopTabs(
             Box(
                 modifier = Modifier
                     .size(actionButtonSize)
-                    .clip(RoundedCornerShape(actionButtonCorner))
+                    .then(
+                        if (skinPlainStyle) {
+                            Modifier
+                        } else {
+                            Modifier.clip(RoundedCornerShape(actionButtonCorner))
+                        }
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = LocalIndication.current

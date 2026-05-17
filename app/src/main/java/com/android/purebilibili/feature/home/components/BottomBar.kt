@@ -444,9 +444,14 @@ internal fun resolveKernelSuBottomBarSearchLayout(
     )
 }
 
-internal fun resolveKernelSuBottomBarDockHeight(searchExpanded: Boolean): Dp {
+internal fun resolveKernelSuBottomBarDockHeight(
+    searchExpanded: Boolean,
+    hasUiSkinDecoration: Boolean = false
+): Dp {
     return if (searchExpanded) {
         resolveKernelSuBottomBarSearchCircleSize()
+    } else if (hasUiSkinDecoration) {
+        resolveBottomBarSkinDockHeight()
     } else {
         64.dp
     }
@@ -2560,8 +2565,12 @@ private fun KernelSuAlignedBottomBar(
                 .fillMaxWidth()
                 .padding(bottom = 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
         ) {
-            val shellHeight = 64.dp
-            val contentPadding = 4.dp
+            val dockHorizontalPadding = 4.dp
+            val dockContentPadding = if (uiSkinDecoration != null) {
+                resolveBottomBarSkinDockContentPadding()
+            } else {
+                PaddingValues(dockHorizontalPadding)
+            }
             val targetSearchLayout = resolveKernelSuBottomBarSearchLayout(
                 containerWidth = maxWidth,
                 itemCount = totalItems,
@@ -2596,7 +2605,8 @@ private fun KernelSuAlignedBottomBar(
             val launchAdjustedSearchGap = searchGap * (1f - searchLaunchProgress)
             val dockHeight by animateDpAsState(
                 targetValue = resolveKernelSuBottomBarDockHeight(
-                    searchExpanded = effectiveSearchExpanded
+                    searchExpanded = effectiveSearchExpanded,
+                    hasUiSkinDecoration = uiSkinDecoration != null
                 ),
                 animationSpec = tween(
                     durationMillis = 220,
@@ -2614,6 +2624,7 @@ private fun KernelSuAlignedBottomBar(
                 ),
                 label = "bottomBarSearchHeight"
             )
+            val shellHeight = if (dockHeight > searchHeight) dockHeight else searchHeight
             val dockContentAlpha by animateFloatAsState(
                 targetValue = if (effectiveSearchExpanded) 0f else 1f,
                 animationSpec = tween(
@@ -2636,7 +2647,7 @@ private fun KernelSuAlignedBottomBar(
             )
             val compactHomeIconSize = resolveKernelSuExpandedHomeIconSize()
             val compactHomeIconScale = resolveKernelSuExpandedHomeIconScale()
-            val indicatorWidth = (dockWidth - (contentPadding * 2)) / totalItems
+            val indicatorWidth = (dockWidth - (dockHorizontalPadding * 2)) / totalItems
             val itemWidthPx = with(density) { indicatorWidth.toPx() }.coerceAtLeast(1f)
             val panelOffsetPx by remember(density, itemWidthPx) {
                 derivedStateOf {
@@ -2648,10 +2659,15 @@ private fun KernelSuAlignedBottomBar(
                     }
                 }
             }
-            val indicatorTranslationXPx by remember(density, contentPadding, indicatorWidth, visualIndicatorPosition) {
+            val indicatorTranslationXPx by remember(
+                density,
+                dockHorizontalPadding,
+                indicatorWidth,
+                visualIndicatorPosition
+            ) {
                 derivedStateOf {
                     with(density) {
-                        (contentPadding + indicatorWidth * visualIndicatorPosition).toPx()
+                        (dockHorizontalPadding + indicatorWidth * visualIndicatorPosition).toPx()
                     }
                 }
             }
@@ -2821,7 +2837,7 @@ private fun KernelSuAlignedBottomBar(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(contentPadding)
+                            .padding(dockContentPadding)
                             .alpha(dockContentAlpha)
                             .graphicsLayer { translationX = panelOffsetPx },
                         verticalAlignment = Alignment.CenterVertically
@@ -2955,7 +2971,7 @@ private fun KernelSuAlignedBottomBar(
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(contentPadding),
+                                    .padding(dockContentPadding),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 visibleItems.forEachIndexed { index, item ->
@@ -3120,7 +3136,7 @@ private fun KernelSuAlignedBottomBar(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(contentPadding)
+                            .padding(dockContentPadding)
                             .alpha(0f)
                             .graphicsLayer { translationX = panelOffsetPx }
                             .horizontalDragGesture(
@@ -3575,7 +3591,12 @@ private fun RowScope.AndroidNativeBottomBarItem(
     val isPressed by interactionSource.collectIsPressedAsState()
     val clickPulseTransform = rememberBottomBarClickPulseTransform(clickPulseKey)
     val currentOnPressChanged by rememberUpdatedState(onPressChanged)
-    val shouldLiftSkinIconLabel = skinIconPath != null && showIcon && showText
+    val shouldUseSkinItemLayout = skinIconPath != null && showIcon && showText
+    val iconLabelGap = if (shouldUseSkinItemLayout) {
+        resolveBottomBarSkinIconLabelGap()
+    } else {
+        0.dp
+    }
 
     LaunchedEffect(isPressed, interactive) {
         if (interactive) {
@@ -3613,13 +3634,9 @@ private fun RowScope.AndroidNativeBottomBarItem(
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.graphicsLayer {
-                if (shouldLiftSkinIconLabel) {
-                    translationY = -3.dp.toPx()
-                }
-            },
+            modifier = if (shouldUseSkinItemLayout) Modifier.fillMaxHeight() else Modifier,
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = if (shouldUseSkinItemLayout) Arrangement.Top else Arrangement.Center
         ) {
             if (showIcon) {
                 Box(
@@ -3666,6 +3683,9 @@ private fun RowScope.AndroidNativeBottomBarItem(
                         }
                     }
                 }
+            }
+            if (showIcon && showText && iconLabelGap > 0.dp) {
+                Spacer(modifier = Modifier.height(iconLabelGap))
             }
             if (showText) {
                 Text(

@@ -584,6 +584,41 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `skin top tabs use compact readable underline layout`() {
+        assertEquals(46.dp, resolveHomeSkinTopTabRowHeight())
+        assertTrue(resolveHomeSkinTopTabRowHeight() >= 44.dp)
+        assertTrue(resolveHomeSkinTopTabRowHeight() <= 48.dp)
+        assertEquals(44.dp, resolveHomeSkinTopTabActionButtonSize())
+        assertEquals(24.dp, resolveHomeSkinTopTabActionIconSize())
+        assertEquals(4.dp, resolveHomeSkinTopTabIndicatorBottomPadding())
+    }
+
+    @Test
+    fun `skin top tab colors stay readable on light and dark skin backgrounds`() {
+        val darkBackgroundContent = resolveHomeSkinTopTabContentColor(Color(0xFF2E2A1E))
+        val lightBackgroundContent = resolveHomeSkinTopTabContentColor(Color(0xFFE4F6FF))
+
+        assertEquals(Color.White.copy(alpha = 0.94f), darkBackgroundContent)
+        assertEquals(Color(0xFF1E252B).copy(alpha = 0.94f), lightBackgroundContent)
+        assertEquals(darkBackgroundContent, resolveHomeSkinTopTabIndicatorColor(darkBackgroundContent))
+        assertEquals(lightBackgroundContent, resolveHomeSkinTopTabIndicatorColor(lightBackgroundContent))
+    }
+
+    @Test
+    fun `skin decoration forces plain top tabs`() {
+        assertFalse(shouldUseHomeSkinPlainTopTabs(null))
+        assertTrue(
+            shouldUseHomeSkinPlainTopTabs(
+                HomeUiSkinDecoration(
+                    skinId = "test",
+                    topAtmosphereTint = Color(0xFFE4F6FF),
+                    searchCapsuleTint = Color.White
+                )
+            )
+        )
+    }
+
+    @Test
     fun `android native miuix top tabs should slightly enlarge action button chrome`() {
         assertEquals(
             18.dp,
