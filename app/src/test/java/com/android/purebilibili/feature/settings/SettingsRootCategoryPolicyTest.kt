@@ -58,4 +58,11 @@ class SettingsRootCategoryPolicyTest {
             resolveSettingsRootCategoryForSearchTarget(SettingsSearchTarget.DIAGNOSTICS)
         )
     }
+
+    @Test
+    fun `root category list index points to content cards after search bar`() {
+        assertEquals(1, resolveSettingsRootCategoryListIndex(SettingsRootCategory.INTERFACE_THEME))
+        assertEquals(2, resolveSettingsRootCategoryListIndex(SettingsRootCategory.HOME_FEED))
+        assertEquals(10, resolveSettingsRootCategoryListIndex(SettingsRootCategory.ABOUT_SUPPORT))
+    }
 }

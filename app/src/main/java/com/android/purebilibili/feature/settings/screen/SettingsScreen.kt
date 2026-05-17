@@ -1332,14 +1332,11 @@ private fun MobileSettingsLayout(
             } else {
                 sectionOrder.forEachIndexed { index, section ->
                     item {
-                        Box(modifier = Modifier.staggeredEntrance(index * 2, isVisible, motionTier = effectiveMotionTier)) {
-                            SettingsCategoryHeader(
-                                title = section.title
-                            )
-                        }
-                    }
-                    item {
-                        Box(modifier = Modifier.staggeredEntrance(index * 2 + 1, isVisible, motionTier = effectiveMotionTier)) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = if (index == 0) 8.dp else 16.dp)
+                                .staggeredEntrance(index, isVisible, motionTier = effectiveMotionTier)
+                        ) {
                             SettingsRootCategoryContent(
                                 category = section,
                                 actions = rootCategoryActions,

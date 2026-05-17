@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.settings
 
 import java.io.File
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsRootCategoryContentStructureTest {
@@ -71,5 +72,20 @@ class SettingsRootCategoryContentStructureTest {
 
         assertTrue(feedSwitchBlock.contains("text = subtitle"))
         assertTrue(!feedSwitchBlock.contains("maxLines = 1"))
+    }
+
+    @Test
+    fun mobileSettingsRoot_doesNotRenderDuplicateCategoryHeaders() {
+        val source = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/screen/SettingsScreen.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/screen/SettingsScreen.kt")
+        ).first { it.exists() }.readText()
+
+        val rootLoopBlock = source
+            .substringAfter("sectionOrder.forEachIndexed { index, section ->")
+            .substringBefore("item { Spacer(modifier = Modifier.height(16.dp)) }")
+
+        assertFalse(rootLoopBlock.contains("SettingsCategoryHeader("))
+        assertTrue(rootLoopBlock.contains("SettingsRootCategoryContent("))
     }
 }
