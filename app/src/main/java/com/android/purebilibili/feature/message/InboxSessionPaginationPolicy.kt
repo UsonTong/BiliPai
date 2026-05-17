@@ -35,22 +35,27 @@ internal object InboxSessionPaginationPolicy {
         existing: List<SessionItem>,
         incoming: List<SessionItem>,
         responseHasMore: Boolean,
-        requestedEndTs: Long
+        requestedEndTs: Long,
+        canRetryDuplicatePage: Boolean = true
     ): InboxSessionPageMergeResult {
         val existingKeys = existing.map { it.sessionKey }.toSet()
         val newSessions = incoming.filter { it.sessionKey !in existingKeys }
         val nextEndTs = resolveNextEndTs(incoming, requestedEndTs)
         val canAdvanceCursor = nextEndTs > 0L && nextEndTs != requestedEndTs
-        val shouldRetry = responseHasMore &&
-            newSessions.isEmpty() &&
-            incoming.isNotEmpty() &&
+        val isDuplicatePage = newSessions.isEmpty() && incoming.isNotEmpty()
+        val shouldRetry = canRetryDuplicatePage &&
+            responseHasMore &&
+            isDuplicatePage &&
             canAdvanceCursor
+        val hasMore = responseHasMore &&
+            nextEndTs > 0L &&
+            (newSessions.isNotEmpty() || shouldRetry)
 
         return InboxSessionPageMergeResult(
             sessions = sortSessions(existing + newSessions).distinctBy { it.sessionKey },
             newSessions = newSessions,
             nextEndTs = nextEndTs,
-            hasMore = responseHasMore && nextEndTs > 0L,
+            hasMore = hasMore,
             shouldRetryWithOlderCursor = shouldRetry
         )
     }

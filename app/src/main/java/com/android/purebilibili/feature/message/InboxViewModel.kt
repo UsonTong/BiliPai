@@ -260,10 +260,11 @@ class InboxViewModel : ViewModel() {
                     existing = _uiState.value.sessions,
                     incoming = newSessions,
                     responseHasMore = data.has_more == 1,
-                    requestedEndTs = requestedEndTs
+                    requestedEndTs = requestedEndTs,
+                    canRetryDuplicatePage = remainingDuplicateRetries > 0
                 )
 
-                if (mergeResult.shouldRetryWithOlderCursor && remainingDuplicateRetries > 0) {
+                if (mergeResult.shouldRetryWithOlderCursor) {
                     loadMoreSessionsFromCursor(
                         baseState = baseState.copy(endTs = mergeResult.nextEndTs),
                         requestedEndTs = mergeResult.nextEndTs,
