@@ -828,7 +828,7 @@ private fun ScrollableVideoInfoSection(
                     bgmInfoList = bgmInfoList
                 ),
                 onBgmClick = onBgmClick,
-                onRelatedVideoClick = onRelatedVideoClick
+                onRelatedVideoClick = onRelatedVideoClick,
                 onDescriptionUrlClick = onOpenBilibiliLink
             )
             Spacer(modifier = Modifier.height(12.dp))
