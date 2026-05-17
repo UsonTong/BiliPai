@@ -268,6 +268,7 @@ object DynamicModulesFlexibleSerializer : KSerializer<DynamicModules> {
         val mergedMajor = DynamicMajor(
             type = "MAJOR_TYPE_OPUS",
             archive = existingMajor?.archive,
+            article = existingMajor?.article,
             draw = existingMajor?.draw,
             live_rcmd = existingMajor?.live_rcmd,
             opus = mergedOpus,
@@ -369,6 +370,7 @@ data class DynamicMajor(
     val type: String = "", // MAJOR_TYPE_ARCHIVE, MAJOR_TYPE_DRAW, MAJOR_TYPE_LIVE_RCMD, MAJOR_TYPE_OPUS, MAJOR_TYPE_NONE
     val archive: ArchiveMajor? = null, // 视频
     val pgc: ArchiveMajor? = null, // 番剧/影视
+    val article: ArticleMajor? = null, // 专栏
     val draw: DrawMajor? = null, // 图片
     val live_rcmd: LiveRcmdMajor? = null, //  直播
     val opus: OpusMajor? = null, //  [新增] 图文动态 (新版格式)
@@ -461,6 +463,17 @@ data class DrawItem(
     val src: String = "", // 图片 URL
     val width: Int = 0,
     val height: Int = 0
+)
+
+@Serializable
+data class ArticleMajor(
+    @Serializable(with = FlexibleLongSerializer::class)
+    val id: Long = 0,
+    val title: String = "",
+    val desc: String = "",
+    val covers: List<String> = emptyList(),
+    val jump_url: String = "",
+    val label: String = ""
 )
 
 // --- 统计模块 ---

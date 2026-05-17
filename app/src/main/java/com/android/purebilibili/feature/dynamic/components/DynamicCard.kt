@@ -403,6 +403,48 @@ fun DynamicCardV2(
                 }
             }
         }
+
+        content?.major?.article?.let { article ->
+            val articleCovers = remember(article.covers) { resolveArticleCoverUrls(article) }
+            if (articleCovers.isNotEmpty()) {
+                var selectedImageIndex by remember { mutableIntStateOf(-1) }
+                var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                val articlePreviewText = remember(author?.name, visibleDynamicDesc?.text, article.title, article.desc) {
+                    val body = visibleDynamicDesc?.text
+                        .takeUnless { it.isNullOrBlank() }
+                        ?: article.desc.ifBlank { article.title }
+                    ImagePreviewTextContent(
+                        headline = author?.name.orEmpty(),
+                        body = body
+                    )
+                }
+                val drawItems = remember(article.covers) { resolveArticleCoverDrawItems(article) }
+                DrawGridV2(
+                    items = drawItems,
+                    gifImageLoader = gifImageLoader,
+                    maxDisplayImages = if (isDetail) null else 9,
+                    onImageClick = { index, rect ->
+                        val action = resolveDynamicCardMediaAction(item, index)
+                        if (action is DynamicCardMediaAction.PreviewImages) {
+                            selectedImageIndex = action.initialIndex
+                            sourceRect = rect
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (selectedImageIndex >= 0) {
+                    ImagePreviewDialog(
+                        images = articleCovers,
+                        initialIndex = selectedImageIndex,
+                        sourceRect = sourceRect,
+                        textContent = articlePreviewText,
+                        defaultTextVisible = dynamicPreviewTextVisible,
+                        onDismiss = { selectedImageIndex = -1 }
+                    )
+                }
+            }
+        }
         
         //  [新增] 合集/剧集动态
         content?.major?.ugc_season?.let { season ->

@@ -177,6 +177,55 @@ class DynamicModulesFlexibleSerializerTest {
     }
 
     @Test
+    fun dynamicDetailResponse_parsesArticleMajorCoversFromDynamicDetail() {
+        val payload = """
+            {
+              "code": 0,
+              "data": {
+                "item": {
+                  "id_str": "1199344045210468386",
+                  "type": "DYNAMIC_TYPE_ARTICLE",
+                  "modules": {
+                    "module_dynamic": {
+                      "desc": {
+                        "text": "卡片魔王 V260507 更新公告"
+                      },
+                      "major": {
+                        "type": "MAJOR_TYPE_ARTICLE",
+                        "article": {
+                          "id": 123456,
+                          "title": "卡片魔王 V260507 更新公告",
+                          "desc": "新增功能",
+                          "covers": [
+                            "https://i0.hdslb.com/bfs/article/cover-a.jpg",
+                            "https://i0.hdslb.com/bfs/article/cover-b.jpg"
+                          ],
+                          "jump_url": "https://www.bilibili.com/read/cv123456"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val response = json.decodeFromString<DynamicDetailResponse>(payload)
+        val article = response.data?.item?.modules?.module_dynamic?.major?.article
+
+        assertEquals("MAJOR_TYPE_ARTICLE", response.data?.item?.modules?.module_dynamic?.major?.type)
+        assertEquals(123456L, article?.id)
+        assertEquals("卡片魔王 V260507 更新公告", article?.title)
+        assertEquals(
+            listOf(
+                "https://i0.hdslb.com/bfs/article/cover-a.jpg",
+                "https://i0.hdslb.com/bfs/article/cover-b.jpg"
+            ),
+            article?.covers
+        )
+    }
+
+    @Test
     fun dynamicDetailResponse_prefersFullOpusParagraphsOverPreviewDescWhenBothExist() {
         val payload = """
             {

@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import com.android.purebilibili.data.model.response.ArchiveMajor
+import com.android.purebilibili.data.model.response.ArticleMajor
 import com.android.purebilibili.data.model.response.DynamicContentModule
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.DynamicMajor
@@ -156,5 +157,54 @@ class DynamicCardClickPolicyTest {
         val item = DynamicItem(id_str = "123")
 
         assertEquals(null, resolveDynamicWatchLaterAid(item))
+    }
+
+    @Test
+    fun resolveDynamicCardMediaAction_previewsArticleCovers() {
+        val item = DynamicItem(
+            id_str = "1199344045210468386",
+            type = "DYNAMIC_TYPE_ARTICLE",
+            modules = DynamicModules(
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        type = "MAJOR_TYPE_ARTICLE",
+                        article = ArticleMajor(
+                            covers = listOf(
+                                "https://i0.hdslb.com/bfs/article/a.jpg",
+                                "https://i0.hdslb.com/bfs/article/b.jpg"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val action = resolveDynamicCardMediaAction(item, clickedIndex = 1)
+
+        assertTrue(action is DynamicCardMediaAction.PreviewImages)
+        assertEquals(
+            listOf(
+                "https://i0.hdslb.com/bfs/article/a.jpg",
+                "https://i0.hdslb.com/bfs/article/b.jpg"
+            ),
+            (action as DynamicCardMediaAction.PreviewImages).images
+        )
+        assertEquals(1, action.initialIndex)
+    }
+
+    @Test
+    fun resolveArticleCoverDrawItems_filtersBlankCoversForRendering() {
+        val drawItems = resolveArticleCoverDrawItems(
+            ArticleMajor(
+                covers = listOf(
+                    " ",
+                    " https://i0.hdslb.com/bfs/article/a.jpg ",
+                    ""
+                )
+            )
+        )
+
+        assertEquals(1, drawItems.size)
+        assertEquals("https://i0.hdslb.com/bfs/article/a.jpg", drawItems.first().src)
     }
 }

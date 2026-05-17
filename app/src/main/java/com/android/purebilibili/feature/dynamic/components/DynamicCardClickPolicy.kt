@@ -4,6 +4,8 @@ import com.android.purebilibili.core.util.BilibiliUrlParser
 import com.android.purebilibili.core.util.BilibiliNavigationTarget
 import com.android.purebilibili.core.util.BilibiliNavigationTargetParser
 import com.android.purebilibili.data.model.response.ArchiveMajor
+import com.android.purebilibili.data.model.response.ArticleMajor
+import com.android.purebilibili.data.model.response.DrawItem
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.LiveRcmdMajor
 import com.android.purebilibili.data.model.response.UgcSeasonMajor
@@ -109,6 +111,18 @@ internal fun resolveUgcSeasonArchiveFallback(season: UgcSeasonMajor): ArchiveMaj
     )
 }
 
+internal fun resolveArticleCoverUrls(article: ArticleMajor): List<String> {
+    return article.covers
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+}
+
+internal fun resolveArticleCoverDrawItems(article: ArticleMajor): List<DrawItem> {
+    return resolveArticleCoverUrls(article).map { cover ->
+        DrawItem(src = cover)
+    }
+}
+
 internal fun resolveDynamicCardPrimaryAction(item: DynamicItem): DynamicCardPrimaryAction {
     val target = item.orig ?: item
     val authorMid = target.modules.module_author?.mid ?: 0L
@@ -149,6 +163,7 @@ internal fun resolveDynamicCardMediaAction(
     val images = when {
         major.draw != null && major.draw.items.isNotEmpty() -> major.draw.items.map { it.src }
         major.opus != null && major.opus.pics.isNotEmpty() -> major.opus.pics.map { it.url }
+        major.article != null -> resolveArticleCoverUrls(major.article)
         else -> emptyList()
     }
     if (clickedIndex !in images.indices) return DynamicCardMediaAction.None
