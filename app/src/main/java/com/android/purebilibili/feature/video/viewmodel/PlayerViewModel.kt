@@ -141,6 +141,13 @@ internal fun reduceSponsorSkipUiState(
     }
 }
 
+internal fun shouldResumePlaybackAfterSponsorBlockSkip(
+    playWhenReadyBeforeSkip: Boolean
+): Boolean {
+    // 空降助手跳过是用户启用的连续播放能力；跳过后保持暂停会让每个片段都需要再点一次播放。
+    return true
+}
+
 internal fun buildSponsorBlockVideoSnapshot(currentState: PlayerUiState): SponsorBlockVideoSnapshot? {
     val success = currentState as? PlayerUiState.Success ?: return null
     val info = success.info
@@ -5902,7 +5909,12 @@ class PlayerViewModel : ViewModel() {
                             is SkipAction.SkipTo -> {
                                 val snapshot = buildSponsorBlockVideoSnapshot(_uiState.value)
                                 clearSponsorSkipUi()
-                                playbackUseCase.seekTo(action.positionMs)
+                                playbackUseCase.seekTo(
+                                    position = action.positionMs,
+                                    resumePlayback = shouldResumePlaybackAfterSponsorBlockSkip(
+                                        playWhenReadyBeforeSkip = exoPlayer?.playWhenReady == true
+                                    )
+                                )
                                 recordSponsorBlockSkip(
                                     snapshot = snapshot,
                                     segmentId = action.segmentId,
@@ -5965,7 +5977,12 @@ class PlayerViewModel : ViewModel() {
                 )
             }
         }
-        playbackUseCase.seekTo(targetPosition)
+        playbackUseCase.seekTo(
+            position = targetPosition,
+            resumePlayback = shouldResumePlaybackAfterSponsorBlockSkip(
+                playWhenReadyBeforeSkip = exoPlayer?.playWhenReady == true
+            )
+        )
         clearSponsorSkipUi()
     }
 

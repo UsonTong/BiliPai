@@ -938,8 +938,17 @@ class VideoPlaybackUseCase(
     /**
      * Seek to position
      */
-    fun seekTo(position: Long) {
-        exoPlayer?.seekTo(position)
+    fun seekTo(position: Long, resumePlayback: Boolean = false) {
+        val player = exoPlayer ?: return
+        if (resumePlayback) {
+            seekPlayerFromUserAction(
+                player = player,
+                positionMs = position,
+                shouldResumePlaybackOverride = true
+            )
+        } else {
+            player.seekTo(position)
+        }
     }
 
     fun resolvePlaybackSelection(

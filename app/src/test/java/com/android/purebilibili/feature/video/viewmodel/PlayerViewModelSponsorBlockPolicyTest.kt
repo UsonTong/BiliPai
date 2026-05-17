@@ -45,6 +45,20 @@ class PlayerViewModelSponsorBlockPolicyTest {
     }
 
     @Test
+    fun sponsorBlockSkip_forcesPlaybackResumeEvenWhenPlayerWasPaused() {
+        assertTrue(
+            shouldResumePlaybackAfterSponsorBlockSkip(
+                playWhenReadyBeforeSkip = false
+            )
+        )
+        assertTrue(
+            shouldResumePlaybackAfterSponsorBlockSkip(
+                playWhenReadyBeforeSkip = true
+            )
+        )
+    }
+
+    @Test
     fun sponsorBlockVideoSnapshot_capturesCoverAndUpFaceBeforeSeek() {
         val snapshot = buildSponsorBlockVideoSnapshot(
             currentState = PlayerUiState.Success(
