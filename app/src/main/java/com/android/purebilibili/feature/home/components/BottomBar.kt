@@ -868,7 +868,7 @@ internal fun resolveBottomBarSkinContentColors(
         readableBackgroundIsLight -> Color.White
         else -> Color.Black
     }
-    val labelScrimAlpha = if (skinTrimTint == null) 0f else 0.22f
+    val labelScrimAlpha = 0f
     if (skinTrimTint == null || !darkTheme || !readableBackgroundIsLight) {
         return BottomBarSkinContentColors(
             selectedColor = selectedColor,

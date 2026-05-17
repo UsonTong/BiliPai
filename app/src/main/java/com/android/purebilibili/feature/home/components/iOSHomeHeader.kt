@@ -7,6 +7,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -123,8 +124,13 @@ internal fun resolveHomeSkinSearchSurfaceColor(
 }
 
 internal fun resolveHomeSkinTopTabContentColor(
-    topAtmosphereTint: Color
+    topAtmosphereTint: Color,
+    hasTopAtmosphereImage: Boolean = false,
+    darkTheme: Boolean = false
 ): Color {
+    if (hasTopAtmosphereImage && darkTheme) {
+        return Color.White.copy(alpha = 0.98f)
+    }
     return if (topAtmosphereTint.luminance() < 0.72f) {
         Color.White.copy(alpha = 0.98f)
     } else {
@@ -1775,7 +1781,11 @@ fun iOSHomeHeader(
     )
     val tabBorderAlpha = if (isTabFloating) tabChromeStyle.borderAlpha else 0f
     val skinPlainTopTabContentColor = uiSkinDecoration?.let {
-        resolveHomeSkinTopTabContentColor(it.topAtmosphereTint)
+        resolveHomeSkinTopTabContentColor(
+            topAtmosphereTint = it.topAtmosphereTint,
+            hasTopAtmosphereImage = !it.topAtmosphereImagePath.isNullOrBlank(),
+            darkTheme = isSystemInDarkTheme()
+        )
     }
     val topTabsContent: @Composable () -> Unit = {
         HomeTopTabChrome(

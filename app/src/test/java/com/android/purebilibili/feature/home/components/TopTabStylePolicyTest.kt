@@ -617,6 +617,35 @@ class TopTabStylePolicyTest {
     }
 
     @Test
+    fun `skin top tab image backed dark mode uses light content for all presets`() {
+        val lightFallbackTint = Color(0xFFDFF5FF)
+        val presets = listOf(
+            UiPreset.IOS to AndroidNativeVariant.MATERIAL3,
+            UiPreset.MD3 to AndroidNativeVariant.MATERIAL3,
+            UiPreset.MD3 to AndroidNativeVariant.MIUIX
+        )
+
+        presets.forEach { (uiPreset, androidNativeVariant) ->
+            resolveHomeTopPresetStyle(
+                uiPreset = uiPreset,
+                androidNativeVariant = androidNativeVariant,
+                labelMode = 0
+            )
+            val contentColor = resolveHomeSkinTopTabContentColor(
+                topAtmosphereTint = lightFallbackTint,
+                hasTopAtmosphereImage = true,
+                darkTheme = true
+            )
+
+            assertEquals(
+                "$uiPreset/$androidNativeVariant should stay readable over dark image-backed skin",
+                Color.White.copy(alpha = 0.98f),
+                contentColor
+            )
+        }
+    }
+
+    @Test
     fun `skin decoration forces plain top tabs`() {
         assertFalse(shouldUseHomeSkinPlainTopTabs(null))
         assertTrue(
