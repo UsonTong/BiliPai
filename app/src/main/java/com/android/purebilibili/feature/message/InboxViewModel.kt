@@ -44,25 +44,8 @@ data class InboxUiState(
     val userInfoMap: Map<Long, UserBasicInfo> = emptyMap()  //  用户信息缓存
 )
 
-/**
- * 会话排序：置顶在前（按置顶时间降序），再按最近消息时间降序
- */
-private fun List<SessionItem>.sortedByPin(): List<SessionItem> =
-    sortedWith(
-        compareByDescending<SessionItem> { it.top_ts }
-            .thenByDescending { it.session_ts }
-    )
-
-private fun resolveSessionEndTs(sessionTs: Long): Long {
-    if (sessionTs <= 0L) return 0L
-    return when {
-        sessionTs >= 1_000_000_000_000_000L -> sessionTs
-        sessionTs >= 1_000_000_000_000L -> sessionTs * 1_000L
-        else -> sessionTs * 1_000_000L
-    }
-}
-
 private const val USER_INFO_FETCH_BATCH_SIZE = 12
+private const val LOAD_MORE_DUPLICATE_RETRY_LIMIT = 2
 
 class InboxViewModel : ViewModel() {
     
@@ -107,13 +90,12 @@ class InboxViewModel : ViewModel() {
                     val sessions = data.session_list ?: emptyList()
                     
                     //  计算下一次加载的游标
-                    val lastSession = sessions.lastOrNull()
-                    val nextEndTs = resolveSessionEndTs(lastSession?.session_ts ?: 0L)
+                    val nextEndTs = InboxSessionPaginationPolicy.resolveNextEndTs(sessions)
                     
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        sessions = sessions.sortedByPin(),
-                        hasMore = data.has_more == 1,
+                        sessions = InboxSessionPaginationPolicy.sortSessions(sessions),
+                        hasMore = data.has_more == 1 && nextEndTs > 0L,
                         userInfoMap = primeSessionUserCache(sessions).toMap(),
                         endTs = nextEndTs,
                         page = 1
@@ -251,53 +233,60 @@ class InboxViewModel : ViewModel() {
         if (_uiState.value.isLoadingMore || !_uiState.value.hasMore) return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingMore = true)
-
             val currentState = _uiState.value
-            MessageRepository.getSessions(
-                sessionType = currentState.selectedCategory.apiSessionType,
-                size = 100,
-                page = 1,
-                endTs = currentState.endTs
-            ).fold(
-                onSuccess = { data ->
-                    val newSessions = data.session_list ?: emptyList()
-                    
-                    // 去重合并: 过滤掉已存在的会话 (基于 talker_id 和 session_type)
-                    val existingKeys = _uiState.value.sessions.map { "${it.talker_id}_${it.session_type}" }.toSet()
-                    val filteredNewSessions = newSessions.filter { 
-                        "${it.talker_id}_${it.session_type}" !in existingKeys
-                    }
-                    
-                    val allSessions = (_uiState.value.sessions + filteredNewSessions)
-                        .distinctBy { "${it.talker_id}_${it.session_type}" }
-                        .sortedByPin()
-                    val nextEndTs = resolveSessionEndTs(
-                        (filteredNewSessions.lastOrNull() ?: newSessions.lastOrNull())?.session_ts ?: 0L
-                    )
-                    
-                    val cursorFetchAddedNewItems = filteredNewSessions.isNotEmpty()
-                    if (!cursorFetchAddedNewItems && currentState.page >= 1) {
-                        loadMoreSessionsByPageFallback(currentState.page + 1)
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            isLoadingMore = false,
-                            sessions = allSessions,
-                            hasMore = data.has_more == 1 && nextEndTs > 0L,
-                            page = currentState.page + 1,
-                            userInfoMap = primeSessionUserCache(filteredNewSessions).toMap(),
-                            endTs = nextEndTs
-                        )
-
-                        // 异步加载用户信息
-                        loadUserInfosForSessions(filteredNewSessions)
-                    }
-                },
-                onFailure = {
-                    _uiState.value = _uiState.value.copy(isLoadingMore = false)
-                }
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            loadMoreSessionsFromCursor(
+                baseState = currentState,
+                requestedEndTs = currentState.endTs,
+                remainingDuplicateRetries = LOAD_MORE_DUPLICATE_RETRY_LIMIT
             )
         }
+    }
+
+    private suspend fun loadMoreSessionsFromCursor(
+        baseState: InboxUiState,
+        requestedEndTs: Long,
+        remainingDuplicateRetries: Int
+    ) {
+        MessageRepository.getSessions(
+            sessionType = baseState.selectedCategory.apiSessionType,
+            size = 100,
+            page = 1,
+            endTs = requestedEndTs
+        ).fold(
+            onSuccess = { data ->
+                val newSessions = data.session_list.orEmpty()
+                val mergeResult = InboxSessionPaginationPolicy.mergePage(
+                    existing = _uiState.value.sessions,
+                    incoming = newSessions,
+                    responseHasMore = data.has_more == 1,
+                    requestedEndTs = requestedEndTs
+                )
+
+                if (mergeResult.shouldRetryWithOlderCursor && remainingDuplicateRetries > 0) {
+                    loadMoreSessionsFromCursor(
+                        baseState = baseState.copy(endTs = mergeResult.nextEndTs),
+                        requestedEndTs = mergeResult.nextEndTs,
+                        remainingDuplicateRetries = remainingDuplicateRetries - 1
+                    )
+                    return@fold
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    sessions = mergeResult.sessions,
+                    hasMore = mergeResult.hasMore,
+                    page = baseState.page + 1,
+                    userInfoMap = primeSessionUserCache(mergeResult.newSessions).toMap(),
+                    endTs = mergeResult.nextEndTs
+                )
+
+                loadUserInfosForSessions(mergeResult.newSessions)
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(isLoadingMore = false)
+            }
+        )
     }
 
     /**
@@ -329,14 +318,13 @@ class InboxViewModel : ViewModel() {
                     val sessions = data.session_list ?: emptyList()
                     
                     // 计算 cursor
-                    val lastSession = sessions.lastOrNull()
-                    val nextEndTs = resolveSessionEndTs(lastSession?.session_ts ?: 0L)
+                    val nextEndTs = InboxSessionPaginationPolicy.resolveNextEndTs(sessions)
                     
                     _uiState.value = _uiState.value.copy(
                         isRefreshing = false,
                         isBatchOperating = false,
-                        sessions = sessions.sortedByPin(),
-                        hasMore = data.has_more == 1,
+                        sessions = InboxSessionPaginationPolicy.sortSessions(sessions),
+                        hasMore = data.has_more == 1 && nextEndTs > 0L,
                         userInfoMap = primeSessionUserCache(sessions).toMap(),
                         endTs = nextEndTs
                     )
@@ -389,7 +377,7 @@ class InboxViewModel : ViewModel() {
                 if (it.talker_id == session.talker_id && it.session_type == session.session_type) {
                     it.copy(top_ts = if (isCurrentlyTop) 0 else now)
                 } else it
-            }.sortedByPin()
+            }.let(InboxSessionPaginationPolicy::sortSessions)
             _uiState.value = _uiState.value.copy(sessions = updatedSessions)
             
             MessageRepository.setSessionTop(session.talker_id, session.session_type, !isCurrentlyTop)
@@ -491,41 +479,4 @@ class InboxViewModel : ViewModel() {
         return userCache
     }
 
-    private fun loadMoreSessionsByPageFallback(nextPage: Int) {
-        viewModelScope.launch {
-            MessageRepository.getSessions(
-                sessionType = _uiState.value.selectedCategory.apiSessionType,
-                size = 100,
-                page = nextPage,
-                endTs = 0L
-            ).fold(
-                onSuccess = { data ->
-                    val newSessions = data.session_list.orEmpty()
-                    val existingKeys = _uiState.value.sessions
-                        .map { "${it.talker_id}_${it.session_type}" }
-                        .toSet()
-                    val filteredNewSessions = newSessions.filter {
-                        "${it.talker_id}_${it.session_type}" !in existingKeys
-                    }
-                    val allSessions = (_uiState.value.sessions + filteredNewSessions)
-                        .distinctBy { "${it.talker_id}_${it.session_type}" }
-                        .sortedByPin()
-                    val nextEndTs = resolveSessionEndTs(newSessions.lastOrNull()?.session_ts ?: 0L)
-
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingMore = false,
-                        sessions = allSessions,
-                        hasMore = data.has_more == 1 || filteredNewSessions.isNotEmpty(),
-                        page = nextPage,
-                        userInfoMap = primeSessionUserCache(filteredNewSessions).toMap(),
-                        endTs = nextEndTs
-                    )
-                    loadUserInfosForSessions(filteredNewSessions)
-                },
-                onFailure = {
-                    _uiState.value = _uiState.value.copy(isLoadingMore = false)
-                }
-            )
-        }
-    }
 }
