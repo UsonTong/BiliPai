@@ -209,4 +209,21 @@ class PluginsScreenPolicyTest {
         assertEquals("社区分享：未声明允许", uiModel.shareText)
         assertEquals("官方素材：声明包含，请勿作为社区包分发", uiModel.officialAssetText)
     }
+
+    @Test
+    fun installedUiSkinSubtitle_usesShortChineseSurfaceLabels() {
+        val manifest = UiSkinManifest(
+            formatVersion = 1,
+            skinId = "local.bilibili_skin.2233_summer_ice",
+            displayName = "2233夏日冰品",
+            version = "1628501914",
+            apiVersion = 1,
+            surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR, UiSkinSurface.HOME_TOP_CHROME)
+        )
+
+        assertEquals(
+            "1628501914 · 首页底栏、首页顶部 · 资源装饰",
+            buildInstalledUiSkinSubtitle(manifest)
+        )
+    }
 }

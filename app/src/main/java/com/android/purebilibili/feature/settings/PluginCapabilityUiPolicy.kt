@@ -5,7 +5,9 @@ import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadEntry
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadType
 import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
+import com.android.purebilibili.core.plugin.skin.UiSkinManifest
 import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
+import com.android.purebilibili.core.plugin.skin.UiSkinSurface
 
 data class PluginCapabilityUiModel(
     val capability: PluginCapability,
@@ -172,6 +174,19 @@ fun buildUiSkinPackagePreview(
         }
     )
 }
+
+fun buildInstalledUiSkinSubtitle(manifest: UiSkinManifest): String {
+    val surfaceText = manifest.surfaces
+        .sortedBy { it.ordinal }
+        .joinToString("、") { it.displayLabel }
+    return "${manifest.version} · $surfaceText · 资源装饰"
+}
+
+private val UiSkinSurface.displayLabel: String
+    get() = when (this) {
+        UiSkinSurface.HOME_BOTTOM_BAR -> "首页底栏"
+        UiSkinSurface.HOME_TOP_CHROME -> "首页顶部"
+    }
 
 private val PluginCapability.label: String
     get() = when (this) {

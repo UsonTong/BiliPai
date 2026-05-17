@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.android.purebilibili.R
 import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
@@ -668,9 +669,11 @@ fun PluginsContent(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "${skin.manifest.version} · ${skin.manifest.surfaces.joinToString()} · 只保存资源，可替换首页皮肤图标和装饰层",
+                                            text = buildInstalledUiSkinSubtitle(skin.manifest),
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            lineHeight = 18.sp,
+                                            maxLines = 2
                                         )
                                     }
                                     AppAdaptiveSwitch(
