@@ -2875,6 +2875,11 @@ private fun KernelSuAlignedBottomBar(
                                 .height(dockHeight)
                                 .align(Alignment.CenterStart)
                         ) {
+                            BottomBarSkinDecorativeTrim(
+                                decoration = uiSkinDecoration,
+                                modifier = Modifier.matchParentSize()
+                            )
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()

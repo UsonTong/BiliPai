@@ -1,6 +1,9 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,8 +16,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.plugin.skin.UiSkinState
+import com.android.purebilibili.core.plugin.skin.UiSkinSurface
 import java.io.File
 
 data class BottomBarUiSkinDecoration(
@@ -24,10 +29,24 @@ data class BottomBarUiSkinDecoration(
     val bottomTrimImagePath: String? = null
 )
 
+data class HomeUiSkinDecoration(
+    val skinId: String,
+    val topAtmosphereTint: Color,
+    val searchCapsuleTint: Color,
+    val topAtmosphereImagePath: String? = null
+)
+
 @Composable
 fun rememberBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinDecoration? {
     return remember(uiSkinState) {
         resolveBottomBarUiSkinDecoration(uiSkinState)
+    }
+}
+
+@Composable
+fun rememberHomeUiSkinDecoration(uiSkinState: UiSkinState): HomeUiSkinDecoration? {
+    return remember(uiSkinState) {
+        resolveHomeUiSkinDecoration(uiSkinState)
     }
 }
 
@@ -48,6 +67,74 @@ fun resolveBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinD
             ),
             bottomTrimImagePath = activeSkin.assetFilePath(activeSkin.manifest.assets.bottomBarTrim)
         )
+    }
+}
+
+fun resolveHomeUiSkinDecoration(uiSkinState: UiSkinState): HomeUiSkinDecoration? {
+    val activeSkin = uiSkinState.activeSkin
+    return if (!uiSkinState.enabled || activeSkin == null) {
+        null
+    } else {
+        val manifest = activeSkin.manifest
+        val hasTopDecoration = UiSkinSurface.HOME_TOP_CHROME in manifest.surfaces &&
+            (
+                manifest.assets.topAtmosphere != null ||
+                    manifest.colors.topAtmosphereTint != null ||
+                    manifest.colors.searchCapsuleTint != null
+                )
+        if (!hasTopDecoration) return null
+        HomeUiSkinDecoration(
+            skinId = manifest.skinId,
+            topAtmosphereTint = parseUiSkinColor(
+                value = manifest.colors.topAtmosphereTint,
+                fallback = Color(0xFFDFF5FF)
+            ),
+            searchCapsuleTint = parseUiSkinColor(
+                value = manifest.colors.searchCapsuleTint,
+                fallback = Color.White
+            ),
+            topAtmosphereImagePath = activeSkin.assetFilePath(manifest.assets.topAtmosphere)
+        )
+    }
+}
+
+@Composable
+internal fun HomeSkinAtmosphere(
+    decoration: HomeUiSkinDecoration?,
+    modifier: Modifier = Modifier
+) {
+    if (decoration == null) return
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clearAndSetSemantics {}
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            decoration.topAtmosphereTint.copy(alpha = 0.30f),
+                            decoration.searchCapsuleTint.copy(alpha = 0.12f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = size.height * 0.42f
+                    )
+                )
+            }
+    ) {
+        val imagePath = decoration.topAtmosphereImagePath
+        if (!imagePath.isNullOrBlank()) {
+            AsyncImage(
+                model = File(imagePath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(190.dp)
+                    .alpha(0.44f)
+                    .clearAndSetSemantics {}
+            )
+        }
     }
 }
 

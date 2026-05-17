@@ -145,12 +145,15 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
-    fun `skin decoration stays outside refraction indicator and input layers`() {
+    fun `skin decoration participates in refraction capture without replacing indicator`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
         val skinDecorationSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
         val kernelSuRendererSource = source
             .substringAfter("private fun KernelSuAlignedBottomBar(")
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+        val refractionCaptureSource = kernelSuRendererSource
+            .substringAfter("if (shouldRenderRefractionCapture && backdrop != null) {")
+            .substringBefore("if (selectedIndex in visibleItems.indices)")
 
         val shellIndex = kernelSuRendererSource.indexOf(".kernelSuFloatingDockSurface(")
         val skinIndex = kernelSuRendererSource.indexOf("BottomBarSkinDecorativeTrim(")
@@ -167,6 +170,10 @@ class BottomBarMiuixStructureTest {
         assertTrue(captureIndex > visibleContentIndex)
         assertTrue(indicatorIndex > captureIndex)
         assertTrue(inputIndex > indicatorIndex)
+        val capturedSkinIndex = refractionCaptureSource.indexOf("BottomBarSkinDecorativeTrim(")
+        val capturedContentIndex = refractionCaptureSource.indexOf("val coverage = itemCoverage(index)")
+        assertTrue(capturedSkinIndex >= 0)
+        assertTrue(capturedContentIndex > capturedSkinIndex)
         assertTrue(skinDecorationSource.contains("AsyncImage("))
         assertTrue(skinDecorationSource.contains("model = File(imagePath)"))
         assertFalse(skinDecorationSource.contains("ColorFilter.tint"))

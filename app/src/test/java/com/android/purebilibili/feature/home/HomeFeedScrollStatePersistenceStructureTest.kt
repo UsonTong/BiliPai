@@ -18,6 +18,20 @@ class HomeFeedScrollStatePersistenceStructureTest {
         assertFalse(source.contains("gridStates[category] = rememberLazyGridState()"))
     }
 
+    @Test
+    fun `home skin atmosphere stays behind pager content`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/HomeScreen.kt")
+        val backdropIndex = source.indexOf("HomeWallpaperBackdrop(")
+        val skinAtmosphereIndex = source.indexOf("HomeSkinAtmosphere(")
+        val pagerIndex = source.indexOf("HorizontalPager(", startIndex = skinAtmosphereIndex)
+
+        assertTrue(source.contains("val uiSkinState by rememberUiSkinState(context)"))
+        assertTrue(source.contains("val homeUiSkinDecoration = rememberHomeUiSkinDecoration(uiSkinState)"))
+        assertTrue(backdropIndex >= 0)
+        assertTrue(skinAtmosphereIndex > backdropIndex)
+        assertTrue(pagerIndex > skinAtmosphereIndex)
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(
