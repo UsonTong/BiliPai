@@ -233,6 +233,110 @@ class UiSkinPackageReaderTest {
         assertTrue(skin.assets.bottomBarTrim != null)
     }
 
+    @Test
+    fun bilibiliSkinThemeArchive_convertsToPreviewableBpskin() {
+        val bytes = bilibiliThemeArchive(
+            "萧逸/萧逸.json" to convertedThemeJson().toByteArray(),
+            "萧逸/萧逸_package.zip" to skinPackage(
+                "tail_bg.png" to pngBytes(),
+                "head_bg.jpg" to jpegBytes(),
+                "tail_icon_main.png" to pngBytes(),
+                "tail_icon_dynamic.png" to pngBytes(),
+                "tail_icon_shop.png" to pngBytes(),
+                "tail_icon_myself.png" to pngBytes()
+            )
+        )
+
+        val importPackage = UiSkinImportPackageResolver.resolve(bytes).getOrThrow()
+        val preview = UiSkinPackageReader.preview(importPackage.packageBytes).getOrThrow()
+
+        assertEquals(UiSkinImportSource.BILIBILI_SKIN_ARCHIVE, importPackage.source)
+        assertEquals("local.bilibili_skin.34219", preview.manifest.skinId)
+        assertEquals("萧逸", preview.manifest.displayName)
+        assertEquals("1644150184", preview.manifest.version)
+        assertEquals("assets/tail_bg.png", preview.manifest.assets.bottomBarTrim)
+        assertEquals("assets/head_bg.jpg", preview.manifest.assets.topAtmosphere)
+        assertEquals("assets/tail_icon_main.png", preview.manifest.assets.bottomBarIcons["home"])
+        assertEquals("assets/tail_icon_dynamic.png", preview.manifest.assets.bottomBarIcons["following"])
+        assertEquals("#6bb4ff", preview.manifest.colors.bottomBarTrimTint)
+        assertEquals("#4e536a", preview.manifest.colors.topAtmosphereTint)
+        assertEquals("#ffffff", preview.manifest.colors.searchCapsuleTint)
+        assertEquals("KimmyXYC/bilibili-skin", preview.manifest.styleSourceName)
+        assertEquals(false, preview.manifest.communityShareable)
+        assertEquals(true, preview.manifest.containsOfficialAssets)
+        assertTrue(preview.manifest.licenseNote.orEmpty().contains("本地"))
+    }
+
+    @Test
+    fun standardBpskinImport_resolvesWithoutConversion() {
+        val packageBytes = skinPackage(
+            "skin-manifest.json" to Json.encodeToString(sampleManifest()).toByteArray(),
+            "assets/bottom_trim.png" to pngBytes(),
+            "assets/top_atmosphere.webp" to webpBytes()
+        )
+
+        val importPackage = UiSkinImportPackageResolver.resolve(packageBytes).getOrThrow()
+
+        assertEquals(UiSkinImportSource.BP_SKIN, importPackage.source)
+        assertEquals(packageBytes.toList(), importPackage.packageBytes.toList())
+    }
+
+    @Test
+    fun bilibiliSkinThemeArchive_supportsRawGarbResponseJson() {
+        val bytes = bilibiliThemeArchive(
+            "萧逸/个性装扮.json" to rawGarbThemeJson().toByteArray(),
+            "萧逸/萧逸_package.zip" to skinPackage(
+                "tail_bg.png" to pngBytes(),
+                "head_tab_bg.jpg" to jpegBytes()
+            )
+        )
+
+        val importPackage = UiSkinImportPackageResolver.resolve(bytes).getOrThrow()
+        val preview = UiSkinPackageReader.preview(importPackage.packageBytes).getOrThrow()
+
+        assertEquals("local.bilibili_skin.34219", preview.manifest.skinId)
+        assertEquals("萧逸", preview.manifest.displayName)
+        assertEquals("assets/tail_bg.png", preview.manifest.assets.bottomBarTrim)
+        assertEquals("assets/head_tab_bg.jpg", preview.manifest.assets.topAtmosphere)
+    }
+
+    @Test
+    fun bilibiliSkinThemeArchive_missingThemeJsonReturnsReadableError() {
+        val bytes = bilibiliThemeArchive(
+            "萧逸/萧逸_package.zip" to skinPackage("tail_bg.png" to pngBytes())
+        )
+
+        val error = UiSkinImportPackageResolver.resolve(bytes).exceptionOrNull()
+
+        assertNotNull(error)
+        assertEquals("装扮存档缺少主题 JSON", error.message)
+    }
+
+    @Test
+    fun bilibiliSkinThemeArchive_missingPackageZipReturnsReadableError() {
+        val bytes = bilibiliThemeArchive(
+            "萧逸/萧逸.json" to convertedThemeJson().toByteArray()
+        )
+
+        val error = UiSkinImportPackageResolver.resolve(bytes).exceptionOrNull()
+
+        assertNotNull(error)
+        assertEquals("装扮存档缺少 _package.zip", error.message)
+    }
+
+    @Test
+    fun bilibiliSkinThemeArchive_rejectsInnerZipPathTraversal() {
+        val bytes = bilibiliThemeArchive(
+            "萧逸/萧逸.json" to convertedThemeJson().toByteArray(),
+            "萧逸/萧逸_package.zip" to skinPackage("../tail_bg.png" to pngBytes())
+        )
+
+        val error = UiSkinImportPackageResolver.resolve(bytes).exceptionOrNull()
+
+        assertNotNull(error)
+        assertEquals("装扮资源包包含非法路径: ../tail_bg.png", error.message)
+    }
+
     private fun sampleManifest(
         assets: UiSkinAssets = UiSkinAssets(
             bottomBarTrim = "assets/bottom_trim.png",
@@ -278,6 +382,10 @@ class UiSkinPackageReaderTest {
         }
     }
 
+    private fun bilibiliThemeArchive(vararg entries: Pair<String, ByteArray>): ByteArray {
+        return skinPackage(*entries)
+    }
+
     private fun pngBytes(): ByteArray {
         return byteArrayOf(
             0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -291,6 +399,43 @@ class UiSkinPackageReaderTest {
             0x04, 0x00, 0x00, 0x00,
             0x57, 0x45, 0x42, 0x50
         )
+    }
+
+    private fun jpegBytes(): ByteArray {
+        return byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0x00)
+    }
+
+    private fun convertedThemeJson(): String {
+        return """
+            {
+              "id": "34219",
+              "name": "萧逸",
+              "ver": "1644150184",
+              "data": {
+                "color": "#ffffff",
+                "color_second_page": "#4e536a",
+                "tail_color": "#6bb4ff"
+              }
+            }
+        """.trimIndent()
+    }
+
+    private fun rawGarbThemeJson(): String {
+        return """
+            {
+              "code": 0,
+              "data": {
+                "item_id": 34219,
+                "name": "萧逸",
+                "properties": {
+                  "ver": "1644150184",
+                  "color": "#ffffff",
+                  "color_second_page": "#4e536a",
+                  "tail_color": "#6bb4ff"
+                }
+              }
+            }
+        """.trimIndent()
     }
 
     private fun sha256Hex(bytes: ByteArray): String {

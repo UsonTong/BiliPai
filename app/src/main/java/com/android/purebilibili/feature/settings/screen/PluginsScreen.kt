@@ -32,6 +32,7 @@ import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.evaluateExternalPluginInstall
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginInstallStore
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPackagePreview
+import com.android.purebilibili.core.plugin.skin.UiSkinImportPackageResolver
 import com.android.purebilibili.core.plugin.skin.UiSkinInstallStore
 import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
 import com.android.purebilibili.core.plugin.skin.UiSkinSelection
@@ -201,8 +202,9 @@ fun PluginsContent(
                 runCatching {
                     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw IllegalArgumentException("无法读取皮肤包")
-                    val preview = uiSkinStore.previewPackage(bytes).getOrThrow()
-                    preview to bytes
+                    val importPackage = UiSkinImportPackageResolver.resolve(bytes).getOrThrow()
+                    val preview = uiSkinStore.previewPackage(importPackage.packageBytes).getOrThrow()
+                    preview to importPackage.packageBytes
                 }
             }
             isUiSkinPackageLoading = false
@@ -610,7 +612,7 @@ fun PluginsContent(
                                 text = if (isUiSkinPackageLoading) {
                                     "正在读取 .bpskin..."
                                 } else {
-                                    "选择 .bpskin，只保存资源和启用记录，不执行代码"
+                                    "选择 .bpskin 或 B 站装扮主题目录 ZIP，只保存资源和启用记录"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

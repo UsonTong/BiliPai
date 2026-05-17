@@ -444,7 +444,9 @@ ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPl
 
 仓库内置了一个可打包样例：[`plugins/samples/winter-cloud-skin`](../plugins/samples/winter-cloud-skin)。它演示了截图风格的浅色冬季氛围、云朵底栏饰边、搜索胶囊和底栏图标贴纸声明。
 
-如果你本地已有 [`KimmyXYC/bilibili-skin`](https://github.com/KimmyXYC/bilibili-skin) 这类公开存档目录，可以用仓库工具把其中某个主题目录转换为 `.bpskin`。转换器会直接使用本地主题 zip 中的 `tail_bg`、`head_bg`、`tail_icon_*` 等素材，但不会把这些素材提交到 BiliPai 仓库：
+插件中心可以直接选择 `.bpskin`。如果你本地已有 [`KimmyXYC/bilibili-skin`](https://github.com/KimmyXYC/bilibili-skin) 这类公开存档，也可以把单个主题文件夹压成 ZIP 后在插件中心选择，App 会在本地转换成 `.bpskin` 并进入同一个预览、保存、启用流程。主题目录 ZIP 内应包含 `个性装扮.json` 或 `<主题名>.json`，以及 `<主题名>_package.zip`。
+
+桌面批量转换仍可使用仓库工具。转换器会直接使用本地主题 zip 中的 `tail_bg`、`head_bg`、`tail_icon_*` 等素材，但不会把这些素材提交到 BiliPai 仓库：
 
 ```bash
 python3 plugins/tools/bilibili_skin_to_bpskin.py \
@@ -452,7 +454,7 @@ python3 plugins/tools/bilibili_skin_to_bpskin.py \
   --output /tmp/xiaoyi.bpskin
 ```
 
-转换出的包会声明 `containsOfficialAssets=true`、`communityShareable=false`。这类包适合本地私用或在你已获得授权时分享；不要把官方付费主题原图、角色立绘、图标原件或动效资源作为社区包分发。
+App 内转换和桌面工具转换出的包都会声明 `containsOfficialAssets=true`、`communityShareable=false`。这类包适合本地私用或在你已获得授权时分享；不要把官方付费主题原图、角色立绘、图标原件或动效资源作为社区包分发。
 
 版本 1 的包根目录必须包含 `skin-manifest.json`，其他资源必须位于 `assets/` 下：
 
@@ -505,6 +507,7 @@ my-skin.bpskin
 - `styleSourceName`、`styleSourceUrl`、`licenseNote`、`communityShareable`、`containsOfficialAssets` 是可选元数据；旧包不填写也可导入。
 - 如果声明 `communityShareable=true`，必须填写 `licenseNote`。
 - 宿主只做静态提示，不判断版权归属；社区分享前需要作者确认资源是原创、已授权或公共授权。
+- App 内主题目录 ZIP 转换只处理本地文件，不联网、不登录、不下载 B 站资源、不解密 App 数据。
 
 ---
 
