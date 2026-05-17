@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.android.purebilibili.core.theme.UiPreset
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import kotlin.test.Test
@@ -337,6 +338,34 @@ class BottomBarSurfaceColorPolicyTest {
         assertEquals(selected.red, color.red, 0.001f)
         assertEquals(selected.green, color.green, 0.001f)
         assertEquals(selected.blue, color.blue, 0.001f)
+    }
+
+    @Test
+    fun `light skin trim in dark theme switches bottom bar text to readable dark foreground`() {
+        val colors = resolveBottomBarSkinContentColors(
+            selectedColor = Color(0xFFFFA000),
+            unselectedColor = Color.White,
+            skinTrimTint = Color(0xFFF3CF87),
+            darkTheme = true
+        )
+
+        assertEquals(Color(0xFFFFA000), colors.selectedColor)
+        assertTrue(colors.unselectedColor.luminance() < 0.45f)
+        assertTrue(colors.unselectedColor.alpha >= 0.82f)
+        assertTrue(colors.iconBackdropColor != null)
+    }
+
+    @Test
+    fun `dark skin trim keeps dark theme bottom bar foreground unchanged`() {
+        val colors = resolveBottomBarSkinContentColors(
+            selectedColor = Color(0xFFFFA000),
+            unselectedColor = Color.White,
+            skinTrimTint = Color(0xFF241E17),
+            darkTheme = true
+        )
+
+        assertEquals(Color.White, colors.unselectedColor)
+        assertEquals(null, colors.iconBackdropColor)
     }
 
     @Test

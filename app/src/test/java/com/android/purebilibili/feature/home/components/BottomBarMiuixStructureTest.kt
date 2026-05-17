@@ -194,8 +194,9 @@ class BottomBarMiuixStructureTest {
             .substringAfter("private fun RowScope.BottomBarInputTarget(")
             .substringBefore("@Composable\nprivate fun RowScope.AndroidNativeBottomBarItem(")
 
-        assertTrue(skinDecorationSource.contains("fun iconPathFor(item: BottomNavItem): String?"))
-        assertTrue(kernelSuRendererSource.contains("skinIconPath = uiSkinDecoration?.iconPathFor(item)"))
+        assertTrue(skinDecorationSource.contains("fun iconPathFor(item: BottomNavItem, selected: Boolean = false): String?"))
+        assertTrue(kernelSuRendererSource.contains("skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f)"))
+        assertTrue(source.contains("skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = currentItem == item)"))
         assertTrue(itemRendererSource.contains("skinIconPath: String? = null"))
         assertTrue(itemRendererSource.contains("BottomBarSkinIcon("))
         assertTrue(itemRendererSource.contains("skinIconPath != null ->"))

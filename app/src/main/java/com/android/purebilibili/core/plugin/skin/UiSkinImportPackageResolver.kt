@@ -38,6 +38,12 @@ object UiSkinImportPackageResolver {
         "tail_icon_shop" to "member",
         "tail_icon_myself" to "profile"
     )
+    private val selectedIconMapping = mapOf(
+        "tail_icon_selected_main" to "home_selected",
+        "tail_icon_selected_dynamic" to "following_selected",
+        "tail_icon_selected_shop" to "member_selected",
+        "tail_icon_selected_myself" to "profile_selected"
+    )
 
     fun resolve(inputBytes: ByteArray): Result<UiSkinImportPackage> {
         return runCatching {
@@ -157,6 +163,11 @@ object UiSkinImportPackageResolver {
                 assetBytes["assets/${path.substringAfterLast("/")}"] = bytes
             }
         }
+        selectedIconMapping.forEach { (packageStem, _) ->
+            firstExisting(packageEntries, "$packageStem.png", "$packageStem.jpg")?.let { (path, bytes) ->
+                assetBytes["assets/${path.substringAfterLast("/")}"] = bytes
+            }
+        }
         return assetBytes
     }
 
@@ -165,6 +176,11 @@ object UiSkinImportPackageResolver {
         assetPaths: Set<String>
     ): UiSkinManifest {
         val iconPaths = iconMapping.mapNotNull { (packageStem, hostKey) ->
+            val path = assetPaths.firstOrNull {
+                it.endsWith("$packageStem.png") || it.endsWith("$packageStem.jpg")
+            }
+            path?.let { hostKey to it }
+        }.toMap() + selectedIconMapping.mapNotNull { (packageStem, hostKey) ->
             val path = assetPaths.firstOrNull {
                 it.endsWith("$packageStem.png") || it.endsWith("$packageStem.jpg")
             }

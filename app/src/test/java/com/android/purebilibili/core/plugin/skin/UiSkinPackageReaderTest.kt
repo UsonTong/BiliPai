@@ -241,8 +241,11 @@ class UiSkinPackageReaderTest {
                 "tail_bg.png" to pngBytes(),
                 "head_bg.jpg" to jpegBytes(),
                 "tail_icon_main.png" to pngBytes(),
+                "tail_icon_selected_main.png" to pngBytes(),
                 "tail_icon_dynamic.png" to pngBytes(),
+                "tail_icon_selected_dynamic.png" to pngBytes(),
                 "tail_icon_shop.png" to pngBytes(),
+                "tail_icon_selected_shop.png" to pngBytes(),
                 "tail_icon_myself.png" to pngBytes()
             )
         )
@@ -257,7 +260,15 @@ class UiSkinPackageReaderTest {
         assertEquals("assets/tail_bg.png", preview.manifest.assets.bottomBarTrim)
         assertEquals("assets/head_bg.jpg", preview.manifest.assets.topAtmosphere)
         assertEquals("assets/tail_icon_main.png", preview.manifest.assets.bottomBarIcons["home"])
+        assertEquals("assets/tail_icon_selected_main.png", preview.manifest.assets.bottomBarIcons["home_selected"])
         assertEquals("assets/tail_icon_dynamic.png", preview.manifest.assets.bottomBarIcons["following"])
+        assertEquals(
+            "assets/tail_icon_selected_dynamic.png",
+            preview.manifest.assets.bottomBarIcons["following_selected"]
+        )
+        assertEquals("assets/tail_icon_shop.png", preview.manifest.assets.bottomBarIcons["member"])
+        assertEquals("assets/tail_icon_selected_shop.png", preview.manifest.assets.bottomBarIcons["member_selected"])
+        assertEquals("assets/tail_icon_myself.png", preview.manifest.assets.bottomBarIcons["profile"])
         assertEquals("#6bb4ff", preview.manifest.colors.bottomBarTrimTint)
         assertEquals("#4e536a", preview.manifest.colors.topAtmosphereTint)
         assertEquals("#ffffff", preview.manifest.colors.searchCapsuleTint)
@@ -306,6 +317,7 @@ class UiSkinPackageReaderTest {
             "tail_bg.png" to pngBytes(),
             "head_bg.jpg" to jpegBytes(),
             "tail_icon_main.png" to pngBytes(),
+            "tail_icon_selected_main.png" to pngBytes(),
             "tail_icon_dynamic.png" to pngBytes()
         )
 
@@ -318,6 +330,7 @@ class UiSkinPackageReaderTest {
         assertEquals("assets/tail_bg.png", preview.manifest.assets.bottomBarTrim)
         assertEquals("assets/head_bg.jpg", preview.manifest.assets.topAtmosphere)
         assertEquals("assets/tail_icon_main.png", preview.manifest.assets.bottomBarIcons["home"])
+        assertEquals("assets/tail_icon_selected_main.png", preview.manifest.assets.bottomBarIcons["home_selected"])
         assertEquals(false, preview.manifest.communityShareable)
         assertEquals(true, preview.manifest.containsOfficialAssets)
     }

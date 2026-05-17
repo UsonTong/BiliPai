@@ -108,6 +108,20 @@ internal data class HomeTopLinkedBottomBarAppearance(
     val liquidGlassEnabled: Boolean
 )
 
+internal fun resolveHomeSkinSearchSurfaceColor(
+    defaultSurfaceColor: Color,
+    skinTint: Color?,
+    useUnifiedTopPanel: Boolean
+): Color {
+    if (skinTint == null || useUnifiedTopPanel) return defaultSurfaceColor
+    val targetAlpha = defaultSurfaceColor.alpha.coerceAtLeast(0.72f)
+    return androidx.compose.ui.graphics.lerp(
+        start = defaultSurfaceColor.copy(alpha = targetAlpha),
+        stop = skinTint.copy(alpha = targetAlpha),
+        fraction = 0.36f
+    )
+}
+
 internal enum class HomeTopChromeRenderMode {
     PLAIN,
     BLUR,
@@ -2126,6 +2140,19 @@ fun iOSHomeHeader(
                                     }
                                 }
                                 val searchClickInteractionSource = remember { MutableInteractionSource() }
+                                val defaultSearchSurfaceColor = if (useUnifiedTopPanel) {
+                                    resolveHomeTopUnifiedSearchContainerColor(
+                                        isLightMode = isLightMode,
+                                        renderMode = searchChromeRenderMode
+                                    )
+                                } else {
+                                    searchPillColors.containerColor
+                                }
+                                val skinSearchSurfaceColor = resolveHomeSkinSearchSurfaceColor(
+                                    defaultSurfaceColor = defaultSearchSurfaceColor,
+                                    skinTint = uiSkinDecoration?.searchCapsuleTint,
+                                    useUnifiedTopPanel = useUnifiedTopPanel
+                                )
                                 Box(
                                     modifier = Modifier
                                         .widthIn(max = 640.dp)
@@ -2151,14 +2178,7 @@ fun iOSHomeHeader(
                                                 Modifier.homeTopChromeSurface(
                                                     renderMode = searchChromeRenderMode,
                                                     shape = searchContainerShape,
-                                                    surfaceColor = if (useUnifiedTopPanel) {
-                                                        resolveHomeTopUnifiedSearchContainerColor(
-                                                            isLightMode = isLightMode,
-                                                            renderMode = searchChromeRenderMode
-                                                        )
-                                                    } else {
-                                                        searchPillColors.containerColor
-                                                    },
+                                                    surfaceColor = skinSearchSurfaceColor,
                                                     hazeState = hazeState,
                                                     backdrop = backdrop,
                                                     liquidStyle = liquidStyle,
@@ -2202,16 +2222,6 @@ fun iOSHomeHeader(
                                         .padding(horizontal = resolveHomeTopSearchContentHorizontalPadding(uiPreset, androidNativeVariant)),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
-                                    if (uiSkinDecoration != null) {
-                                        Box(
-                                            modifier = Modifier
-                                                .matchParentSize()
-                                                .background(
-                                                    uiSkinDecoration.searchCapsuleTint.copy(alpha = 0.22f),
-                                                    searchContainerShape
-                                                )
-                                        )
-                                    }
                                     if (uiPreset == UiPreset.IOS && !useUnifiedTopPanel) {
                                         Box(
                                             modifier = Modifier

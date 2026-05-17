@@ -1595,8 +1595,21 @@ class iOSHomeHeaderVisualPolicyTest {
         assertTrue(headerSource.contains("uiSkinDecoration: HomeUiSkinDecoration? = null"))
         assertTrue(headerSource.contains("HomeSkinAtmosphere("))
         assertTrue(headerSource.contains("decoration = uiSkinDecoration"))
-        assertTrue(headerSource.contains("uiSkinDecoration.searchCapsuleTint"))
+        assertTrue(headerSource.contains("skinTint = uiSkinDecoration?.searchCapsuleTint"))
         assertTrue(headerSource.contains("uiSkinDecoration?.topAtmosphereTint"))
+    }
+
+    @Test
+    fun `home header skin search tint is applied as capsule surface not inner padded child`() {
+        val headerSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt")
+        val searchCapsuleSource = headerSource
+            .substringAfter(".height(resolveHomeTopSearchPillHeight(uiPreset, androidNativeVariant))")
+            .substringBefore("val searchFieldContent")
+
+        assertTrue(searchCapsuleSource.contains("val skinSearchSurfaceColor = resolveHomeSkinSearchSurfaceColor("))
+        assertTrue(searchCapsuleSource.contains("surfaceColor = skinSearchSurfaceColor"))
+        assertFalse(searchCapsuleSource.contains(".matchParentSize()\n                                                .background("))
+        assertFalse(searchCapsuleSource.contains("uiSkinDecoration.searchCapsuleTint.copy(alpha = 0.22f)"))
     }
 
     private fun loadSource(path: String): String {

@@ -844,6 +844,31 @@ internal fun resolveBottomBarGlassExportContentColor(
     )
 }
 
+internal data class BottomBarSkinContentColors(
+    val selectedColor: Color,
+    val unselectedColor: Color,
+    val iconBackdropColor: Color? = null
+)
+
+internal fun resolveBottomBarSkinContentColors(
+    selectedColor: Color,
+    unselectedColor: Color,
+    skinTrimTint: Color?,
+    darkTheme: Boolean
+): BottomBarSkinContentColors {
+    if (skinTrimTint == null || !darkTheme || skinTrimTint.luminance() < 0.45f) {
+        return BottomBarSkinContentColors(
+            selectedColor = selectedColor,
+            unselectedColor = unselectedColor
+        )
+    }
+    return BottomBarSkinContentColors(
+        selectedColor = selectedColor,
+        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f),
+        iconBackdropColor = Color(0xFF4D3A1F).copy(alpha = 0.18f)
+    )
+}
+
 internal fun resolveAndroidNativeIdleIndicatorSurfaceColor(
     darkTheme: Boolean
 ): Color {
@@ -2167,6 +2192,12 @@ private fun MiuixBottomBar(
         ) {
             val selectedItemColor = MaterialTheme.colorScheme.primary
             val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val skinItemColors = resolveBottomBarSkinContentColors(
+                selectedColor = selectedItemColor,
+                unselectedColor = unselectedItemColor,
+                skinTrimTint = uiSkinDecoration?.bottomTrimTint,
+                darkTheme = isSystemInDarkTheme()
+            )
 
             visibleItems.forEach { item ->
                 val itemLabel = resolveBottomNavItemLabel(item)
@@ -2182,9 +2213,10 @@ private fun MiuixBottomBar(
                     label = itemLabel,
                     showIcon = showIcon,
                     showText = showText,
-                    selectedColor = selectedItemColor,
-                    unselectedColor = unselectedItemColor,
-                    skinIconPath = uiSkinDecoration?.iconPathFor(item),
+                    selectedColor = skinItemColors.selectedColor,
+                    unselectedColor = skinItemColors.unselectedColor,
+                    skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = currentItem == item),
+                    skinIconBackdropColor = skinItemColors.iconBackdropColor,
                     reminderBadgeText = formatBottomBarDynamicReminderBadge(
                         if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
                             dynamicUnreadCount
@@ -2209,8 +2241,8 @@ private fun MiuixBottomBar(
                     label = sidebarLabel,
                     showIcon = showIcon,
                     showText = showText,
-                    selectedColor = selectedItemColor,
-                    unselectedColor = unselectedItemColor
+                    selectedColor = skinItemColors.selectedColor,
+                    unselectedColor = skinItemColors.unselectedColor
                 )
             }
         }
@@ -2243,6 +2275,7 @@ private fun RowScope.MiuixDockedBottomBarItem(
     selectedColor: Color,
     unselectedColor: Color,
     skinIconPath: String? = null,
+    skinIconBackdropColor: Color? = null,
     reminderBadgeText: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -2292,7 +2325,8 @@ private fun RowScope.MiuixDockedBottomBarItem(
                     BottomBarSkinIcon(
                         iconPath = skinIconPath,
                         contentDescription = label,
-                        size = 26.dp
+                        size = 26.dp,
+                        readabilityBackdropColor = skinIconBackdropColor
                     )
                 } else {
                     Icon(
@@ -2376,8 +2410,16 @@ private fun KernelSuAlignedBottomBar(
     val homeIndex = visibleItems.indexOf(BottomNavItem.HOME)
     val isValidSelection = currentItem in visibleItems
     val isDarkTheme = isSystemInDarkTheme()
-    val selectedColor = MaterialTheme.colorScheme.primary
-    val unselectedColor = MaterialTheme.colorScheme.onSurface
+    val baseSelectedColor = MaterialTheme.colorScheme.primary
+    val baseUnselectedColor = MaterialTheme.colorScheme.onSurface
+    val skinContentColors = resolveBottomBarSkinContentColors(
+        selectedColor = baseSelectedColor,
+        unselectedColor = baseUnselectedColor,
+        skinTrimTint = uiSkinDecoration?.bottomTrimTint,
+        darkTheme = isDarkTheme
+    )
+    val selectedColor = skinContentColors.selectedColor
+    val unselectedColor = skinContentColors.unselectedColor
     val totalItems = allItems.size.coerceAtLeast(1)
     val dampedDragState = rememberDampedDragAnimationState(
         initialIndex = selectedIndex,
@@ -2803,7 +2845,8 @@ private fun KernelSuAlignedBottomBar(
                                 unselectedColor = unselectedColor,
                                 contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
-                                skinIconPath = uiSkinDecoration?.iconPathFor(item),
+                                skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
+                                skinIconBackdropColor = skinContentColors.iconBackdropColor,
                                 onClick = {},
                                 interactive = false,
                                 selectedIconAlpha = coverage,
@@ -2935,7 +2978,8 @@ private fun KernelSuAlignedBottomBar(
                                         unselectedColor = contentColor,
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
-                                        skinIconPath = uiSkinDecoration?.iconPathFor(item),
+                                        skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
+                                        skinIconBackdropColor = skinContentColors.iconBackdropColor,
                                         onClick = {},
                                         interactive = false,
                                         selectedIconAlpha = coverage,
@@ -3175,12 +3219,16 @@ private fun KernelSuAlignedBottomBar(
                             },
                             contentAlignment = Alignment.Center
                         ) {
-                            val homeSkinIconPath = uiSkinDecoration?.iconPathFor(BottomNavItem.HOME)
+                            val homeSkinIconPath = uiSkinDecoration?.iconPathFor(
+                                BottomNavItem.HOME,
+                                selected = currentItem == BottomNavItem.HOME
+                            )
                             if (homeSkinIconPath != null) {
                                 BottomBarSkinIcon(
                                     iconPath = homeSkinIconPath,
                                     contentDescription = null,
                                     size = compactHomeIconSize,
+                                    readabilityBackdropColor = skinContentColors.iconBackdropColor,
                                     modifier = Modifier.graphicsLayer {
                                         scaleX = compactHomeIconScale
                                         scaleY = compactHomeIconScale
@@ -3516,6 +3564,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     contentColorOverride: Color? = null,
     iconStyle: SharedFloatingBottomBarIconStyle,
     skinIconPath: String? = null,
+    skinIconBackdropColor: Color? = null,
     onClick: () -> Unit,
     interactive: Boolean,
     onPressChanged: (Boolean) -> Unit = {},
@@ -3585,7 +3634,8 @@ private fun RowScope.AndroidNativeBottomBarItem(
                             skinIconPath != null -> {
                                 BottomBarSkinIcon(
                                     iconPath = skinIconPath,
-                                    contentDescription = label
+                                    contentDescription = label,
+                                    readabilityBackdropColor = skinIconBackdropColor
                                 )
                             }
                             item == null && iconStyle == SharedFloatingBottomBarIconStyle.CUPERTINO -> {

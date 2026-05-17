@@ -1,10 +1,12 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -29,10 +31,22 @@ data class BottomBarUiSkinDecoration(
     val bottomTrimTint: Color,
     val bottomTrimAccent: Color,
     val bottomTrimImagePath: String? = null,
-    val bottomBarIconPaths: Map<BottomNavItem, String> = emptyMap()
+    val bottomBarIconPaths: Map<BottomNavItem, BottomBarSkinIconPaths> = emptyMap()
 ) {
-    fun iconPathFor(item: BottomNavItem): String? = bottomBarIconPaths[item]
+    fun iconPathFor(item: BottomNavItem, selected: Boolean = false): String? {
+        val paths = bottomBarIconPaths[item] ?: return null
+        return if (selected) {
+            paths.selected ?: paths.unselected
+        } else {
+            paths.unselected
+        }
+    }
 }
+
+data class BottomBarSkinIconPaths(
+    val unselected: String,
+    val selected: String? = null
+)
 
 data class HomeUiSkinDecoration(
     val skinId: String,
@@ -150,15 +164,24 @@ internal fun BottomBarSkinIcon(
     iconPath: String,
     contentDescription: String?,
     size: Dp = 30.dp,
+    readabilityBackdropColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
-    AsyncImage(
-        model = File(iconPath),
-        contentDescription = contentDescription,
-        contentScale = ContentScale.Fit,
-        modifier = modifier
-            .size(size)
-    )
+    Box(modifier = modifier.size(size)) {
+        if (readabilityBackdropColor != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(readabilityBackdropColor, CircleShape)
+            )
+        }
+        AsyncImage(
+            model = File(iconPath),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
 @Composable
@@ -229,17 +252,24 @@ private fun parseUiSkinColor(
 
 private fun resolveBottomBarSkinIconPaths(
     activeSkin: com.android.purebilibili.core.plugin.skin.InstalledUiSkinPackage
-): Map<BottomNavItem, String> {
+): Map<BottomNavItem, BottomBarSkinIconPaths> {
     val manifestIcons = activeSkin.manifest.assets.bottomBarIcons
     return buildMap {
         mapOf(
-            "home" to BottomNavItem.HOME,
-            "following" to BottomNavItem.DYNAMIC,
-            "member" to BottomNavItem.HISTORY,
-            "profile" to BottomNavItem.PROFILE
-        ).forEach { (skinKey, item) ->
-            activeSkin.assetFilePath(manifestIcons[skinKey])?.let { path ->
-                put(item, path)
+            "home" to ("home_selected" to BottomNavItem.HOME),
+            "following" to ("following_selected" to BottomNavItem.DYNAMIC),
+            "member" to ("member_selected" to BottomNavItem.HISTORY),
+            "profile" to ("profile_selected" to BottomNavItem.PROFILE)
+        ).forEach { (unselectedKey, selectedKeyAndItem) ->
+            val (selectedKey, item) = selectedKeyAndItem
+            activeSkin.assetFilePath(manifestIcons[unselectedKey])?.let { unselectedPath ->
+                put(
+                    item,
+                    BottomBarSkinIconPaths(
+                        unselected = unselectedPath,
+                        selected = activeSkin.assetFilePath(manifestIcons[selectedKey])
+                    )
+                )
             }
         }
     }
