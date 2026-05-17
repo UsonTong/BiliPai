@@ -209,6 +209,7 @@ interface BilibiliApi {
         @Query("pn") pn: Int = 1,
         @Query("ps") ps: Int = 20,
         @Query("keyword") keyword: String? = null,
+        @Query("order") order: String? = null,
         @Query("platform") platform: String = "web"
     ): FavoriteResourceResponse
 
@@ -218,6 +219,13 @@ interface BilibiliApi {
     suspend fun batchDelFavResource(
         @retrofit2.http.Field("media_id") mediaId: Long,
         @retrofit2.http.Field("resources") resources: String, // 格式: oid:type (e.g. "123456:2")
+        @retrofit2.http.Field("csrf") csrf: String
+    ): SimpleApiResponse
+
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("x/v3/fav/resource/clean")
+    suspend fun cleanInvalidFavResource(
+        @retrofit2.http.Field("media_id") mediaId: Long,
         @retrofit2.http.Field("csrf") csrf: String
     ): SimpleApiResponse
 

@@ -604,6 +604,12 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
     // 📁 [新增] 当前选中的收藏夹索引
     private val _selectedFolderIndex = MutableStateFlow(0)
     val selectedFolderIndex = _selectedFolderIndex.asStateFlow()
+
+    private val _favoriteOrderState = MutableStateFlow(FavoriteResourceOrder.FAVORITE_TIME)
+    internal val favoriteOrderState = _favoriteOrderState.asStateFlow()
+
+    private val _isFavoriteManagingState = MutableStateFlow(false)
+    internal val isFavoriteManagingState = _isFavoriteManagingState.asStateFlow()
     
     /**
      * 📁 [新增] 切换收藏夹
@@ -667,7 +673,8 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
                 if (index < allFolderIds.size) {
                     val listResult = com.android.purebilibili.data.repository.FavoriteRepository.getFavoriteList(
                         mediaId = allFolderIds[index], 
-                        pn = 1
+                        pn = 1,
+                        order = _favoriteOrderState.value.apiValue
                     )
                     val resultData = listResult.getOrNull()
                     val items = resultData?.medias?.map { it.toVideoItem() } ?: emptyList()
@@ -798,7 +805,8 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
                 pagination.currentPage++
                 val listResult = com.android.purebilibili.data.repository.FavoriteRepository.getFavoriteList(
                      mediaId = allFolderIds[index], 
-                     pn = pagination.currentPage
+                     pn = pagination.currentPage,
+                     order = _favoriteOrderState.value.apiValue
                 )
                 val resultData = listResult.getOrNull()
                 val newItems = resultData?.medias?.map { it.toVideoItem() } ?: emptyList()
@@ -843,6 +851,53 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
     fun loadMore() {
         loadMoreForFolder(currentFolderIndex)
     }
+
+    internal fun changeFavoriteOrder(order: FavoriteResourceOrder) {
+        if (_favoriteOrderState.value == order) return
+        _favoriteOrderState.value = order
+        _folderStates.forEach { (_, stateFlow) ->
+            stateFlow.value = stateFlow.value.copy(items = emptyList(), isLoading = false, error = null)
+        }
+        _fetchingIndices.clear()
+        reloadFavoriteFolder(_selectedFolderIndex.value)
+    }
+
+    internal fun cleanInvalidResourcesInSelectedFolder() {
+        if (_isFavoriteManagingState.value) return
+        val folderIndex = _selectedFolderIndex.value
+        val folder = _folders.value.getOrNull(folderIndex)
+        if (!canCleanInvalidFavoriteResources(folder)) return
+        val mediaId = allFolderIds.getOrNull(folderIndex) ?: return
+        _isFavoriteManagingState.value = true
+        viewModelScope.launch {
+            val result = com.android.purebilibili.data.repository.FavoriteRepository.cleanInvalidResources(mediaId)
+            if (result.isSuccess) {
+                android.widget.Toast.makeText(getApplication(), "已清理失效内容", android.widget.Toast.LENGTH_SHORT).show()
+                reloadFavoriteFolder(folderIndex)
+            } else {
+                android.widget.Toast.makeText(
+                    getApplication(),
+                    "清理失败: ${result.exceptionOrNull()?.message ?: "请稍后重试"}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+            _isFavoriteManagingState.value = false
+        }
+    }
+
+    private fun reloadFavoriteFolder(index: Int) {
+        if (index < 0) return
+        folderPaginationStates[index] = PaginationState()
+        val stateFlow = _folderStates.getOrPut(index) { MutableStateFlow(ListUiState(isLoading = true)) }
+        stateFlow.value = stateFlow.value.copy(
+            items = emptyList(),
+            isLoading = true,
+            error = null
+        )
+        _fetchingIndices.remove(index)
+        loadFolder(index)
+    }
+
     //  [新增] 移除收藏
     fun removeVideo(video: VideoItem) {
         // aid 作为 resourceId

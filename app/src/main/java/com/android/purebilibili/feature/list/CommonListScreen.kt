@@ -267,11 +267,17 @@ fun CommonListScreen(
         }
     val selectedFolderIndex by favoriteViewModel?.selectedFolderIndex?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val favoriteOrder by favoriteViewModel?.favoriteOrderState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(FavoriteResourceOrder.FAVORITE_TIME) }
+    val isFavoriteManaging by favoriteViewModel?.isFavoriteManagingState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val favoriteDetailProgressState by seasonSeriesDetailViewModel?.favoriteDetailProgressState?.collectAsState(context = kotlin.coroutines.EmptyCoroutineContext)
         ?: androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(SeasonSeriesDetailViewModel.FavoriteDetailProgressState())
         }
     var favoriteBrowseSection by rememberSaveable { androidx.compose.runtime.mutableStateOf(FavoriteBrowseSection.OWNED) }
+    var showFavoriteManagementMenu by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var showFavoriteCleanInvalidConfirm by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(foldersState.size, subscribedFoldersState.size) {
         favoriteBrowseSection = when {
             favoriteBrowseSection == FavoriteBrowseSection.SUBSCRIBED && subscribedFoldersState.isNotEmpty() -> FavoriteBrowseSection.SUBSCRIBED
@@ -309,6 +315,7 @@ fun CommonListScreen(
         selectedFolderItems = selectedFolderUiState.items,
         singleFolderItems = singleFolderUiState.items
     ).takeUnless { isSubscribedBrowse }.orEmpty()
+    val selectedFavoriteFolder = foldersState.getOrNull(selectedFolderIndex)
     val progressBadge = remember(
         favoriteDetailProgressState,
         seasonSeriesDetailViewModel
@@ -823,6 +830,52 @@ fun CommonListScreen(
                                         contentDescription = "全部听"
                                     )
                                 }
+
+                                if (!isSubscribedBrowse) {
+                                    Box {
+                                        IconButton(
+                                            enabled = !isFavoriteManaging,
+                                            onClick = { showFavoriteManagementMenu = true }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.MoreVert,
+                                                contentDescription = "更多管理"
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showFavoriteManagementMenu,
+                                            onDismissRequest = { showFavoriteManagementMenu = false }
+                                        ) {
+                                            FavoriteResourceOrder.entries.forEach { order ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            if (order == favoriteOrder) {
+                                                                "排序：${order.label}"
+                                                            } else {
+                                                                order.label
+                                                            }
+                                                        )
+                                                    },
+                                                    enabled = !isFavoriteManaging,
+                                                    onClick = {
+                                                        showFavoriteManagementMenu = false
+                                                        favoriteViewModel.changeFavoriteOrder(order)
+                                                    }
+                                                )
+                                            }
+                                            HorizontalDivider()
+                                            DropdownMenuItem(
+                                                text = { Text("清理失效内容") },
+                                                enabled = canCleanInvalidFavoriteResources(selectedFavoriteFolder) && !isFavoriteManaging,
+                                                onClick = {
+                                                    showFavoriteManagementMenu = false
+                                                    showFavoriteCleanInvalidConfirm = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
                             }
 
                             if (historyViewModel != null) {
@@ -1027,6 +1080,35 @@ fun CommonListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showHistoryBatchDeleteConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showFavoriteCleanInvalidConfirm && favoriteViewModel != null) {
+        AlertDialog(
+            onDismissRequest = { showFavoriteCleanInvalidConfirm = false },
+            title = { Text("清理失效内容") },
+            text = {
+                Text(
+                    resolveFavoriteCleanInvalidConfirmText(
+                        selectedFavoriteFolder?.title.orEmpty()
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        favoriteViewModel.cleanInvalidResourcesInSelectedFolder()
+                        showFavoriteCleanInvalidConfirm = false
+                    }
+                ) {
+                    Text("清理")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFavoriteCleanInvalidConfirm = false }) {
                     Text("取消")
                 }
             }
