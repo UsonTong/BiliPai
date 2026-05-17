@@ -1593,10 +1593,9 @@ class iOSHomeHeaderVisualPolicyTest {
 
         assertTrue(homeScreenSource.contains("uiSkinDecoration = homeUiSkinDecoration"))
         assertTrue(headerSource.contains("uiSkinDecoration: HomeUiSkinDecoration? = null"))
-        assertTrue(headerSource.contains("HomeSkinAtmosphere("))
-        assertTrue(headerSource.contains("decoration = uiSkinDecoration"))
-        assertTrue(headerSource.contains("modifier = Modifier.matchParentSize()"))
-        assertTrue(loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt").contains(".clipToBounds()"))
+        assertFalse(headerSource.contains("HomeSkinAtmosphere("))
+        assertFalse(headerSource.contains("resolveHomeSkinAtmospherePinnedHeight("))
+        assertFalse(headerSource.contains("modifier = Modifier.matchParentSize()"))
         assertTrue(headerSource.contains("skinTint = uiSkinDecoration?.searchCapsuleTint"))
         assertTrue(headerSource.contains("uiSkinDecoration?.topAtmosphereTint"))
     }

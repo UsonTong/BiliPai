@@ -1,17 +1,13 @@
 package com.android.purebilibili.feature.home.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -150,60 +146,6 @@ fun resolveHomeUiSkinDecoration(uiSkinState: UiSkinState): HomeUiSkinDecoration?
                 fallback = Color.White
             ),
             topAtmosphereImagePath = activeSkin.assetFilePath(manifest.assets.topAtmosphere)
-        )
-    }
-}
-
-@Composable
-internal fun HomeSkinAtmosphere(
-    decoration: HomeUiSkinDecoration?,
-    statusBarHeight: Dp = 0.dp,
-    modifier: Modifier = Modifier
-) {
-    if (decoration == null) return
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .clearAndSetSemantics {}
-            .drawBehind {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            decoration.topAtmosphereTint.copy(alpha = 0.30f),
-                            decoration.searchCapsuleTint.copy(alpha = 0.12f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = size.height * 0.42f
-                    )
-                )
-            }
-    ) {
-        val imagePath = decoration.topAtmosphereImagePath
-        if (!imagePath.isNullOrBlank()) {
-            AsyncImage(
-                model = File(imagePath),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(190.dp + statusBarHeight)
-                    .alpha(0.44f)
-                    .clearAndSetSemantics {}
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Color.Black.copy(
-                        alpha = resolveHomeSkinAtmosphereReadabilityScrimAlpha(
-                            hasTopAtmosphereImage = !imagePath.isNullOrBlank()
-                        )
-                    )
-                )
-                .clearAndSetSemantics {}
         )
     }
 }

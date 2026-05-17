@@ -859,8 +859,7 @@ internal data class BottomBarSkinContentColors(
 internal fun resolveBottomBarSkinContentColors(
     selectedColor: Color,
     unselectedColor: Color,
-    skinTrimTint: Color?,
-    darkTheme: Boolean
+    skinTrimTint: Color?
 ): BottomBarSkinContentColors {
     val readableBackgroundIsLight = skinTrimTint?.luminance()?.let { it >= 0.45f } == true
     val labelScrimColor = when {
@@ -869,17 +868,9 @@ internal fun resolveBottomBarSkinContentColors(
         else -> Color.Black
     }
     val labelScrimAlpha = 0f
-    if (skinTrimTint == null || !darkTheme || !readableBackgroundIsLight) {
-        return BottomBarSkinContentColors(
-            selectedColor = selectedColor,
-            unselectedColor = unselectedColor,
-            labelScrimColor = labelScrimColor,
-            labelScrimAlpha = labelScrimAlpha
-        )
-    }
     return BottomBarSkinContentColors(
         selectedColor = selectedColor,
-        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f),
+        unselectedColor = unselectedColor,
         labelScrimColor = labelScrimColor,
         labelScrimAlpha = labelScrimAlpha
     )
@@ -1950,8 +1941,7 @@ private fun MaterialBottomBar(
     val skinDockedItemColors = resolveBottomBarSkinContentColors(
         selectedColor = dockedItemColors.selectedIconColor,
         unselectedColor = dockedItemColors.unselectedIconColor,
-        skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-        darkTheme = isSystemInDarkTheme()
+        skinTrimTint = uiSkinDecoration?.bottomTrimTint
     )
 
     if (isFloating) {
@@ -2260,8 +2250,7 @@ private fun MiuixBottomBar(
             val skinItemColors = resolveBottomBarSkinContentColors(
                 selectedColor = selectedItemColor,
                 unselectedColor = unselectedItemColor,
-                skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-                darkTheme = isSystemInDarkTheme()
+                skinTrimTint = uiSkinDecoration?.bottomTrimTint
             )
 
             visibleItems.forEach { item ->
@@ -2486,8 +2475,7 @@ private fun KernelSuAlignedBottomBar(
     val skinContentColors = resolveBottomBarSkinContentColors(
         selectedColor = baseSelectedColor,
         unselectedColor = baseUnselectedColor,
-        skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-        darkTheme = isDarkTheme
+        skinTrimTint = uiSkinDecoration?.bottomTrimTint
     )
     val selectedColor = skinContentColors.selectedColor
     val unselectedColor = skinContentColors.unselectedColor

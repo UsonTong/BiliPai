@@ -149,10 +149,6 @@ internal fun resolveHomeSkinTopTabIndicatorColor(contentColor: Color): Color =
 
 internal fun resolveHomeSkinTopTabRowHeight(): Dp = 46.dp
 
-internal fun resolveHomeSkinAtmosphereReadabilityScrimAlpha(hasTopAtmosphereImage: Boolean): Float {
-    return if (hasTopAtmosphereImage) 0.28f else 0.14f
-}
-
 internal enum class HomeTopChromeRenderMode {
     PLAIN,
     BLUR,
@@ -1887,11 +1883,6 @@ fun iOSHomeHeader(
             .fillMaxWidth()
             .zIndex(10f)
     ) {
-        HomeSkinAtmosphere(
-            decoration = uiSkinDecoration,
-            statusBarHeight = statusBarHeight,
-            modifier = Modifier.matchParentSize()
-        )
         if (effectiveContinuousSlabRenderMode != HomeTopChromeRenderMode.PLAIN) {
             Box(
                 modifier = Modifier

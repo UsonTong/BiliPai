@@ -341,27 +341,25 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
-    fun `light skin trim in dark theme switches bottom bar text to readable dark foreground`() {
+    fun `light skin trim keeps themed bottom bar text foreground`() {
+        val themedUnselectedColor = Color.White.copy(alpha = 0.78f)
         val colors = resolveBottomBarSkinContentColors(
             selectedColor = Color(0xFFFFA000),
-            unselectedColor = Color.White,
-            skinTrimTint = Color(0xFFF3CF87),
-            darkTheme = true
+            unselectedColor = themedUnselectedColor,
+            skinTrimTint = Color(0xFFF3CF87)
         )
 
         assertEquals(Color(0xFFFFA000), colors.selectedColor)
-        assertTrue(colors.unselectedColor.luminance() < 0.45f)
-        assertTrue(colors.unselectedColor.alpha >= 0.82f)
+        assertEquals(themedUnselectedColor, colors.unselectedColor)
         assertEquals(0f, colors.labelScrimAlpha, 0.0001f)
     }
 
     @Test
-    fun `dark skin trim keeps dark theme bottom bar foreground unchanged`() {
+    fun `dark skin trim keeps themed bottom bar foreground unchanged`() {
         val colors = resolveBottomBarSkinContentColors(
             selectedColor = Color(0xFFFFA000),
             unselectedColor = Color.White,
-            skinTrimTint = Color(0xFF241E17),
-            darkTheme = true
+            skinTrimTint = Color(0xFF241E17)
         )
 
         assertEquals(Color.White, colors.unselectedColor)

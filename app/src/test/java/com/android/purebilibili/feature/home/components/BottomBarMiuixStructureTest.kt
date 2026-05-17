@@ -218,16 +218,16 @@ class BottomBarMiuixStructureTest {
     }
 
     @Test
-    fun `home top skin atmosphere expands through status bar safe area`() {
+    fun `home top skin does not render broad atmosphere block`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt")
         val skinDecorationSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
         val headerSource = source
             .substringAfter("fun iOSHomeHeader(")
             .substringBefore("@Composable\nprivate fun")
 
-        assertTrue(skinDecorationSource.contains("statusBarHeight: Dp"))
-        assertTrue(headerSource.contains("statusBarHeight = statusBarHeight"))
-        assertTrue(headerSource.contains("HomeSkinAtmosphere("))
+        assertFalse(skinDecorationSource.contains("HomeSkinAtmosphere("))
+        assertFalse(skinDecorationSource.contains("statusBarHeight: Dp"))
+        assertFalse(headerSource.contains("HomeSkinAtmosphere("))
     }
 
     @Test
