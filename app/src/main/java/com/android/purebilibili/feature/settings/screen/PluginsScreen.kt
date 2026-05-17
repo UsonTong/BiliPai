@@ -32,6 +32,10 @@ import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.evaluateExternalPluginInstall
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginInstallStore
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPackagePreview
+import com.android.purebilibili.core.plugin.skin.UiSkinInstallStore
+import com.android.purebilibili.core.plugin.skin.UiSkinSelection
+import com.android.purebilibili.core.plugin.skin.UiSkinSettingsStore
+import com.android.purebilibili.core.plugin.skin.rememberUiSkinState
 import com.android.purebilibili.core.plugin.PluginInfo
 import com.android.purebilibili.core.plugin.PluginManager
 import com.android.purebilibili.core.store.SettingsManager
@@ -173,6 +177,50 @@ fun PluginsContent(
     var kotlinPackageBytes by remember { mutableStateOf<ByteArray?>(null) }
     var kotlinImportError by remember { mutableStateOf<String?>(null) }
     var isKotlinPackageLoading by remember { mutableStateOf(false) }
+    val uiSkinStore = remember(context) {
+        UiSkinInstallStore.createDefault(context)
+    }
+    val uiSkinState by rememberUiSkinState(context)
+    var installedUiSkins by remember {
+        mutableStateOf(uiSkinStore.listInstalledPackages())
+    }
+    var uiSkinImportError by remember { mutableStateOf<String?>(null) }
+    var isUiSkinPackageLoading by remember { mutableStateOf(false) }
+    val uiSkinPackagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        isUiSkinPackageLoading = true
+        uiSkinImportError = null
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: throw IllegalArgumentException("无法读取皮肤包")
+                    val preview = uiSkinStore.previewPackage(bytes).getOrThrow()
+                    uiSkinStore.installPreview(preview, bytes).getOrThrow()
+                }
+            }
+            isUiSkinPackageLoading = false
+            result.onSuccess { installed ->
+                installedUiSkins = uiSkinStore.listInstalledPackages()
+                UiSkinSettingsStore.setSelection(
+                    context = context,
+                    selection = UiSkinSelection(
+                        enabled = true,
+                        selectedSkinId = installed.skinId
+                    )
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    "皮肤包已保存并启用",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }.onFailure { error ->
+                uiSkinImportError = error.message ?: "皮肤包导入失败"
+            }
+        }
+    }
     
     //  测试对话框状态
     var testingPluginId by remember { mutableStateOf<String?>(null) }
@@ -512,6 +560,148 @@ fun PluginsContent(
                                         )
                                     }
                                 }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "界面皮肤",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 32.dp, bottom = 8.dp)
+                )
+            }
+
+            item {
+                Surface(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = !isUiSkinPackageLoading) {
+                            uiSkinPackagePicker.launch("*/*")
+                        },
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+                    tonalElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = CupertinoIcons.Filled.Paintbrush,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "导入界面皮肤包",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isUiSkinPackageLoading) {
+                                    "正在读取 .bpskin..."
+                                } else {
+                                    "选择 .bpskin，只保存资源和启用记录，不执行代码"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                        ) {
+                            Text(
+                                text = "资源包",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (uiSkinImportError != null) {
+                item {
+                    Text(
+                        text = uiSkinImportError ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            if (installedUiSkins.isNotEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp
+                    ) {
+                        Column {
+                            installedUiSkins.forEachIndexed { index, skin ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = skin.displayName,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "${skin.manifest.version} · ${skin.manifest.surfaces.joinToString()} · 仅装饰，不替换底栏",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    AppAdaptiveSwitch(
+                                        checked = uiSkinState.enabled &&
+                                            uiSkinState.activeSkin?.skinId == skin.skinId,
+                                        onCheckedChange = { enabled ->
+                                            UiSkinSettingsStore.setSelection(
+                                                context = context,
+                                                selection = UiSkinSelection(
+                                                    enabled = enabled,
+                                                    selectedSkinId = if (enabled) skin.skinId else null
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
+                                if (index < installedUiSkins.lastIndex) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(0.5.dp)
+                                            .padding(start = 16.dp)
+                                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                    )
+                                }
+                            }
                         }
                     }
                 }
