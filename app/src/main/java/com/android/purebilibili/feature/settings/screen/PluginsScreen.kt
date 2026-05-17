@@ -853,7 +853,7 @@ fun PluginsContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${previewModel.signerText} · ${if (preview.dexPresent) "包含 Dex，当前不执行" else "未包含 Dex"}",
+                        text = "${previewModel.signerText} · ${buildExternalPluginPayloadSummary(preview.payloadEntries)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

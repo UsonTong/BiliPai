@@ -303,8 +303,8 @@ dependencies {
    - `DanmakuPluginApi`：弹幕过滤和样式化预留接口。
 4. 实现入口类，并声明 `PluginCapabilityManifest`。
 5. 在插件包根目录创建 `plugin-manifest.json`，字段与代码里的 `capabilityManifest` 保持一致。
-6. 编译插件模块，生成 `classes.jar`。
-7. 将 `plugin-manifest.json`、可选 `plugin-signature.json`、`classes.jar` 打包为 `.bpplugin`。
+6. 编译插件模块，生成 `classes.jar`、`classes.dex` 或其他后续版本支持的载荷。
+7. 将 `plugin-manifest.json`、可选 `plugin-signature.json` 和编译载荷打包为 `.bpplugin`。
 8. 在 BiliPai 插件中心选择 `.bpplugin`，检查 manifest、SHA-256、签名状态和能力授权提示。
 
 完整 SDK 中文说明见：[Plugin SDK](../plugins/sdk/README.md)。
@@ -391,7 +391,10 @@ class TodayWatchRemixPlugin : RecommendationPluginApi {
 }
 ```
 
-可直接运行的示例见：[Today Watch Remix](../plugins/samples/today-watch-remix/)。
+可打包预览的示例：
+
+- [Today Watch Remix](../plugins/samples/today-watch-remix/)：最小推荐排序样例。
+- [观感罗盘](../plugins/samples/watch-compass/)：解释型推荐样例，输出“轻松起步 / 深挖正片 / 冷门宝藏”三类推荐。
 
 ### 打包为 `.bpplugin`
 
@@ -420,6 +423,15 @@ val packageBpPlugin by tasks.registering(Zip::class) {
 ```
 
 构建后在 BiliPai 插件中心选择生成的 `.bpplugin`，确认插件名称、版本、SHA-256、签名状态和能力授权是否符合预期。
+
+仓库内示例目录没有独立 Gradle wrapper。请在示例目录调用仓库根 wrapper，并显式提供 Android SDK 路径：
+
+```bash
+cd plugins/samples/today-watch-remix
+ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPlugin --no-daemon
+```
+
+复制到仓库外独立开发时，可在插件工程根目录创建 `local.properties` 并写入 `sdk.dir=/path/to/android/sdk`。
 
 ---
 

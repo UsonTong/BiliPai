@@ -2,6 +2,8 @@ package com.android.purebilibili.feature.settings
 
 import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.PluginCapability
+import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadEntry
+import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadType
 import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
 
 data class PluginCapabilityUiModel(
@@ -97,6 +99,26 @@ fun buildExternalPluginInstallPreview(
             sensitiveCapabilityLabels = emptyList()
         )
     }
+}
+
+fun buildExternalPluginPayloadSummary(
+    payloadEntries: List<ExternalKotlinPluginPayloadEntry>
+): String {
+    if (payloadEntries.isEmpty()) return "载荷：无，当前不执行"
+
+    val labels = buildList {
+        if (payloadEntries.any { it.type == ExternalKotlinPluginPayloadType.CLASSES_JAR }) {
+            add("classes.jar")
+        }
+        if (payloadEntries.any { it.type == ExternalKotlinPluginPayloadType.CLASSES_DEX }) {
+            add("classes.dex")
+        }
+        val otherCount = payloadEntries.count { it.type == ExternalKotlinPluginPayloadType.OTHER }
+        if (otherCount > 0) {
+            add("其他文件 $otherCount 个")
+        }
+    }
+    return "载荷：${labels.joinToString("、")}，当前不执行"
 }
 
 fun buildInstalledExternalPluginUiModels(

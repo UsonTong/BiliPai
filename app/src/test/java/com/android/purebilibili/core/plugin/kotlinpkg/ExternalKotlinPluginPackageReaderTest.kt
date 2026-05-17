@@ -37,6 +37,41 @@ class ExternalKotlinPluginPackageReaderTest {
     }
 
     @Test
+    fun validPackage_reportsJarDexAndOtherPayloadsWithoutExecutingThem() {
+        val manifest = sampleManifest()
+        val bytes = pluginPackage(
+            "plugin-manifest.json" to Json.encodeToString(manifest).toByteArray(),
+            "classes.jar" to byteArrayOf(0x50, 0x4b),
+            "classes.dex" to byteArrayOf(0x64, 0x65, 0x78),
+            "assets/compass.json" to byteArrayOf(1, 2, 3)
+        )
+
+        val preview = ExternalKotlinPluginPackageReader.preview(bytes).getOrThrow()
+
+        assertTrue(preview.dexPresent)
+        assertEquals(
+            listOf(
+                ExternalKotlinPluginPayloadEntry(
+                    path = "classes.jar",
+                    type = ExternalKotlinPluginPayloadType.CLASSES_JAR,
+                    sizeBytes = 2
+                ),
+                ExternalKotlinPluginPayloadEntry(
+                    path = "classes.dex",
+                    type = ExternalKotlinPluginPayloadType.CLASSES_DEX,
+                    sizeBytes = 3
+                ),
+                ExternalKotlinPluginPayloadEntry(
+                    path = "assets/compass.json",
+                    type = ExternalKotlinPluginPayloadType.OTHER,
+                    sizeBytes = 3
+                )
+            ),
+            preview.payloadEntries
+        )
+    }
+
+    @Test
     fun missingManifest_rejectsPackageBeforeInstallDecision() {
         val bytes = pluginPackage("classes.dex" to byteArrayOf(1, 2, 3))
 

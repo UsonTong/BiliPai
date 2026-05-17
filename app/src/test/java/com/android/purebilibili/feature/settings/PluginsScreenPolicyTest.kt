@@ -3,6 +3,8 @@ package com.android.purebilibili.feature.settings
 import com.android.purebilibili.core.plugin.ExternalPluginInstallDecision
 import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.PluginCapabilityManifest
+import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadEntry
+import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadType
 import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -93,6 +95,26 @@ class PluginsScreenPolicyTest {
             setOf(PluginCapability.DANMAKU_STREAM, PluginCapability.DANMAKU_MUTATION),
             resolveJsonRulePluginCapabilities("danmaku")
         )
+    }
+
+    @Test
+    fun externalPluginPayloadSummary_prefersConcretePayloadTypesOverDexOnlyText() {
+        val summary = buildExternalPluginPayloadSummary(
+            listOf(
+                ExternalKotlinPluginPayloadEntry(
+                    path = "classes.jar",
+                    type = ExternalKotlinPluginPayloadType.CLASSES_JAR,
+                    sizeBytes = 12
+                ),
+                ExternalKotlinPluginPayloadEntry(
+                    path = "assets/compass.json",
+                    type = ExternalKotlinPluginPayloadType.OTHER,
+                    sizeBytes = 24
+                )
+            )
+        )
+
+        assertEquals("载荷：classes.jar、其他文件 1 个，当前不执行", summary)
     }
 
     @Test

@@ -15,15 +15,29 @@ import java.util.zip.ZipInputStream
 
 private const val PLUGIN_MANIFEST_ENTRY = "plugin-manifest.json"
 private const val PLUGIN_SIGNATURE_ENTRY = "plugin-signature.json"
+private const val CLASSES_JAR_ENTRY = "classes.jar"
 private const val CLASSES_DEX_ENTRY = "classes.dex"
 private const val MAX_ENTRY_COUNT = 256
 private const val MAX_MANIFEST_BYTES = 64 * 1024
 private const val MAX_SIGNATURE_BYTES = 16 * 1024
 private const val MAX_TOTAL_UNCOMPRESSED_BYTES = 16 * 1024 * 1024
 
+enum class ExternalKotlinPluginPayloadType {
+    CLASSES_JAR,
+    CLASSES_DEX,
+    OTHER
+}
+
+data class ExternalKotlinPluginPayloadEntry(
+    val path: String,
+    val type: ExternalKotlinPluginPayloadType,
+    val sizeBytes: Long
+)
+
 data class ExternalKotlinPluginPackagePreview(
     val descriptor: ExternalPluginPackageDescriptor,
-    val dexPresent: Boolean
+    val dexPresent: Boolean,
+    val payloadEntries: List<ExternalKotlinPluginPayloadEntry> = emptyList()
 )
 
 object ExternalKotlinPluginPackageReader {
@@ -56,13 +70,15 @@ object ExternalKotlinPluginPackageReader {
                     packageSha256 = packageSha256,
                     signerSha256 = signerSha256
                 ),
-                dexPresent = scan.dexPresent
+                dexPresent = scan.dexPresent,
+                payloadEntries = scan.payloadEntries
             )
         }
     }
 
     private fun scanPackage(packageBytes: ByteArray): PackageScanResult {
         val entryDigests = mutableListOf<EntryDigest>()
+        val payloadEntries = mutableListOf<ExternalKotlinPluginPayloadEntry>()
         val seenEntries = mutableSetOf<String>()
         var manifestBytes: ByteArray? = null
         var signatureBytes: ByteArray? = null
@@ -119,6 +135,11 @@ object ExternalKotlinPluginPackageReader {
                             size = size,
                             sha256 = digest.digest().toHex()
                         )
+                        payloadEntries += ExternalKotlinPluginPayloadEntry(
+                            path = normalizedName,
+                            type = ExternalKotlinPluginPayloadType.CLASSES_DEX,
+                            sizeBytes = size
+                        )
                     }
                     else -> {
                         val digest = MessageDigest.getInstance("SHA-256")
@@ -132,6 +153,11 @@ object ExternalKotlinPluginPackageReader {
                             size = size,
                             sha256 = digest.digest().toHex()
                         )
+                        payloadEntries += ExternalKotlinPluginPayloadEntry(
+                            path = normalizedName,
+                            type = normalizedName.toPayloadType(),
+                            sizeBytes = size
+                        )
                     }
                 }
                 zip.closeEntry()
@@ -142,6 +168,7 @@ object ExternalKotlinPluginPackageReader {
             manifestBytes = manifestBytes,
             signatureBytes = signatureBytes,
             dexPresent = dexPresent,
+            payloadEntries = payloadEntries,
             entryDigests = entryDigests
         )
     }
@@ -218,6 +245,7 @@ private data class PackageScanResult(
     val manifestBytes: ByteArray?,
     val signatureBytes: ByteArray?,
     val dexPresent: Boolean,
+    val payloadEntries: List<ExternalKotlinPluginPayloadEntry>,
     val entryDigests: List<EntryDigest>
 )
 
@@ -283,4 +311,12 @@ private fun sha256Hex(bytes: ByteArray): String {
 
 private fun ByteArray.toHex(): String {
     return joinToString("") { "%02x".format(it) }
+}
+
+private fun String.toPayloadType(): ExternalKotlinPluginPayloadType {
+    return when (this) {
+        CLASSES_JAR_ENTRY -> ExternalKotlinPluginPayloadType.CLASSES_JAR
+        CLASSES_DEX_ENTRY -> ExternalKotlinPluginPayloadType.CLASSES_DEX
+        else -> ExternalKotlinPluginPayloadType.OTHER
+    }
 }

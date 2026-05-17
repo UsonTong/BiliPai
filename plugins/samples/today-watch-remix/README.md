@@ -34,10 +34,10 @@ plugin/src/main/java/dev/example/todaywatchremix/TodayWatchRemixPlugin.kt
 
 ## 构建
 
-在本目录执行：
+本示例目录没有独立 Gradle wrapper。请在本目录调用仓库根 wrapper，并显式提供 Android SDK 路径：
 
 ```bash
-./gradlew packageBpPlugin
+ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPlugin --no-daemon
 ```
 
 输出文件：
@@ -46,7 +46,7 @@ plugin/src/main/java/dev/example/todaywatchremix/TodayWatchRemixPlugin.kt
 build/distributions/today-watch-remix.bpplugin
 ```
 
-如果 Gradle 找不到 Android SDK，请设置 `ANDROID_HOME`，或在本目录创建 `local.properties`：
+如果复制到仓库外独立开发，也可以在示例根目录创建 `local.properties`：
 
 ```properties
 sdk.dir=/path/to/android/sdk
@@ -82,7 +82,7 @@ includeBuild("../../..") {
    - 类名和 package 与 `entryClassName` 保持一致。
    - `capabilityManifest` 与 `plugin-manifest.json` 保持一致。
    - 在 `buildRecommendations` 中实现自己的排序、过滤或分组逻辑。
-3. 执行 `./gradlew packageBpPlugin`。
+3. 执行 `ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPlugin --no-daemon`，或使用你自己工程内的 wrapper。
 4. 在 BiliPai 插件中心选择生成的 `.bpplugin`，检查 manifest、SHA-256、签名状态和能力授权提示。
 
 ## 打包内容
