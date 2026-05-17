@@ -419,6 +419,9 @@ class BottomBarMiuixStructureTest {
         val miuixRendererSource = source
             .substringAfter("private fun MiuixBottomBar(")
             .substringBefore("@Composable\nprivate fun RowScope.MiuixDockedBottomBarItem(")
+        val miuixDockedItemSource = source
+            .substringAfter("private fun RowScope.MiuixDockedBottomBarItem(")
+            .substringBefore("@Composable\nprivate fun KernelSuAlignedBottomBar(")
 
         assertTrue(materialRendererSource.contains("DockedBottomBarSkinContainer("))
         assertTrue(materialRendererSource.contains("decoration = uiSkinDecoration"))
@@ -426,6 +429,9 @@ class BottomBarMiuixStructureTest {
         assertTrue(miuixRendererSource.contains("DockedBottomBarSkinContainer("))
         assertTrue(miuixRendererSource.contains("decoration = uiSkinDecoration"))
         assertTrue(miuixRendererSource.indexOf("DockedBottomBarSkinContainer(") < miuixRendererSource.indexOf("MiuixNavigationBar("))
+        assertTrue(miuixRendererSource.contains("Modifier.height(resolveBottomBarSkinDockHeight())"))
+        assertTrue(miuixDockedItemSource.contains("height(resolveMiuixDockedBottomBarItemHeight(skinIconPath != null))"))
+        assertFalse(miuixDockedItemSource.contains("height(64.dp)"))
     }
 
     private fun loadSource(path: String): String {

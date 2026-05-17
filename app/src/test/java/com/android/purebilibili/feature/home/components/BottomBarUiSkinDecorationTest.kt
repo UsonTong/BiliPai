@@ -27,6 +27,11 @@ class BottomBarUiSkinDecorationTest {
         val padding = resolveBottomBarSkinDockContentPadding()
 
         assertEquals(88.dp, resolveBottomBarSkinDockHeight())
+        assertEquals(64.dp, resolveMiuixDockedBottomBarItemHeight(hasUiSkinDecoration = false))
+        assertEquals(
+            resolveBottomBarSkinDockHeight(),
+            resolveMiuixDockedBottomBarItemHeight(hasUiSkinDecoration = true)
+        )
         assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
         assertEquals(0.dp, padding.calculateTopPadding())
         assertEquals(0.dp, padding.calculateBottomPadding())

@@ -81,6 +81,14 @@ internal fun resolveBottomBarMiuixSkinDockIconSize(): Dp = 34.dp
 
 internal fun resolveBottomBarCompactSkinHomeIconSize(): Dp = 36.dp
 
+internal fun resolveMiuixDockedBottomBarItemHeight(hasUiSkinDecoration: Boolean): Dp {
+    return if (hasUiSkinDecoration) {
+        resolveBottomBarSkinDockHeight()
+    } else {
+        64.dp
+    }
+}
+
 @Composable
 fun rememberBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinDecoration? {
     return remember(uiSkinState) {

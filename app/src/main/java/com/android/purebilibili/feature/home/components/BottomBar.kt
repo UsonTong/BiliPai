@@ -2187,7 +2187,15 @@ private fun MiuixBottomBar(
         modifier = barModifier.background(containerColor)
     ) {
         MiuixNavigationBar(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (uiSkinDecoration != null) {
+                        Modifier.height(resolveBottomBarSkinDockHeight())
+                    } else {
+                        Modifier
+                    }
+                ),
             color = Color.Transparent,
             showDivider = false,
             defaultWindowInsetsPadding = true,
@@ -2299,7 +2307,7 @@ private fun RowScope.MiuixDockedBottomBarItem(
 
     Column(
         modifier = Modifier
-            .height(64.dp)
+            .height(resolveMiuixDockedBottomBarItemHeight(skinIconPath != null))
             .weight(1f)
             .pointerInput(Unit) {
                 detectTapGestures(
