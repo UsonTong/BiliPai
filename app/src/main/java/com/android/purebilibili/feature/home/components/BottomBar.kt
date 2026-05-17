@@ -3592,6 +3592,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     val clickPulseTransform = rememberBottomBarClickPulseTransform(clickPulseKey)
     val currentOnPressChanged by rememberUpdatedState(onPressChanged)
     val shouldUseSkinItemLayout = skinIconPath != null && showIcon && showText
+    val skinIconPathForLayout = if (shouldUseSkinItemLayout) skinIconPath else null
     val iconLabelGap = if (shouldUseSkinItemLayout) {
         resolveBottomBarSkinIconLabelGap()
     } else {
@@ -3633,11 +3634,38 @@ private fun RowScope.AndroidNativeBottomBarItem(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = if (shouldUseSkinItemLayout) Modifier.fillMaxHeight() else Modifier,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (shouldUseSkinItemLayout) Arrangement.Top else Arrangement.Center
-        ) {
+        if (skinIconPathForLayout != null) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                BottomBarSkinIcon(
+                    iconPath = skinIconPathForLayout,
+                    contentDescription = label,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = resolveBottomBarSkinDockIconTopPadding())
+                )
+                Text(
+                    text = label,
+                    color = contentColor,
+                    fontSize = resolveBottomBarSkinDockLabelFontSize(),
+                    lineHeight = resolveBottomBarSkinDockLabelLineHeight(),
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            start = 2.dp,
+                            end = 2.dp,
+                            bottom = resolveBottomBarSkinDockLabelBottomPadding()
+                        )
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
             if (showIcon) {
                 Box(
                     modifier = Modifier,
@@ -3704,6 +3732,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
+            }
             }
         }
     }

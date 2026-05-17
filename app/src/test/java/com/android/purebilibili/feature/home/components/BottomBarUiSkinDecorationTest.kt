@@ -28,10 +28,11 @@ class BottomBarUiSkinDecorationTest {
 
         assertEquals(88.dp, resolveBottomBarSkinDockHeight())
         assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
-        assertEquals(4.dp, padding.calculateTopPadding())
-        assertEquals(10.dp, padding.calculateBottomPadding())
-        assertTrue(padding.calculateBottomPadding() > padding.calculateTopPadding())
+        assertEquals(0.dp, padding.calculateTopPadding())
+        assertEquals(0.dp, padding.calculateBottomPadding())
         assertEquals(2.dp, resolveBottomBarSkinIconLabelGap())
+        assertEquals(10.dp, resolveBottomBarSkinDockIconTopPadding())
+        assertEquals(18.dp, resolveBottomBarSkinDockLabelBottomPadding())
         assertEquals(12.sp, resolveBottomBarSkinDockLabelFontSize())
         assertEquals(18.sp, resolveBottomBarSkinDockLabelLineHeight())
     }

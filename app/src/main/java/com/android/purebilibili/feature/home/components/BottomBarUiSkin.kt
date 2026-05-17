@@ -63,11 +63,15 @@ internal fun resolveBottomBarSkinDockHeight(): Dp = 88.dp
 internal fun resolveBottomBarSkinDockContentPadding(): PaddingValues = PaddingValues(
     start = 4.dp,
     end = 4.dp,
-    top = 4.dp,
-    bottom = 10.dp
+    top = 0.dp,
+    bottom = 0.dp
 )
 
 internal fun resolveBottomBarSkinIconLabelGap(): Dp = 2.dp
+
+internal fun resolveBottomBarSkinDockIconTopPadding(): Dp = 10.dp
+
+internal fun resolveBottomBarSkinDockLabelBottomPadding(): Dp = 18.dp
 
 internal fun resolveBottomBarSkinDockLabelFontSize(): TextUnit = 12.sp
 
