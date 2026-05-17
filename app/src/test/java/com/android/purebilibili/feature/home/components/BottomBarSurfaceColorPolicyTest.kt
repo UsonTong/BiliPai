@@ -352,7 +352,6 @@ class BottomBarSurfaceColorPolicyTest {
         assertEquals(Color(0xFFFFA000), colors.selectedColor)
         assertTrue(colors.unselectedColor.luminance() < 0.45f)
         assertTrue(colors.unselectedColor.alpha >= 0.82f)
-        assertTrue(colors.iconBackdropColor != null)
     }
 
     @Test
@@ -365,7 +364,6 @@ class BottomBarSurfaceColorPolicyTest {
         )
 
         assertEquals(Color.White, colors.unselectedColor)
-        assertEquals(null, colors.iconBackdropColor)
     }
 
     @Test

@@ -846,8 +846,7 @@ internal fun resolveBottomBarGlassExportContentColor(
 
 internal data class BottomBarSkinContentColors(
     val selectedColor: Color,
-    val unselectedColor: Color,
-    val iconBackdropColor: Color? = null
+    val unselectedColor: Color
 )
 
 internal fun resolveBottomBarSkinContentColors(
@@ -864,8 +863,7 @@ internal fun resolveBottomBarSkinContentColors(
     }
     return BottomBarSkinContentColors(
         selectedColor = selectedColor,
-        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f),
-        iconBackdropColor = Color(0xFF4D3A1F).copy(alpha = 0.18f)
+        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f)
     )
 }
 
@@ -2216,7 +2214,6 @@ private fun MiuixBottomBar(
                     selectedColor = skinItemColors.selectedColor,
                     unselectedColor = skinItemColors.unselectedColor,
                     skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = currentItem == item),
-                    skinIconBackdropColor = skinItemColors.iconBackdropColor,
                     reminderBadgeText = formatBottomBarDynamicReminderBadge(
                         if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
                             dynamicUnreadCount
@@ -2275,7 +2272,6 @@ private fun RowScope.MiuixDockedBottomBarItem(
     selectedColor: Color,
     unselectedColor: Color,
     skinIconPath: String? = null,
-    skinIconBackdropColor: Color? = null,
     reminderBadgeText: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -2325,8 +2321,7 @@ private fun RowScope.MiuixDockedBottomBarItem(
                     BottomBarSkinIcon(
                         iconPath = skinIconPath,
                         contentDescription = label,
-                        size = resolveBottomBarMiuixSkinDockIconSize(),
-                        readabilityBackdropColor = skinIconBackdropColor
+                        size = resolveBottomBarMiuixSkinDockIconSize()
                     )
                 } else {
                     Icon(
@@ -2846,7 +2841,6 @@ private fun KernelSuAlignedBottomBar(
                                 contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
                                 skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
-                                skinIconBackdropColor = skinContentColors.iconBackdropColor,
                                 onClick = {},
                                 interactive = false,
                                 selectedIconAlpha = coverage,
@@ -2979,7 +2973,6 @@ private fun KernelSuAlignedBottomBar(
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
                                         skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
-                                        skinIconBackdropColor = skinContentColors.iconBackdropColor,
                                         onClick = {},
                                         interactive = false,
                                         selectedIconAlpha = coverage,
@@ -3228,7 +3221,6 @@ private fun KernelSuAlignedBottomBar(
                                     iconPath = homeSkinIconPath,
                                     contentDescription = null,
                                     size = resolveBottomBarCompactSkinHomeIconSize(),
-                                    readabilityBackdropColor = skinContentColors.iconBackdropColor,
                                     modifier = Modifier.graphicsLayer {
                                         scaleX = compactHomeIconScale
                                         scaleY = compactHomeIconScale
@@ -3564,7 +3556,6 @@ private fun RowScope.AndroidNativeBottomBarItem(
     contentColorOverride: Color? = null,
     iconStyle: SharedFloatingBottomBarIconStyle,
     skinIconPath: String? = null,
-    skinIconBackdropColor: Color? = null,
     onClick: () -> Unit,
     interactive: Boolean,
     onPressChanged: (Boolean) -> Unit = {},
@@ -3584,6 +3575,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     val isPressed by interactionSource.collectIsPressedAsState()
     val clickPulseTransform = rememberBottomBarClickPulseTransform(clickPulseKey)
     val currentOnPressChanged by rememberUpdatedState(onPressChanged)
+    val shouldLiftSkinIconLabel = skinIconPath != null && showIcon && showText
 
     LaunchedEffect(isPressed, interactive) {
         if (interactive) {
@@ -3621,6 +3613,11 @@ private fun RowScope.AndroidNativeBottomBarItem(
         contentAlignment = Alignment.Center
     ) {
         Column(
+            modifier = Modifier.graphicsLayer {
+                if (shouldLiftSkinIconLabel) {
+                    translationY = -3.dp.toPx()
+                }
+            },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -3634,8 +3631,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
                             skinIconPath != null -> {
                                 BottomBarSkinIcon(
                                     iconPath = skinIconPath,
-                                    contentDescription = label,
-                                    readabilityBackdropColor = skinIconBackdropColor
+                                    contentDescription = label
                                 )
                             }
                             item == null && iconStyle == SharedFloatingBottomBarIconStyle.CUPERTINO -> {
