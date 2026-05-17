@@ -1690,7 +1690,8 @@ fun FrostedBottomBar(
     motionTier: MotionTier = MotionTier.Normal,
     isTransitionRunning: Boolean = false,
     forceLowBlurBudget: Boolean = false,
-    isFeedScrollInProgress: Boolean = false
+    isFeedScrollInProgress: Boolean = false,
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     if (LocalUiPreset.current == UiPreset.MD3) {
         val androidNativeVariant = LocalAndroidNativeVariant.current
@@ -1717,7 +1718,8 @@ fun FrostedBottomBar(
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget,
-                isFeedScrollInProgress = isFeedScrollInProgress
+                isFeedScrollInProgress = isFeedScrollInProgress,
+                uiSkinDecoration = uiSkinDecoration
             )
         } else {
             MaterialBottomBar(
@@ -1740,7 +1742,8 @@ fun FrostedBottomBar(
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget,
-                isFeedScrollInProgress = isFeedScrollInProgress
+                isFeedScrollInProgress = isFeedScrollInProgress,
+                uiSkinDecoration = uiSkinDecoration
             )
         }
         return
@@ -1797,7 +1800,8 @@ fun FrostedBottomBar(
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset,
-            isFeedScrollInProgress = isFeedScrollInProgress
+            isFeedScrollInProgress = isFeedScrollInProgress,
+            uiSkinDecoration = uiSkinDecoration
         )
         return
     }
@@ -1821,7 +1825,8 @@ fun FrostedBottomBar(
         scrollOffset = scrollOffset,
         motionTier = motionTier,
         isTransitionRunning = isTransitionRunning,
-        forceLowBlurBudget = forceLowBlurBudget
+        forceLowBlurBudget = forceLowBlurBudget,
+        uiSkinDecoration = uiSkinDecoration
     )
 }
 
@@ -1848,7 +1853,8 @@ private fun MaterialBottomBar(
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
-    isFeedScrollInProgress: Boolean = false
+    isFeedScrollInProgress: Boolean = false,
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -1916,7 +1922,8 @@ private fun MaterialBottomBar(
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset,
-            isFeedScrollInProgress = isFeedScrollInProgress
+            isFeedScrollInProgress = isFeedScrollInProgress,
+            uiSkinDecoration = uiSkinDecoration
         )
         return
     }
@@ -2051,7 +2058,8 @@ private fun MiuixBottomBar(
     motionTier: MotionTier,
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
-    isFeedScrollInProgress: Boolean = false
+    isFeedScrollInProgress: Boolean = false,
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -2119,7 +2127,8 @@ private fun MiuixBottomBar(
             searchLaunchKey = searchLaunchKey,
             onSearchLaunchTransitionFinished = onSearchLaunchTransitionFinished,
             scrollOffset = scrollOffset,
-            isFeedScrollInProgress = isFeedScrollInProgress
+            isFeedScrollInProgress = isFeedScrollInProgress,
+            uiSkinDecoration = uiSkinDecoration
         )
         return
     }
@@ -2314,7 +2323,8 @@ private fun KernelSuAlignedBottomBar(
     searchLaunchKey: Int = 0,
     onSearchLaunchTransitionFinished: (Int) -> Unit = {},
     scrollOffset: Float = 0f,
-    isFeedScrollInProgress: Boolean = false
+    isFeedScrollInProgress: Boolean = false,
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     val shellShape = resolveSharedBottomBarCapsuleShape()
     val tabsBackdrop = rememberLayerBackdrop()
@@ -2729,6 +2739,11 @@ private fun KernelSuAlignedBottomBar(
                             alpha = indicatorGlowAlpha,
                             centerXPx = interactiveHighlightCenterXPx
                         )
+                )
+
+                BottomBarSkinDecorativeTrim(
+                    decoration = uiSkinDecoration,
+                    modifier = Modifier.matchParentSize()
                 )
 
                 if (shouldComposeDockContent) {

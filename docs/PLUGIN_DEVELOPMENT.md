@@ -1,10 +1,11 @@
 # 🔌 BiliPai 插件开发指南
 
-本文档面向想要为 BiliPai 创建自定义插件的开发者。BiliPai 提供了一个灵活的插件系统，当前主要支持三种开发路径：
+本文档面向想要为 BiliPai 创建自定义插件的开发者。BiliPai 提供了一个灵活的插件系统，当前主要支持四种开发路径：
 
 | 类型 | 难度 | 适用场景 |
 |------|------|----------|
 | **JSON 规则插件** | ⭐ 简单 | 内容过滤、弹幕净化、关键词屏蔽 |
+| **外部 `.bpskin` 皮肤包** | ⭐ 预览 | 首页顶部氛围、搜索框、底栏饰面等数据型 UI 美化 |
 | **外部 `.bpplugin` Kotlin 包** | ⭐⭐ 预览 | 推荐算法、播放器/弹幕接口适配、能力授权流程验证 |
 | **源码级原生 Kotlin 插件** | ⭐⭐⭐ 进阶 | 复杂功能、API 集成、自定义 UI、立即运行的深度集成 |
 
@@ -12,6 +13,7 @@
 > 当前仓库已内置 5 个内置插件，并支持通过 URL 导入外部 JSON 规则插件；但插件生态仍处于早期阶段。
 > `plugins/community/` 目前仅包含 1 个演示插件，社区规模和兼容性样本都还有限。
 > 外部 `.bpplugin` Kotlin 包当前支持预览、签名/哈希展示和能力授权记录，宿主尚不执行外部 Dex。
+> 外部 `.bpskin` 皮肤包是数据型资源包，只能提供资源、颜色和适用界面声明，不能替换 Compose 组件或执行代码。
 > 引入第三方插件前请自行审阅规则内容、验证兼容性，并假设规则能力与导入体验会继续随版本迭代。
 
 ---
@@ -28,6 +30,7 @@
   - [开发步骤](#开发步骤)
   - [推荐插件最小示例](#推荐插件最小示例)
   - [打包为 `.bpplugin`](#打包为-bpplugin)
+- [外部 `.bpskin` 皮肤包（预览）](#-外部-bpskin-皮肤包预览)
 - [源码级原生 Kotlin 插件](#-源码级原生-kotlin-插件)
   - [插件接口](#插件接口)
   - [插件类型](#插件类型)
@@ -432,6 +435,55 @@ ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPl
 ```
 
 复制到仓库外独立开发时，可在插件工程根目录创建 `local.properties` 并写入 `sdk.dir=/path/to/android/sdk`。
+
+---
+
+## 🎨 外部 `.bpskin` 皮肤包（预览）
+
+`.bpskin` 是 ZIP 资源包，用于数据型 UI 美化。它和 `.bpplugin` 分离，不包含 Dex、Jar 或 Compose 入口，宿主只解析、校验、保存资源和启用记录。
+
+版本 1 的包根目录必须包含 `skin-manifest.json`，其他资源必须位于 `assets/` 下：
+
+```text
+my-skin.bpskin
+├── skin-manifest.json
+└── assets/
+    ├── bottom_trim.png
+    └── top_atmosphere.webp
+```
+
+最小 manifest 示例：
+
+```json
+{
+  "formatVersion": 1,
+  "skinId": "dev.example.winter_cloud",
+  "displayName": "冬日云朵",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "BiliPai",
+  "surfaces": ["HOME_BOTTOM_BAR", "HOME_TOP_CHROME"],
+  "assets": {
+    "bottomBarTrim": "assets/bottom_trim.png",
+    "topAtmosphere": "assets/top_atmosphere.webp"
+  },
+  "colors": {
+    "bottomBarTrimTint": "#EAF8FF",
+    "topAtmosphereTint": "#DFF5FF"
+  }
+}
+```
+
+当前支持的界面：
+
+- `HOME_BOTTOM_BAR`：首页底栏装饰资源和颜色 token。
+- `HOME_TOP_CHROME`：首页顶部氛围资源和颜色 token。
+
+安全边界：
+
+- 包内只能包含 `skin-manifest.json` 和 `assets/` 下的 PNG、WebP、JPEG 资源。
+- 宿主会拒绝路径穿越、未知界面、未声明资源、重复声明资源、超大 manifest 和超大解压内容。
+- 皮肤只作为装饰输入传给宿主。底栏的 `FrostedBottomBar`、`KernelSuAlignedBottomBar`、`drawBackdrop`、指示器折射、滑动色散和输入层不会被皮肤包替换或重算。
 
 ---
 

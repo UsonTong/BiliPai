@@ -101,6 +101,18 @@ class AppNavigationAppearancePolicyTest {
     }
 
     @Test
+    fun appNavigationPassesSkinDecorationAsReadOnlyBottomBarInput() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
+
+        assertTrue(source.contains("val uiSkinState by rememberUiSkinState(context)"))
+        assertTrue(source.contains("val bottomBarUiSkinDecoration = rememberBottomBarUiSkinDecoration(uiSkinState)"))
+        assertTrue(source.contains("uiSkinDecoration = bottomBarUiSkinDecoration"))
+        assertFalse(source.contains("uiSkinState.copy("))
+        assertFalse(source.contains("bottomBarLiquidGlassPreset = uiSkin"))
+        assertFalse(source.contains("isBottomBarLiquidGlassEnabled = uiSkin"))
+    }
+
+    @Test
     fun appNavigationRemovesVideoTransitionRealtimeBlurRuntimePath() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
 

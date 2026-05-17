@@ -106,12 +106,14 @@ import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.softLandingSpring
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.shouldUseSidebarNavigationForLayout
+import com.android.purebilibili.core.plugin.skin.rememberUiSkinState
 // import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass (Removed)
 // import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass (Removed)
 // import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass (Removed)
 // import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi (Removed)
 import com.android.purebilibili.feature.home.components.FrostedBottomBar
 import com.android.purebilibili.feature.home.components.BottomNavItem
+import com.android.purebilibili.feature.home.components.rememberBottomBarUiSkinDecoration
 import com.android.purebilibili.feature.profile.shouldShowProfileHistoryService
 import com.android.purebilibili.core.store.AppNavigationSettings
 import com.android.purebilibili.core.store.HomeWallpaperEffectScope
@@ -241,6 +243,8 @@ fun AppNavigation(
             uiPreset = uiPreset
         )
     }
+    val uiSkinState by rememberUiSkinState(context)
+    val bottomBarUiSkinDecoration = rememberBottomBarUiSkinDecoration(uiSkinState)
     val androidNativeVariant = com.android.purebilibili.core.theme.LocalAndroidNativeVariant.current
     val appearance = remember(homeSettings, uiPreset, androidNativeVariant) {
         resolveAppNavigationAppearance(
@@ -3232,6 +3236,7 @@ fun AppNavigation(
                                     forceLowBlurBudget = bottomPagerRenderBudget.forceLowBlurBudget,
                                     isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
                                         homeFeedScrollInProgressState.value,
+                                    uiSkinDecoration = bottomBarUiSkinDecoration,
                                     onToggleSidebar = {
                                         // [Tablet] Toggle sidebar mode
                                         coroutineScope.launch {
@@ -3270,6 +3275,7 @@ fun AppNavigation(
                                 forceLowBlurBudget = bottomPagerRenderBudget.forceLowBlurBudget,
                                 isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
                                     homeFeedScrollInProgressState.value,
+                                uiSkinDecoration = bottomBarUiSkinDecoration,
                                 onToggleSidebar = {
                                     // [Tablet] Toggle sidebar mode
                                     coroutineScope.launch {

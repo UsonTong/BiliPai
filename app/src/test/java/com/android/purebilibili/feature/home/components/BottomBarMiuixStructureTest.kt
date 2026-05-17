@@ -15,6 +15,9 @@ class BottomBarMiuixStructureTest {
             .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
 
         assertTrue(source.contains("KernelSuAlignedBottomBar("))
+        assertTrue(source.contains("uiSkinDecoration: BottomBarUiSkinDecoration? = null"))
+        assertTrue(kernelSuRendererSource.contains("decoration = uiSkinDecoration"))
+        assertTrue(kernelSuRendererSource.contains("BottomBarSkinDecorativeTrim("))
         assertTrue(kernelSuRendererSource.contains("AndroidNativeBottomBarTuning"))
         assertTrue(source.contains("resolveKernelSuFloatingBottomBarWidth("))
         assertTrue(kernelSuRendererSource.contains("resolveKernelSuBottomBarSearchLayout("))
@@ -52,6 +55,7 @@ class BottomBarMiuixStructureTest {
         assertFalse(kernelSuRendererSource.contains("settlePulseKey = if (index == selectedIndex)"))
         assertTrue(kernelSuRendererSource.contains("if (effectiveSearchExpanded) {\n                                    Modifier.clickable("))
         assertFalse(kernelSuRendererSource.contains("ColorFilter.tint(exportTintColor)"))
+        assertFalse(kernelSuRendererSource.contains("ColorFilter.tint(uiSkinDecoration"))
         assertFalse(kernelSuRendererSource.contains("val contentColor = Color.White"))
         assertTrue(kernelSuRendererSource.contains("val contentColor = exportItemContentColor(item, coverage)"))
         assertFalse(kernelSuRendererSource.contains("BottomBarStyleIndicatorSurface("))
@@ -138,6 +142,30 @@ class BottomBarMiuixStructureTest {
         assertFalse(source.contains("LocalSoftwareKeyboardController"))
         assertFalse(source.contains("focusRequester.requestFocus()"))
         assertFalse(kernelSuRendererSource.contains("enabled = searchExpanded"))
+    }
+
+    @Test
+    fun `skin decoration stays outside refraction indicator and input layers`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val kernelSuRendererSource = source
+            .substringAfter("private fun KernelSuAlignedBottomBar(")
+            .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+
+        val shellIndex = kernelSuRendererSource.indexOf(".kernelSuFloatingDockSurface(")
+        val skinIndex = kernelSuRendererSource.indexOf("BottomBarSkinDecorativeTrim(")
+        val visibleContentIndex = kernelSuRendererSource.indexOf(
+            "val coverage = itemCoverage(index)"
+        )
+        val captureIndex = kernelSuRendererSource.indexOf(".layerBackdrop(tabsBackdrop)")
+        val indicatorIndex = kernelSuRendererSource.indexOf("backdrop = indicatorBackdrop")
+        val inputIndex = kernelSuRendererSource.indexOf(".horizontalDragGesture", startIndex = indicatorIndex)
+
+        assertTrue(shellIndex >= 0)
+        assertTrue(skinIndex > shellIndex)
+        assertTrue(visibleContentIndex > skinIndex)
+        assertTrue(captureIndex > visibleContentIndex)
+        assertTrue(indicatorIndex > captureIndex)
+        assertTrue(inputIndex > indicatorIndex)
     }
 
     @Test
