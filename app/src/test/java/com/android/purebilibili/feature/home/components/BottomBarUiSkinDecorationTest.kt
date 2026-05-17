@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.home.components
 
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.plugin.skin.InstalledUiSkinPackage
 import com.android.purebilibili.core.plugin.skin.UiSkinAssets
 import com.android.purebilibili.core.plugin.skin.UiSkinColorTokens
@@ -25,12 +26,14 @@ class BottomBarUiSkinDecorationTest {
     fun bottomSkinDockLayoutKeepsLargeIconsAndLabelVisible() {
         val padding = resolveBottomBarSkinDockContentPadding()
 
-        assertEquals(76.dp, resolveBottomBarSkinDockHeight())
+        assertEquals(88.dp, resolveBottomBarSkinDockHeight())
         assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
-        assertEquals(6.dp, padding.calculateTopPadding())
-        assertEquals(2.dp, padding.calculateBottomPadding())
-        assertTrue(padding.calculateBottomPadding() < padding.calculateTopPadding())
-        assertEquals(0.dp, resolveBottomBarSkinIconLabelGap())
+        assertEquals(4.dp, padding.calculateTopPadding())
+        assertEquals(10.dp, padding.calculateBottomPadding())
+        assertTrue(padding.calculateBottomPadding() > padding.calculateTopPadding())
+        assertEquals(2.dp, resolveBottomBarSkinIconLabelGap())
+        assertEquals(12.sp, resolveBottomBarSkinDockLabelFontSize())
+        assertEquals(18.sp, resolveBottomBarSkinDockLabelLineHeight())
     }
 
     @Test

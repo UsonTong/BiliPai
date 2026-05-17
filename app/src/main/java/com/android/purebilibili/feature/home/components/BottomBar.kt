@@ -3691,8 +3691,16 @@ private fun RowScope.AndroidNativeBottomBarItem(
                 Text(
                     text = label,
                     color = contentColor,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
+                    fontSize = if (shouldUseSkinItemLayout) {
+                        resolveBottomBarSkinDockLabelFontSize()
+                    } else {
+                        11.sp
+                    },
+                    lineHeight = if (shouldUseSkinItemLayout) {
+                        resolveBottomBarSkinDockLabelLineHeight()
+                    } else {
+                        14.sp
+                    },
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )

@@ -596,10 +596,20 @@ class TopTabStylePolicyTest {
     @Test
     fun `skin top tab colors stay readable on light and dark skin backgrounds`() {
         val darkBackgroundContent = resolveHomeSkinTopTabContentColor(Color(0xFF2E2A1E))
+        val midDarkBackgroundContent = resolveHomeSkinTopTabContentColor(Color(0xFF778675))
         val lightBackgroundContent = resolveHomeSkinTopTabContentColor(Color(0xFFE4F6FF))
 
-        assertEquals(Color.White.copy(alpha = 0.94f), darkBackgroundContent)
-        assertEquals(Color(0xFF1E252B).copy(alpha = 0.94f), lightBackgroundContent)
+        assertEquals(Color.White.copy(alpha = 0.98f), darkBackgroundContent)
+        assertEquals(Color.White.copy(alpha = 0.98f), midDarkBackgroundContent)
+        assertEquals(Color(0xFF111820).copy(alpha = 0.96f), lightBackgroundContent)
+        assertEquals(
+            Color.White.copy(alpha = 0.84f),
+            resolveHomeSkinTopTabUnselectedContentColor(darkBackgroundContent)
+        )
+        assertEquals(
+            Color(0xFF111820).copy(alpha = 0.78f),
+            resolveHomeSkinTopTabUnselectedContentColor(lightBackgroundContent)
+        )
         assertEquals(darkBackgroundContent, resolveHomeSkinTopTabIndicatorColor(darkBackgroundContent))
         assertEquals(lightBackgroundContent, resolveHomeSkinTopTabIndicatorColor(lightBackgroundContent))
     }

@@ -125,12 +125,15 @@ internal fun resolveHomeSkinSearchSurfaceColor(
 internal fun resolveHomeSkinTopTabContentColor(
     topAtmosphereTint: Color
 ): Color {
-    return if (topAtmosphereTint.luminance() < 0.45f) {
-        Color.White.copy(alpha = 0.94f)
+    return if (topAtmosphereTint.luminance() < 0.72f) {
+        Color.White.copy(alpha = 0.98f)
     } else {
-        Color(0xFF1E252B).copy(alpha = 0.94f)
+        Color(0xFF111820).copy(alpha = 0.96f)
     }
 }
+
+internal fun resolveHomeSkinTopTabUnselectedContentColor(contentColor: Color): Color =
+    contentColor.copy(alpha = if (contentColor.luminance() > 0.5f) 0.84f else 0.78f)
 
 internal fun shouldUseHomeSkinPlainTopTabs(uiSkinDecoration: HomeUiSkinDecoration?): Boolean =
     uiSkinDecoration != null

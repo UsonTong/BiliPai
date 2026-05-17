@@ -1633,11 +1633,15 @@ class iOSHomeHeaderVisualPolicyTest {
     @Test
     fun `skin top tab content color follows skin atmosphere brightness`() {
         assertEquals(
-            Color.White.copy(alpha = 0.94f),
+            Color.White.copy(alpha = 0.98f),
             resolveHomeSkinTopTabContentColor(Color(0xFF2E2A1E))
         )
         assertEquals(
-            Color(0xFF1E252B).copy(alpha = 0.94f),
+            Color.White.copy(alpha = 0.98f),
+            resolveHomeSkinTopTabContentColor(Color(0xFF778675))
+        )
+        assertEquals(
+            Color(0xFF111820).copy(alpha = 0.96f),
             resolveHomeSkinTopTabContentColor(Color(0xFFE4F6FF))
         )
     }

@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.android.purebilibili.core.plugin.skin.UiSkinState
 import com.android.purebilibili.core.plugin.skin.UiSkinSurface
@@ -56,16 +58,20 @@ data class HomeUiSkinDecoration(
 
 internal fun resolveBottomBarSkinDockIconSize(): Dp = 36.dp
 
-internal fun resolveBottomBarSkinDockHeight(): Dp = 76.dp
+internal fun resolveBottomBarSkinDockHeight(): Dp = 88.dp
 
 internal fun resolveBottomBarSkinDockContentPadding(): PaddingValues = PaddingValues(
     start = 4.dp,
     end = 4.dp,
-    top = 6.dp,
-    bottom = 2.dp
+    top = 4.dp,
+    bottom = 10.dp
 )
 
-internal fun resolveBottomBarSkinIconLabelGap(): Dp = 0.dp
+internal fun resolveBottomBarSkinIconLabelGap(): Dp = 2.dp
+
+internal fun resolveBottomBarSkinDockLabelFontSize(): TextUnit = 12.sp
+
+internal fun resolveBottomBarSkinDockLabelLineHeight(): TextUnit = 18.sp
 
 internal fun resolveBottomBarMiuixSkinDockIconSize(): Dp = 34.dp
 

@@ -818,7 +818,7 @@ private fun LightweightTopTabItem(
         }
     }
     val unselectedColor = if (skinPlainStyle) {
-        (skinPlainContentColor ?: colorScheme.onSurface).copy(alpha = 0.68f)
+        resolveHomeSkinTopTabUnselectedContentColor(skinPlainContentColor ?: colorScheme.onSurface)
     } else {
         colorScheme.onSurfaceVariant
     }
