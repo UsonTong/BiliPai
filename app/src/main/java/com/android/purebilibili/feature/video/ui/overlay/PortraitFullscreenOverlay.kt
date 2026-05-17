@@ -167,6 +167,7 @@ fun PortraitFullscreenOverlay(
             modifier = Modifier.fillMaxSize()
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                PortraitReadableTextScrims(layoutPolicy = layoutPolicy)
                 
                 // 1. 顶部栏 (返回 + 观看人数)
                 PortraitTopControlBar(
@@ -313,6 +314,44 @@ fun PortraitFullscreenOverlay(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+    }
+}
+
+@Composable
+private fun PortraitReadableTextScrims(
+    layoutPolicy: PortraitFullscreenOverlayLayoutPolicy
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 亮色视频会吞掉白色标题和顶部图标，只在文字覆盖区下方加渐变暗层。
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(layoutPolicy.topScrimHeightDp.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black.copy(alpha = layoutPolicy.topScrimStartAlpha),
+                            1f to Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(layoutPolicy.bottomTextScrimHeightDp.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.42f to Color.Black.copy(alpha = layoutPolicy.bottomTextScrimEndAlpha * 0.46f),
+                            1f to Color.Black.copy(alpha = layoutPolicy.bottomTextScrimEndAlpha)
+                        )
+                    )
+                )
+        )
     }
 }
 
