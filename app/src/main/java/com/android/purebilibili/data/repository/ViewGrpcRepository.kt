@@ -43,13 +43,21 @@ internal object ViewGrpcRepository {
             }
         }
 
-    suspend fun getBgmRecommendVideos(musicId: String, aid: Long, cid: Long): Result<List<BgmRecommendVideo>> =
+    suspend fun getBgmRecommendVideos(
+        musicId: String,
+        aid: Long,
+        cid: Long,
+        page: Int = 1,
+        pageSize: Int = 5
+    ): Result<List<BgmRecommendVideo>> =
         withContext(Dispatchers.IO) {
             runCatching {
                 NetworkModule.api.getBgmRecommendList(
                     musicId = musicId,
                     aid = aid,
-                    cid = cid
+                    cid = cid,
+                    pn = page,
+                    ps = pageSize
                 ).data?.list.orEmpty()
             }.onFailure { e ->
                 Logger.w(TAG, "BGM recommend API failed: ${e.message}")

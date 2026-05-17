@@ -529,7 +529,7 @@ interface BilibiliApi {
         @Query("aid") aid: Long,
         @Query("cid") cid: Long,
         @Query("pn") pn: Int = 1,
-        @Query("ps") ps: Int = 6
+        @Query("ps") ps: Int = 5
     ): com.android.purebilibili.data.model.response.BgmRecommendListResponse
 
     @GET("x/stein/edgeinfo_v2")

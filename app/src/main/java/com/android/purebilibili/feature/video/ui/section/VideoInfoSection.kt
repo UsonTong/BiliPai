@@ -11,9 +11,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,19 +59,17 @@ import com.android.purebilibili.core.ui.components.UserUpBadge
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoCoverSharedTransition
 import com.android.purebilibili.core.ui.transition.shouldEnableVideoMetadataSharedTransition
 import com.android.purebilibili.core.util.CardPositionManager
-import com.android.purebilibili.data.model.response.BgmCommentInfo
 import com.android.purebilibili.data.model.response.BgmDetailData
 import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.data.model.response.BgmRecommendVideo
 import com.android.purebilibili.data.model.response.RelatedVideo
-import com.android.purebilibili.data.model.response.VideoItem
-import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
+import com.android.purebilibili.feature.video.screen.buildVideoNavigationOptions
 import com.android.purebilibili.feature.video.ui.FollowButtonTone
 import com.android.purebilibili.feature.video.ui.FollowTextTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
-import com.android.purebilibili.data.repository.AudioRepository
 import com.android.purebilibili.data.repository.ViewGrpcRepository
+import kotlinx.coroutines.delay
 
 internal const val VIDEO_DESCRIPTION_URL_TAG = "VIDEO_DESCRIPTION_URL"
 private val VIDEO_DESCRIPTION_URL_PATTERN =
@@ -148,6 +148,11 @@ internal fun resolveVideoInfoInitialExpandedState(
     hasTags: Boolean,
     defaultExpanded: Boolean = true
 ): Boolean = defaultExpanded && (hasDescription || hasTags)
+
+private const val BGM_DISCOVERY_LOAD_DELAY_MS = 420L
+private const val BGM_RECOMMEND_PAGE_SIZE = 5
+private const val BGM_RECOMMEND_LIST_START_INDEX = 4
+private const val BGM_RECOMMEND_IMAGE_BUFFER_ITEMS = 1
 
 /**
  * Video Title Section (Bilibili official style: compact layout)
@@ -1141,56 +1146,88 @@ private fun BgmSelectionSheet(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val itemKeys = remember(bgmList) {
+        bgmList.mapIndexed(::resolveBgmItemKey)
+    }
     val aid = remember(bgmList) {
         bgmList.firstOrNull()?.jumpUrl?.let { resolveQueryLongParam(it, "aid") } ?: 0L
     }
     val cid = remember(bgmList) {
         bgmList.firstOrNull()?.jumpUrl?.let { resolveQueryLongParam(it, "cid") } ?: 0L
     }
-    val preloadedData by produceState(
-        initialValue = bgmList.associate { it.musicId to BgmSheetItemState() },
-        key1 = bgmList,
-        key2 = aid,
-        key3 = cid
-    ) {
-        value = bgmList.associate { it.musicId to BgmSheetItemState() }
-        if (aid <= 0L || cid <= 0L) return@produceState
-        value = bgmList.associate { bgm ->
-            val detail = if (bgm.musicId.isNotBlank()) {
-                ViewGrpcRepository.getBgmDetail(
-                    musicId = bgm.musicId,
-                    aid = aid,
-                    cid = cid
-                ).getOrNull()
-            } else {
-                null
-            }
-            val recommendedVideos = if (bgm.musicId.isNotBlank()) {
-                ViewGrpcRepository.getBgmRecommendVideos(
-                    musicId = bgm.musicId,
-                    aid = aid,
-                    cid = cid
-                ).getOrDefault(emptyList())
-            } else {
-                emptyList()
-            }
-            bgm.musicId to BgmSheetItemState(
-                detail = detail,
-                recommendedVideos = recommendedVideos
-            )
+    val itemStateByKey = remember(itemKeys) {
+        mutableStateMapOf<String, BgmSheetItemState>().also { map ->
+            itemKeys.forEach { key -> map[key] = BgmSheetItemState() }
         }
     }
-    var selectedMusicId by remember(bgmList.map(BgmInfo::musicId)) {
-        mutableStateOf(bgmList.firstOrNull()?.musicId.orEmpty())
+    val listState = rememberLazyListState()
+    var selectedItemKey by remember(itemKeys) {
+        mutableStateOf(itemKeys.firstOrNull().orEmpty())
     }
-    val selectedBgm = remember(selectedMusicId, bgmList) {
-        bgmList.firstOrNull { it.musicId == selectedMusicId } ?: bgmList.first()
+    val selectedIndex = remember(selectedItemKey, itemKeys) {
+        itemKeys.indexOf(selectedItemKey).takeIf { it >= 0 } ?: 0
     }
-    val selectedData = remember(preloadedData, selectedBgm.musicId) {
-        preloadedData[selectedBgm.musicId] ?: BgmSheetItemState()
+    val selectedBgm = bgmList.getOrElse(selectedIndex) { bgmList.first() }
+    val selectedData = itemStateByKey[selectedItemKey] ?: BgmSheetItemState()
+
+    LaunchedEffect(selectedItemKey, selectedBgm.musicId, aid, cid) {
+        if (!shouldLoadBgmDiscoveryItem(selectedData, selectedBgm.musicId, aid, cid)) return@LaunchedEffect
+
+        delay(BGM_DISCOVERY_LOAD_DELAY_MS)
+        itemStateByKey[selectedItemKey] = selectedData.copy(
+            status = BgmDiscoveryLoadStatus.Loading,
+            errorMessage = null,
+            isAppendingRecommendations = false
+        )
+
+        val detail = ViewGrpcRepository.getBgmDetail(
+            musicId = selectedBgm.musicId,
+            aid = aid,
+            cid = cid
+        )
+        val recommendedVideos = ViewGrpcRepository.getBgmRecommendVideos(
+            musicId = selectedBgm.musicId,
+            aid = aid,
+            cid = cid,
+            page = 1,
+            pageSize = BGM_RECOMMEND_PAGE_SIZE
+        )
+        val loadedDetail = detail.getOrNull()
+        val loadedVideos = recommendedVideos.getOrDefault(emptyList())
+        val errorMessage = detail.exceptionOrNull()?.message
+            ?: recommendedVideos.exceptionOrNull()?.message
+
+        itemStateByKey[selectedItemKey] = BgmSheetItemState(
+            status = if (detail.isSuccess || recommendedVideos.isSuccess) {
+                BgmDiscoveryLoadStatus.Loaded
+            } else {
+                BgmDiscoveryLoadStatus.Error
+            },
+            detail = loadedDetail,
+            recommendedVideos = loadedVideos,
+            errorMessage = errorMessage,
+            nextRecommendPage = if (recommendedVideos.isSuccess) 2 else 1,
+            hasMoreRecommendations = if (recommendedVideos.isSuccess) {
+                loadedVideos.size >= BGM_RECOMMEND_PAGE_SIZE
+            } else {
+                true
+            },
+            isAppendingRecommendations = false
+        )
     }
-    val selectedVideoItems = remember(selectedData.recommendedVideos) {
-        selectedData.recommendedVideos.map(::bgmRecommendVideoToVideoItem)
+
+    val selectedMusicId = selectedBgm.musicId
+    val selectedStatLine = remember(selectedData.detail) {
+        resolveBgmStatLine(selectedData.detail)
+    }
+    val visibleSheetItemIndexes by remember(listState) {
+        derivedStateOf {
+            listState.layoutInfo.visibleItemsInfo.mapTo(mutableSetOf()) { it.index }
+        }
+    }
+    val shouldShowInitialRecommendationPlaceholders = remember(selectedData) {
+        selectedData.recommendedVideos.isEmpty() &&
+            selectedData.status != BgmDiscoveryLoadStatus.Error
     }
 
     com.android.purebilibili.core.ui.IOSModalBottomSheet(
@@ -1199,6 +1236,7 @@ private fun BgmSelectionSheet(
         dragHandle = null
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.68f),
@@ -1233,8 +1271,9 @@ private fun BgmSelectionSheet(
             item {
                 BgmSelectionStrip(
                     bgmList = bgmList,
-                    selectedMusicId = selectedBgm.musicId,
-                    onSelect = { selectedMusicId = it.musicId }
+                    itemKeys = itemKeys,
+                    selectedItemKey = selectedItemKey,
+                    onSelect = { selectedItemKey = it }
                 )
             }
 
@@ -1243,39 +1282,264 @@ private fun BgmSelectionSheet(
                 BgmDetailCard(
                     bgm = selectedBgm,
                     detail = selectedData.detail,
+                    isLoading = selectedData.status == BgmDiscoveryLoadStatus.Loading,
+                    statLine = selectedStatLine,
                     onOpenMusic = { onBgmClick(selectedBgm) }
                 )
             }
 
-            if (selectedVideoItems.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "使用该音乐的视频",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                BgmDiscoveryRelatedHeader()
+            }
+
+            if (shouldShowInitialRecommendationPlaceholders) {
+                repeat(BGM_RECOMMEND_PAGE_SIZE) { placeholderIndex ->
+                    item(key = "bgm-recommend-placeholder-$placeholderIndex") {
+                        BgmRecommendVideoMiniCard(
+                            video = null,
+                            isPlaceholder = true,
+                            allowImageLoad = false,
+                            onClick = {}
+                        )
+                    }
                 }
-                item {
-                    BgmRelatedVideoGrid(
-                        videos = selectedVideoItems,
-                        onVideoClick = { video ->
+            } else if (selectedData.recommendedVideos.isNotEmpty()) {
+                itemsIndexed(
+                    items = selectedData.recommendedVideos,
+                    key = { index, video -> resolveBgmRecommendVideoKey(index, video) }
+                ) { index, video ->
+                    BgmRecommendVideoMiniCard(
+                        video = video,
+                        isPlaceholder = false,
+                        allowImageLoad = shouldRenderBgmRecommendImage(
+                            visibleItemIndexes = visibleSheetItemIndexes,
+                            itemIndex = resolveBgmRecommendListItemIndex(index)
+                        ),
+                        onClick = {
                             onDismiss()
-                            val navOptions = if (video.cid > 0L) {
-                                android.os.Bundle().apply {
-                                    putLong("target_cid", video.cid)
-                                }
-                            } else {
-                                null
-                            }
-                            onRelatedVideoClick(video.bvid, navOptions)
+                            onRelatedVideoClick(
+                                video.bvid,
+                                buildVideoNavigationOptions(targetCid = video.cid)
+                            )
                         }
                     )
                 }
+            } else if (selectedData.errorMessage?.isNotBlank() == true) {
+                item(key = "bgm-recommend-error") {
+                    Text(
+                        text = selectedData.errorMessage.takeIf { it.isNotBlank() } ?: "音乐推荐加载失败",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            } else {
+                item(key = "bgm-recommend-empty") {
+                    Text(
+                        text = "暂无相关视频",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
             }
+
+            if (selectedData.isAppendingRecommendations) {
+                item(key = "bgm-recommend-loading-more") {
+                    BgmDiscoveryLoadingRow()
+                }
+            }
+
+            if (selectedMusicId.isBlank() || aid <= 0L || cid <= 0L) {
+                item {
+                    Text(
+                        text = "暂时无法加载更多音乐信息",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(selectedItemKey) {
+        listState.scrollToItem(0)
+    }
+
+    LaunchedEffect(selectedItemKey, selectedMusicId, aid, cid) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleIndex, _) ->
+            val currentState = itemStateByKey[selectedItemKey] ?: return@collect
+            if (!shouldLoadMoreBgmRecommendations(currentState, selectedMusicId, aid, cid)) return@collect
+
+            val lastRecommendationIndex =
+                resolveBgmRecommendListItemIndex(currentState.recommendedVideos.lastIndex)
+            if (lastVisibleIndex < lastRecommendationIndex - 1) return@collect
+
+            loadMoreBgmRecommendations(
+                itemStateByKey = itemStateByKey,
+                itemKey = selectedItemKey,
+                bgm = selectedBgm,
+                aid = aid,
+                cid = cid
+            )
+        }
+    }
+}
+
+@Composable
+private fun BgmDiscoveryRelatedHeader() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "使用该音乐的视频",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+}
+
+@Composable
+private fun BgmDiscoveryLoadingRow() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = CupertinoIcons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "正在加载音乐推荐...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun BgmRecommendVideoMiniCard(
+    video: BgmRecommendVideo?,
+    isPlaceholder: Boolean,
+    allowImageLoad: Boolean,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val coverWidthPx = remember(density) { with(density) { 112.dp.roundToPx() } }
+    val coverHeightPx = remember(density) { with(density) { 70.dp.roundToPx() } }
+    val title = video?.title?.ifBlank { "相关视频" } ?: "相关视频"
+    val upName = video?.upNickName?.ifBlank { "未知 UP" } ?: "未知 UP"
+    val statText = if (isPlaceholder) {
+        "播放量 *** · 弹幕 *** · 时长 ***"
+    } else {
+        val playCount = video?.play ?: 0
+        val danmuCount = video?.danmu ?: 0
+        val durationSeconds = video?.duration ?: 0
+        buildString {
+            if (playCount > 0) append("播放量 ***")
+            if (danmuCount > 0) {
+                if (isNotEmpty()) append(" · ")
+                append("弹幕 ***")
+            }
+            if (durationSeconds > 0) {
+                if (isNotEmpty()) append(" · ")
+                append("时长 ***")
+            }
+        }.ifBlank { "点击查看" }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(enabled = !isPlaceholder, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 112.dp, height = 70.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (allowImageLoad && video != null && video.cover.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(FormatUtils.fixImageUrl(video.cover))
+                            .size(coverWidthPx, coverHeightPx)
+                            .crossfade(false)
+                            .build(),
+                        contentDescription = video.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = CupertinoIcons.Default.Play,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = upName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = statText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = CupertinoIcons.Default.ChevronForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
@@ -1283,20 +1547,24 @@ private fun BgmSelectionSheet(
 @Composable
 private fun BgmSelectionStrip(
     bgmList: List<BgmInfo>,
-    selectedMusicId: String,
-    onSelect: (BgmInfo) -> Unit
+    itemKeys: List<String>,
+    selectedItemKey: String,
+    onSelect: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val coverSizePx = remember(density) { with(density) { 76.dp.roundToPx() } }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(bgmList, key = { it.musicId }) { bgm ->
-            val selected = bgm.musicId == selectedMusicId
+        itemsIndexed(bgmList, key = { index, bgm -> itemKeys.getOrElse(index) { resolveBgmItemKey(index, bgm) } }) { index, bgm ->
+            val itemKey = itemKeys.getOrElse(index) { resolveBgmItemKey(index, bgm) }
+            val selected = itemKey == selectedItemKey
             Column(
                 modifier = Modifier
                     .width(76.dp)
-                    .clickable { onSelect(bgm) },
+                    .clickable { onSelect(itemKey) },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -1325,7 +1593,8 @@ private fun BgmSelectionStrip(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(FormatUtils.fixImageUrl(bgm.coverUrl))
-                                .crossfade(true)
+                                .size(coverSizePx, coverSizePx)
+                                .crossfade(false)
                                 .build(),
                             contentDescription = bgm.musicTitle,
                             modifier = Modifier.fillMaxSize(),
@@ -1362,9 +1631,12 @@ private fun BgmSelectionStrip(
 private fun BgmDetailCard(
     bgm: BgmInfo,
     detail: BgmDetailData?,
+    isLoading: Boolean,
+    statLine: String?,
     onOpenMusic: () -> Unit
 ) {
     val scoreText = remember(detail) { resolveBgmScoreText(detail) }
+    val maskedStatLine = remember(statLine) { resolveMaskedBgmStatLine(statLine) }
     val description = remember(detail, bgm) {
         bgm.actor.takeIf { it.isNotBlank() }
             ?: detail?.originArtist?.takeIf { it.isNotBlank() }
@@ -1374,13 +1646,15 @@ private fun BgmDetailCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onOpenMusic),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 168.dp)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1408,22 +1682,28 @@ private fun BgmDetailCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = scoreText,
+                        text = if (isLoading) "加载音乐信息..." else scoreText,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                detail?.musicComment?.takeIf { it.nums > 0 }?.let {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "${FormatUtils.formatStat(it.nums.toLong())}评论",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = maskedStatLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (detail?.musicComment?.nums ?: 0 > 0) "*** 评论" else "*** 评论",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = description,
@@ -1431,6 +1711,13 @@ private fun BgmDetailCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "打开音乐详情",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -1443,18 +1730,21 @@ private fun BgmDetailCover(
     title: String
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val coverSizePx = remember(density) { with(density) { 112.dp.roundToPx() } }
     Box(
         modifier = Modifier
             .size(width = 112.dp, height = 112.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
         contentAlignment = Alignment.Center
     ) {
         if (coverUrl.isNotBlank()) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(FormatUtils.fixImageUrl(coverUrl))
-                    .crossfade(true)
+                    .size(coverSizePx, coverSizePx)
+                    .crossfade(false)
                     .build(),
                 contentDescription = title,
                 modifier = Modifier.fillMaxSize(),
@@ -1463,7 +1753,7 @@ private fun BgmDetailCover(
         } else {
             Icon(
                 imageVector = CupertinoIcons.Default.MusicNote,
-                contentDescription = null,
+                contentDescription = title,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 modifier = Modifier.size(34.dp)
             )
@@ -1490,90 +1780,144 @@ private fun resolveBgmStatLine(detail: BgmDetailData?): String? {
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
+private fun resolveMaskedBgmStatLine(statLine: String?): String {
+    return "*** 播放 · *** 想听 · *** 分享"
+}
+
+private fun resolveBgmRecommendVideoKey(index: Int, video: BgmRecommendVideo): String {
+    val stablePart = video.bvid.ifBlank { "${video.aid}:${video.cid}:${video.title}" }
+    return "bgm-recommend-$index:$stablePart"
+}
+
+private fun resolveBgmRecommendListItemIndex(index: Int): Int {
+    return BGM_RECOMMEND_LIST_START_INDEX + index
+}
+
+private fun shouldRenderBgmRecommendImage(
+    visibleItemIndexes: Set<Int>,
+    itemIndex: Int
+): Boolean {
+    return visibleItemIndexes.any { visibleIndex ->
+        kotlin.math.abs(visibleIndex - itemIndex) <= BGM_RECOMMEND_IMAGE_BUFFER_ITEMS
+    }
+}
+
 private fun resolveQueryLongParam(url: String, key: String): Long {
     return android.net.Uri.parse(url).getQueryParameter(key)?.toLongOrNull() ?: 0L
 }
 
-private data class BgmSheetItemState(
+internal enum class BgmDiscoveryLoadStatus {
+    Idle,
+    Loading,
+    Loaded,
+    Error
+}
+
+internal data class BgmSheetItemState(
+    val status: BgmDiscoveryLoadStatus = BgmDiscoveryLoadStatus.Idle,
     val detail: BgmDetailData? = null,
-    val recommendedVideos: List<BgmRecommendVideo> = emptyList()
+    val recommendedVideos: List<BgmRecommendVideo> = emptyList(),
+    val errorMessage: String? = null,
+    val nextRecommendPage: Int = 2,
+    val hasMoreRecommendations: Boolean = true,
+    val isAppendingRecommendations: Boolean = false
 )
 
-@Composable
-private fun BgmRelatedVideoGrid(
-    videos: List<VideoItem>,
-    onVideoClick: (VideoItem) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp)
-    ) {
-        videos.chunked(2).forEachIndexed { rowIndex, rowVideos ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                rowVideos.forEachIndexed { columnIndex, video ->
-                    ElegantVideoCard(
-                        video = video,
-                        index = rowIndex * 2 + columnIndex,
-                        animationEnabled = false,
-                        transitionEnabled = false,
-                        scrollLiteModeEnabled = true,
-                        isDataSaverActive = false,
-                        preferLowQualityCover = false,
-                        glassEnabled = false,
-                        blurEnabled = false,
-                        compactStatsOnCover = true,
-                        showCoverGlassBadges = false,
-                        showInfoGlassBadges = false,
-                        showUpBadge = true,
-                        showDurationBadge = true,
-                        showPublishTime = false,
-                        modifier = Modifier.weight(1f),
-                        onClick = { _, _ -> onVideoClick(video) }
-                    )
-                }
-                if (rowVideos.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+internal fun resolveBgmItemKey(index: Int, bgm: BgmInfo): String {
+    val stablePart = bgm.musicId
+        .trim()
+        .ifBlank {
+            bgm.jumpUrl.trim().ifBlank {
+                bgm.musicTitle.trim().ifBlank { "unknown" }
             }
         }
-    }
+    return "$index:$stablePart"
 }
 
-private fun relatedVideoToVideoItem(video: RelatedVideo): VideoItem {
-    return VideoItem(
-        id = if (video.aid > 0L) video.aid else video.cid,
-        bvid = video.bvid,
-        aid = video.aid,
-        cid = video.cid,
-        title = video.title,
-        pic = video.pic,
-        owner = video.owner,
-        stat = video.stat,
-        duration = video.duration
+internal fun shouldLoadBgmDiscoveryItem(
+    state: BgmSheetItemState,
+    musicId: String,
+    aid: Long,
+    cid: Long
+): Boolean {
+    if (musicId.isBlank() || aid <= 0L || cid <= 0L) return false
+    return state.status == BgmDiscoveryLoadStatus.Idle ||
+        state.status == BgmDiscoveryLoadStatus.Error
+}
+
+internal fun shouldLoadMoreBgmRecommendations(
+    state: BgmSheetItemState,
+    musicId: String,
+    aid: Long,
+    cid: Long
+): Boolean {
+    if (musicId.isBlank() || aid <= 0L || cid <= 0L) return false
+    if (state.status == BgmDiscoveryLoadStatus.Loading) return false
+    if (state.isAppendingRecommendations) return false
+    if (!state.hasMoreRecommendations) return false
+    return state.recommendedVideos.isNotEmpty()
+}
+
+private suspend fun loadMoreBgmRecommendations(
+    itemStateByKey: MutableMap<String, BgmSheetItemState>,
+    itemKey: String,
+    bgm: BgmInfo,
+    aid: Long,
+    cid: Long
+) {
+    val currentState = itemStateByKey[itemKey] ?: return
+    if (!shouldLoadMoreBgmRecommendations(currentState, bgm.musicId, aid, cid)) return
+
+    itemStateByKey[itemKey] = currentState.copy(
+        isAppendingRecommendations = true,
+        errorMessage = null
+    )
+
+    val result = ViewGrpcRepository.getBgmRecommendVideos(
+        musicId = bgm.musicId,
+        aid = aid,
+        cid = cid,
+        page = currentState.nextRecommendPage,
+        pageSize = BGM_RECOMMEND_PAGE_SIZE
+    )
+    val incomingVideos = result.getOrDefault(emptyList())
+    val mergedVideos = mergeBgmRecommendedVideos(
+        existing = currentState.recommendedVideos,
+        incoming = incomingVideos
+    )
+    val appendedCount = mergedVideos.size - currentState.recommendedVideos.size
+
+    val latestState = itemStateByKey[itemKey] ?: currentState
+    itemStateByKey[itemKey] = latestState.copy(
+        recommendedVideos = if (result.isSuccess) mergedVideos else latestState.recommendedVideos,
+        errorMessage = result.exceptionOrNull()?.message,
+        nextRecommendPage = if (result.isSuccess && appendedCount > 0) {
+            currentState.nextRecommendPage + 1
+        } else {
+            currentState.nextRecommendPage
+        },
+        hasMoreRecommendations = if (result.isSuccess) {
+            incomingVideos.size >= BGM_RECOMMEND_PAGE_SIZE && appendedCount > 0
+        } else {
+            latestState.hasMoreRecommendations
+        },
+        isAppendingRecommendations = false
     )
 }
-private fun bgmRecommendVideoToVideoItem(video: BgmRecommendVideo): VideoItem {
-    return VideoItem(
-        id = if (video.aid > 0L) video.aid else video.cid,
-        bvid = video.bvid,
-        aid = video.aid,
-        cid = video.cid,
-        title = video.title,
-        pic = video.cover,
-        owner = com.android.purebilibili.data.model.response.Owner(
-            mid = video.mid,
-            name = video.upNickName
-        ),
-        stat = com.android.purebilibili.data.model.response.Stat(
-            view = video.play,
-            danmaku = video.danmu
-        ),
-        duration = video.duration
-    )
+
+private fun mergeBgmRecommendedVideos(
+    existing: List<BgmRecommendVideo>,
+    incoming: List<BgmRecommendVideo>
+): List<BgmRecommendVideo> {
+    if (incoming.isEmpty()) return existing
+    val seenKeys = existing.mapTo(mutableSetOf()) { video ->
+        if (video.bvid.isNotBlank()) video.bvid else "${video.aid}:${video.cid}"
+    }
+    val appended = incoming.filter { video ->
+        val key = if (video.bvid.isNotBlank()) video.bvid else "${video.aid}:${video.cid}"
+        seenKeys.add(key)
+    }
+    return existing + appended
 }
 
 
