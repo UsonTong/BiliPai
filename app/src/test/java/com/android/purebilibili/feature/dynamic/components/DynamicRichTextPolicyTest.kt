@@ -35,13 +35,32 @@ class DynamicRichTextPolicyTest {
     }
 
     @Test
-    fun resolveDynamicDescForImages_keepsRealTextEvenWhenMediaExists() {
+    fun resolveDynamicDescForImages_stripsInlinePlaceholderButKeepsRealText() {
         val desc = DynamicDesc(text = "正文 [图片]")
 
         val resolved = resolveDynamicDescForImages(desc, hasImages = true)
 
         assertTrue(shouldRenderDynamicRichText(resolved))
-        assertEquals("正文 [图片]", resolved.text)
+        assertEquals("正文", resolved.text)
+    }
+
+    @Test
+    fun resolveDynamicDescForImages_hidesRepeatedPlaceholderLinesWhenMediaExists() {
+        val desc = DynamicDesc(
+            text = "第一行\n[图片]\n【图片】\n第二行",
+            rich_text_nodes = listOf(
+                RichTextNode(type = "TEXT", text = "第一行\n"),
+                RichTextNode(type = "TEXT", text = "[图片]"),
+                RichTextNode(type = "TEXT", text = "【图片】"),
+                RichTextNode(type = "TEXT", text = "\n第二行")
+            )
+        )
+
+        val resolved = resolveDynamicDescForImages(desc, hasImages = true)
+
+        assertTrue(shouldRenderDynamicRichText(resolved))
+        assertEquals("第一行\n第二行", resolved.text)
+        assertEquals("第一行\n\n第二行", resolved.rich_text_nodes.joinToString(separator = "") { it.text })
     }
 
     @Test
