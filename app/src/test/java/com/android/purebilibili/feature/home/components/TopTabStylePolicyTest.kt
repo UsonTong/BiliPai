@@ -591,6 +591,8 @@ class TopTabStylePolicyTest {
         assertEquals(44.dp, resolveHomeSkinTopTabActionButtonSize())
         assertEquals(24.dp, resolveHomeSkinTopTabActionIconSize())
         assertEquals(4.dp, resolveHomeSkinTopTabIndicatorBottomPadding())
+        assertTrue(resolveHomeSkinAtmosphereReadabilityScrimAlpha(hasTopAtmosphereImage = true) >= 0.24f)
+        assertTrue(resolveHomeSkinAtmosphereReadabilityScrimAlpha(hasTopAtmosphereImage = false) < 0.24f)
     }
 
     @Test

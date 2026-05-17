@@ -851,7 +851,9 @@ internal fun resolveBottomBarGlassExportContentColor(
 
 internal data class BottomBarSkinContentColors(
     val selectedColor: Color,
-    val unselectedColor: Color
+    val unselectedColor: Color,
+    val labelScrimColor: Color = Color.Transparent,
+    val labelScrimAlpha: Float = 0f
 )
 
 internal fun resolveBottomBarSkinContentColors(
@@ -861,16 +863,37 @@ internal fun resolveBottomBarSkinContentColors(
     darkTheme: Boolean
 ): BottomBarSkinContentColors {
     val readableBackgroundIsLight = skinTrimTint?.luminance()?.let { it >= 0.45f } == true
+    val labelScrimColor = when {
+        skinTrimTint == null -> Color.Transparent
+        readableBackgroundIsLight -> Color.White
+        else -> Color.Black
+    }
+    val labelScrimAlpha = if (skinTrimTint == null) 0f else 0.22f
     if (skinTrimTint == null || !darkTheme || !readableBackgroundIsLight) {
         return BottomBarSkinContentColors(
             selectedColor = selectedColor,
-            unselectedColor = unselectedColor
+            unselectedColor = unselectedColor,
+            labelScrimColor = labelScrimColor,
+            labelScrimAlpha = labelScrimAlpha
         )
     }
     return BottomBarSkinContentColors(
         selectedColor = selectedColor,
-        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f)
+        unselectedColor = Color(0xFF4D3A1F).copy(alpha = 0.88f),
+        labelScrimColor = labelScrimColor,
+        labelScrimAlpha = labelScrimAlpha
     )
+}
+
+private fun Modifier.bottomBarSkinLabelScrim(
+    color: Color,
+    alpha: Float
+): Modifier {
+    if (alpha <= 0f) return this
+    return this
+        .clip(RoundedCornerShape(6.dp))
+        .background(color.copy(alpha = alpha.coerceIn(0f, 1f)))
+        .padding(horizontal = 4.dp, vertical = 1.dp)
 }
 
 internal fun resolveAndroidNativeIdleIndicatorSurfaceColor(
@@ -2027,7 +2050,15 @@ private fun MaterialBottomBar(
                             }
                         },
                         label = if (showText) {
-                            { Text(itemLabel) }
+                            {
+                                Text(
+                                    text = itemLabel,
+                                    modifier = Modifier.bottomBarSkinLabelScrim(
+                                        color = skinDockedItemColors.labelScrimColor,
+                                        alpha = skinDockedItemColors.labelScrimAlpha
+                                    )
+                                )
+                            }
                         } else {
                             null
                         },
@@ -2063,7 +2094,15 @@ private fun MaterialBottomBar(
                             }
                         },
                         label = if (showText) {
-                            { Text(sidebarLabel) }
+                            {
+                                Text(
+                                    text = sidebarLabel,
+                                    modifier = Modifier.bottomBarSkinLabelScrim(
+                                        color = skinDockedItemColors.labelScrimColor,
+                                        alpha = skinDockedItemColors.labelScrimAlpha
+                                    )
+                                )
+                            }
                         } else {
                             null
                         },
@@ -2241,6 +2280,8 @@ private fun MiuixBottomBar(
                     showText = showText,
                     selectedColor = skinItemColors.selectedColor,
                     unselectedColor = skinItemColors.unselectedColor,
+                    labelScrimColor = skinItemColors.labelScrimColor,
+                    labelScrimAlpha = skinItemColors.labelScrimAlpha,
                     skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = currentItem == item),
                     reminderBadgeText = formatBottomBarDynamicReminderBadge(
                         if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
@@ -2267,7 +2308,9 @@ private fun MiuixBottomBar(
                     showIcon = showIcon,
                     showText = showText,
                     selectedColor = skinItemColors.selectedColor,
-                    unselectedColor = skinItemColors.unselectedColor
+                    unselectedColor = skinItemColors.unselectedColor,
+                    labelScrimColor = skinItemColors.labelScrimColor,
+                    labelScrimAlpha = skinItemColors.labelScrimAlpha
                 )
             }
         }
@@ -2299,6 +2342,8 @@ private fun RowScope.MiuixDockedBottomBarItem(
     showText: Boolean,
     selectedColor: Color,
     unselectedColor: Color,
+    labelScrimColor: Color = Color.Transparent,
+    labelScrimAlpha: Float = 0f,
     skinIconPath: String? = null,
     reminderBadgeText: String? = null
 ) {
@@ -2375,6 +2420,9 @@ private fun RowScope.MiuixDockedBottomBarItem(
                     } else {
                         Modifier.padding(vertical = 8.dp)
                     }
+                ).bottomBarSkinLabelScrim(
+                    color = labelScrimColor,
+                    alpha = labelScrimAlpha
                 )
             )
         }
@@ -2880,6 +2928,8 @@ private fun KernelSuAlignedBottomBar(
                                 contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
                                 skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
+                                labelScrimColor = skinContentColors.labelScrimColor,
+                                labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                 onClick = {},
                                 interactive = false,
                                 selectedIconAlpha = coverage,
@@ -2902,6 +2952,8 @@ private fun KernelSuAlignedBottomBar(
                                 unselectedColor = unselectedColor,
                                 contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
+                                labelScrimColor = skinContentColors.labelScrimColor,
+                                labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                 onClick = {},
                                 interactive = false,
                                 selectedIconAlpha = coverage,
@@ -3012,6 +3064,8 @@ private fun KernelSuAlignedBottomBar(
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
                                         skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = coverage >= 0.5f),
+                                        labelScrimColor = skinContentColors.labelScrimColor,
+                                        labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                         onClick = {},
                                         interactive = false,
                                         selectedIconAlpha = coverage,
@@ -3033,6 +3087,8 @@ private fun KernelSuAlignedBottomBar(
                                         unselectedColor = contentColor,
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
+                                        labelScrimColor = skinContentColors.labelScrimColor,
+                                        labelScrimAlpha = skinContentColors.labelScrimAlpha,
                                         onClick = {},
                                         interactive = false,
                                         selectedIconAlpha = coverage,
@@ -3595,6 +3651,8 @@ private fun RowScope.AndroidNativeBottomBarItem(
     contentColorOverride: Color? = null,
     iconStyle: SharedFloatingBottomBarIconStyle,
     skinIconPath: String? = null,
+    labelScrimColor: Color = Color.Transparent,
+    labelScrimAlpha: Float = 0f,
     onClick: () -> Unit,
     interactive: Boolean,
     onPressChanged: (Boolean) -> Unit = {},
@@ -3676,6 +3734,10 @@ private fun RowScope.AndroidNativeBottomBarItem(
                     maxLines = 1,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .bottomBarSkinLabelScrim(
+                            color = labelScrimColor,
+                            alpha = labelScrimAlpha
+                        )
                         .padding(
                             start = 2.dp,
                             end = 2.dp,
@@ -3753,7 +3815,11 @@ private fun RowScope.AndroidNativeBottomBarItem(
                         14.sp
                     },
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1
+                    maxLines = 1,
+                    modifier = Modifier.bottomBarSkinLabelScrim(
+                        color = labelScrimColor,
+                        alpha = if (skinIconPath != null) labelScrimAlpha else 0f
+                    )
                 )
             }
             }

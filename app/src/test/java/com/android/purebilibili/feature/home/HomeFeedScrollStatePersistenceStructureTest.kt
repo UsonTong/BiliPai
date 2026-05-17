@@ -19,17 +19,17 @@ class HomeFeedScrollStatePersistenceStructureTest {
     }
 
     @Test
-    fun `home skin atmosphere stays behind pager content`() {
+    fun `home skin atmosphere is fixed in header instead of pager backdrop`() {
         val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/HomeScreen.kt")
-        val backdropIndex = source.indexOf("HomeWallpaperBackdrop(")
-        val skinAtmosphereIndex = source.indexOf("HomeSkinAtmosphere(")
-        val pagerIndex = source.indexOf("HorizontalPager(", startIndex = skinAtmosphereIndex)
+        val headerCallSource = source
+            .substringAfter("iOSHomeHeader(")
+            .substringBefore("AnimatedVisibility(")
 
         assertTrue(source.contains("val uiSkinState by rememberUiSkinState(context)"))
         assertTrue(source.contains("val homeUiSkinDecoration = rememberHomeUiSkinDecoration(uiSkinState)"))
-        assertTrue(backdropIndex >= 0)
-        assertTrue(skinAtmosphereIndex > backdropIndex)
-        assertTrue(pagerIndex > skinAtmosphereIndex)
+        assertTrue(headerCallSource.contains("uiSkinDecoration = homeUiSkinDecoration"))
+        assertFalse(source.contains("import com.android.purebilibili.feature.home.components.HomeSkinAtmosphere"))
+        assertFalse(source.contains("HomeSkinAtmosphere(\n                        decoration = homeUiSkinDecoration"))
     }
 
     private fun loadSource(path: String): String {

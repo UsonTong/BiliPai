@@ -352,6 +352,8 @@ class BottomBarSurfaceColorPolicyTest {
         assertEquals(Color(0xFFFFA000), colors.selectedColor)
         assertTrue(colors.unselectedColor.luminance() < 0.45f)
         assertTrue(colors.unselectedColor.alpha >= 0.82f)
+        assertEquals(Color.White, colors.labelScrimColor)
+        assertTrue(colors.labelScrimAlpha >= 0.18f)
     }
 
     @Test
@@ -364,6 +366,8 @@ class BottomBarSurfaceColorPolicyTest {
         )
 
         assertEquals(Color.White, colors.unselectedColor)
+        assertEquals(Color.Black, colors.labelScrimColor)
+        assertTrue(colors.labelScrimAlpha >= 0.18f)
     }
 
     @Test

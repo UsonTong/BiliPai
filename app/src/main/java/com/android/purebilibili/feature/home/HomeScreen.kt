@@ -68,7 +68,6 @@ import com.android.purebilibili.feature.home.components.BottomNavItem
 import com.android.purebilibili.feature.home.components.FluidHomeTopBar
 import com.android.purebilibili.feature.home.components.FrostedSideBar
 import com.android.purebilibili.feature.home.components.CategoryTabRow
-import com.android.purebilibili.feature.home.components.HomeSkinAtmosphere
 import com.android.purebilibili.feature.home.components.iOSHomeHeader  //  iOS 大标题头部
 import com.android.purebilibili.feature.home.components.iOSRefreshIndicator  //  iOS 下拉刷新指示器
 import com.android.purebilibili.feature.home.components.Md3ScreenshotRefreshIndicator
@@ -1179,10 +1178,6 @@ fun HomeScreen(
                         wallpaperUri = homeWallpaperUri,
                         appearance = homeWallpaperBackdropAppearance,
                         baseColor = AppSurfaceTokens.chromeBackground()
-                    )
-                    HomeSkinAtmosphere(
-                        decoration = homeUiSkinDecoration,
-                        modifier = Modifier.fillMaxSize()
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
                         HorizontalPager(

@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -162,6 +164,7 @@ internal fun HomeSkinAtmosphere(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             .clearAndSetSemantics {}
             .drawBehind {
                 drawRect(
@@ -190,6 +193,18 @@ internal fun HomeSkinAtmosphere(
                     .clearAndSetSemantics {}
             )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Color.Black.copy(
+                        alpha = resolveHomeSkinAtmosphereReadabilityScrimAlpha(
+                            hasTopAtmosphereImage = !imagePath.isNullOrBlank()
+                        )
+                    )
+                )
+                .clearAndSetSemantics {}
+        )
     }
 }
 
