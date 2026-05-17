@@ -55,6 +55,12 @@ data class HomeUiSkinDecoration(
     val topAtmosphereImagePath: String? = null
 )
 
+internal fun resolveBottomBarSkinDockIconSize(): Dp = 36.dp
+
+internal fun resolveBottomBarMiuixSkinDockIconSize(): Dp = 34.dp
+
+internal fun resolveBottomBarCompactSkinHomeIconSize(): Dp = 36.dp
+
 @Composable
 fun rememberBottomBarUiSkinDecoration(uiSkinState: UiSkinState): BottomBarUiSkinDecoration? {
     return remember(uiSkinState) {
@@ -163,7 +169,7 @@ internal fun HomeSkinAtmosphere(
 internal fun BottomBarSkinIcon(
     iconPath: String,
     contentDescription: String?,
-    size: Dp = 30.dp,
+    size: Dp = resolveBottomBarSkinDockIconSize(),
     readabilityBackdropColor: Color? = null,
     modifier: Modifier = Modifier
 ) {

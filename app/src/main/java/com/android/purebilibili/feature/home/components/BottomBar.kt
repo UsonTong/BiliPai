@@ -2325,7 +2325,7 @@ private fun RowScope.MiuixDockedBottomBarItem(
                     BottomBarSkinIcon(
                         iconPath = skinIconPath,
                         contentDescription = label,
-                        size = 26.dp,
+                        size = resolveBottomBarMiuixSkinDockIconSize(),
                         readabilityBackdropColor = skinIconBackdropColor
                     )
                 } else {
@@ -3227,7 +3227,7 @@ private fun KernelSuAlignedBottomBar(
                                 BottomBarSkinIcon(
                                     iconPath = homeSkinIconPath,
                                     contentDescription = null,
-                                    size = compactHomeIconSize,
+                                    size = resolveBottomBarCompactSkinHomeIconSize(),
                                     readabilityBackdropColor = skinContentColors.iconBackdropColor,
                                     modifier = Modifier.graphicsLayer {
                                         scaleX = compactHomeIconScale

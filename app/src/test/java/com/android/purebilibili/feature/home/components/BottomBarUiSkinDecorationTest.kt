@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.home.components
 
+import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.plugin.skin.InstalledUiSkinPackage
 import com.android.purebilibili.core.plugin.skin.UiSkinAssets
 import com.android.purebilibili.core.plugin.skin.UiSkinColorTokens
@@ -11,6 +12,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class BottomBarUiSkinDecorationTest {
+
+    @Test
+    fun bottomSkinIconSizesMatchScreenshotLevelCharacterAssets() {
+        assertEquals(36.dp, resolveBottomBarSkinDockIconSize())
+        assertEquals(34.dp, resolveBottomBarMiuixSkinDockIconSize())
+        assertEquals(36.dp, resolveBottomBarCompactSkinHomeIconSize())
+    }
 
     @Test
     fun activeExternalSkinUsesExtractedBottomTrimImagePath() {
