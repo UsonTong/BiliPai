@@ -17,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.ImageLoader
-import com.android.purebilibili.data.model.response.DynamicDesc
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.DrawMajor
 import com.android.purebilibili.data.model.response.OpusMajor
@@ -80,9 +79,18 @@ fun ForwardedContent(
     val visibleDynamicDesc = content?.desc?.let { desc ->
         resolveDynamicDescForImages(desc, hasImages = contentHasImages)
     }
-    val previewTextContent = remember(author?.name, visibleDynamicDesc?.text, content?.major?.opus?.summary?.text) {
+    val visibleOpusSummaryDesc = remember(content?.major?.opus?.summary, content?.major?.opus?.pics) {
+        content?.major?.opus?.summary?.let { summary ->
+            resolveDynamicOpusSummaryDescForImages(
+                text = summary.text,
+                richTextNodes = summary.rich_text_nodes,
+                hasImages = content.major.opus.pics.isNotEmpty()
+            )
+        }
+    }
+    val previewTextContent = remember(author?.name, visibleDynamicDesc?.text, visibleOpusSummaryDesc?.text) {
         val bodyText = visibleDynamicDesc?.text.takeUnless { it.isNullOrBlank() }
-            ?: content?.major?.opus?.summary?.text.orEmpty()
+            ?: visibleOpusSummaryDesc?.text.orEmpty()
         ImagePreviewTextContent(
             headline = author?.name.orEmpty(),
             body = bodyText
@@ -166,13 +174,10 @@ fun ForwardedContent(
         content?.major?.opus?.let { opus ->
             // 显示文字摘要 (如果 desc 为空)
             if (!shouldRenderDynamicRichText(visibleDynamicDesc)) {
-                opus.summary?.let { summary ->
-                    if (summary.text.isNotEmpty()) {
+                visibleOpusSummaryDesc?.let { summary ->
+                    if (shouldRenderDynamicRichText(summary)) {
                         RichTextContent(
-                            desc = DynamicDesc(
-                                text = summary.text,
-                                rich_text_nodes = summary.rich_text_nodes
-                            ),
+                            desc = summary,
                             onUserClick = onUserClick
                         )
                         Spacer(modifier = Modifier.height(8.dp))

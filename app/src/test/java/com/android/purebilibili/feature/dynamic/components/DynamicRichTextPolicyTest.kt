@@ -64,6 +64,27 @@ class DynamicRichTextPolicyTest {
     }
 
     @Test
+    fun resolveDynamicOpusSummaryDescForImages_stripsPlaceholderLinesBeforeRenderingSummary() {
+        val resolved = resolveDynamicOpusSummaryDescForImages(
+            text = "正文\n[图片]\n[图片]\n[图片]",
+            richTextNodes = listOf(
+                RichTextNode(type = "TEXT", text = "正文\n"),
+                RichTextNode(type = "TEXT", text = "[图片]\n"),
+                RichTextNode(type = "TEXT", text = "[图片]\n"),
+                RichTextNode(type = "TEXT", text = "[图片]")
+            ),
+            hasImages = true
+        )
+
+        assertNotNull(resolved)
+        assertEquals("正文", resolved.text)
+        val richNodeText = resolved.rich_text_nodes.joinToString(separator = "") { it.text }
+        assertEquals("正文\n", richNodeText)
+        assertFalse(richNodeText.contains("[图片]"))
+        assertTrue(shouldRenderDynamicRichText(resolved))
+    }
+
+    @Test
     fun buildDynamicRichTextAnnotatedString_prefersNodeJumpUrlForClickableLink() {
         val desc = DynamicDesc(
             text = "https://b23.tv/cm-yaoyue-0-3jgPM iPhone16系列至高直降千元起",

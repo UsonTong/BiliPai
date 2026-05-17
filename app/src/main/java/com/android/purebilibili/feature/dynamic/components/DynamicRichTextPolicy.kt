@@ -63,6 +63,21 @@ internal fun resolveDynamicDescForImages(
     )
 }
 
+internal fun resolveDynamicOpusSummaryDescForImages(
+    text: String,
+    richTextNodes: List<RichTextNode>,
+    hasImages: Boolean
+): DynamicDesc? {
+    val desc = resolveDynamicDescForImages(
+        desc = DynamicDesc(
+            text = text,
+            rich_text_nodes = richTextNodes
+        ),
+        hasImages = hasImages
+    )
+    return desc.takeIf(::shouldRenderDynamicRichText)
+}
+
 internal fun shouldRenderDynamicRichText(desc: DynamicDesc?): Boolean {
     if (desc == null) return false
     if (desc.text.isNotBlank()) return true

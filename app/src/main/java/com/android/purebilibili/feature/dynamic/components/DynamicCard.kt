@@ -323,9 +323,18 @@ fun DynamicCardV2(
         content?.major?.opus?.let { opus ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
             var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-            val opusPreviewText = remember(author?.name, visibleDynamicDesc?.text, opus.summary?.text) {
+            val visibleOpusSummaryDesc = remember(opus.summary, opus.pics) {
+                opus.summary?.let { summary ->
+                    resolveDynamicOpusSummaryDescForImages(
+                        text = summary.text,
+                        richTextNodes = summary.rich_text_nodes,
+                        hasImages = opus.pics.isNotEmpty()
+                    )
+                }
+            }
+            val opusPreviewText = remember(author?.name, visibleDynamicDesc?.text, visibleOpusSummaryDesc?.text) {
                 val body = visibleDynamicDesc?.text.takeUnless { it.isNullOrBlank() }
-                    ?: opus.summary?.text.orEmpty()
+                    ?: visibleOpusSummaryDesc?.text.orEmpty()
                 ImagePreviewTextContent(
                     headline = author?.name.orEmpty(),
                     body = body
@@ -347,13 +356,10 @@ fun DynamicCardV2(
             
             // 显示文字摘要 (如果有且 desc 为空)
             if (!shouldRenderDynamicRichText(visibleDynamicDesc)) {
-                opus.summary?.let { summary ->
-                    if (summary.text.isNotEmpty()) {
+                visibleOpusSummaryDesc?.let { summary ->
+                    if (shouldRenderDynamicRichText(summary)) {
                         RichTextContent(
-                            desc = DynamicDesc(
-                                text = summary.text,
-                                rich_text_nodes = summary.rich_text_nodes
-                            ),
+                            desc = summary,
                             onUserClick = onUserClick
                         )
                         Spacer(modifier = Modifier.height(12.dp))
