@@ -858,9 +858,12 @@ internal fun resolveBottomBarSkinContentColors(
     selectedColor: Color,
     unselectedColor: Color,
     skinTrimTint: Color?,
+    skinTrimAccent: Color? = null,
     darkTheme: Boolean
 ): BottomBarSkinContentColors {
-    if (skinTrimTint == null || !darkTheme || skinTrimTint.luminance() < 0.45f) {
+    val readableBackgroundIsLight = listOfNotNull(skinTrimTint, skinTrimAccent)
+        .any { it.luminance() >= 0.45f }
+    if (skinTrimTint == null || !darkTheme || !readableBackgroundIsLight) {
         return BottomBarSkinContentColors(
             selectedColor = selectedColor,
             unselectedColor = unselectedColor
@@ -1923,6 +1926,13 @@ private fun MaterialBottomBar(
         onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
         secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
     )
+    val skinDockedItemColors = resolveBottomBarSkinContentColors(
+        selectedColor = dockedItemColors.selectedIconColor,
+        unselectedColor = dockedItemColors.unselectedIconColor,
+        skinTrimTint = uiSkinDecoration?.bottomTrimTint,
+        skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
+        darkTheme = isSystemInDarkTheme()
+    )
 
     if (isFloating) {
         KernelSuAlignedBottomBar(
@@ -1988,6 +1998,7 @@ private fun MaterialBottomBar(
                 visibleItems.forEach { item ->
                     val itemLabel = resolveBottomNavItemLabel(item)
                     val itemContentDescription = resolveBottomNavItemContentDescription(item)
+                    val skinIconPath = uiSkinDecoration?.iconPathFor(item, selected = currentItem == item)
                     NavigationBarItem(
                         selected = currentItem == item,
                         onClick = {
@@ -2002,10 +2013,17 @@ private fun MaterialBottomBar(
                                     item = item,
                                     unreadCount = dynamicUnreadCount
                                 ) {
-                                    Icon(
-                                        imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
-                                        contentDescription = itemContentDescription
-                                    )
+                                    if (skinIconPath != null) {
+                                        BottomBarSkinIcon(
+                                            iconPath = skinIconPath,
+                                            contentDescription = itemContentDescription
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = resolveMaterialBottomBarIcon(item = item, selected = currentItem == item),
+                                            contentDescription = itemContentDescription
+                                        )
+                                    }
                                 }
                             } else {
                                 Spacer(modifier = Modifier.size(0.dp))
@@ -2018,11 +2036,11 @@ private fun MaterialBottomBar(
                         },
                         alwaysShowLabel = showText,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = dockedItemColors.selectedIconColor,
-                            selectedTextColor = dockedItemColors.selectedTextColor,
+                            selectedIconColor = skinDockedItemColors.selectedColor,
+                            selectedTextColor = skinDockedItemColors.selectedColor,
                             indicatorColor = dockedItemColors.indicatorColor,
-                            unselectedIconColor = dockedItemColors.unselectedIconColor,
-                            unselectedTextColor = dockedItemColors.unselectedTextColor
+                            unselectedIconColor = skinDockedItemColors.unselectedColor,
+                            unselectedTextColor = skinDockedItemColors.unselectedColor
                         )
                     )
                 }
@@ -2207,6 +2225,7 @@ private fun MiuixBottomBar(
                 selectedColor = selectedItemColor,
                 unselectedColor = unselectedItemColor,
                 skinTrimTint = uiSkinDecoration?.bottomTrimTint,
+                skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
                 darkTheme = isSystemInDarkTheme()
             )
 
@@ -2424,6 +2443,7 @@ private fun KernelSuAlignedBottomBar(
         selectedColor = baseSelectedColor,
         unselectedColor = baseUnselectedColor,
         skinTrimTint = uiSkinDecoration?.bottomTrimTint,
+        skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
         darkTheme = isDarkTheme
     )
     val selectedColor = skinContentColors.selectedColor

@@ -367,6 +367,20 @@ class BottomBarSurfaceColorPolicyTest {
     }
 
     @Test
+    fun `light skin accent also switches dark theme bottom bar text to readable dark foreground`() {
+        val colors = resolveBottomBarSkinContentColors(
+            selectedColor = Color(0xFFFFA000),
+            unselectedColor = Color.White,
+            skinTrimTint = Color(0xFF5A2520),
+            skinTrimAccent = Color(0xFFF4D7A8),
+            darkTheme = true
+        )
+
+        assertTrue(colors.unselectedColor.luminance() < 0.45f)
+        assertTrue(colors.unselectedColor.alpha >= 0.82f)
+    }
+
+    @Test
     fun `android native glass export content keeps full theme hue while partially covered`() {
         val unselected = Color(0xFF202124)
         val selected = Color(0xFF00A1D6)
