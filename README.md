@@ -15,7 +15,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Version-8.3.0-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.3.0" />
+  <img src="https://img.shields.io/badge/Version-8.3.1-007AFF?style=flat-square&labelColor=ffffff" alt="Version 8.3.1" />
   <img src="https://img.shields.io/badge/Android-8.0%2B-34C759?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
   <img src="https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FF3B30?style=flat-square" alt="GPL-3.0" />
@@ -179,13 +179,13 @@ cd BiliPai
 
 ## 最近更新
 
-当前仓库版本号已更新到 `8.3.0 / versionCode 194`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.3.0`：
+当前仓库版本号已更新到 `8.3.1 / versionCode 195`。公开发布说明请以 [CHANGELOG.md](CHANGELOG.md) 为准；最新完整记录为 `v8.3.1`：
 
-- 空降助手和去广告插件补齐可视化统计、过滤命中洞察、自定义规则管理和详情展示，插件状态更容易排查。
-- 黑名单支持 JSON 导入、导出和分享，并补齐用户信息与同步策略。
-- 首页下拉刷新、顶部标签、分段控件和胶囊尺寸继续收敛，MD3 / MIUIX / iOS 预设下的滑动与折射更稳定。
-- 图片预览长按保存新增震感与开关，动态已有真实图片时不再显示 `[图片]` / `【图片】` 占位文字，视频预览缩略图比例同步修复。
-- 搜索分类滑动方向、首页底栏动态红点、底栏滑动折射、评论子回复总数和预测性返回关闭失效完成修复。
+- 私信会话补齐分类、设置、分页加载、整页昵称刷新和用户信息补全，减少重复分页与昵称缺失。
+- 历史、稍后再看和收藏夹补齐管理能力，支持更完整的删除、排序与失效内容清理流程。
+- 首页跨底部 Tab 返回时保留 feed 滚动位置，不再回到顶部视频。
+- 动态和专栏富文本已有真实图片时不再显示 `[图片]` / `【图片】` 占位文字。
+- 预测性返回开关、空降助手跳过后自动播放、设置重复分区标题和竖屏标题遮罩可读性完成修复。
 
 ## 路线图
 

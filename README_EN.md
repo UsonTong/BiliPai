@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <sub>Last updated: 2026-05-17 · Synced to v8.3.0 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
+  <sub>Last updated: 2026-05-17 · Synced to v8.3.1 (source of truth: <a href="CHANGELOG.md">CHANGELOG</a> + code)</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-8.3.0-fb7299?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-8.3.1-fb7299?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/stars/jay3-yy/BiliPai?style=flat-square&color=yellow" alt="Stars">
   <img src="https://img.shields.io/github/forks/jay3-yy/BiliPai?style=flat-square&color=green" alt="Forks">
   <img src="https://img.shields.io/github/last-commit/jay3-yy/BiliPai?style=flat-square&color=purple" alt="Last Commit">
@@ -432,14 +432,14 @@ A lightweight plugin format requiring **no coding**, just a simple JSON file to 
 
 See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-### Latest (v8.3.0 · 2026-05-17)
+### Latest (v8.3.1 · 2026-05-17)
 
-- SponsorBlock and ad-filter plugins now include richer visual statistics, insight panels, custom rule management, and clearer details for troubleshooting.
-- Blocked users can be imported, exported, and shared through JSON files, with better profile metadata and sync handling.
-- Home pull refresh, top tabs, segmented controls, and shared capsule sizing were refined across MD3, MIUIX, and iOS-style presets.
-- Image preview long-press save now gives haptic feedback and has a dedicated setting; dynamic posts with real images no longer show the standalone `[图片]` placeholder, and video preview thumbnails keep the correct aspect ratio.
-- Search category swipes, the dynamic bottom-bar badge, bottom-bar refraction capture, sub-reply total counts, and the predictive-back off state were fixed.
-- Bumped the app to `8.3.0` with `versionCode` `194`.
+- Direct messages now have more complete session categories, settings, pagination, nickname refresh, profile completion, and preview parsing.
+- History, watch later, and favorites gained fuller management flows, including deletion, ordering, and invalid-item cleanup.
+- Home feed scroll position is preserved when switching away from Home and returning through the bottom tabs.
+- Dynamic posts and article rich text no longer show standalone `[图片]` / `【图片】` placeholders when real images are already rendered.
+- Predictive-back toggling, SponsorBlock auto-resume after skipping, duplicate settings section titles, and portrait fullscreen text readability were fixed.
+- Bumped the app to `8.3.1` with `versionCode` `195`.
 
 ---
 
