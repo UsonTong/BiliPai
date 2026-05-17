@@ -39,6 +39,47 @@ class BottomBarUiSkinDecorationTest {
     }
 
     @Test
+    fun activeExternalSkinMapsBilibiliTailIconsToBottomNavItems() {
+        val installed = InstalledUiSkinPackage(
+            manifest = UiSkinManifest(
+                formatVersion = 1,
+                skinId = "dev.example.tail-icons",
+                displayName = "底栏图标",
+                version = "1.0.0",
+                apiVersion = 1,
+                surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR),
+                assets = UiSkinAssets(
+                    bottomBarIcons = mapOf(
+                        "home" to "assets/tail_icon_main.png",
+                        "following" to "assets/tail_icon_dynamic.png",
+                        "member" to "assets/tail_icon_shop.png",
+                        "profile" to "assets/tail_icon_myself.png"
+                    )
+                )
+            ),
+            packageSha256 = "sha",
+            packagePath = "/tmp/tail-icons.bpskin",
+            installedAtMillis = 42L,
+            assetFiles = mapOf(
+                "assets/tail_icon_main.png" to "/tmp/tail_icon_main.png",
+                "assets/tail_icon_dynamic.png" to "/tmp/tail_icon_dynamic.png",
+                "assets/tail_icon_shop.png" to "/tmp/tail_icon_shop.png",
+                "assets/tail_icon_myself.png" to "/tmp/tail_icon_myself.png"
+            )
+        )
+
+        val decoration = resolveBottomBarUiSkinDecoration(
+            UiSkinState(enabled = true, activeSkin = installed)
+        )
+
+        assertEquals("/tmp/tail_icon_main.png", decoration?.iconPathFor(BottomNavItem.HOME))
+        assertEquals("/tmp/tail_icon_dynamic.png", decoration?.iconPathFor(BottomNavItem.DYNAMIC))
+        assertEquals("/tmp/tail_icon_shop.png", decoration?.iconPathFor(BottomNavItem.HISTORY))
+        assertEquals("/tmp/tail_icon_myself.png", decoration?.iconPathFor(BottomNavItem.PROFILE))
+        assertNull(decoration?.iconPathFor(BottomNavItem.LIVE))
+    }
+
+    @Test
     fun disabledSkinDoesNotProduceBottomBarDecoration() {
         val installed = InstalledUiSkinPackage(
             manifest = UiSkinManifest(

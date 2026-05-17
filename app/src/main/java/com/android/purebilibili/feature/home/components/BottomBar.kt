@@ -2184,6 +2184,7 @@ private fun MiuixBottomBar(
                     showText = showText,
                     selectedColor = selectedItemColor,
                     unselectedColor = unselectedItemColor,
+                    skinIconPath = uiSkinDecoration?.iconPathFor(item),
                     reminderBadgeText = formatBottomBarDynamicReminderBadge(
                         if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
                             dynamicUnreadCount
@@ -2241,6 +2242,7 @@ private fun RowScope.MiuixDockedBottomBarItem(
     showText: Boolean,
     selectedColor: Color,
     unselectedColor: Color,
+    skinIconPath: String? = null,
     reminderBadgeText: String? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -2286,12 +2288,20 @@ private fun RowScope.MiuixDockedBottomBarItem(
                 badgeText = reminderBadgeText,
                 modifier = Modifier.then(if (iconAndText) Modifier.padding(top = 8.dp) else Modifier)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = contentColor,
-                    modifier = Modifier.size(26.dp)
-                )
+                if (skinIconPath != null) {
+                    BottomBarSkinIcon(
+                        iconPath = skinIconPath,
+                        contentDescription = label,
+                        size = 26.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = contentColor,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
         if (showText) {
@@ -2793,6 +2803,7 @@ private fun KernelSuAlignedBottomBar(
                                 unselectedColor = unselectedColor,
                                 contentColorOverride = contentColor,
                                 iconStyle = iconStyle,
+                                skinIconPath = uiSkinDecoration?.iconPathFor(item),
                                 onClick = {},
                                 interactive = false,
                                 selectedIconAlpha = coverage,
@@ -2924,6 +2935,7 @@ private fun KernelSuAlignedBottomBar(
                                         unselectedColor = contentColor,
                                         contentColorOverride = contentColor,
                                         iconStyle = iconStyle,
+                                        skinIconPath = uiSkinDecoration?.iconPathFor(item),
                                         onClick = {},
                                         interactive = false,
                                         selectedIconAlpha = coverage,
@@ -3163,17 +3175,30 @@ private fun KernelSuAlignedBottomBar(
                             },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = CupertinoIcons.Filled.House,
-                                contentDescription = null,
-                                tint = if (currentItem == BottomNavItem.HOME) selectedColor else unselectedColor,
-                                modifier = Modifier
-                                    .size(compactHomeIconSize)
-                                    .graphicsLayer {
+                            val homeSkinIconPath = uiSkinDecoration?.iconPathFor(BottomNavItem.HOME)
+                            if (homeSkinIconPath != null) {
+                                BottomBarSkinIcon(
+                                    iconPath = homeSkinIconPath,
+                                    contentDescription = null,
+                                    size = compactHomeIconSize,
+                                    modifier = Modifier.graphicsLayer {
                                         scaleX = compactHomeIconScale
                                         scaleY = compactHomeIconScale
                                     }
-                            )
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = CupertinoIcons.Filled.House,
+                                    contentDescription = null,
+                                    tint = if (currentItem == BottomNavItem.HOME) selectedColor else unselectedColor,
+                                    modifier = Modifier
+                                        .size(compactHomeIconSize)
+                                        .graphicsLayer {
+                                            scaleX = compactHomeIconScale
+                                            scaleY = compactHomeIconScale
+                                        }
+                                )
+                            }
                         }
                     }
                 }
@@ -3490,6 +3515,7 @@ private fun RowScope.AndroidNativeBottomBarItem(
     unselectedColor: Color,
     contentColorOverride: Color? = null,
     iconStyle: SharedFloatingBottomBarIconStyle,
+    skinIconPath: String? = null,
     onClick: () -> Unit,
     interactive: Boolean,
     onPressChanged: (Boolean) -> Unit = {},
@@ -3556,6 +3582,12 @@ private fun RowScope.AndroidNativeBottomBarItem(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides contentColor) {
                         when {
+                            skinIconPath != null -> {
+                                BottomBarSkinIcon(
+                                    iconPath = skinIconPath,
+                                    contentDescription = label
+                                )
+                            }
                             item == null && iconStyle == SharedFloatingBottomBarIconStyle.CUPERTINO -> {
                                 Icon(
                                     imageVector = CupertinoIcons.Outlined.SidebarLeft,

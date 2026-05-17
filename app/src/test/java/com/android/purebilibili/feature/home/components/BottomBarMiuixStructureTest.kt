@@ -176,7 +176,43 @@ class BottomBarMiuixStructureTest {
         assertTrue(capturedContentIndex > capturedSkinIndex)
         assertTrue(skinDecorationSource.contains("AsyncImage("))
         assertTrue(skinDecorationSource.contains("model = File(imagePath)"))
+        assertTrue(skinDecorationSource.contains("model = File(iconPath)"))
         assertFalse(skinDecorationSource.contains("ColorFilter.tint"))
+    }
+
+    @Test
+    fun `skin icons replace only visual icon layer and keep bottom bar input unchanged`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val skinDecorationSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
+        val kernelSuRendererSource = source
+            .substringAfter("private fun KernelSuAlignedBottomBar(")
+            .substringBefore("@Composable\nprivate fun AndroidNativeBottomBarItem(")
+        val itemRendererSource = source
+            .substringAfter("private fun RowScope.AndroidNativeBottomBarItem(")
+            .substringBefore("@Composable\nprivate fun KernelSuBottomBarSearchCapsule(")
+        val inputTargetSource = source
+            .substringAfter("private fun RowScope.BottomBarInputTarget(")
+            .substringBefore("@Composable\nprivate fun RowScope.AndroidNativeBottomBarItem(")
+
+        assertTrue(skinDecorationSource.contains("fun iconPathFor(item: BottomNavItem): String?"))
+        assertTrue(kernelSuRendererSource.contains("skinIconPath = uiSkinDecoration?.iconPathFor(item)"))
+        assertTrue(itemRendererSource.contains("skinIconPath: String? = null"))
+        assertTrue(itemRendererSource.contains("BottomBarSkinIcon("))
+        assertTrue(itemRendererSource.contains("skinIconPath != null ->"))
+        assertFalse(inputTargetSource.contains("skinIconPath"))
+    }
+
+    @Test
+    fun `home top skin atmosphere expands through status bar safe area`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt")
+        val skinDecorationSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
+        val headerSource = source
+            .substringAfter("fun iOSHomeHeader(")
+            .substringBefore("@Composable\nprivate fun")
+
+        assertTrue(skinDecorationSource.contains("statusBarHeight: Dp"))
+        assertTrue(headerSource.contains("statusBarHeight = statusBarHeight"))
+        assertTrue(headerSource.contains("HomeSkinAtmosphere("))
     }
 
     @Test

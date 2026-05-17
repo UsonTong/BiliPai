@@ -1826,6 +1826,7 @@ fun iOSHomeHeader(
     ) {
         HomeSkinAtmosphere(
             decoration = uiSkinDecoration,
+            statusBarHeight = statusBarHeight,
             modifier = Modifier.matchParentSize()
         )
         if (effectiveContinuousSlabRenderMode != HomeTopChromeRenderMode.PLAIN) {

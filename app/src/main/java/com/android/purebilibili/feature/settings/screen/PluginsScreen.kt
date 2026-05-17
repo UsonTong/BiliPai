@@ -668,7 +668,7 @@ fun PluginsContent(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "${skin.manifest.version} · ${skin.manifest.surfaces.joinToString()} · 仅装饰，不替换底栏",
+                                            text = "${skin.manifest.version} · ${skin.manifest.surfaces.joinToString()} · 只保存资源，可替换首页皮肤图标和装饰层",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1149,7 +1149,7 @@ fun PluginsContent(
                         }
                     )
                     Text(
-                        text = "宿主只保存资源和启用记录，不执行代码，也不替换底栏液态玻璃链路。",
+                        text = "宿主只保存资源和启用记录，不执行代码；可替换首页皮肤图标和装饰层，不替换底栏液态玻璃链路。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
