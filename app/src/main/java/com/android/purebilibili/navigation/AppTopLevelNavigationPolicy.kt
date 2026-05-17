@@ -25,6 +25,13 @@ internal data class BottomPagerRenderBudget(
     val deferProfileImmersiveBackground: Boolean
 )
 
+internal data class AppPredictiveBackVisualTransform(
+    val progress: Float,
+    val translationFraction: Float,
+    val scale: Float,
+    val alpha: Float
+)
+
 internal fun resolveTopLevelNavigationAction(
     currentRoute: String?,
     targetRoute: String,
@@ -76,6 +83,27 @@ internal fun shouldInterceptSystemBackForAppAction(
         shouldInterceptSystemBackForClassicMotion(
             predictiveBackAnimationEnabled = predictiveBackAnimationEnabled
         )
+}
+
+internal fun shouldUseAppPredictiveBackHandler(
+    predictiveBackAnimationEnabled: Boolean,
+    action: AppSystemBackAction
+): Boolean {
+    return predictiveBackAnimationEnabled && action != AppSystemBackAction.RETURN_TO_HOME_TAB
+}
+
+internal fun resolveAppPredictiveBackVisualTransform(
+    progress: Float,
+    fromRightEdge: Boolean
+): AppPredictiveBackVisualTransform {
+    val normalized = progress.coerceIn(0f, 1f)
+    val direction = if (fromRightEdge) -1f else 1f
+    return AppPredictiveBackVisualTransform(
+        progress = normalized,
+        translationFraction = direction * normalized * 0.08f,
+        scale = 1f - normalized * 0.03f,
+        alpha = 1f - normalized * 0.08f
+    )
 }
 
 internal fun resolveBottomPagerPageForRoute(

@@ -36,7 +36,7 @@ class AndroidApiCompatibilityPolicyTest {
     }
 
     @Test
-    fun `manifest opts out of system predictive back so app switch can truly disable the effect`() {
+    fun `manifest opts into system predictive back so enabled setting can show the effect`() {
         val manifest = listOf(
             File("app/src/main/AndroidManifest.xml"),
             File("src/main/AndroidManifest.xml")
@@ -44,13 +44,13 @@ class AndroidApiCompatibilityPolicyTest {
 
         val source = manifest.readText()
 
-        assertFalse(
-            source.contains("""android:enableOnBackInvokedCallback="true""""),
-            "Do not opt in globally: the platform predictive back animation cannot be reliably disabled by the in-app switch at runtime."
-        )
         assertTrue(
+            source.contains("""android:enableOnBackInvokedCallback="true""""),
+            "Predictive back requires manifest opt-in; setting false disables the platform animation globally."
+        )
+        assertFalse(
             source.contains("""android:enableOnBackInvokedCallback="false""""),
-            "The app must stay system-predictive-back opt-out so closing the setting has a real effect."
+            "Do not opt out globally because the in-app enabled state would never receive predictive back progress."
         )
     }
 }

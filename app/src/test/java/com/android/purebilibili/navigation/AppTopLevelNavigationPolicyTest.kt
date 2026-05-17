@@ -124,6 +124,61 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun appPredictiveBackHandler_onlyHandlesRealBackNavigationWhenEnabled() {
+        assertTrue(
+            shouldUseAppPredictiveBackHandler(
+                predictiveBackAnimationEnabled = true,
+                action = AppSystemBackAction.NAVIGATE_UP
+            )
+        )
+        assertTrue(
+            shouldUseAppPredictiveBackHandler(
+                predictiveBackAnimationEnabled = true,
+                action = AppSystemBackAction.FINISH_ACTIVITY
+            )
+        )
+        assertFalse(
+            shouldUseAppPredictiveBackHandler(
+                predictiveBackAnimationEnabled = true,
+                action = AppSystemBackAction.RETURN_TO_HOME_TAB
+            )
+        )
+        assertFalse(
+            shouldUseAppPredictiveBackHandler(
+                predictiveBackAnimationEnabled = false,
+                action = AppSystemBackAction.NAVIGATE_UP
+            )
+        )
+    }
+
+    @Test
+    fun appPredictiveBackVisualTransform_clampsProgressAndMirrorsRightEdge() {
+        val left = resolveAppPredictiveBackVisualTransform(
+            progress = 1.4f,
+            fromRightEdge = false
+        )
+        assertEquals(1f, left.progress)
+        assertTrue(left.translationFraction > 0f)
+        assertTrue(left.scale < 1f)
+        assertTrue(left.alpha < 1f)
+
+        val right = resolveAppPredictiveBackVisualTransform(
+            progress = -0.2f,
+            fromRightEdge = true
+        )
+        assertEquals(0f, right.progress)
+        assertEquals(-0f, right.translationFraction)
+        assertEquals(1f, right.scale)
+        assertEquals(1f, right.alpha)
+
+        val mirrored = resolveAppPredictiveBackVisualTransform(
+            progress = 0.5f,
+            fromRightEdge = true
+        )
+        assertTrue(mirrored.translationFraction < 0f)
+    }
+
+    @Test
     fun systemBackOnHomeTab_usesBackStackOrFinishesActivity() {
         assertEquals(
             AppSystemBackAction.NAVIGATE_UP,
