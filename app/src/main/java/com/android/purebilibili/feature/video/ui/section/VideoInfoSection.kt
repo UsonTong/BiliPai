@@ -506,7 +506,7 @@ fun VideoTitleWithDesc(
 
         // [新增] BGM Info Row
         val displayBgmList = remember(bgmInfo, bgmInfoList) {
-            if (bgmInfoList.size > 1) bgmInfoList
+            if (bgmInfoList.isNotEmpty()) bgmInfoList
             else if (bgmInfo != null) listOf(bgmInfo)
             else emptyList()
         }
@@ -1050,11 +1050,7 @@ private fun InlineBgmSection(
         subtitle = leadSong.actor.takeIf { it.isNotBlank() && bgmList.size == 1 },
         showIndicator = false,
         onClick = {
-            if (bgmList.size > 1) {
-                showSheet = true
-            } else {
-                onBgmClick(leadSong)
-            }
+            showSheet = true
         }
     )
 
@@ -1275,13 +1271,15 @@ private fun BgmSelectionSheet(
                 }
             }
 
-            item {
-                BgmSelectionStrip(
-                    bgmList = bgmList,
-                    itemKeys = itemKeys,
-                    selectedItemKey = selectedItemKey,
-                    onSelect = { selectedItemKey = it }
-                )
+            if (bgmList.size > 1) {
+                item {
+                    BgmSelectionStrip(
+                        bgmList = bgmList,
+                        itemKeys = itemKeys,
+                        selectedItemKey = selectedItemKey,
+                        onSelect = { selectedItemKey = it }
+                    )
+                }
             }
 
             item {
@@ -1594,14 +1592,19 @@ private fun BgmDetailCard(
                     .fillMaxWidth()
                     .height(BGM_DETAIL_CARD_HEIGHT)
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 BgmDetailCover(
                     coverUrl = detail?.mvCover.orEmpty().ifBlank { bgm.coverUrl },
                     title = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle }
                 )
                 Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.Top
+                ) {
                     Text(
                         text = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle.ifBlank { "未知音乐" } },
                         style = MaterialTheme.typography.titleMedium,
@@ -1650,7 +1653,7 @@ private fun BgmDetailCard(
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.weight(1f, fill = true))
                     Text(
                         text = "打开音乐详情",
                         style = MaterialTheme.typography.labelMedium,
