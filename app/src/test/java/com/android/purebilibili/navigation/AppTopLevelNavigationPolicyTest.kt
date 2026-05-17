@@ -1,6 +1,7 @@
 package com.android.purebilibili.navigation
 
 import com.android.purebilibili.feature.home.components.BottomNavItem
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -126,6 +127,24 @@ class AppTopLevelNavigationPolicyTest {
                 predictiveBackAnimationEnabled = false,
                 action = AppSystemBackAction.NAVIGATE_UP
             )
+        )
+    }
+
+    @Test
+    fun classicBackHandler_isComposedAfterNavHostSoItCanOverrideNavigationPredictiveBack() {
+        val sourceFile = listOf(
+            File("app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt"),
+            File("src/main/java/com/android/purebilibili/navigation/AppNavigation.kt")
+        ).first { it.exists() }
+        val source = sourceFile.readText()
+        val navHostIndex = source.indexOf("NavHost(")
+        val classicBackHandlerIndex = source.indexOf("BackHandler(enabled = shouldInterceptSystemBack)")
+
+        assertTrue(navHostIndex >= 0)
+        assertTrue(classicBackHandlerIndex >= 0)
+        assertTrue(
+            classicBackHandlerIndex > navHostIndex,
+            "关闭预测性返回时的经典 BackHandler 必须在 NavHost 之后组合，才能覆盖 Navigation Compose 的返回回调。"
         )
     }
 

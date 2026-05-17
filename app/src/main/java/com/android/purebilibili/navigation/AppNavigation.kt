@@ -887,9 +887,6 @@ fun AppNavigation(
                     AppSystemBackAction.FINISH_ACTIVITY -> context.findActivity()?.finish()
                 }
             }
-            BackHandler(enabled = shouldInterceptSystemBack) {
-                performSystemBackAction()
-            }
             Row(modifier = Modifier.fillMaxSize()) {
                 if (windowSizeClass.shouldUseSideNavigation && isBottomBarDestination) {
                     AnimatedVisibility(
@@ -3283,6 +3280,12 @@ fun AppNavigation(
                         }
                     }
                 }
+            }
+
+            // 关闭预测性返回时，必须在 NavHost 之后注册经典回退拦截器，
+            // 否则 Navigation Compose 的返回回调会先消费手势并继续显示预测性返回。
+            BackHandler(enabled = shouldInterceptSystemBack) {
+                performSystemBackAction()
             }
 
             if (showLaunchDisclaimer) {
