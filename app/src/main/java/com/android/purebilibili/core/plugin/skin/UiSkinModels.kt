@@ -23,7 +23,12 @@ data class UiSkinManifest(
     val author: String? = null,
     val surfaces: Set<UiSkinSurface>,
     val assets: UiSkinAssets = UiSkinAssets(),
-    val colors: UiSkinColorTokens = UiSkinColorTokens()
+    val colors: UiSkinColorTokens = UiSkinColorTokens(),
+    val styleSourceName: String? = null,
+    val styleSourceUrl: String? = null,
+    val licenseNote: String? = null,
+    val communityShareable: Boolean = false,
+    val containsOfficialAssets: Boolean = false
 )
 
 @Serializable
@@ -109,7 +114,11 @@ object BuiltInUiSkins {
             bottomBarTrimTint = "#EAF8FF",
             topAtmosphereTint = "#DFF5FF",
             searchCapsuleTint = "#FFFFFF"
-        )
+        ),
+        styleSourceName = "BiliPai",
+        licenseNote = "BiliPai 原创内置资源",
+        communityShareable = false,
+        containsOfficialAssets = false
     )
 
     val winterCloudInstallRecord = InstalledUiSkinPackage(

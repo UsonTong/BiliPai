@@ -106,6 +106,9 @@ object UiSkinPackageReader {
         if (manifest.surfaces.isEmpty()) {
             throw IllegalArgumentException("皮肤包没有声明适用界面")
         }
+        if (manifest.communityShareable && manifest.licenseNote.isNullOrBlank()) {
+            throw IllegalArgumentException("社区可分享皮肤包必须声明 licenseNote")
+        }
     }
 
     private fun validateAssets(
@@ -155,7 +158,12 @@ object UiSkinPackageReader {
                     ?: throw IllegalArgumentException("皮肤包声明了未知界面: $surface")
             },
             assets = assets,
-            colors = colors
+            colors = colors,
+            styleSourceName = styleSourceName,
+            styleSourceUrl = styleSourceUrl,
+            licenseNote = licenseNote,
+            communityShareable = communityShareable,
+            containsOfficialAssets = containsOfficialAssets
         )
     }
 
@@ -223,7 +231,12 @@ private data class RawUiSkinManifest(
     val author: String? = null,
     val surfaces: Set<String>,
     val assets: UiSkinAssets = UiSkinAssets(),
-    val colors: UiSkinColorTokens = UiSkinColorTokens()
+    val colors: UiSkinColorTokens = UiSkinColorTokens(),
+    val styleSourceName: String? = null,
+    val styleSourceUrl: String? = null,
+    val licenseNote: String? = null,
+    val communityShareable: Boolean = false,
+    val containsOfficialAssets: Boolean = false
 )
 
 private fun ZipInputStream.readLimited(limitBytes: Int, displayName: String): ByteArray {

@@ -5,6 +5,7 @@ import com.android.purebilibili.core.plugin.PluginCapability
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadEntry
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadType
 import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
+import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
 
 data class PluginCapabilityUiModel(
     val capability: PluginCapability,
@@ -28,6 +29,17 @@ data class InstalledExternalPluginPackageUiModel(
     val packageHashText: String,
     val signerText: String,
     val grantedCapabilityLabels: List<String>
+)
+
+data class UiSkinPackagePreviewUiModel(
+    val title: String,
+    val subtitle: String,
+    val packageHashText: String,
+    val assetSummaryText: String,
+    val sourceText: String,
+    val licenseText: String,
+    val shareText: String,
+    val officialAssetText: String
 )
 
 private val capabilityOrder = listOf(
@@ -137,6 +149,28 @@ fun buildInstalledExternalPluginUiModels(
                     .map { it.label }
             )
         }
+}
+
+fun buildUiSkinPackagePreview(
+    preview: UiSkinPackagePreview
+): UiSkinPackagePreviewUiModel {
+    val manifest = preview.manifest
+    val sourceName = manifest.styleSourceName?.takeIf { it.isNotBlank() } ?: "未声明"
+    val licenseNote = manifest.licenseNote?.takeIf { it.isNotBlank() } ?: "未声明分享许可"
+    return UiSkinPackagePreviewUiModel(
+        title = manifest.displayName,
+        subtitle = "${manifest.skinId} · v${manifest.version}",
+        packageHashText = "SHA-256: ${preview.packageSha256}",
+        assetSummaryText = "资源：${preview.assetEntries.size} 个，当前只作为装饰输入",
+        sourceText = "来源：$sourceName",
+        licenseText = "授权：$licenseNote",
+        shareText = if (manifest.communityShareable) "社区分享：允许" else "社区分享：未声明允许",
+        officialAssetText = if (manifest.containsOfficialAssets) {
+            "官方素材：声明包含，请勿作为社区包分发"
+        } else {
+            "官方素材：未声明包含"
+        }
+    )
 }
 
 private val PluginCapability.label: String

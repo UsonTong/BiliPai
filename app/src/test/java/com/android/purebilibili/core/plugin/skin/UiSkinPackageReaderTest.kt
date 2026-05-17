@@ -36,6 +36,73 @@ class UiSkinPackageReaderTest {
     }
 
     @Test
+    fun legacyPackageWithoutCommunityMetadata_stillImports() {
+        val manifestJson = """
+            {
+              "formatVersion": 1,
+              "skinId": "dev.example.legacy",
+              "displayName": "旧版皮肤",
+              "version": "1.0.0",
+              "apiVersion": 1,
+              "surfaces": ["HOME_BOTTOM_BAR"],
+              "assets": {"bottomBarTrim": "assets/bottom_trim.png"}
+            }
+        """.trimIndent().toByteArray()
+        val bytes = skinPackage(
+            "skin-manifest.json" to manifestJson,
+            "assets/bottom_trim.png" to pngBytes()
+        )
+
+        val preview = UiSkinPackageReader.preview(bytes).getOrThrow()
+
+        assertEquals("dev.example.legacy", preview.manifest.skinId)
+        assertEquals(null, preview.manifest.styleSourceName)
+        assertEquals(false, preview.manifest.communityShareable)
+    }
+
+    @Test
+    fun communityMetadata_readsSourceLicenseAndShareState() {
+        val manifest = sampleManifest(
+            styleSourceName = "KimmyXYC/bilibili-skin",
+            styleSourceUrl = "https://github.com/KimmyXYC/bilibili-skin",
+            licenseNote = "原创重绘资源，可作为社区包分享",
+            communityShareable = true,
+            containsOfficialAssets = false
+        )
+        val bytes = skinPackage(
+            "skin-manifest.json" to Json.encodeToString(manifest).toByteArray(),
+            "assets/bottom_trim.png" to pngBytes(),
+            "assets/top_atmosphere.webp" to webpBytes()
+        )
+
+        val preview = UiSkinPackageReader.preview(bytes).getOrThrow()
+
+        assertEquals("KimmyXYC/bilibili-skin", preview.manifest.styleSourceName)
+        assertEquals("https://github.com/KimmyXYC/bilibili-skin", preview.manifest.styleSourceUrl)
+        assertEquals("原创重绘资源，可作为社区包分享", preview.manifest.licenseNote)
+        assertEquals(true, preview.manifest.communityShareable)
+        assertEquals(false, preview.manifest.containsOfficialAssets)
+    }
+
+    @Test
+    fun shareableCommunityPackageWithoutLicenseNote_rejectsSkin() {
+        val manifest = sampleManifest(
+            licenseNote = "",
+            communityShareable = true
+        )
+        val bytes = skinPackage(
+            "skin-manifest.json" to Json.encodeToString(manifest).toByteArray(),
+            "assets/bottom_trim.png" to pngBytes(),
+            "assets/top_atmosphere.webp" to webpBytes()
+        )
+
+        val error = UiSkinPackageReader.preview(bytes).exceptionOrNull()
+
+        assertNotNull(error)
+        assertEquals("社区可分享皮肤包必须声明 licenseNote", error.message)
+    }
+
+    @Test
     fun missingManifest_rejectsSkinBeforeInstallDecision() {
         val bytes = skinPackage("assets/bottom_trim.png" to pngBytes())
 
@@ -170,7 +237,12 @@ class UiSkinPackageReaderTest {
         assets: UiSkinAssets = UiSkinAssets(
             bottomBarTrim = "assets/bottom_trim.png",
             topAtmosphere = "assets/top_atmosphere.webp"
-        )
+        ),
+        styleSourceName: String? = null,
+        styleSourceUrl: String? = null,
+        licenseNote: String? = null,
+        communityShareable: Boolean = false,
+        containsOfficialAssets: Boolean = false
     ): UiSkinManifest {
         return UiSkinManifest(
             formatVersion = 1,
@@ -184,7 +256,12 @@ class UiSkinPackageReaderTest {
             colors = UiSkinColorTokens(
                 bottomBarTrimTint = "#EAF8FF",
                 topAtmosphereTint = "#DFF5FF"
-            )
+            ),
+            styleSourceName = styleSourceName,
+            styleSourceUrl = styleSourceUrl,
+            licenseNote = licenseNote,
+            communityShareable = communityShareable,
+            containsOfficialAssets = containsOfficialAssets
         )
     }
 

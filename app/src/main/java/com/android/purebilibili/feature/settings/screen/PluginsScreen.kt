@@ -33,6 +33,7 @@ import com.android.purebilibili.core.plugin.evaluateExternalPluginInstall
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginInstallStore
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPackagePreview
 import com.android.purebilibili.core.plugin.skin.UiSkinInstallStore
+import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
 import com.android.purebilibili.core.plugin.skin.UiSkinSelection
 import com.android.purebilibili.core.plugin.skin.UiSkinSettingsStore
 import com.android.purebilibili.core.plugin.skin.rememberUiSkinState
@@ -53,6 +54,7 @@ import com.android.purebilibili.core.ui.components.AppAdaptiveSwitch
 import com.android.purebilibili.core.ui.components.rememberAdaptiveSemanticIconTint
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.plugin.SPONSOR_BLOCK_PLUGIN_ID
+import com.android.purebilibili.feature.settings.buildUiSkinPackagePreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -184,6 +186,8 @@ fun PluginsContent(
     var installedUiSkins by remember {
         mutableStateOf(uiSkinStore.listInstalledPackages())
     }
+    var uiSkinPreview by remember { mutableStateOf<UiSkinPackagePreview?>(null) }
+    var uiSkinPackageBytes by remember { mutableStateOf<ByteArray?>(null) }
     var uiSkinImportError by remember { mutableStateOf<String?>(null) }
     var isUiSkinPackageLoading by remember { mutableStateOf(false) }
     val uiSkinPackagePicker = rememberLauncherForActivityResult(
@@ -198,24 +202,13 @@ fun PluginsContent(
                     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw IllegalArgumentException("无法读取皮肤包")
                     val preview = uiSkinStore.previewPackage(bytes).getOrThrow()
-                    uiSkinStore.installPreview(preview, bytes).getOrThrow()
+                    preview to bytes
                 }
             }
             isUiSkinPackageLoading = false
-            result.onSuccess { installed ->
-                installedUiSkins = uiSkinStore.listInstalledPackages()
-                UiSkinSettingsStore.setSelection(
-                    context = context,
-                    selection = UiSkinSelection(
-                        enabled = true,
-                        selectedSkinId = installed.skinId
-                    )
-                )
-                android.widget.Toast.makeText(
-                    context,
-                    "皮肤包已保存并启用",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+            result.onSuccess { (preview, bytes) ->
+                uiSkinPreview = preview
+                uiSkinPackageBytes = bytes
             }.onFailure { error ->
                 uiSkinImportError = error.message ?: "皮肤包导入失败"
             }
@@ -1093,6 +1086,109 @@ fun PluginsContent(
                     onClick = {
                         kotlinPreview = null
                         kotlinPackageBytes = null
+                    }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    uiSkinPreview?.let { preview ->
+        val previewModel = buildUiSkinPackagePreview(preview)
+        AlertDialog(
+            onDismissRequest = {
+                if (!isImporting) {
+                    uiSkinPreview = null
+                    uiSkinPackageBytes = null
+                }
+            },
+            icon = { Icon(CupertinoIcons.Filled.Paintbrush, contentDescription = null) },
+            title = { Text("界面皮肤包预览") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = previewModel.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = previewModel.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = previewModel.packageHashText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = previewModel.assetSummaryText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = previewModel.sourceText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = previewModel.licenseText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${previewModel.shareText} · ${previewModel.officialAssetText}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (preview.manifest.containsOfficialAssets) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Text(
+                        text = "宿主只保存资源和启用记录，不执行代码，也不替换底栏液态玻璃链路。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val bytes = uiSkinPackageBytes ?: return@TextButton
+                        val result = uiSkinStore.installPreview(preview, bytes)
+                        result.onSuccess { installed ->
+                            installedUiSkins = uiSkinStore.listInstalledPackages()
+                            UiSkinSettingsStore.setSelection(
+                                context = context,
+                                selection = UiSkinSelection(
+                                    enabled = true,
+                                    selectedSkinId = installed.skinId
+                                )
+                            )
+                            uiSkinPreview = null
+                            uiSkinPackageBytes = null
+                            android.widget.Toast.makeText(
+                                context,
+                                "皮肤包已保存并启用",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }.onFailure { error ->
+                            uiSkinImportError = error.message ?: "皮肤包导入失败"
+                            uiSkinPreview = null
+                            uiSkinPackageBytes = null
+                        }
+                    }
+                ) {
+                    Text("保存并启用")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        uiSkinPreview = null
+                        uiSkinPackageBytes = null
                     }
                 ) {
                     Text("取消")

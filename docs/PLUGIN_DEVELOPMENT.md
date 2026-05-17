@@ -444,6 +444,16 @@ ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPl
 
 仓库内置了一个可打包样例：[`plugins/samples/winter-cloud-skin`](../plugins/samples/winter-cloud-skin)。它演示了截图风格的浅色冬季氛围、云朵底栏饰边、搜索胶囊和底栏图标贴纸声明。
 
+如果你本地已有 [`KimmyXYC/bilibili-skin`](https://github.com/KimmyXYC/bilibili-skin) 这类公开存档目录，可以用仓库工具把其中某个主题目录转换为 `.bpskin`。转换器会直接使用本地主题 zip 中的 `tail_bg`、`head_bg`、`tail_icon_*` 等素材，但不会把这些素材提交到 BiliPai 仓库：
+
+```bash
+python3 plugins/tools/bilibili_skin_to_bpskin.py \
+  --theme-dir /path/to/bilibili-skin/萧逸 \
+  --output /tmp/xiaoyi.bpskin
+```
+
+转换出的包会声明 `containsOfficialAssets=true`、`communityShareable=false`。这类包适合本地私用或在你已获得授权时分享；不要把官方付费主题原图、角色立绘、图标原件或动效资源作为社区包分发。
+
 版本 1 的包根目录必须包含 `skin-manifest.json`，其他资源必须位于 `assets/` 下：
 
 ```text
@@ -472,7 +482,12 @@ my-skin.bpskin
   "colors": {
     "bottomBarTrimTint": "#EAF8FF",
     "topAtmosphereTint": "#DFF5FF"
-  }
+  },
+  "styleSourceName": "KimmyXYC/bilibili-skin",
+  "styleSourceUrl": "https://github.com/KimmyXYC/bilibili-skin",
+  "licenseNote": "原创或已授权资源说明；社区可分享包必须填写",
+  "communityShareable": true,
+  "containsOfficialAssets": false
 }
 ```
 
@@ -487,6 +502,9 @@ my-skin.bpskin
 - 宿主会拒绝路径穿越、未知界面、未声明资源、重复声明资源、超大 manifest 和超大解压内容。
 - 用户导入后，宿主会把已声明资源解压到应用私有目录，并把资源路径作为受控装饰输入传给对应 UI。
 - 皮肤只作为装饰输入传给宿主。底栏的 `FrostedBottomBar`、`KernelSuAlignedBottomBar`、`drawBackdrop`、指示器折射、滑动色散和输入层不会被皮肤包替换或重算。
+- `styleSourceName`、`styleSourceUrl`、`licenseNote`、`communityShareable`、`containsOfficialAssets` 是可选元数据；旧包不填写也可导入。
+- 如果声明 `communityShareable=true`，必须填写 `licenseNote`。
+- 宿主只做静态提示，不判断版权归属；社区分享前需要作者确认资源是原创、已授权或公共授权。
 
 ---
 

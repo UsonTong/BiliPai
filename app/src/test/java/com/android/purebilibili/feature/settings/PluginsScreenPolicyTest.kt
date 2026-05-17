@@ -6,6 +6,10 @@ import com.android.purebilibili.core.plugin.PluginCapabilityManifest
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadEntry
 import com.android.purebilibili.core.plugin.kotlinpkg.ExternalKotlinPluginPayloadType
 import com.android.purebilibili.core.plugin.kotlinpkg.InstalledExternalPluginPackage
+import com.android.purebilibili.core.plugin.skin.UiSkinAssets
+import com.android.purebilibili.core.plugin.skin.UiSkinManifest
+import com.android.purebilibili.core.plugin.skin.UiSkinPackagePreview
+import com.android.purebilibili.core.plugin.skin.UiSkinSurface
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -146,5 +150,63 @@ class PluginsScreenPolicyTest {
         assertEquals("已保存，暂不运行", uiModel.stateText)
         assertEquals("SHA-256: abcdef123456", uiModel.packageHashText)
         assertEquals(listOf("推荐候选"), uiModel.grantedCapabilityLabels)
+    }
+
+    @Test
+    fun uiSkinInstallPreview_exposesSourceLicenseAndShareability() {
+        val preview = UiSkinPackagePreview(
+            manifest = UiSkinManifest(
+                formatVersion = 1,
+                skinId = "community.pastel",
+                displayName = "收藏馆浅彩风",
+                version = "1.0.0",
+                apiVersion = 1,
+                author = "BiliPai",
+                surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR),
+                assets = UiSkinAssets(bottomBarTrim = "assets/bottom_trim.png"),
+                styleSourceName = "KimmyXYC/bilibili-skin",
+                styleSourceUrl = "https://github.com/KimmyXYC/bilibili-skin",
+                licenseNote = "原创重绘资源，可作为社区包分享",
+                communityShareable = true,
+                containsOfficialAssets = false
+            ),
+            packageSha256 = "abcdef",
+            assetEntries = emptyList()
+        )
+
+        val uiModel = buildUiSkinPackagePreview(preview)
+
+        assertEquals("收藏馆浅彩风", uiModel.title)
+        assertEquals("community.pastel · v1.0.0", uiModel.subtitle)
+        assertEquals("来源：KimmyXYC/bilibili-skin", uiModel.sourceText)
+        assertEquals("授权：原创重绘资源，可作为社区包分享", uiModel.licenseText)
+        assertEquals("社区分享：允许", uiModel.shareText)
+        assertEquals("官方素材：未声明包含", uiModel.officialAssetText)
+    }
+
+    @Test
+    fun uiSkinInstallPreview_warnsWhenPackageDeclaresOfficialAssets() {
+        val preview = UiSkinPackagePreview(
+            manifest = UiSkinManifest(
+                formatVersion = 1,
+                skinId = "local.bilibili_skin.xiaoyi",
+                displayName = "萧逸",
+                version = "1644150184",
+                apiVersion = 1,
+                surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR),
+                assets = UiSkinAssets(bottomBarTrim = "assets/tail_bg.png"),
+                styleSourceName = "KimmyXYC/bilibili-skin",
+                licenseNote = "由用户本地主题目录转换，输出包包含原存档/官方装扮素材",
+                communityShareable = false,
+                containsOfficialAssets = true
+            ),
+            packageSha256 = "abcdef",
+            assetEntries = emptyList()
+        )
+
+        val uiModel = buildUiSkinPackagePreview(preview)
+
+        assertEquals("社区分享：未声明允许", uiModel.shareText)
+        assertEquals("官方素材：声明包含，请勿作为社区包分发", uiModel.officialAssetText)
     }
 }
