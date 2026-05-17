@@ -858,11 +858,9 @@ internal fun resolveBottomBarSkinContentColors(
     selectedColor: Color,
     unselectedColor: Color,
     skinTrimTint: Color?,
-    skinTrimAccent: Color? = null,
     darkTheme: Boolean
 ): BottomBarSkinContentColors {
-    val readableBackgroundIsLight = listOfNotNull(skinTrimTint, skinTrimAccent)
-        .any { it.luminance() >= 0.45f }
+    val readableBackgroundIsLight = skinTrimTint?.luminance()?.let { it >= 0.45f } == true
     if (skinTrimTint == null || !darkTheme || !readableBackgroundIsLight) {
         return BottomBarSkinContentColors(
             selectedColor = selectedColor,
@@ -1930,7 +1928,6 @@ private fun MaterialBottomBar(
         selectedColor = dockedItemColors.selectedIconColor,
         unselectedColor = dockedItemColors.unselectedIconColor,
         skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-        skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
         darkTheme = isSystemInDarkTheme()
     )
 
@@ -2225,7 +2222,6 @@ private fun MiuixBottomBar(
                 selectedColor = selectedItemColor,
                 unselectedColor = unselectedItemColor,
                 skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-                skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
                 darkTheme = isSystemInDarkTheme()
             )
 
@@ -2443,7 +2439,6 @@ private fun KernelSuAlignedBottomBar(
         selectedColor = baseSelectedColor,
         unselectedColor = baseUnselectedColor,
         skinTrimTint = uiSkinDecoration?.bottomTrimTint,
-        skinTrimAccent = uiSkinDecoration?.bottomTrimAccent,
         darkTheme = isDarkTheme
     )
     val selectedColor = skinContentColors.selectedColor
