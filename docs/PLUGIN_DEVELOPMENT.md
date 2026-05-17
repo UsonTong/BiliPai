@@ -444,7 +444,7 @@ ANDROID_HOME=/Users/yiyang/Library/Android/sdk ../../../gradlew -p . packageBpPl
 
 仓库内置了一个可打包样例：[`plugins/samples/winter-cloud-skin`](../plugins/samples/winter-cloud-skin)。它演示了截图风格的浅色冬季氛围、云朵底栏饰边、搜索胶囊和底栏图标贴纸声明。
 
-插件中心可以直接选择 `.bpskin`。如果你本地已有 [`KimmyXYC/bilibili-skin`](https://github.com/KimmyXYC/bilibili-skin) 这类公开存档，也可以把单个主题文件夹压成 ZIP 后在插件中心选择，App 会在本地转换成 `.bpskin` 并进入同一个预览、保存、启用流程。主题目录 ZIP 内应包含 `个性装扮.json` 或 `<主题名>.json`，以及 `<主题名>_package.zip`。
+插件中心可以直接选择 `.bpskin`。如果你本地已有 [`KimmyXYC/bilibili-skin`](https://github.com/KimmyXYC/bilibili-skin) 这类公开存档，也可以把单个主题文件夹压成 ZIP 后在插件中心选择，App 会在本地转换成 `.bpskin` 并进入同一个预览、保存、启用流程。主题目录 ZIP 内应包含 `个性装扮.json` 或 `<主题名>.json`，以及 `<主题名>_package.zip`。如果你手上只有内层 `<主题名>_package.zip`，也可以直接导入；这时 App 会使用通用名称和默认色板，仍然会读取 `tail_bg`、`head_bg/head_tab_bg/side_bg` 和 `tail_icon_*` 资源。
 
 桌面批量转换仍可使用仓库工具。转换器会直接使用本地主题 zip 中的 `tail_bg`、`head_bg`、`tail_icon_*` 等素材，但不会把这些素材提交到 BiliPai 仓库：
 
@@ -496,7 +496,7 @@ my-skin.bpskin
 当前支持的界面：
 
 - `HOME_BOTTOM_BAR`：首页底栏装饰资源和颜色 token。
-- `HOME_TOP_CHROME`：首页顶部氛围资源和颜色 token。
+- `HOME_TOP_CHROME`：首页顶部氛围资源、搜索胶囊色和顶部标签背景色 token。
 
 安全边界：
 
@@ -507,7 +507,7 @@ my-skin.bpskin
 - `styleSourceName`、`styleSourceUrl`、`licenseNote`、`communityShareable`、`containsOfficialAssets` 是可选元数据；旧包不填写也可导入。
 - 如果声明 `communityShareable=true`，必须填写 `licenseNote`。
 - 宿主只做静态提示，不判断版权归属；社区分享前需要作者确认资源是原创、已授权或公共授权。
-- App 内主题目录 ZIP 转换只处理本地文件，不联网、不登录、不下载 B 站资源、不解密 App 数据。
+- App 内主题目录 ZIP / `_package.zip` 转换只处理本地文件，不联网、不登录、不下载 B 站资源、不解密 App 数据。
 
 ---
 

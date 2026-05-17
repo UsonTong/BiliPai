@@ -1238,7 +1238,8 @@ fun iOSHomeHeader(
     isScrolling: Boolean = false,
     isTransitionRunning: Boolean = false,
     forceLowBlurBudget: Boolean = false,
-    interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL
+    interactionBudget: HomeInteractionMotionBudget = HomeInteractionMotionBudget.FULL,
+    uiSkinDecoration: HomeUiSkinDecoration? = null
 ) {
     val uiPreset = LocalUiPreset.current
     val androidNativeVariant = LocalAndroidNativeVariant.current
@@ -1692,6 +1693,9 @@ fun iOSHomeHeader(
     } else {
         tabSurfaceColor.copy(alpha = tabOverlayAlpha)
     }
+    val skinTintedTabSurfaceColor = uiSkinDecoration?.topAtmosphereTint?.copy(
+        alpha = effectiveTabSurfaceColor.alpha.coerceAtLeast(0.36f)
+    ) ?: effectiveTabSurfaceColor
     val renderUnifiedTopPanelChrome = shouldRenderHomeTopUnifiedPanelChrome(
         searchHeightDp = currentSearchHeight.value,
         tabHeightDp = currentTabHeight.value,
@@ -1745,7 +1749,7 @@ fun iOSHomeHeader(
                 tabShape
             },
             tabChromeRenderMode = effectiveTabChromeRenderMode,
-            tabSurfaceColor = effectiveTabSurfaceColor,
+            tabSurfaceColor = skinTintedTabSurfaceColor,
             hazeState = hazeState,
             backdrop = backdrop,
             liquidStyle = liquidStyle,
@@ -1820,6 +1824,10 @@ fun iOSHomeHeader(
             .fillMaxWidth()
             .zIndex(10f)
     ) {
+        HomeSkinAtmosphere(
+            decoration = uiSkinDecoration,
+            modifier = Modifier.matchParentSize()
+        )
         if (effectiveContinuousSlabRenderMode != HomeTopChromeRenderMode.PLAIN) {
             Box(
                 modifier = Modifier
@@ -2193,6 +2201,16 @@ fun iOSHomeHeader(
                                         .padding(horizontal = resolveHomeTopSearchContentHorizontalPadding(uiPreset, androidNativeVariant)),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
+                                    if (uiSkinDecoration != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .background(
+                                                    uiSkinDecoration.searchCapsuleTint.copy(alpha = 0.22f),
+                                                    searchContainerShape
+                                                )
+                                        )
+                                    }
                                     if (uiPreset == UiPreset.IOS && !useUnifiedTopPanel) {
                                         Box(
                                             modifier = Modifier

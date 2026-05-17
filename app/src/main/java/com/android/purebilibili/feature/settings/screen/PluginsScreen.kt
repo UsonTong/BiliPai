@@ -612,7 +612,7 @@ fun PluginsContent(
                                 text = if (isUiSkinPackageLoading) {
                                     "正在读取 .bpskin..."
                                 } else {
-                                    "选择 .bpskin 或 B 站装扮主题目录 ZIP，只保存资源和启用记录"
+                                    "选择 .bpskin、主题目录 ZIP 或装扮 _package.zip，只保存资源和启用记录"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

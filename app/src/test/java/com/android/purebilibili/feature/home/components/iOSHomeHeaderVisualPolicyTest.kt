@@ -13,6 +13,7 @@ import com.android.purebilibili.feature.home.HomeGlassResolvedColors
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.UiPreset
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -1583,5 +1584,28 @@ class iOSHomeHeaderVisualPolicyTest {
             ),
             0.0001f
         )
+    }
+
+    @Test
+    fun `home header consumes skin atmosphere and search tint`() {
+        val homeScreenSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/HomeScreen.kt")
+        val headerSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt")
+
+        assertTrue(homeScreenSource.contains("uiSkinDecoration = homeUiSkinDecoration"))
+        assertTrue(headerSource.contains("uiSkinDecoration: HomeUiSkinDecoration? = null"))
+        assertTrue(headerSource.contains("HomeSkinAtmosphere("))
+        assertTrue(headerSource.contains("decoration = uiSkinDecoration"))
+        assertTrue(headerSource.contains("uiSkinDecoration.searchCapsuleTint"))
+        assertTrue(headerSource.contains("uiSkinDecoration?.topAtmosphereTint"))
+    }
+
+    private fun loadSource(path: String): String {
+        val normalizedPath = path.removePrefix("app/")
+        val sourceFile = listOf(
+            File(path),
+            File(normalizedPath)
+        ).firstOrNull { it.exists() }
+        require(sourceFile != null) { "Cannot locate $path from ${File(".").absolutePath}" }
+        return sourceFile.readText()
     }
 }

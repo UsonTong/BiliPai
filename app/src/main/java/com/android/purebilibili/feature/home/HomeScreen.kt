@@ -1572,7 +1572,8 @@ fun HomeScreen(
             isScrolling = isFeedScrollInProgress,
             isTransitionRunning = isHeaderTransitionRunning,
             forceLowBlurBudget = forceLowBlurBudget,
-            interactionBudget = homeInteractionMotionBudget
+            interactionBudget = homeInteractionMotionBudget,
+            uiSkinDecoration = homeUiSkinDecoration
         )
 
         AnimatedVisibility(

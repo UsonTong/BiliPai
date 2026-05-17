@@ -301,6 +301,28 @@ class UiSkinPackageReaderTest {
     }
 
     @Test
+    fun bilibiliSkinDirectPackageZip_convertsWithoutThemeJson() {
+        val bytes = skinPackage(
+            "tail_bg.png" to pngBytes(),
+            "head_bg.jpg" to jpegBytes(),
+            "tail_icon_main.png" to pngBytes(),
+            "tail_icon_dynamic.png" to pngBytes()
+        )
+
+        val importPackage = UiSkinImportPackageResolver.resolve(bytes).getOrThrow()
+        val preview = UiSkinPackageReader.preview(importPackage.packageBytes).getOrThrow()
+
+        assertEquals(UiSkinImportSource.BILIBILI_SKIN_ARCHIVE, importPackage.source)
+        assertEquals("local.bilibili_skin.local_package", preview.manifest.skinId)
+        assertEquals("本地装扮资源包", preview.manifest.displayName)
+        assertEquals("assets/tail_bg.png", preview.manifest.assets.bottomBarTrim)
+        assertEquals("assets/head_bg.jpg", preview.manifest.assets.topAtmosphere)
+        assertEquals("assets/tail_icon_main.png", preview.manifest.assets.bottomBarIcons["home"])
+        assertEquals(false, preview.manifest.communityShareable)
+        assertEquals(true, preview.manifest.containsOfficialAssets)
+    }
+
+    @Test
     fun bilibiliSkinThemeArchive_missingThemeJsonReturnsReadableError() {
         val bytes = bilibiliThemeArchive(
             "萧逸/萧逸_package.zip" to skinPackage("tail_bg.png" to pngBytes())

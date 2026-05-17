@@ -59,13 +59,31 @@ object UiSkinImportPackageResolver {
             inputBytes = inputBytes,
             illegalPathMessage = "装扮存档包含非法路径"
         )
-        val themeJson = selectThemeJson(outerEntries)
-        val packageZip = selectPackageZip(outerEntries)
-        val theme = parseThemeJson(themeJson)
-        val packageEntries = scanZip(
-            inputBytes = packageZip,
-            illegalPathMessage = "装扮资源包包含非法路径"
-        )
+        val themeJson = selectThemeJsonOrNull(outerEntries)
+        val packageZip = selectPackageZipOrNull(outerEntries)
+        if (packageZip == null && themeJson != null) {
+            throw IllegalArgumentException("装扮存档缺少 _package.zip")
+        }
+        val theme = if (packageZip == null) {
+            BilibiliSkinTheme(
+                id = "local_package",
+                name = "本地装扮资源包",
+                version = "1.0.0",
+                color = null,
+                colorSecondPage = null,
+                tailColor = null
+            )
+        } else {
+            parseThemeJson(themeJson ?: throw IllegalArgumentException("装扮存档缺少主题 JSON"))
+        }
+        val packageEntries = if (packageZip == null) {
+            outerEntries
+        } else {
+            scanZip(
+                inputBytes = packageZip,
+                illegalPathMessage = "装扮资源包包含非法路径"
+            )
+        }
         val assetBytesByPath = buildAssetBytes(packageEntries)
         if (assetBytesByPath.isEmpty()) {
             throw IllegalArgumentException("装扮资源包缺少可转换资源")
@@ -77,7 +95,7 @@ object UiSkinImportPackageResolver {
         return buildBpskinPackage(manifest, assetBytesByPath)
     }
 
-    private fun selectThemeJson(entries: Map<String, ByteArray>): ByteArray {
+    private fun selectThemeJsonOrNull(entries: Map<String, ByteArray>): ByteArray? {
         val jsonEntries = entries
             .filterKeys { path ->
                 val name = path.substringAfterLast("/")
@@ -90,16 +108,14 @@ object UiSkinImportPackageResolver {
                 { (path, _) -> path }
             ))
         return jsonEntries.firstOrNull()?.second
-            ?: throw IllegalArgumentException("装扮存档缺少主题 JSON")
     }
 
-    private fun selectPackageZip(entries: Map<String, ByteArray>): ByteArray {
+    private fun selectPackageZipOrNull(entries: Map<String, ByteArray>): ByteArray? {
         return entries
             .filterKeys { it.endsWith("_package.zip") }
             .toSortedMap()
             .values
             .firstOrNull()
-            ?: throw IllegalArgumentException("装扮存档缺少 _package.zip")
     }
 
     private fun parseThemeJson(bytes: ByteArray): BilibiliSkinTheme {
@@ -130,7 +146,7 @@ object UiSkinImportPackageResolver {
 
     private fun buildAssetBytes(packageEntries: Map<String, ByteArray>): Map<String, ByteArray> {
         val assetBytes = linkedMapOf<String, ByteArray>()
-        firstExisting(packageEntries, "tail_bg.png", "side_bg_bottom.png")?.let { (path, bytes) ->
+        firstExisting(packageEntries, "tail_bg.png", "tail_bg.jpg", "side_bg_bottom.png", "side_bg_bottom.jpg")?.let { (path, bytes) ->
             assetBytes["assets/${path.substringAfterLast("/")}"] = bytes
         }
         firstExisting(packageEntries, "head_bg.jpg", "head_tab_bg.jpg", "side_bg.jpg")?.let { (path, bytes) ->
@@ -163,7 +179,12 @@ object UiSkinImportPackageResolver {
             author = "BiliPai local converter",
             surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR, UiSkinSurface.HOME_TOP_CHROME),
             assets = UiSkinAssets(
-                bottomBarTrim = assetPaths.firstOrNull { it.endsWith("tail_bg.png") || it.endsWith("side_bg_bottom.png") },
+                bottomBarTrim = assetPaths.firstOrNull {
+                    it.endsWith("tail_bg.png") ||
+                        it.endsWith("tail_bg.jpg") ||
+                        it.endsWith("side_bg_bottom.png") ||
+                        it.endsWith("side_bg_bottom.jpg")
+                },
                 topAtmosphere = assetPaths.firstOrNull {
                     it.endsWith("head_bg.jpg") || it.endsWith("head_tab_bg.jpg") || it.endsWith("side_bg.jpg")
                 },
