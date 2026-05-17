@@ -364,11 +364,15 @@ class VideoCommentViewModel : ViewModel() {
         }
 
         if (shouldStartCommentFraudDetection(fraudDetectionEnabled, newReply.rpid)) {
+            val sentAtSeconds = newReply.ctime
+                .takeIf { it > 0L }
+                ?: (System.currentTimeMillis() / 1000L)
             launchFraudDetection(
                 aid = aid,
                 rpid = newReply.rpid,
                 rootId = newReply.root,
-                hasPictures = !newReply.content.pictures.isNullOrEmpty()
+                hasPictures = !newReply.content.pictures.isNullOrEmpty(),
+                sentAtSeconds = sentAtSeconds
             )
         }
 
@@ -628,7 +632,15 @@ class VideoCommentViewModel : ViewModel() {
                 // [新增] 启动评论反诈检测（后台协程，不阻塞 UI）
                 val rpidToCheck = newReply?.rpid ?: 0L
                 if (shouldStartCommentFraudDetection(fraudDetectionEnabled, rpidToCheck)) {
-                    launchFraudDetection(currentAid, rpidToCheck, root)
+                    val sentAtSeconds = newReply?.ctime
+                        ?.takeIf { it > 0L }
+                        ?: (System.currentTimeMillis() / 1000L)
+                    launchFraudDetection(
+                        aid = currentAid,
+                        rpid = rpidToCheck,
+                        rootId = root,
+                        sentAtSeconds = sentAtSeconds
+                    )
                 }
                 
                 // 1. 如果是主层级评论 (root=0)
@@ -776,7 +788,8 @@ class VideoCommentViewModel : ViewModel() {
         aid: Long,
         rpid: Long,
         rootId: Long,
-        hasPictures: Boolean = false
+        hasPictures: Boolean = false,
+        sentAtSeconds: Long = 0
     ) {
         _commentState.value = _commentState.value.copy(
             isDetectingFraud = true,
@@ -788,7 +801,8 @@ class VideoCommentViewModel : ViewModel() {
                 aid = aid,
                 rpid = rpid,
                 rootId = rootId,
-                hasPictures = hasPictures
+                hasPictures = hasPictures,
+                sentAtSeconds = sentAtSeconds
             )
             result.onSuccess { status ->
                 android.util.Log.d("CommentVM", "评论反诈检测结果: $status (rpid=$rpid)")

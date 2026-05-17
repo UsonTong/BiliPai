@@ -119,4 +119,67 @@ class CommentFraudDetectionPolicyTest {
         )
         assertEquals(CommentFraudStatus.UNKNOWN, status)
     }
+
+    @Test
+    fun `root timeline status should be normal when guest timeline found comment`() {
+        val status = resolveRootFraudStatusFromTimeline(
+            guestTimelineProbe = CommentPresenceProbe(requestSucceeded = true, found = true),
+            authReplyPageProbe = CommentReplyPageProbe(requestSucceeded = true, visible = true),
+            guestReplyPageProbe = null,
+            confirmedDeletedAfterRetry = false
+        )
+        assertEquals(CommentFraudStatus.NORMAL, status)
+    }
+
+    @Test
+    fun `root timeline status should be shadow banned when auth page visible but guest page deleted`() {
+        val status = resolveRootFraudStatusFromTimeline(
+            guestTimelineProbe = CommentPresenceProbe(requestSucceeded = true, found = false),
+            authReplyPageProbe = CommentReplyPageProbe(requestSucceeded = true, visible = true),
+            guestReplyPageProbe = CommentReplyPageProbe(
+                requestSucceeded = true,
+                visible = false,
+                deletedHint = true
+            ),
+            confirmedDeletedAfterRetry = false
+        )
+        assertEquals(CommentFraudStatus.SHADOW_BANNED, status)
+    }
+
+    @Test
+    fun `root timeline status should be under review when auth and guest reply pages are visible`() {
+        val status = resolveRootFraudStatusFromTimeline(
+            guestTimelineProbe = CommentPresenceProbe(requestSucceeded = true, found = false),
+            authReplyPageProbe = CommentReplyPageProbe(requestSucceeded = true, visible = true),
+            guestReplyPageProbe = CommentReplyPageProbe(requestSucceeded = true, visible = true),
+            confirmedDeletedAfterRetry = false
+        )
+        assertEquals(CommentFraudStatus.UNDER_REVIEW, status)
+    }
+
+    @Test
+    fun `root timeline status should not be deleted when auth page lacks deleted hint`() {
+        val status = resolveRootFraudStatusFromTimeline(
+            guestTimelineProbe = CommentPresenceProbe(requestSucceeded = true, found = false),
+            authReplyPageProbe = CommentReplyPageProbe(requestSucceeded = true, visible = false),
+            guestReplyPageProbe = null,
+            confirmedDeletedAfterRetry = true
+        )
+        assertEquals(CommentFraudStatus.UNKNOWN, status)
+    }
+
+    @Test
+    fun `root timeline status should be deleted only after auth deleted hint and retry confirmation`() {
+        val status = resolveRootFraudStatusFromTimeline(
+            guestTimelineProbe = CommentPresenceProbe(requestSucceeded = true, found = false),
+            authReplyPageProbe = CommentReplyPageProbe(
+                requestSucceeded = true,
+                visible = false,
+                deletedHint = true
+            ),
+            guestReplyPageProbe = null,
+            confirmedDeletedAfterRetry = true
+        )
+        assertEquals(CommentFraudStatus.DELETED, status)
+    }
 }

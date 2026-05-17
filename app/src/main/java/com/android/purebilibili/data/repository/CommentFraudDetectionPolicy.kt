@@ -8,6 +8,12 @@ internal data class CommentPresenceProbe(
     val deletedHint: Boolean = false
 )
 
+internal data class CommentReplyPageProbe(
+    val requestSucceeded: Boolean,
+    val visible: Boolean,
+    val deletedHint: Boolean = false
+)
+
 internal fun shouldStartCommentFraudDetection(
     enabled: Boolean,
     rpid: Long
@@ -51,6 +57,43 @@ internal fun resolveReplyFraudStatus(
     }
 
     return CommentFraudStatus.UNKNOWN
+}
+
+internal fun resolveRootFraudStatusFromTimeline(
+    guestTimelineProbe: CommentPresenceProbe,
+    authReplyPageProbe: CommentReplyPageProbe,
+    guestReplyPageProbe: CommentReplyPageProbe?,
+    confirmedDeletedAfterRetry: Boolean
+): CommentFraudStatus {
+    if (guestTimelineProbe.requestSucceeded && guestTimelineProbe.found) {
+        return CommentFraudStatus.NORMAL
+    }
+
+    if (!guestTimelineProbe.requestSucceeded || !authReplyPageProbe.requestSucceeded) {
+        return CommentFraudStatus.UNKNOWN
+    }
+
+    if (authReplyPageProbe.deletedHint) {
+        return if (confirmedDeletedAfterRetry) {
+            CommentFraudStatus.DELETED
+        } else {
+            CommentFraudStatus.UNKNOWN
+        }
+    }
+
+    if (!authReplyPageProbe.visible) {
+        return CommentFraudStatus.UNKNOWN
+    }
+
+    if (guestReplyPageProbe == null || !guestReplyPageProbe.requestSucceeded) {
+        return CommentFraudStatus.UNKNOWN
+    }
+
+    return when {
+        guestReplyPageProbe.visible -> CommentFraudStatus.UNDER_REVIEW
+        guestReplyPageProbe.deletedHint -> CommentFraudStatus.SHADOW_BANNED
+        else -> CommentFraudStatus.UNKNOWN
+    }
 }
 
 internal fun resolveRootFraudStatus(
