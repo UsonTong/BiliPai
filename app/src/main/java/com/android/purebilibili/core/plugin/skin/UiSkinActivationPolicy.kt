@@ -6,10 +6,20 @@ fun resolveUiSkinState(
     selection: UiSkinSelection,
     installedSkins: List<InstalledUiSkinPackage>
 ): UiSkinState {
-    if (!selection.enabled || selection.selectedSkinId.isNullOrBlank()) {
+    if (!selection.enabled) {
         return UiSkinState()
     }
-    val activeSkin = installedSkins.firstOrNull { it.manifest.skinId == selection.selectedSkinId }
+    val selectedInstallId = selection.selectedInstallId
+    val activeSkin = if (!selectedInstallId.isNullOrBlank()) {
+        installedSkins.firstOrNull { it.installId == selectedInstallId }
+    } else {
+        val selectedSkinId = selection.selectedSkinId
+        if (selectedSkinId.isNullOrBlank()) {
+            null
+        } else {
+            installedSkins.firstOrNull { it.manifest.skinId == selectedSkinId }
+        }
+    }
         ?: return UiSkinState()
     return UiSkinState(
         enabled = true,

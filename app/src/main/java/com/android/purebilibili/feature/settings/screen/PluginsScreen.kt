@@ -678,13 +678,14 @@ fun PluginsContent(
                                     }
                                     AppAdaptiveSwitch(
                                         checked = uiSkinState.enabled &&
-                                            uiSkinState.activeSkin?.skinId == skin.skinId,
+                                            uiSkinState.activeSkin?.installId == skin.installId,
                                         onCheckedChange = { enabled ->
                                             UiSkinSettingsStore.setSelection(
                                                 context = context,
                                                 selection = UiSkinSelection(
                                                     enabled = enabled,
-                                                    selectedSkinId = if (enabled) skin.skinId else null
+                                                    selectedSkinId = if (enabled) skin.skinId else null,
+                                                    selectedInstallId = if (enabled) skin.installId else null
                                                 )
                                             )
                                         }
@@ -1169,7 +1170,8 @@ fun PluginsContent(
                                 context = context,
                                 selection = UiSkinSelection(
                                     enabled = true,
-                                    selectedSkinId = installed.skinId
+                                    selectedSkinId = installed.skinId,
+                                    selectedInstallId = installed.installId
                                 )
                             )
                             uiSkinPreview = null

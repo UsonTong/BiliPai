@@ -44,7 +44,7 @@ class UiSkinInstallStore(
                 enabled = false,
                 assetFiles = assetFiles
             )
-            writeJson(installedFile(preview.manifest.skinId), installed)
+            writeJson(installedFile(installed.installId), installed)
             installed
         }
     }
@@ -75,15 +75,15 @@ class UiSkinInstallStore(
     }
 
     private fun packageDir(skinId: String): File {
-        return File(packagesDir(), skinId.safeFileSegment())
+        return File(packagesDir(), skinId.safeUiSkinFileSegment())
     }
 
     private fun packagesDir(): File = File(rootDir, "packages")
 
     private fun installedDir(): File = File(rootDir, "installed").also { it.mkdirs() }
 
-    private fun installedFile(skinId: String): File {
-        return File(installedDir(), "${skinId.safeFileSegment()}.json")
+    private fun installedFile(installId: String): File {
+        return File(installedDir(), "${installId.safeUiSkinFileSegment()}.json")
     }
 
     private fun extractDeclaredAssets(
@@ -122,7 +122,7 @@ class UiSkinInstallStore(
     }
 
     private fun assetDir(skinId: String, packageSha256: String): File {
-        return File(File(assetsDir(), skinId.safeFileSegment()), packageSha256)
+        return File(File(assetsDir(), skinId.safeUiSkinFileSegment()), packageSha256)
     }
 
     private fun assetsDir(): File = File(rootDir, "assets")
@@ -139,8 +139,4 @@ class UiSkinInstallStore(
         file.parentFile?.mkdirs()
         file.writeText(json.encodeToString(value))
     }
-}
-
-private fun String.safeFileSegment(): String {
-    return replace(Regex("[^A-Za-z0-9_.-]"), "_")
 }

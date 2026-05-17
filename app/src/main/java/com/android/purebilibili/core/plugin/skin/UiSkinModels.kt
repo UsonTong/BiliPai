@@ -74,7 +74,8 @@ data class InstalledUiSkinPackage(
     val packagePath: String,
     val installedAtMillis: Long,
     val enabled: Boolean = false,
-    val assetFiles: Map<String, String> = emptyMap()
+    val assetFiles: Map<String, String> = emptyMap(),
+    val installId: String = buildUiSkinInstallId(manifest.skinId, packageSha256)
 ) {
     val skinId: String
         get() = manifest.skinId
@@ -89,7 +90,8 @@ data class InstalledUiSkinPackage(
 
 data class UiSkinSelection(
     val enabled: Boolean = false,
-    val selectedSkinId: String? = null
+    val selectedSkinId: String? = null,
+    val selectedInstallId: String? = null
 )
 
 data class UiSkinState(
@@ -128,4 +130,15 @@ object BuiltInUiSkins {
         installedAtMillis = 0L,
         enabled = false
     )
+}
+
+internal fun buildUiSkinInstallId(
+    skinId: String,
+    packageSha256: String
+): String {
+    return "${skinId.safeUiSkinFileSegment()}-${packageSha256.take(16)}"
+}
+
+internal fun String.safeUiSkinFileSegment(): String {
+    return replace(Regex("[^A-Za-z0-9_.-]"), "_")
 }
