@@ -73,6 +73,8 @@ import com.android.purebilibili.feature.video.ui.FollowTextTone
 import com.android.purebilibili.feature.video.ui.resolveVideoFollowVisualPolicy
 import com.android.purebilibili.data.repository.ViewGrpcRepository
 import com.android.purebilibili.feature.home.components.cards.ElegantVideoCard
+import com.android.purebilibili.feature.video.ui.components.ShimmerContainer
+import com.android.purebilibili.feature.video.ui.components.SkeletonBox
 import kotlinx.coroutines.delay
 
 internal const val VIDEO_DESCRIPTION_URL_TAG = "VIDEO_DESCRIPTION_URL"
@@ -156,6 +158,7 @@ internal fun resolveVideoInfoInitialExpandedState(
 private const val BGM_DISCOVERY_LOAD_DELAY_MS = 420L
 private const val BGM_RECOMMEND_PAGE_SIZE = 5
 private const val BGM_RECOMMEND_ROW_START_INDEX = 4
+private val BGM_DETAIL_CARD_HEIGHT = 168.dp
 
 /**
  * Video Title Section (Bilibili official style: compact layout)
@@ -1172,6 +1175,9 @@ private fun BgmSelectionSheet(
     }
     val selectedBgm = bgmList.getOrElse(selectedIndex) { bgmList.first() }
     val selectedData = itemStateByKey[selectedItemKey] ?: BgmSheetItemState()
+    val shouldShowDetailSkeleton = remember(selectedData.status, selectedData.detail) {
+        selectedData.status != BgmDiscoveryLoadStatus.Loaded && selectedData.detail == null
+    }
 
     LaunchedEffect(selectedItemKey, selectedBgm.musicId, aid, cid) {
         if (!shouldLoadBgmDiscoveryItem(selectedData, selectedBgm.musicId, aid, cid)) return@LaunchedEffect
@@ -1283,7 +1289,7 @@ private fun BgmSelectionSheet(
                 BgmDetailCard(
                     bgm = selectedBgm,
                     detail = selectedData.detail,
-                    isLoading = selectedData.status == BgmDiscoveryLoadStatus.Loading,
+                    isLoading = shouldShowDetailSkeleton,
                     statLine = selectedStatLine,
                     onOpenMusic = { onBgmClick(selectedBgm) }
                 )
@@ -1565,7 +1571,8 @@ private fun BgmDetailCard(
     onOpenMusic: () -> Unit
 ) {
     val scoreText = remember(detail) { resolveBgmScoreText(detail) }
-    val maskedStatLine = remember(statLine) { resolveMaskedBgmStatLine(statLine) }
+    val displayStatLine = remember(statLine) { statLine ?: resolveUnavailableBgmStatLine() }
+    val commentText = remember(detail) { resolveBgmCommentText(detail) }
     val description = remember(detail, bgm) {
         bgm.actor.takeIf { it.isNotBlank() }
             ?: detail?.originArtist?.takeIf { it.isNotBlank() }
@@ -1575,78 +1582,145 @@ private fun BgmDetailCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onOpenMusic),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
     ) {
+        if (isLoading) {
+            BgmDetailCardSkeleton()
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(BGM_DETAIL_CARD_HEIGHT)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BgmDetailCover(
+                    coverUrl = detail?.mvCover.orEmpty().ifBlank { bgm.coverUrl },
+                    title = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle }
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle.ifBlank { "未知音乐" } },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = CupertinoIcons.Outlined.Star,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = scoreText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = displayStatLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = commentText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "打开音乐详情",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(onClick = onOpenMusic)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BgmDetailCardSkeleton() {
+    ShimmerContainer {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 168.dp)
+                .height(BGM_DETAIL_CARD_HEIGHT)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BgmDetailCover(
-                coverUrl = detail?.mvCover.orEmpty().ifBlank { bgm.coverUrl },
-                title = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle }
+            SkeletonBox(
+                modifier = Modifier.size(112.dp),
+                height = 112.dp,
+                cornerRadius = 22.dp
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = detail?.musicTitle.orEmpty().ifBlank { bgm.musicTitle.ifBlank { "未知音乐" } },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = CupertinoIcons.Outlined.Star,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (isLoading) "加载音乐信息..." else scoreText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = maskedStatLine,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = if (detail?.musicComment?.nums ?: 0 > 0) "*** 评论" else "*** 评论",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.72f),
+                    height = 20.dp,
+                    cornerRadius = 10.dp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.46f),
+                    height = 16.dp,
+                    cornerRadius = 8.dp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.88f),
+                    height = 14.dp,
+                    cornerRadius = 7.dp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.34f),
+                    height = 14.dp,
+                    cornerRadius = 7.dp
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "打开音乐详情",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.94f),
+                    height = 14.dp,
+                    cornerRadius = 7.dp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                SkeletonBox(
+                    modifier = Modifier.fillMaxWidth(0.66f),
+                    height = 14.dp,
+                    cornerRadius = 7.dp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SkeletonBox(
+                    modifier = Modifier.width(84.dp),
+                    height = 14.dp,
+                    cornerRadius = 7.dp
                 )
             }
         }
@@ -1693,24 +1767,27 @@ private fun BgmDetailCover(
 private fun resolveBgmScoreText(detail: BgmDetailData?): String {
     detail ?: return "音乐信息"
     return when {
-        detail.musicHot > 0L -> FormatUtils.formatStat(detail.musicHot)
-        detail.listenPv > 0L -> FormatUtils.formatStat(detail.listenPv)
-        else -> "音乐信息"
+        detail.musicHot > 0L -> "最新热度 ${FormatUtils.formatStat(detail.musicHot)}"
+        else -> "播放 ${FormatUtils.formatStat(detail.listenPv)}"
     }
 }
 
 private fun resolveBgmStatLine(detail: BgmDetailData?): String? {
     detail ?: return null
-    val parts = buildList {
-        if (detail.listenPv > 0L) add("${FormatUtils.formatStat(detail.listenPv)}播放")
-        if (detail.wishCount > 0) add("${FormatUtils.formatStat(detail.wishCount.toLong())}想听")
-        if (detail.musicShares > 0) add("${FormatUtils.formatStat(detail.musicShares.toLong())}分享")
-    }
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    return listOf(
+        "${FormatUtils.formatStat(detail.listenPv.coerceAtLeast(0L))}播放",
+        "${FormatUtils.formatStat(detail.wishCount.coerceAtLeast(0).toLong())}想听",
+        "${FormatUtils.formatStat(detail.musicShares.coerceAtLeast(0).toLong())}分享"
+    ).joinToString(" · ")
 }
 
-private fun resolveMaskedBgmStatLine(statLine: String?): String {
-    return "*** 播放 · *** 想听 · *** 分享"
+private fun resolveUnavailableBgmStatLine(): String {
+    return "--播放 · --想听 · --分享"
+}
+
+private fun resolveBgmCommentText(detail: BgmDetailData?): String {
+    detail ?: return "--评论"
+    return "${FormatUtils.formatStat((detail.musicComment?.nums ?: 0).coerceAtLeast(0).toLong())}评论"
 }
 
 private fun resolveBgmRecommendRowKey(
