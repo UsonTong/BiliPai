@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -170,11 +171,13 @@ internal fun BottomBarSkinIcon(
 @Composable
 internal fun BottomBarSkinDecorativeTrim(
     decoration: BottomBarUiSkinDecoration?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    clipShape: androidx.compose.ui.graphics.Shape? = null
 ) {
     if (decoration == null) return
     Box(
         modifier = modifier
+            .then(clipShape?.let { Modifier.clip(it) } ?: Modifier)
             .clearAndSetSemantics {}
             .drawBehind {
                 val trimHeight = size.height * 0.36f

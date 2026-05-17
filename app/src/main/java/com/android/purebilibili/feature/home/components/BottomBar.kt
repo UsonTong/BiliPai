@@ -2889,7 +2889,8 @@ private fun KernelSuAlignedBottomBar(
 
                 BottomBarSkinDecorativeTrim(
                     decoration = uiSkinDecoration,
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize(),
+                    clipShape = shellShape
                 )
 
                 if (shouldComposeDockContent) {
@@ -3028,7 +3029,8 @@ private fun KernelSuAlignedBottomBar(
                         ) {
                             BottomBarSkinDecorativeTrim(
                                 decoration = uiSkinDecoration,
-                                modifier = Modifier.matchParentSize()
+                                modifier = Modifier.matchParentSize(),
+                                clipShape = shellShape
                             )
 
                             Row(

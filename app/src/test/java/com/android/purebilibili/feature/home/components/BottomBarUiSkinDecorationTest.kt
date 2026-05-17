@@ -8,12 +8,28 @@ import com.android.purebilibili.core.plugin.skin.UiSkinColorTokens
 import com.android.purebilibili.core.plugin.skin.UiSkinManifest
 import com.android.purebilibili.core.plugin.skin.UiSkinState
 import com.android.purebilibili.core.plugin.skin.UiSkinSurface
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BottomBarUiSkinDecorationTest {
+
+    @Test
+    fun bottomSkinDecorativeTrimSupportsOptionalShapeClipForFloatingShell() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
+            .readText()
+        val trimSource = source
+            .substringAfter("internal fun BottomBarSkinDecorativeTrim(")
+            .substringBefore("private fun parseUiSkinColor(")
+
+        assertTrue(trimSource.contains("clipShape: androidx.compose.ui.graphics.Shape? = null"))
+        assertTrue(trimSource.contains("clipShape?.let { Modifier.clip(it) } ?: Modifier"))
+        assertTrue(trimSource.contains(".clearAndSetSemantics {}"))
+        assertTrue(trimSource.contains(".drawBehind {"))
+        assertTrue(trimSource.contains("ContentScale.FillBounds"))
+    }
 
     @Test
     fun bottomSkinIconSizesMatchScreenshotLevelCharacterAssets() {

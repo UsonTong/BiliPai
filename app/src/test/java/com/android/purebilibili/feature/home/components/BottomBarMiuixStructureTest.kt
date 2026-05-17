@@ -178,6 +178,14 @@ class BottomBarMiuixStructureTest {
         val capturedContentIndex = refractionCaptureSource.indexOf("val coverage = itemCoverage(index)")
         assertTrue(capturedSkinIndex >= 0)
         assertTrue(capturedContentIndex > capturedSkinIndex)
+        val visibleSkinCall = kernelSuRendererSource
+            .substringAfter("BottomBarSkinDecorativeTrim(")
+            .substringBefore("if (shouldComposeDockContent)")
+        val captureSkinCall = refractionCaptureSource
+            .substringAfter("BottomBarSkinDecorativeTrim(")
+            .substringBefore("Row(")
+        assertTrue(visibleSkinCall.contains("clipShape = shellShape"))
+        assertTrue(captureSkinCall.contains("clipShape = shellShape"))
         assertTrue(skinDecorationSource.contains("AsyncImage("))
         assertTrue(skinDecorationSource.contains("model = File(imagePath)"))
         assertTrue(skinDecorationSource.contains("model = File(iconPath)"))
