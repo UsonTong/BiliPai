@@ -6,10 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.net.Uri
 import android.widget.Toast
-import androidx.activity.BackEventCompat
-import androidx.activity.ExperimentalActivityApi
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -24,7 +21,6 @@ import androidx.compose.runtime.collectAsState //  新增
 import androidx.compose.runtime.getValue //  新增
 import androidx.compose.runtime.LaunchedEffect // 新增
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,7 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -93,8 +88,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import dev.chrisbanes.haze.hazeSource
-import java.util.concurrent.CancellationException
-import kotlinx.coroutines.flow.collect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.slideInHorizontally
@@ -215,7 +208,6 @@ internal fun resolveStandardVideoRoute(
 
 @androidx.media3.common.util.UnstableApi
 // @OptIn(ExperimentalMaterial3WindowSizeClassApi::class) (Removed)
-@OptIn(ExperimentalActivityApi::class)
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
@@ -772,26 +764,6 @@ fun AppNavigation(
                 action = systemBackAction
             )
         }
-        val shouldUseAppPredictiveBackHandler = remember(
-            predictiveBackAnimationEnabled,
-            systemBackAction
-        ) {
-            shouldUseAppPredictiveBackHandler(
-                predictiveBackAnimationEnabled = predictiveBackAnimationEnabled,
-                action = systemBackAction
-            )
-        }
-        var appPredictiveBackProgress by remember { mutableFloatStateOf(0f) }
-        var appPredictiveBackFromRightEdge by remember { mutableStateOf(false) }
-        val appPredictiveBackTransform = remember(
-            appPredictiveBackProgress,
-            appPredictiveBackFromRightEdge
-        ) {
-            resolveAppPredictiveBackVisualTransform(
-                progress = appPredictiveBackProgress,
-                fromRightEdge = appPredictiveBackFromRightEdge
-            )
-        }
         val activeBottomTabRoute = if (currentRoute?.substringBefore("?") == ScreenRoutes.Home.route) {
             currentBottomNavItem.route
         } else {
@@ -915,7 +887,7 @@ fun AppNavigation(
                     AppSystemBackAction.FINISH_ACTIVITY -> context.findActivity()?.finish()
                 }
             }
-            BackHandler(enabled = shouldInterceptSystemBack && !shouldUseAppPredictiveBackHandler) {
+            BackHandler(enabled = shouldInterceptSystemBack) {
                 performSystemBackAction()
             }
             Row(modifier = Modifier.fillMaxSize()) {
@@ -951,15 +923,6 @@ fun AppNavigation(
                 Box(
                     modifier = Modifier
                         .animateContentSize()
-                        .graphicsLayer {
-                            if (appPredictiveBackTransform.progress > 0f) {
-                                translationX = size.width * appPredictiveBackTransform.translationFraction
-                                scaleX = appPredictiveBackTransform.scale
-                                scaleY = appPredictiveBackTransform.scale
-                                alpha = appPredictiveBackTransform.alpha
-                                transformOrigin = TransformOrigin.Center
-                            }
-                        }
                 ) {
                 // ===== 内容层 (hazeSource) =====
                 // 这个 Box 包裹全局壁纸和所有 NavHost 内容，作为底栏模糊/折射的源
@@ -3341,20 +3304,6 @@ fun AppNavigation(
             )
         } // End of Main Box
         } // End of Row
-            PredictiveBackHandler(enabled = shouldUseAppPredictiveBackHandler) { progress ->
-                try {
-                    progress.collect { backEvent ->
-                        appPredictiveBackProgress = backEvent.progress
-                        appPredictiveBackFromRightEdge = backEvent.swipeEdge == BackEventCompat.EDGE_RIGHT
-                    }
-                    performSystemBackAction()
-                } catch (e: CancellationException) {
-                    throw e
-                } finally {
-                    appPredictiveBackProgress = 0f
-                    appPredictiveBackFromRightEdge = false
-                }
-            }
         } // End of CompositionLocalProvider
     }
 }
