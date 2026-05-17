@@ -547,7 +547,9 @@ private fun LightweightHomeTopTabs(
     pagerState: androidx.compose.foundation.pager.PagerState?,
     labelMode: Int,
     isFloatingStyle: Boolean,
-    edgeToEdge: Boolean
+    edgeToEdge: Boolean,
+    skinPlainStyle: Boolean = false,
+    skinPlainContentColor: Color? = null
 ) {
     val uiPreset = LocalUiPreset.current
     val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
@@ -555,7 +557,8 @@ private fun LightweightHomeTopTabs(
     val normalizedLabelMode = normalizeTopTabLabelMode(labelMode)
     val showIcon = shouldShowTopTabIcon(normalizedLabelMode)
     val showText = shouldShowTopTabText(normalizedLabelMode)
-    val rowHeight = when (renderer) {
+    val effectiveRenderer = if (skinPlainStyle) HomeTopTabRenderer.MD3 else renderer
+    val rowHeight = when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabRowHeight(isFloatingStyle, normalizedLabelMode)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabVisualSpec(
             isFloatingStyle = isFloatingStyle,
@@ -567,7 +570,7 @@ private fun LightweightHomeTopTabs(
             labelMode = normalizedLabelMode
         ).rowHeight
     }
-    val actionButtonSize = when (renderer) {
+    val actionButtonSize = when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonSize(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonSize(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonSize(
@@ -575,7 +578,7 @@ private fun LightweightHomeTopTabs(
             androidNativeVariant = AndroidNativeVariant.MIUIX
         )
     }
-    val actionButtonCorner = when (renderer) {
+    val actionButtonCorner = when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionButtonCorner(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionButtonCorner(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionButtonCorner(
@@ -583,7 +586,7 @@ private fun LightweightHomeTopTabs(
             androidNativeVariant = AndroidNativeVariant.MIUIX
         )
     }
-    val actionIconSize = when (renderer) {
+    val actionIconSize = when (effectiveRenderer) {
         HomeTopTabRenderer.IOS -> resolveIosTopTabActionIconSize(isFloatingStyle)
         HomeTopTabRenderer.MD3 -> resolveMd3TopTabActionIconSize(isFloatingStyle)
         HomeTopTabRenderer.MIUIX -> resolveMd3TopTabActionIconSize(
@@ -620,8 +623,8 @@ private fun LightweightHomeTopTabs(
                     edgeToEdge = edgeToEdge
                 ).dp
             )
-    ) {
-        val itemWidth = when (renderer) {
+        ) {
+        val itemWidth = when (effectiveRenderer) {
             HomeTopTabRenderer.IOS -> resolveTopTabItemWidthDp(
                 containerWidthDp = maxWidth.value,
                 categoryCount = categories.size,
@@ -651,7 +654,7 @@ private fun LightweightHomeTopTabs(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationY = if (renderer == HomeTopTabRenderer.MD3) {
+                    translationY = if (effectiveRenderer == HomeTopTabRenderer.MD3) {
                         -md3TopTabVerticalLiftPx
                     } else {
                         0f
@@ -669,7 +672,7 @@ private fun LightweightHomeTopTabs(
                     modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start,
-                    contentPadding = PaddingValues(horizontal = if (renderer == HomeTopTabRenderer.IOS) 2.dp else 0.dp)
+                    contentPadding = PaddingValues(horizontal = if (effectiveRenderer == HomeTopTabRenderer.IOS) 2.dp else 0.dp)
                 ) {
                     itemsIndexed(
                         items = categories,
@@ -678,7 +681,7 @@ private fun LightweightHomeTopTabs(
                         val categoryKey = categoryKeys.getOrNull(index) ?: category
                         val selectionFraction = (1f - abs(currentPosition - index.toFloat())).coerceIn(0f, 1f)
                         LightweightTopTabItem(
-                            renderer = renderer,
+                            renderer = effectiveRenderer,
                             category = category,
                             categoryKey = categoryKey,
                             index = index,
@@ -687,6 +690,8 @@ private fun LightweightHomeTopTabs(
                             showIcon = showIcon,
                             showText = showText,
                             itemWidth = itemWidth,
+                            skinPlainStyle = skinPlainStyle,
+                            skinPlainContentColor = skinPlainContentColor,
                             onClick = {
                                 performHomeTopBarTap(haptic = haptic, onClick = {
                                     when (resolveTopTabClickAction(index, selectedIndex)) {
@@ -698,7 +703,7 @@ private fun LightweightHomeTopTabs(
                         )
                     }
                 }
-                if (renderer == HomeTopTabRenderer.MD3) {
+                if (effectiveRenderer == HomeTopTabRenderer.MD3) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -709,7 +714,7 @@ private fun LightweightHomeTopTabs(
                             .width(md3IndicatorWidth)
                             .height(2.dp)
                             .clip(AppShapes.container(ContainerLevel.Pill))
-                            .background(MaterialTheme.colorScheme.primary)
+                            .background(skinPlainContentColor ?: MaterialTheme.colorScheme.primary)
                     )
                 }
             }
@@ -731,7 +736,7 @@ private fun LightweightHomeTopTabs(
                 Icon(
                     resolveTopTabPartitionIcon(uiPreset),
                     contentDescription = "浏览全部分区",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = skinPlainContentColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(actionIconSize)
                 )
             }
@@ -752,6 +757,8 @@ private fun LightweightTopTabItem(
     showIcon: Boolean,
     showText: Boolean,
     itemWidth: Dp,
+    skinPlainStyle: Boolean = false,
+    skinPlainContentColor: Color? = null,
     onClick: () -> Unit
 ) {
     val uiPreset = LocalUiPreset.current
@@ -759,25 +766,43 @@ private fun LightweightTopTabItem(
     val icon = resolveTopTabCategoryIcon(categoryKey, uiPreset)
     val selected = selectionFraction > 0.5f || index == selectedIndex
     val selectedColor = when (renderer) {
-        HomeTopTabRenderer.IOS -> colorScheme.primary
-        HomeTopTabRenderer.MD3 -> colorScheme.primary
-        HomeTopTabRenderer.MIUIX -> colorScheme.onSecondaryContainer
+        HomeTopTabRenderer.IOS -> if (skinPlainStyle) {
+            skinPlainContentColor ?: colorScheme.onSurface
+        } else {
+            colorScheme.primary
+        }
+        HomeTopTabRenderer.MD3 -> if (skinPlainStyle) {
+            skinPlainContentColor ?: colorScheme.onSurface
+        } else {
+            colorScheme.primary
+        }
+        HomeTopTabRenderer.MIUIX -> if (skinPlainStyle) {
+            skinPlainContentColor ?: colorScheme.onSurface
+        } else {
+            colorScheme.onSecondaryContainer
+        }
     }
-    val unselectedColor = colorScheme.onSurfaceVariant
+    val unselectedColor = if (skinPlainStyle) {
+        (skinPlainContentColor ?: colorScheme.onSurface).copy(alpha = 0.68f)
+    } else {
+        colorScheme.onSurfaceVariant
+    }
     val contentColor = androidx.compose.ui.graphics.lerp(
         unselectedColor,
         selectedColor,
         selectionFraction
     )
-    val containerColor = when (renderer) {
-        HomeTopTabRenderer.IOS -> colorScheme.primary.copy(alpha = 0.10f * selectionFraction)
-        HomeTopTabRenderer.MD3 -> Color.Transparent
-        HomeTopTabRenderer.MIUIX -> colorScheme.secondaryContainer.copy(alpha = 0.70f * selectionFraction)
+    val containerColor = when {
+        skinPlainStyle -> Color.Transparent
+        renderer == HomeTopTabRenderer.IOS -> colorScheme.primary.copy(alpha = 0.10f * selectionFraction)
+        renderer == HomeTopTabRenderer.MD3 -> Color.Transparent
+        else -> colorScheme.secondaryContainer.copy(alpha = 0.70f * selectionFraction)
     }
-    val itemShape = when (renderer) {
-        HomeTopTabRenderer.IOS -> resolveSharedBottomBarCapsuleShape()
-        HomeTopTabRenderer.MD3 -> RoundedCornerShape(0.dp)
-        HomeTopTabRenderer.MIUIX -> RoundedCornerShape(14.dp)
+    val itemShape = when {
+        skinPlainStyle -> RoundedCornerShape(0.dp)
+        renderer == HomeTopTabRenderer.IOS -> resolveSharedBottomBarCapsuleShape()
+        renderer == HomeTopTabRenderer.MD3 -> RoundedCornerShape(0.dp)
+        else -> RoundedCornerShape(14.dp)
     }
 
     Box(
@@ -850,14 +875,16 @@ fun CategoryTabRow(
     motionTier: MotionTier = MotionTier.Normal,
     isTransitionRunning: Boolean = false,
     forceLowBlurBudget: Boolean = false,
-    isViewportSyncEnabled: Boolean = true
+    isViewportSyncEnabled: Boolean = true,
+    skinPlainStyle: Boolean = false,
+    skinPlainContentColor: Color? = null
 ) {
     val presetStyle = resolveHomeTopPresetStyle(
         uiPreset = LocalUiPreset.current,
         androidNativeVariant = LocalAndroidNativeVariant.current,
         labelMode = labelMode
     )
-    if (presetStyle.renderer == HomeTopTabRenderer.MIUIX) {
+    if (!skinPlainStyle && presetStyle.renderer == HomeTopTabRenderer.MIUIX) {
         val haptic = com.android.purebilibili.core.util.rememberHapticFeedback()
         val scrollChannel = com.android.purebilibili.feature.home.LocalHomeScrollChannel.current
         MiuixCategoryTabRow(
@@ -882,7 +909,9 @@ fun CategoryTabRow(
         pagerState = pagerState,
         labelMode = labelMode,
         isFloatingStyle = isFloatingStyle,
-        edgeToEdge = edgeToEdge
+        edgeToEdge = edgeToEdge,
+        skinPlainStyle = skinPlainStyle,
+        skinPlainContentColor = skinPlainContentColor
     )
 }
 

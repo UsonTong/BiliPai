@@ -1612,6 +1612,31 @@ class iOSHomeHeaderVisualPolicyTest {
         assertFalse(searchCapsuleSource.contains("uiSkinDecoration.searchCapsuleTint.copy(alpha = 0.22f)"))
     }
 
+    @Test
+    fun `home header skin top tabs use flat official skin style`() {
+        val headerSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/iOSHomeHeader.kt")
+        val topBarSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
+
+        assertTrue(headerSource.contains("val shouldUseSkinPlainTopTabs = uiSkinDecoration != null"))
+        assertTrue(headerSource.contains("drawChromeSurface = !shouldUseSkinPlainTopTabs"))
+        assertTrue(headerSource.contains("skinPlainStyle = shouldUseSkinPlainTopTabs"))
+        assertTrue(topBarSource.contains("val effectiveRenderer = if (skinPlainStyle) HomeTopTabRenderer.MD3 else renderer"))
+        assertTrue(topBarSource.contains("if (!skinPlainStyle && presetStyle.renderer == HomeTopTabRenderer.MIUIX)"))
+        assertTrue(topBarSource.contains("skinPlainStyle -> Color.Transparent"))
+    }
+
+    @Test
+    fun `skin top tab content color follows skin atmosphere brightness`() {
+        assertEquals(
+            Color.White.copy(alpha = 0.94f),
+            resolveHomeSkinTopTabContentColor(Color(0xFF2E2A1E))
+        )
+        assertEquals(
+            Color(0xFF1E252B).copy(alpha = 0.94f),
+            resolveHomeSkinTopTabContentColor(Color(0xFFE4F6FF))
+        )
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

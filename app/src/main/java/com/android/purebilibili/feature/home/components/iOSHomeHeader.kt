@@ -122,6 +122,16 @@ internal fun resolveHomeSkinSearchSurfaceColor(
     )
 }
 
+internal fun resolveHomeSkinTopTabContentColor(
+    topAtmosphereTint: Color
+): Color {
+    return if (topAtmosphereTint.luminance() < 0.45f) {
+        Color.White.copy(alpha = 0.94f)
+    } else {
+        Color(0xFF1E252B).copy(alpha = 0.94f)
+    }
+}
+
 internal enum class HomeTopChromeRenderMode {
     PLAIN,
     BLUR,
@@ -1742,6 +1752,10 @@ fun iOSHomeHeader(
         tabContentAlpha = tabContentAlpha
     )
     val tabBorderAlpha = if (isTabFloating) tabChromeStyle.borderAlpha else 0f
+    val shouldUseSkinPlainTopTabs = uiSkinDecoration != null
+    val skinPlainTopTabContentColor = uiSkinDecoration?.let {
+        resolveHomeSkinTopTabContentColor(it.topAtmosphereTint)
+    }
     val topTabsContent: @Composable () -> Unit = {
         HomeTopTabChrome(
             currentTabHeight = currentTabHeight,
@@ -1799,7 +1813,9 @@ fun iOSHomeHeader(
             gestureEnabled = topTabsVisible && !isHeaderCollapseEnabled,
             isTabsCollapsed = topTabsCollapsed,
             onTabsCollapsedChange = onTopTabsCollapsedChange,
-            drawChromeSurface = !useUnifiedTopPanel && drawTopTabOuterChromeSurface
+            drawChromeSurface = !shouldUseSkinPlainTopTabs &&
+                !useUnifiedTopPanel &&
+                drawTopTabOuterChromeSurface
         ) {
             CategoryTabRow(
                 categories = topCategories,
@@ -1828,7 +1844,9 @@ fun iOSHomeHeader(
                 motionTier = motionTier,
                 isTransitionRunning = isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget,
-                isViewportSyncEnabled = isTopTabViewportSyncEnabled
+                isViewportSyncEnabled = isTopTabViewportSyncEnabled,
+                skinPlainStyle = shouldUseSkinPlainTopTabs,
+                skinPlainContentColor = skinPlainTopTabContentColor
             )
         }
     }
