@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.TransformOrigin
@@ -641,6 +642,7 @@ fun AppNavigation(
         val bottomPagerState = rememberPagerState(initialPage = initialBottomPagerPage) {
             visibleBottomBarItems.size.coerceAtLeast(1)
         }
+        val bottomPagerSaveableStateHolder = rememberSaveableStateHolder()
         val mainBottomPagerState = rememberMainBottomPagerState(bottomPagerState)
         val bottomPagerRenderBudget = remember(mainBottomPagerState.isNavigating) {
             resolveBottomPagerRenderBudget(isNavigating = mainBottomPagerState.isNavigating)
@@ -1145,6 +1147,11 @@ fun AppNavigation(
                                 contentReady = bottomPagerContentReady
                             ),
                             userScrollEnabled = shouldEnableBottomPagerUserScroll(),
+                            key = { page ->
+                                resolveBottomPagerSaveableStateKey(
+                                    resolveBottomPagerItemForPage(page, visibleBottomBarItems)
+                                )
+                            },
                             pageContent = pageContent,
                         )
                     } else {
@@ -1155,6 +1162,11 @@ fun AppNavigation(
                                 contentReady = bottomPagerContentReady
                             ),
                             userScrollEnabled = shouldEnableBottomPagerUserScroll(),
+                            key = { page ->
+                                resolveBottomPagerSaveableStateKey(
+                                    resolveBottomPagerItemForPage(page, visibleBottomBarItems)
+                                )
+                            },
                             pageContent = pageContent,
                         )
                     }
@@ -1170,50 +1182,54 @@ fun AppNavigation(
                         Box(modifier = Modifier.fillMaxSize())
                         return@pager
                     }
-                    when (visibleBottomBarItems.getOrNull(page) ?: BottomNavItem.HOME) {
-                        BottomNavItem.HOME -> {
-                            HomeScreen(
-                                viewModel = homeViewModel,
-                                onVideoClick = { request -> navigateToVideoFromHome(request) },
-                                onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
-                                onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
-                                onProfileClick = { navigateToBottomPagerItem(BottomNavItem.PROFILE) },
-                                onLogout = {
-                                    coroutineScope.launch {
-                                        com.android.purebilibili.core.store.TokenManager.clear(context)
-                                        com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
-                                            mid = null,
-                                            isVip = false,
-                                            privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
-                                        )
-                                        com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
-                                        homeViewModel.refresh()
-                                    }
-                                },
-                                onSettingsClick = { navigateToBottomPagerItem(BottomNavItem.SETTINGS) },
-                                onDynamicClick = { navigateToBottomPagerItem(BottomNavItem.DYNAMIC) },
-                                onHistoryClick = { navigateToBottomPagerItem(BottomNavItem.HISTORY) },
-                                onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },
-                                onLiveClick = { roomId, title, uname ->
-                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
-                                },
-                                onBangumiClick = { initialType ->
-                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
-                                },
-                                onCategoryClick = { tid, name ->
-                                    if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
-                                },
-                                onFavoriteClick = { navigateToBottomPagerItem(BottomNavItem.FAVORITE) },
-                                onLiveListClick = { navigateToBottomPagerItem(BottomNavItem.LIVE) },
-                                onWatchLaterClick = { navigateToBottomPagerItem(BottomNavItem.WATCHLATER) },
-                                onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
-                                onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
-                                onStoryClick = { navigateToBottomPagerItem(BottomNavItem.STORY) },
-                                globalHazeState = mainHazeState,
-                                predictiveStableBackRouteMotionEnabled =
-                                    shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
-                            )
-                        }
+                    val pageItem = visibleBottomBarItems.getOrNull(page) ?: BottomNavItem.HOME
+                    bottomPagerSaveableStateHolder.SaveableStateProvider(
+                        key = resolveBottomPagerSaveableStateKey(pageItem)
+                    ) {
+                        when (pageItem) {
+                            BottomNavItem.HOME -> {
+                                HomeScreen(
+                                    viewModel = homeViewModel,
+                                    onVideoClick = { request -> navigateToVideoFromHome(request) },
+                                    onSearchClick = { navigateTo(ScreenRoutes.Search.route) },
+                                    onAvatarClick = { navigateTo(ScreenRoutes.Login.route) },
+                                    onProfileClick = { navigateToBottomPagerItem(BottomNavItem.PROFILE) },
+                                    onLogout = {
+                                        coroutineScope.launch {
+                                            com.android.purebilibili.core.store.TokenManager.clear(context)
+                                            com.android.purebilibili.core.util.AnalyticsHelper.syncUserContext(
+                                                mid = null,
+                                                isVip = false,
+                                                privacyModeEnabled = SettingsManager.isPrivacyModeEnabledSync(context)
+                                            )
+                                            com.android.purebilibili.core.util.AnalyticsHelper.logLogout()
+                                            homeViewModel.refresh()
+                                        }
+                                    },
+                                    onSettingsClick = { navigateToBottomPagerItem(BottomNavItem.SETTINGS) },
+                                    onDynamicClick = { navigateToBottomPagerItem(BottomNavItem.DYNAMIC) },
+                                    onHistoryClick = { navigateToBottomPagerItem(BottomNavItem.HISTORY) },
+                                    onPartitionClick = { navigateTo(ScreenRoutes.Partition.route) },
+                                    onLiveClick = { roomId, title, uname ->
+                                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Live.createRoute(roomId, title, uname))
+                                    },
+                                    onBangumiClick = { initialType ->
+                                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Bangumi.createRoute(initialType))
+                                    },
+                                    onCategoryClick = { tid, name ->
+                                        if (canNavigate(false)) navController.navigate(ScreenRoutes.Category.createRoute(tid, name))
+                                    },
+                                    onFavoriteClick = { navigateToBottomPagerItem(BottomNavItem.FAVORITE) },
+                                    onLiveListClick = { navigateToBottomPagerItem(BottomNavItem.LIVE) },
+                                    onWatchLaterClick = { navigateToBottomPagerItem(BottomNavItem.WATCHLATER) },
+                                    onDownloadClick = { navigateTo(ScreenRoutes.DownloadList.route) },
+                                    onInboxClick = { navigateTo(ScreenRoutes.Inbox.route) },
+                                    onStoryClick = { navigateToBottomPagerItem(BottomNavItem.STORY) },
+                                    globalHazeState = mainHazeState,
+                                    predictiveStableBackRouteMotionEnabled =
+                                        shouldUsePredictiveStableBackRouteMotion(backRouteMotionMode)
+                                )
+                            }
                         BottomNavItem.DYNAMIC -> {
                             DynamicScreen(
                                 onVideoClick = { bvid -> navigateToVideo(bvid, 0L, "") },
@@ -1456,6 +1472,7 @@ fun AppNavigation(
                                 mainHazeState = mainHazeState
                             )
                         }
+                    }
                     }
                 }
             }

@@ -94,6 +94,10 @@ internal fun resolveBottomPagerItemForPage(
     return visibleItems.getOrNull(page) ?: BottomNavItem.HOME
 }
 
+internal fun resolveBottomPagerSaveableStateKey(item: BottomNavItem): String {
+    return "bottom:${item.route}"
+}
+
 internal fun resolveBottomPagerNavigationDurationMillis(
     currentPage: Int,
     targetPage: Int

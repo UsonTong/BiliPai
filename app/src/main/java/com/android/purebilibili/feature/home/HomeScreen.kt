@@ -182,7 +182,12 @@ fun HomeScreen(
     // [Refactor] Use a map of grid states for each category to support HorizontalPager
     val gridStates = remember { mutableMapOf<HomeCategory, LazyGridState>() }
     HomeCategory.entries.forEach { category ->
-        gridStates[category] = rememberLazyGridState()
+        gridStates[category] = rememberSaveable(
+            category.name,
+            saver = LazyGridState.Saver
+        ) {
+            LazyGridState()
+        }
     }
     val staggeredGridState = rememberLazyStaggeredGridState() // 🌊 瀑布流状态
     val localHazeState = rememberRecoverableHazeState(initialBlurEnabled = true)

@@ -169,6 +169,18 @@ class AppTopLevelNavigationPolicyTest {
     }
 
     @Test
+    fun bottomPagerSaveableStateKey_followsTabIdentityInsteadOfPageIndex() {
+        assertEquals(
+            "bottom:${ScreenRoutes.Home.route}",
+            resolveBottomPagerSaveableStateKey(BottomNavItem.HOME)
+        )
+        assertEquals(
+            "bottom:${ScreenRoutes.Profile.route}",
+            resolveBottomPagerSaveableStateKey(BottomNavItem.PROFILE)
+        )
+    }
+
+    @Test
     fun secondaryRoute_doesNotMapToBottomPagerPage() {
         val visibleItems = listOf(
             BottomNavItem.HOME,
