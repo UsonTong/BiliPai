@@ -37,6 +37,7 @@ import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextConte
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.ui.components.*
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
+import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
@@ -822,9 +823,10 @@ private fun ScrollableVideoInfoSection(
             VideoTitleWithDesc(
                 info = info,
                 videoTags = videoTags,
-                bgmInfo = bgmInfo,
-                bgmInfoList = bgmInfoList,
-                relatedVideos = relatedVideos,
+                bgmList = resolveDisplayBgmList(
+                    bgmInfo = bgmInfo,
+                    bgmInfoList = bgmInfoList
+                ),
                 onBgmClick = onBgmClick,
                 onRelatedVideoClick = onRelatedVideoClick
                 onDescriptionUrlClick = onOpenBilibiliLink

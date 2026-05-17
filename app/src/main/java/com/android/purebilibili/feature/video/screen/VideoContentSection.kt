@@ -67,6 +67,7 @@ import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmented
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
+import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
 import com.android.purebilibili.feature.video.ui.section.shouldShowAiSummaryEntry
 import com.android.purebilibili.feature.video.ui.section.resolveVideoDetailMotionBudget
 import com.android.purebilibili.feature.video.ui.section.shouldAnimateVideoDetailLayout
@@ -988,9 +989,10 @@ private fun VideoHeaderContent(
             info = info,
             videoTags = videoTags,
             transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
-            bgmInfo = bgmInfo,
-            bgmInfoList = bgmInfoList,
-            relatedVideos = relatedVideos,
+            bgmList = resolveDisplayBgmList(
+                bgmInfo = bgmInfo,
+                bgmInfoList = bgmInfoList
+            ),
             onlineCount = onlineCount,
             showOnlineCount = showOnlineCount,
             onBgmClick = onBgmClick,

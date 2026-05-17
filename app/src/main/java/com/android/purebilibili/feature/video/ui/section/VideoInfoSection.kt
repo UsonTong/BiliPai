@@ -64,7 +64,6 @@ import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.data.model.response.BgmRecommendVideo
 import com.android.purebilibili.data.model.response.Owner
-import com.android.purebilibili.data.model.response.RelatedVideo
 import com.android.purebilibili.data.model.response.Stat
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.feature.video.screen.buildVideoNavigationOptions
@@ -268,9 +267,7 @@ fun VideoTitleSection(
 fun VideoTitleWithDesc(
     info: ViewInfo,
     videoTags: List<VideoTag> = emptyList(),  //  视频标签
-    bgmInfo: BgmInfo? = null, // [新增] BGM 信息
-    bgmInfoList: List<BgmInfo> = emptyList(),
-    relatedVideos: List<RelatedVideo> = emptyList(),
+    bgmList: List<BgmInfo> = emptyList(),
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
@@ -505,15 +502,10 @@ fun VideoTitleWithDesc(
         }
 
         // [新增] BGM Info Row
-        val displayBgmList = remember(bgmInfo, bgmInfoList) {
-            if (bgmInfoList.isNotEmpty()) bgmInfoList
-            else if (bgmInfo != null) listOf(bgmInfo)
-            else emptyList()
-        }
-        if (displayBgmList.isNotEmpty()) {
+        if (bgmList.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             InlineBgmSection(
-                bgmList = displayBgmList,
+                bgmList = bgmList,
                 onBgmClick = onBgmClick,
                 onRelatedVideoClick = onRelatedVideoClick
             )
@@ -1171,8 +1163,8 @@ private fun BgmSelectionSheet(
     }
     val selectedBgm = bgmList.getOrElse(selectedIndex) { bgmList.first() }
     val selectedData = itemStateByKey[selectedItemKey] ?: BgmSheetItemState()
-    val shouldShowDetailSkeleton = remember(selectedData.status, selectedData.detail) {
-        selectedData.status != BgmDiscoveryLoadStatus.Loaded && selectedData.detail == null
+    val shouldShowDetailSkeleton = remember(selectedData) {
+        shouldShowBgmDetailSkeleton(selectedData)
     }
 
     LaunchedEffect(selectedItemKey, selectedBgm.musicId, aid, cid) {
@@ -1226,8 +1218,7 @@ private fun BgmSelectionSheet(
         resolveBgmStatLine(selectedData.detail)
     }
     val shouldShowInitialRecommendationPlaceholders = remember(selectedData) {
-        selectedData.recommendedVideos.isEmpty() &&
-            selectedData.status != BgmDiscoveryLoadStatus.Error
+        shouldShowInitialBgmRecommendationPlaceholders(selectedData)
     }
     val recommendedVideoRows = remember(selectedData.recommendedVideos) {
         selectedData.recommendedVideos.chunked(2)
@@ -1807,6 +1798,15 @@ private fun resolveBgmRecommendRowItemIndex(rowIndex: Int): Int {
     return BGM_RECOMMEND_ROW_START_INDEX + rowIndex
 }
 
+internal fun resolveDisplayBgmList(
+    bgmInfo: BgmInfo?,
+    bgmInfoList: List<BgmInfo>
+): List<BgmInfo> {
+    return bgmInfoList.ifEmpty {
+        listOfNotNull(bgmInfo)
+    }
+}
+
 private fun resolveQueryLongParam(url: String, key: String): Long {
     return android.net.Uri.parse(url).getQueryParameter(key)?.toLongOrNull() ?: 0L
 }
@@ -1848,6 +1848,19 @@ internal fun shouldLoadBgmDiscoveryItem(
     if (musicId.isBlank() || aid <= 0L || cid <= 0L) return false
     return state.status == BgmDiscoveryLoadStatus.Idle ||
         state.status == BgmDiscoveryLoadStatus.Error
+}
+
+internal fun shouldShowBgmDetailSkeleton(
+    state: BgmSheetItemState
+): Boolean {
+    return state.status != BgmDiscoveryLoadStatus.Loaded && state.detail == null
+}
+
+internal fun shouldShowInitialBgmRecommendationPlaceholders(
+    state: BgmSheetItemState
+): Boolean {
+    return state.recommendedVideos.isEmpty() &&
+        state.status != BgmDiscoveryLoadStatus.Error
 }
 
 internal fun shouldLoadMoreBgmRecommendations(
@@ -1923,116 +1936,4 @@ private fun mergeBgmRecommendedVideos(
         seenKeys.add(key)
     }
     return existing + appended
-}
-
-
-@Composable
-fun BgmInfoListRow(
-    bgmList: List<BgmInfo>,
-    onBgmClick: (BgmInfo) -> Unit = {}
-) {
-    val context = LocalContext.current
-
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
-            Text(
-                text = "共 ${bgmList.size} 首音乐",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            bgmList.forEachIndexed { index, bgm ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable { onBgmClick(bgm) }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surface)
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (bgm.coverUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(FormatUtils.fixImageUrl(bgm.coverUrl))
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = bgm.musicTitle,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                imageVector = CupertinoIcons.Default.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "#${index + 1}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.78f)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = bgm.musicTitle.ifEmpty { "未知音乐" },
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                        }
-                        if (bgm.actor.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = bgm.actor,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = CupertinoIcons.Default.ChevronForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                if (index != bgmList.lastIndex) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-            }
-        }
-    }
 }

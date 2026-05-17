@@ -34,6 +34,39 @@ class BgmDiscoverySheetPolicyTest {
     }
 
     @Test
+    fun displayBgmList_prefersProvidedList() {
+        val fallback = BgmInfo(musicId = "fallback", musicTitle = "Fallback")
+        val primary = BgmInfo(musicId = "primary", musicTitle = "Primary")
+
+        assertEquals(
+            listOf(primary),
+            resolveDisplayBgmList(
+                bgmInfo = fallback,
+                bgmInfoList = listOf(primary)
+            )
+        )
+    }
+
+    @Test
+    fun displayBgmList_fallsBackToSingleInfo() {
+        val fallback = BgmInfo(musicId = "fallback", musicTitle = "Fallback")
+
+        assertEquals(
+            listOf(fallback),
+            resolveDisplayBgmList(
+                bgmInfo = fallback,
+                bgmInfoList = emptyList()
+            )
+        )
+        assertTrue(
+            resolveDisplayBgmList(
+                bgmInfo = null,
+                bgmInfoList = emptyList()
+            ).isEmpty()
+        )
+    }
+
+    @Test
     fun discoveryItem_doesNotLoadWithoutRequiredIdentity() {
         val idle = BgmSheetItemState()
 
@@ -74,6 +107,41 @@ class BgmDiscoverySheetPolicyTest {
                 musicId = "MA123",
                 aid = 1L,
                 cid = 2L
+            )
+        )
+    }
+
+    @Test
+    fun detailSkeleton_showsUntilLoadedDetailArrives() {
+        assertTrue(shouldShowBgmDetailSkeleton(BgmSheetItemState()))
+        assertTrue(
+            shouldShowBgmDetailSkeleton(
+                BgmSheetItemState(status = BgmDiscoveryLoadStatus.Loading)
+            )
+        )
+        assertFalse(
+            shouldShowBgmDetailSkeleton(
+                BgmSheetItemState(
+                    status = BgmDiscoveryLoadStatus.Loaded,
+                    detail = BgmDetailData(musicTitle = "Song")
+                )
+            )
+        )
+    }
+
+    @Test
+    fun initialRecommendationPlaceholders_hideAfterErrorOrData() {
+        assertTrue(shouldShowInitialBgmRecommendationPlaceholders(BgmSheetItemState()))
+        assertFalse(
+            shouldShowInitialBgmRecommendationPlaceholders(
+                BgmSheetItemState(status = BgmDiscoveryLoadStatus.Error)
+            )
+        )
+        assertFalse(
+            shouldShowInitialBgmRecommendationPlaceholders(
+                BgmSheetItemState(
+                    recommendedVideos = listOf(BgmRecommendVideo(bvid = "BV1"))
+                )
             )
         )
     }

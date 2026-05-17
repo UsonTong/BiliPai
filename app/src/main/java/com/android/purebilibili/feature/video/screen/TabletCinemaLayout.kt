@@ -110,6 +110,7 @@ import com.android.purebilibili.feature.video.ui.components.rememberVideoComment
 import com.android.purebilibili.feature.video.ui.components.resolveReplyItemContentType
 import com.android.purebilibili.feature.video.ui.components.shouldShowReplyTopAction
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
+import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
@@ -766,10 +767,11 @@ private fun CinemaVideoIntroSection(
             VideoTitleWithDesc(
                 info = success.info,
                 videoTags = success.videoTags,
-                bgmInfo = success.bgmInfo,
-                bgmInfoList = success.bgmInfoList,
                 onDescriptionUrlClick = onOpenBilibiliLink,
-                relatedVideos = success.related,
+                bgmList = resolveDisplayBgmList(
+                    bgmInfo = success.bgmInfo,
+                    bgmInfoList = success.bgmInfoList
+                ),
                 onBgmClick = onBgmClick,
                 onRelatedVideoClick = onRelatedVideoClick
             )
