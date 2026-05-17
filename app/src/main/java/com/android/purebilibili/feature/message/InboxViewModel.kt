@@ -4,6 +4,8 @@ package com.android.purebilibili.feature.message
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.core.network.WbiKeyManager
+import com.android.purebilibili.core.network.WbiUtils
 import com.android.purebilibili.data.model.response.MessageFeedUnreadData
 import com.android.purebilibili.data.model.response.MessageUnreadData
 import com.android.purebilibili.data.model.response.SessionItem
@@ -115,7 +117,7 @@ class InboxViewModel : ViewModel() {
                     )
                     
                     // 异步加载用户信息
-                    loadUserInfos(sessions.map { it.talker_id })
+                    loadUserInfosForSessions(sessions)
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
@@ -141,6 +143,13 @@ class InboxViewModel : ViewModel() {
         loadSessions()
     }
     
+    private fun loadUserInfosForSessions(sessions: List<SessionItem>) {
+        val mids = sessions
+            .filter { InboxUserInfoResolver.shouldFetchSessionUserInfo(it, userCache) }
+            .map { it.talker_id }
+        loadUserInfos(mids)
+    }
+
     /**
      * 异步批量加载用户信息
      */
@@ -172,25 +181,60 @@ class InboxViewModel : ViewModel() {
      * 获取单个用户信息
      */
     private suspend fun fetchUserInfo(mid: Long): UserBasicInfo? = withContext(Dispatchers.IO) {
-        try {
+        val cardInfo = fetchUserCardInfo(mid)
+        if (InboxUserInfoResolver.hasCompleteUserInfo(cardInfo)) return@withContext cardInfo
+
+        // 普通私信会话通常不带 account_info，card 接口失败时用空间 WBI 资料兜底昵称和头像。
+        val spaceInfo = fetchSpaceUserInfo(mid)
+        InboxUserInfoResolver.mergeFetchedUserInfo(cardInfo, spaceInfo)
+    }
+
+    private suspend fun fetchUserCardInfo(mid: Long): UserBasicInfo? {
+        return try {
             val response = NetworkModule.api.getUserCard(mid = mid, photo = true)
-            
             val card = response.data?.card
-            if (response.code == 0 && card != null) {
-                InboxUserInfoResolver.mergeFetchedUserInfo(
-                    existing = null,
-                    fetched = UserBasicInfo(
-                        mid = card.mid.toLongOrNull() ?: mid,
-                        name = card.name,
-                        face = card.face
-                    )
-                )
-            } else {
-                android.util.Log.w("InboxVM", "fetchUserInfo failed for $mid: ${response.code}")
-                null
+            if (response.code != 0 || card == null) {
+                android.util.Log.w("InboxVM", "fetchUserCardInfo failed for $mid: ${response.code}")
+                return null
             }
+
+            InboxUserInfoResolver.mergeFetchedUserInfo(
+                existing = null,
+                fetched = UserBasicInfo(
+                    mid = card.mid.toLongOrNull() ?: mid,
+                    name = card.name,
+                    face = card.face
+                )
+            )
         } catch (e: Exception) {
-            android.util.Log.e("InboxVM", "fetchUserInfo exception for $mid", e)
+            android.util.Log.e("InboxVM", "fetchUserCardInfo exception for $mid", e)
+            null
+        }
+    }
+
+    private suspend fun fetchSpaceUserInfo(mid: Long): UserBasicInfo? {
+        return try {
+            val keys = WbiKeyManager.getWbiKeys().getOrNull()
+                ?: WbiKeyManager.refreshKeys().getOrNull()
+                ?: return null
+            val params = WbiUtils.sign(mapOf("mid" to mid.toString()), keys.first, keys.second)
+            val response = NetworkModule.spaceApi.getSpaceInfo(params)
+            val user = response.data
+            if (response.code != 0 || user == null) {
+                android.util.Log.w("InboxVM", "fetchSpaceUserInfo failed for $mid: ${response.code}")
+                return null
+            }
+
+            InboxUserInfoResolver.mergeFetchedUserInfo(
+                existing = null,
+                fetched = UserBasicInfo(
+                    mid = user.mid.takeIf { it > 0L } ?: mid,
+                    name = user.name,
+                    face = user.face
+                )
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("InboxVM", "fetchSpaceUserInfo exception for $mid", e)
             null
         }
     }
@@ -241,7 +285,7 @@ class InboxViewModel : ViewModel() {
                         )
 
                         // 异步加载用户信息
-                        loadUserInfos(filteredNewSessions.map { it.talker_id })
+                        loadUserInfosForSessions(filteredNewSessions)
                     }
                 },
                 onFailure = {
@@ -293,7 +337,7 @@ class InboxViewModel : ViewModel() {
                     )
                     
                     // 异步加载用户信息
-                    loadUserInfos(sessions.map { it.talker_id })
+                    loadUserInfosForSessions(sessions)
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
@@ -471,7 +515,7 @@ class InboxViewModel : ViewModel() {
                         userInfoMap = primeSessionUserCache(filteredNewSessions).toMap(),
                         endTs = nextEndTs
                     )
-                    loadUserInfos(filteredNewSessions.map { it.talker_id })
+                    loadUserInfosForSessions(filteredNewSessions)
                 },
                 onFailure = {
                     _uiState.value = _uiState.value.copy(isLoadingMore = false)
